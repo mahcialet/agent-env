@@ -5,16 +5,17 @@
 1. [Architecture](ARCHITECTURE.md): responsibilities and dependency directions.
 2. [Documentation index](docs/index.md): authoritative repository knowledge.
 3. [MVP specification](docs/product-specs/agent-env-mvp.md): required behavior.
-4. [Completed ExecPlan](docs/exec-plans/completed/agent-env-mvp.md): delivered scope and evidence.
-5. [Plan policy](docs/PLANS.md): mandatory living-plan structure.
+4. [Plan policy](docs/PLANS.md): active ExecPlan requirements and mandatory structure.
+5. [Completed MVP ExecPlan](docs/exec-plans/completed/agent-env-mvp.md): historical delivered scope and evidence.
 
 ## Standard workflow
 
 - Inspect current branch, working tree, and existing differences before editing.
-- Use `feat/agent-env-mvp` for this implementation.
+- Each substantial change uses a dedicated branch and an active ExecPlan.
+- The active ExecPlan is the authority for the expected branch and current work.
 - Preserve user changes, existing assets, and the MIT license.
 - Read the relevant product and design documents before changing behavior.
-- Use and maintain an ExecPlan for complex or multi-hour work.
+- Maintain the active ExecPlan at meaningful checkpoints.
 - Resolve uncertain public behavior before implementing dependent changes.
 - Make a demonstrable change, then verify the relevant behavior.
 - Record discoveries, decisions, failed checks, and next actions in the plan.
