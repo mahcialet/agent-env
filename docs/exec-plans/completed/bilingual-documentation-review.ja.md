@@ -2,8 +2,8 @@
 status: active
 owner: maintainers
 last_verified: 2026-09-08
-translation_of: docs/exec-plans/active/bilingual-documentation-review.md
-source_sha256: 990f0a3436f9b5052fa79b7e40af803b8d5e974921579a57cfc1cc85237d5337
+translation_of: docs/exec-plans/completed/bilingual-documentation-review.md
+source_sha256: 46ce5ad49eaefe991e70bfbb84cc6e67f14fefccb09c15b4a64eaa30b27a3439
 ---
 
 # 二言語文書のレビュー指摘対応
@@ -18,8 +18,8 @@ source_sha256: 990f0a3436f9b5052fa79b7e40af803b8d5e974921579a57cfc1cc85237d5337
 
 - [x] 2026-09-08：`41545f1`で作業ツリーに差分がないことを確認し、未解決Thread 5件を読んだ。
 - [x] 2026-09-08：5件とも回帰fixtureの失敗で再現し、検査を修正した。repoctlの全テストと全体ハーネスが成功した。
-- [ ] ハーネスを検証し、差分確認後にcommit・pushする。
-- [ ] 対応した全Threadに返信してResolveし、成果を記録して英日両方の計画を完了済みへ移す。
+- [x] 2026-09-08：全体ハーネス、Go 1.26／1.27のrepoctlテスト、3回のraceテスト、差分検査が成功した。`b94a94d`と`cc3b915`をcommit・pushした。
+- [x] 2026-09-08：5件すべてのThreadに返信してResolveした。成果を記録し、英日両方の計画を完了済みへ移した。
 
 ## 想定外の発見
 
@@ -38,7 +38,9 @@ source_sha256: 990f0a3436f9b5052fa79b7e40af803b8d5e974921579a57cfc1cc85237d5337
 
 ## 成果と振り返り
 
-対応中。
+依頼された検査の抜け5件をすべて修正した。独立レビューでは、表示と構造に関する既知の13ケースを隔離コピーで追加検証し、解消を確認した。回帰fixtureは、読者が辿れるリンクと実際の計画の節を、コード例やコメントと区別する。過去の計画の固定例外と翻訳メタデータの検証は、移植可能なGo実装を維持している。無関係な英語文書に既存の曖昧さは、今回の対象外とした。
+
+当初の見逃しは、要件とテストの対応付けの不足による。fixtureと許容的なテストが、文書の義務を一つずつ証明する代わりに、実装の前提を取り込んでいた。今後の拡張でも、修正前の失敗と修正後の成功の証拠、要件ごとの不正ケースを維持する。全ローカル検証は成功した。新しいcommitのリモートCIはPR #3で追跡し、この記録では完了したと主張しない。
 
 ## 背景と構成
 

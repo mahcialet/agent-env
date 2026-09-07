@@ -16,8 +16,8 @@ Address all five PR #3 review threads on `feat/bilingual-documentation`. This ac
 
 - [x] 2026-09-08: Confirmed clean branch at `41545f1` and read all five unresolved review threads.
 - [x] 2026-09-08: Reproduced all five gaps with failing regression fixtures, implemented the checks and passed the full repoctl test suite and harness.
-- [ ] Validate the harness, review the diff, commit and push.
-- [ ] Reply to and resolve every addressed thread; record outcomes and archive both plan languages.
+- [x] 2026-09-08: Full harness, Go 1.26/1.27 repoctl tests, race tests repeated three times and diff checks passed; committed and pushed `b94a94d` and `cc3b915`.
+- [x] 2026-09-08: Replied to and resolved all five review threads; recorded outcomes and archived both plan languages.
 
 ## Surprises & Discoveries
 
@@ -36,7 +36,9 @@ A follow-up review caught a parsing-order regression after the main fix: removin
 
 ## Outcomes & Retrospective
 
-In progress.
+Completed all five requested enforcement fixes. Independent review additionally exercised thirteen known rendering/structure cases in an isolated copy and confirmed their resolution. Regression fixtures now distinguish visible navigation and actual plan sections from examples and comments. Fixed historical exceptions and valid translation metadata remain portable Go checks. Existing unrelated English documentation ambiguities remain outside this follow-up.
+
+The original omission was a requirements-to-tests gap: fixture setup and permissive tests encoded implementation assumptions rather than proving each documented obligation. Preserve the failing-before/passing-after evidence and requirement-specific negative cases when extending these checks. Full local validation passed; remote CI for the new commits is tracked on PR #3 and is not claimed as completed by this record.
 
 ## Context and Orientation
 
