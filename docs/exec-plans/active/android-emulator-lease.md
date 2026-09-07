@@ -211,6 +211,21 @@ and evidence when checking an item.
   starting or stopping it. Full Go 1.26 harness and Go 1.27 race passed after
   integration; final Doctor change receives the next harness/native CI pass.
 
+- 2026-09-07 UTC: Final shared-ADB implementation `5dedf9e` passed root's real
+  Emulator fixture in 37.437s (two isolated READY resources, sibling survival,
+  manual-stop DEGRADED and complete cleanup). Native Doctor reports SDK tools,
+  KVM v12 and `adb_server: compatible protocol 41` (exit 0).
+- 2026-09-07 UTC: CI 34138988850 passed Android tests on all native platforms,
+  but Windows Go 1.27 exposed a guardian completion race in
+  `TestDetachedSurvivesLaunchingCLI/root_exits_true`: TempDir removal raced a late
+  empty-proof file creation (`directory is not empty`). Querying zero Job members
+  must also wait for completed proof publication; a fix is being implemented with
+  closed-file atomic publication, not test sleeps or relaxed assertions.
+  The fix now keeps the barrier through pending proof, Sync+Close then Rename
+  is the guardian's final filesystem effect, and a deterministic real empty-Job
+  regression plus immediate evidence-directory removal test cover the race.
+  Windows Go 1.26/1.27 cross-builds pass; native CI is the remaining proof.
+
 Record unexpected emulator, AVD, path, locking, process, or platform
 behavior here. Include the failing command or test name and the resulting
 design consequence.

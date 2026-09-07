@@ -150,7 +150,20 @@ func detachedTreeAlive(id ProcessIdentity) (bool, error) {
 	if err := windows.QueryInformationJobObject(job, windows.JobObjectBasicAccountingInformation, uintptr(unsafe.Pointer(&accounting)), uint32(unsafe.Sizeof(accounting)), nil); err != nil {
 		return false, err
 	}
-	return accounting.ActiveProcesses > 0, nil
+	if accounting.ActiveProcesses > 0 {
+		return true, nil
+	}
+	// An empty Job precedes the guardian's last write. Keep the cleanup barrier
+	// until it publishes its closed, synced proof; otherwise it could create a
+	// file while a caller removes the evidence directory after observed absence.
+	proof, proofErr := os.ReadFile(fields[4])
+	if errors.Is(proofErr, os.ErrNotExist) {
+		return true, nil
+	}
+	if proofErr != nil || string(proof) != fields[2] {
+		return true, errors.Join(ErrProcessTreeUnconfirmed, proofErr, errors.New("detached guardian completion evidence invalid"))
+	}
+	return false, nil
 }
 
 func detachedIdentity(pid int) (string, bool, error) {

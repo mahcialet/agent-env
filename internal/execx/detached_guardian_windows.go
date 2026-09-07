@@ -78,15 +78,26 @@ func runDetachedGuardian(job, ready windows.Handle, name, proof string) error {
 			signaled = true
 		}
 		if a.ActiveProcesses == 0 {
-			f, err := os.OpenFile(proof, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
-			if err != nil {
-				return err
-			}
-			_, writeErr := f.WriteString(name)
-			syncErr := f.Sync()
-			closeErr := f.Close()
-			return errors.Join(writeErr, syncErr, closeErr)
+			return publishDetachedEmptyProof(proof, name)
 		}
 		time.Sleep(50 * time.Millisecond)
 	}
+}
+
+// Publishing the closed, synced file is the guardian's final filesystem effect.
+// Observers may delete its parent immediately after seeing the matching proof.
+// Failed publication retains pending evidence and never authorizes absence.
+func publishDetachedEmptyProof(proof, name string) error {
+	pending := proof + ".pending"
+	f, err := os.OpenFile(pending, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
+	if err != nil {
+		return err
+	}
+	_, writeErr := f.WriteString(name)
+	syncErr := f.Sync()
+	closeErr := f.Close()
+	if err := errors.Join(writeErr, syncErr, closeErr); err != nil {
+		return err
+	}
+	return os.Rename(pending, proof)
 }
