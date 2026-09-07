@@ -6,82 +6,43 @@ last_verified: 2026-09-07
 
 # Quality and verification
 
-## Unit tests
-
-Test domain logic without external tools:
-
-- stack dependency closure;
-- cycle detection;
-- manifest strict decoding;
-- source-set digest stability;
-- lease state transitions;
-- project-name normalization;
-- path resolution;
-- policy diagnostics;
-- GC eligibility;
-- JSON output schemas;
-- command argument handling.
-
-## Fake command runner tests
-
-All Git and Compose adapters must depend on an injected command runner. Use a fake runner to verify exact executable, argv, cwd, environment, timeouts, stdout/stderr handling, and error conversion.
-
-Do not unit-test by asserting one giant shell command string.
-
-## Fixture integration tests
-
-Use temporary Git repositories and a small Compose fixture. Mark Docker-requiring tests with a build tag or explicit environment variable so ordinary unit tests remain reliable.
-
-Required integration cases:
-
-- two simultaneous Compose projects;
-- selected service closure;
-- failed startup rollback;
-- project manually removed before reconcile;
-- worktree path containing spaces;
-- multiple repositories in one lease;
-- dirty tracked worktree quarantine.
-
-## Repository-harness tests
-
-Test the development harness itself:
-
-- `AGENTS.md` line-limit and referenced-path checks;
-- Markdown internal-link resolution;
-- local index completeness for design docs, product specs, and ADRs;
-- active ExecPlan mandatory-section validation;
-- document metadata parsing;
-- generated schema drift detection;
-- architecture import-boundary fixtures;
-- stable diagnostic codes and nonzero exit statuses;
-- `repoctl` argv handling on paths containing spaces and Unicode.
-
-The tests must include intentionally broken fixtures so a passing checker is known to detect failure, rather than only testing the happy path.
-
-## CI
-
-Create a matrix for Windows, macOS, and Linux that runs:
+## Canonical checks
 
 ```text
 go run ./tools/repoctl doctor
 go run ./tools/repoctl check
-go build ./cmd/agent-env
+go run ./tools/repoctl test-integration
 ```
 
-`repoctl check` must visibly compose formatting verification, unit tests, `go vet`, documentation checks, generated-file checks, and architecture checks. Keep the underlying commands documented so the harness remains inspectable.
+`doctor` locates Go, gofmt, and Git. Docker is required only for the explicit integration command. `check` visibly composes formatting verification, `go test ./...`, `go vet ./...`, documentation validation, generated-file drift detection, and architecture checks. It requires no Bash, Make, or PowerShell. Underlying commands remain directly runnable.
 
-Run actual Docker Compose integration tests on Linux CI initially. Hosted macOS and Windows Docker availability may not be sufficient for identical integration coverage; compensate with adapter contract/fake-runner tests and document the limitation. Add self-hosted platform integration runners later if available.
+| Harness command | Scope |
+| --- | --- |
+| `test-unit` | Ordinary Go tests; no Docker daemon required |
+| `test-integration` | Checks Docker daemon/Compose and runs uncached tagged tests with explicit integration opt-in |
+| `docs-check` | Metadata, links/headings, local indexes, AGENTS length/paths, and mandatory active-plan sections |
+| `generate` | Regenerates the database document from embedded SQL migration sources |
+| `generated-check` | Fails when the generated schema differs from migrations |
+| `arch-check` | Enforces documented import boundaries with actionable diagnostics |
 
-Also add a cross-build job with `CGO_ENABLED=0` for the target OS/architecture matrix.
+The schema document's source of truth is the numbered SQL set under [migrations](../migrations/001_initial.sql), not manually edited prose. Stable `AGENTENV-*` diagnostics identify the violated invariant and repair direction. Negative fixtures deliberately break links, indexes, metadata, plan sections, source formatting, schema generation, and import boundaries.
 
-Race tests should run on at least Linux:
+## Product tests
 
-```text
-go test -race ./...
-```
+Unit and adapter tests cover strict manifest decoding, deterministic component/source identity, state transitions, TTL and GC eligibility, normalized Compose policy, path containment, command argv, streamed redaction, evidence failure paths, and lifecycle compensation. Fake runners assert executable, argv, working directory, environment controls, cancellation, output handling, and error conversion without constructing shell strings.
 
----
+SQLite tests use real temporary databases, including Unicode paths, reopened/multiple connections, migration idempotency, foreign keys, atomic capacity/project reservation, normalized-row rollback, and durable lock behavior. Process tests exercise native argv and child-process cancellation; native platform execution is necessary to validate OS-specific implementations.
 
-## Harness commands
+## Real Docker fixtures
 
-`go run ./tools/repoctl check` is the canonical cross-platform entry point. It composes formatting verification (`gofmt`), `go test ./...`, `go vet ./...`, docs-check, generated-check, and arch-check. `test-unit` runs unit tests; `test-integration` explicitly opts into Docker fixtures. Run doctor first for prerequisites. Missing prerequisites are failures or explicitly unverified coverage, never passing evidence. Generated schema comes from numbered SQL migrations; generated-check must detect drift. Broken-link, malformed-plan, unindexed-document, and forbidden-import fixtures must exercise checker failure diagnostics.
+The [integration suite](../internal/cli/integration_test.go) creates isolated temporary Git repositories and state homes and uses [the small Compose fixture](../testdata/compose/compose.yaml). Tests require both the `integration` build tag and explicit opt-in; the harness sets these automatically. Ordinary unit tests never start Docker containers.
+
+The suite verifies simultaneous API/Dashboard leases, selected closure, manifest-generated dynamic loopback HTTP without source port declarations, versioned environment descriptors, component-scoped live/retained logs, distinct project/worktree identities, and preservation of a sibling's container/network/volume IDs. It also verifies an unselected foreign volume survives cleanup, manually removed projects become degraded, multiple repositories respect source ref overrides, named tests retain redacted stdout/stderr/artifacts and nonzero exit status, readiness failure rolls back real resources, and dirty tracked worktrees survive GC until explicit force with diff evidence.
+
+A fresh complete local Linux run after review fixes passed in 111.64 seconds, including generated endpoints, diagnostic descriptors, and component-scoped live and archived logs. This establishes real Docker behavior for that tested revision, not completion of later edits or every native platform. All fixture resources have unique tracked identities and lease-specific cleanup; the suite never runs a general Docker prune.
+
+## CI and completion evidence
+
+CI runs the harness and CLI build natively on Windows, macOS, and Linux for Go 1.26.x and 1.27.x. Linux runs `go test -race ./...` and explicit Docker integration. Separate cross-build jobs cover five targets with `CGO_ENABLED=0`.
+
+Use [the implementation plan](exec-plans/active/agent-env-mvp.md) for current results, independent review findings, and remaining gates. A successful cross-build does not substitute for native tests, and local fixture success does not substitute for the final revision's CI. Full product native CI remains an outstanding gate until its actual job results are recorded. Docker integration on hosted macOS/Windows is not claimed.

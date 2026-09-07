@@ -6,16 +6,14 @@ last_verified: 2026-09-07
 
 # CLI contract
 
-Status: required commands; the active plan records availability. Deferred commands must never return fake success.
-
-## Required in the MVP
+The following commands are implemented. Platform validation remains tracked separately in the [implementation plan](../exec-plans/active/agent-env-mvp.md).
 
 ```text
 agent-env version
 agent-env init [repository]
-agent-env validate [repository]
-agent-env plan <repository> --stack <name> [--ref <ref>] [--source alias=ref]
-agent-env create <repository> --stack <name> [--ref <ref>] [--source alias=ref]
+agent-env validate [repository-or-manifest]
+agent-env plan [repository] --stack <name> [--manifest <path>] [--ref <ref>] [--source alias=ref]
+agent-env create [repository] --stack <name> [--manifest <path>] [--ref <ref>] [--source alias=ref] [--ttl <duration>] [--purpose <text>] [--mode review]
 agent-env list [--cached] [--mine] [--state <state>]
 agent-env show <lease-id>
 agent-env capabilities <lease-id>
@@ -23,114 +21,77 @@ agent-env test <lease-id> <test-name>
 agent-env logs <lease-id> [--component <name>] [--run <run-id>]
 agent-env renew <lease-id> [--ttl <duration>]
 agent-env destroy <lease-id> [--dry-run] [--force]
-agent-env reconcile [<lease-id>]
+agent-env reconcile [lease-id]
 agent-env gc [--apply]
 agent-env doctor [repository]
 ```
 
-## Deferred but reserved
+An omitted repository means the current directory. `init` requires one recognizable root Compose file, creates `.agent-env.yaml` exclusively, and reports that review is required; it does not start anything. `validate` checks schema and references without Docker. `plan` additionally resolves local Git commits and the deterministic component closure without creating state or worktrees. `--ref` requires a single source; use alias-specific `--source` overrides for multiple sources. Neither form fetches remote refs.
 
-```text
-agent-env expand <lease-id> --stack <name>
-agent-env fork <lease-id> --mode fix --writable <source>
-agent-env checkpoint <lease-id>
-agent-env browser <lease-id> ...
-agent-env ui <lease-id> ...
-agent-env artifact promote <lease-id> <artifact>
-agent-env reproduce <lease-id> --artifacts|--rebuild
+The manifest defaults to the supplied control checkout. `--manifest` on plan/create selects another trusted manifest explicitly; its digest and canonical snapshot are retained. Review mode creates detached, non-writable-by-contract source worktrees. There is no writable fix mode.
+
+## Identity, state, and observation
+
+`--owner <text>` is a global advisory owner selector. `AGENT_ENV_OWNER` supplies an explicit default. Otherwise a local user/host identity and unique suffix identify allocations; `list --mine` matches that local identity across invocations. Owner labels are filters, not authorization boundaries.
+
+`list` and `show` inspect recorded sources and Docker projects; `--cached` is the explicit registry-only list. `show` includes the lease, events, command runs, artifacts, and endpoint observations. `capabilities` reports capabilities declared by selected components, the observed state, and an endpoint address map. Declared endpoints generate dynamic loopback publishing in the saved runtime configuration. `reconcile <lease-id>` returns that observed lease. Full `reconcile` returns an object containing `leases` and `inventory`, including resources with no matching recorded owner; it never deletes them.
+
+Desired state is `active` or `released`. Observed state can be `requested`, `allocating`, `starting`, `ready`, `degraded`, `failed`, `releasing`, `released`, `quarantined`, or `unknown`. A stored ready row is not proof of live health. Missing Docker resources degrade an active lease; inspection failures remain visible as uncertainty. Expired or quarantined leases cannot become an unqualified ready result.
+
+Runtime/container and bounded HTTP readiness can be re-observed. Arbitrary command probes run during create; list/show do not rerun repository commands. A healthy live observation therefore does not prove that a previously successful command probe would still pass.
+
+`logs --run` reads one recorded command run's stdout/stderr. `logs --component` selects the component's services within its runtime, rather than returning all services sharing that Compose project. Without a filter, logs include available runtime and retained cleanup evidence.
+
+## Output and exit status
+
+`--output table` is the default human view. Some detailed commands render an indented object rather than a table. Every command supports `--output json` using the envelope:
+
+```json
+{"schema_version":1,"data":{}}
 ```
 
-Do not ship placeholder commands that return success while doing nothing. Deferred commands may be omitted or return a clear unsupported-feature error.
+Each lease also has a versioned `leases/<id>/environment.json` diagnostic snapshot refreshed during persisted lifecycle changes; it is not an alternative registry authority.
 
----
+The data shape depends on the command: plan/create return an object, list returns a lease array, show returns a lease plus evidence collections, and GC returns `apply` plus `leases`. Named-test streaming output goes to stderr in JSON mode so stdout remains a single JSON document. A failed create, cleanup, or named test may still emit its recorded result; inspect both the process exit status and that result.
 
-## Output and failures
+| Exit | Meaning |
+| --- | --- |
+| 0 | Successful requested operation |
+| 2 | Invalid command, arguments, manifest, or other user input |
+| 3 | Missing or unavailable prerequisite |
+| 4 | Allocation or readiness failure |
+| 5 | Named test failed, timed out, or was canceled |
+| 6 | Cleanup could not finish safely, including quarantine |
+| 7 | Internal, registry, or observation failure |
 
-Support a global output mode or command-specific option:
+These are CLI exit codes; a named command's own exit code is recorded separately in its run record. `doctor` checks executable availability, the active Docker context, daemon reachability, Compose plugin version, and optionally a manifest.
 
-```text
---output table
---output json
-```
+## Cleanup and renewal
 
-At minimum, `plan`, `create`, `list`, `show`, `doctor`, and `gc` must support JSON.
+Default TTL is 4 hours, maximum TTL 24 hours, and active reservation capacity 8. `renew --ttl` moves expiration relative to now and updates heartbeat; it does not restart missing resources. Quarantined, releasing, and released leases cannot be renewed.
 
-JSON must be versioned and stable enough for agent skills. Do not print human commentary to stdout in JSON mode; diagnostics go to stderr.
+`destroy --dry-run` returns the current cleanup candidate without deleting resources. Ordinary cleanup requests cancellation of exact active named-run IDs and requires confirmed termination and finalized evidence before acquiring the lease lock for removal. An unrelated active operation remains busy. Cleanup then checks source/runtime ownership, preserves per-service final logs, removes runtimes in reverse order, removes managed worktrees, and marks the lease released.
 
-Use nonzero exit status for failures. Distinguish at least:
+Dirty tracked files quarantine the lease. `destroy --force` explicitly permits their removal after retaining a binary Git diff as an artifact; it still requires matching pinned ownership and successful evidence capture. Untracked test/build output inside a managed review worktree may be removed during normal cleanup. Do not keep unrelated work in managed worktrees.
 
-- invalid user input/manifest;
-- missing prerequisite;
-- allocation failure;
-- test failure;
-- cleanup/quarantine result;
-- internal error.
-
-Document exit codes before the first public release.
-
-## Destructive operations
-
-`destroy` removes resources in reverse dependency order and records each step.
-
-Conceptual order:
-
-```text
-stop active test commands
-collect final evidence
-stop/down Compose project
-inspect Git worktrees for tracked changes
-remove clean worktrees
-release reservations
-mark released
-```
-
-If the worktree has unexpected tracked modifications, cleanup fails, or resource identity is ambiguous, quarantine instead of force deleting.
-
-Support:
-
-```text
-agent-env destroy <lease-id> --dry-run
-agent-env destroy <lease-id>
-agent-env destroy <lease-id> --force
-```
-
-`--force` must be explicit and must still emit an event and preserve available evidence.
-
-Garbage collection defaults to planning only:
-
-```text
-agent-env gc
-```
-
-must behave as a dry run. Actual deletion requires:
-
-```text
-agent-env gc --apply
-```
-
-This is intentional for unattended agent safety.
+`gc` previews candidates without mutation. Default policy requires five minutes since expiration and one minute since the last heartbeat. Durable `running` command rows block preview and apply, even if their operation lock expired. `gc --apply` reacquires each lease lock and rechecks these conditions before ownership/source-cleanliness checks and cleanup. Quarantined and in-progress leases are excluded. There is no automatic artifact expiry or general host-resource prune.
 
 ## Named tests
 
-Named tests are declared in the manifest and invoked through:
+A test must be present in the pinned manifest, and its required component stack must be contained in the lease. The lease must be ready and unexpired. Source identities and tracked cleanliness are checked before and after execution; a test that edits tracked files quarantines the review lease.
 
-```text
-agent-env test <lease-id> <test-name>
-```
+The command uses an argv array and an allocated source-relative working directory. A durable operation lock excludes simultaneous cleanup, and heartbeat is updated around execution. Each run retains its name, redacted argv, source, working directory, timestamps, exit code, status, stdout/stderr paths, JSON run descriptor, and declared artifacts. Logs stream while being captured. Evidence survives failed tests and request cancellation.
 
-Each run records:
+The registry receives a terminal status only after process-tree termination and required evidence finalization are confirmed. An unconfirmed-termination error or failed stream/artifact/descriptor finalization leaves the durable run `running`, so destroy and GC refuse cleanup. Ordinary nonzero exits, timeouts and confirmed cancellations can become terminal results after their evidence is retained. Local recovery descriptors do not authorize a stale lock holder to finalize registry rows.
 
-- lease ID;
-- test name;
-- argv after safe interpolation;
-- source/cwd alias;
-- start and finish time;
-- exit code;
-- stdout path;
-- stderr path;
-- status;
-- relevant environment metadata, with secrets redacted.
+Environment maps are not copied into run records. `${env:NAME}` explicitly reads a host variable; `${lease_id}` inserts the lease identity. Literal credential-like environment values are rejected before allocation. See [manifest details](manifest-v1.md) and [security limits](../SECURITY.md).
 
-Stream output to the caller while also writing complete logs to the lease artifact directory.
+## Deferred commands
 
-Do not store secret values in SQLite or logs. Implement redaction hooks and avoid dumping the complete process environment.
+Expand/shrink, writable forks, checkpoint/reproduce, browser/UI observation, and artifact promotion are not implemented. They do not return placeholder success; see the [roadmap](../roadmap.md).
+
+## Cancellation and manifest provenance
+
+`destroy` requests cancellation of the exact active named-run IDs and waits up to ten seconds for termination/evidence finalization before cleanup. An unconfirmed cancellation or an ownerless running record prevents cleanup, including with `--force`. An operation already unrelated to those named runs remains busy; destroy does not cancel a newer run that begins during the wait.
+
+Plans and leases expose `manifest_path`, `manifest_commit`, and `manifest_modified`. The path identifies the actual selected file; the commit is its control checkout HEAD, independent of runtime source refs. A modified, untracked or ignored file is marked modified. Outside Git, the commit is empty and diagnostics explain that the canonical snapshot/digest provides provenance. `--manifest` does not change the control repository used to resolve relative source repository paths.

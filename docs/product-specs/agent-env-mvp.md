@@ -6,7 +6,7 @@ last_verified: 2026-09-07
 
 # MVP specification
 
-Status: required target behavior; implementation and verification are tracked in the [active plan](../exec-plans/active/agent-env-mvp.md).
+The Compose-backed CLI and repository harness are implemented. This document preserves the original required scope and acceptance criteria; completion of every platform and review gate is tracked from evidence in the [implementation plan](../exec-plans/active/agent-env-mvp.md). The [CLI contract](cli-contract.md) and [manifest reference](manifest-v1.md) describe current commands, fields, limits, and recovery behavior.
 
 Implement `agent-env`, a reusable CLI that materializes one or more Git repositories at pinned commits into an isolated, disposable, inspectable environment lease.
 
@@ -37,7 +37,7 @@ Target-repository runtime harness
   -> tells agent-env how to materialize a target repository/workspace
 ```
 
-The intended user experience is:
+The implemented workflow is:
 
 ```text
 agent-env plan   ./control-repo --stack api

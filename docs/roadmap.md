@@ -6,85 +6,30 @@ last_verified: 2026-09-07
 
 # Roadmap and unresolved decisions
 
-Android Emulator/Flutter, browser/CDP observation, local OCI registry promotion, remote Git caching, provider PR shorthand, generic host processes, and distributed coordination are deferred. None are implemented MVP features. Start them only after core acceptance passes.
+The implemented scope is local pinned Git sources, detached review worktrees, isolated Compose runtimes, named argv tests, evidence, and a portable repository harness. This roadmap does not advertise deferred features as available commands.
 
-Do not block the MVP on all of these. Record decisions as ADRs when they become concrete.
+## Settled MVP choices
 
-## Repository harness
+The module is `github.com/mahcialet/agent-env` and the existing MIT license is retained. AGENTS is capped at 150 lines, package boundaries have structural checks, and database documentation is generated from numbered migrations. Built-in policy rejects fixed published ports and selected external/shared Compose resources. SQLite transactions and renewable fenced operation locks coordinate local processes. Execution snapshots contain only the selected service/resource closure. Native process-tree cancellation is part of the current runner, not a future host-process adapter.
 
-- Confirm the final hard limit for root `AGENTS.md`; the current decision is 150 lines with an 80–120 line target.
-- Decide whether document freshness past `last_verified` is warning-only or CI-blocking after the initial MVP.
-- Decide whether nested `AGENTS.md` files are ever needed; default is no for the MVP.
-- Refine the first enforced package-dependency graph after the package layout exists.
-- Decide whether generated CLI reference and manifest JSON Schema should join the generated DB schema in the MVP or immediately after it.
-- Decide whether historical handoffs remain in the main branch indefinitely or move to a separate archival policy later.
+## Trust and host policy
 
-## Repository and release metadata
+A configurable host policy file, configurable grace/retention periods, and parallel-allocation controls remain future work. Trusted base-manifest plus target overlay merging, `--manifest-ref`, and explicit untrusted-fork execution require a separate trust design. Advisory owner labels do not provide authentication. Do not weaken built-in policy merely to accept an unsafe repository.
 
-- Confirm the final repository/module path; current assumption is `github.com/mahcialet/agent-env`.
-- Existing MIT license is preserved; the historical handoff license question is resolved.
-- Release packaging method is undecided: GitHub Releases, package managers, or both.
+## Sources and writable workflows
 
-## Manifest trust
+Remote mirror/cache management, HTTPS/SSH authentication, provider-specific PR shorthand, and automatic fetching are deferred. Writable fix leases need branch ownership, per-source write selection, and recovery rules. Fork/checkpoint/reproduce and live stack expansion/shrink need an explicit identity and artifact model.
 
-- Decide how base-branch/trusted manifests are selected for PR reviews.
-- Define the exact overlay fields an untrusted target ref may change.
-- Decide whether `--manifest-ref` is needed.
+## Runtime extensions
 
-## Remote sources
+Android Emulator/Flutter, browser/CDP and UI snapshots, generic persistent host processes, Podman-specific support, and distributed/multi-host coordination are not implemented. Android support additionally needs SDK/AVD discovery, acceleration-capable runners, and a clear Windows/WSL boundary. Browser resources need explicit ownership and cleanup rules.
 
-- Authentication and credential passthrough for HTTPS/SSH remotes.
-- Bare mirror/cache lifecycle.
-- Generic ref syntax versus GitHub/GitLab PR shorthand.
-- Behavior when a requested ref is force-updated during planning.
+## Artifacts and releases
 
-## Windows command execution
+Local OCI registries, image promotion, image-retention references, and exact-artifact replay are deferred. Runtime inspection records actual container image identity, but this is not reproducible image promotion. Automatic artifact expiry, event compaction, migration rollback tooling, generated CLI/JSON Schema references, and a longer-term handoff archive policy remain open.
 
-- Final handling for `.cmd` and `.bat` wrappers with arbitrary argv.
-- Whether to use `golang.org/x/sys/windows` argument helpers directly.
-- Future process-tree management with Job Objects for non-Compose runtimes.
+Release packaging through GitHub Releases or package managers is undecided. A release must cite the tested revision's native and integration evidence; supported build targets are not a substitute for that evidence.
 
-## Compose isolation
+## CI expansion
 
-- Exact policy for fixed host ports: hard failure versus generated override.
-- Support and policy for external networks/volumes.
-- Whether to support Podman Compose later through a separate adapter.
-- Minimum supported Docker Compose v2 version.
-- How much of `docker compose config` normalized output is stable enough to persist as structured evidence.
-
-## State and concurrency
-
-- Whether a separate cross-process host lock is needed beyond SQLite transactions and uniqueness constraints.
-- Recovery semantics if the CLI is killed between an external side effect and the following database event.
-- Event compaction and retention.
-- Schema migration rollback policy.
-
-## Review and fix workflows
-
-- Branch naming and ownership for fix leases.
-- Per-source writable selection in multi-repo environments.
-- Whether a review lease can be forked into a fix lease while preserving a reproduction checkpoint.
-
-## Android and browser extensions
-
-- Emulator slot pool versus per-lease AVD data directories.
-- Cross-platform Android SDK discovery.
-- Windows-host Emulator control versus WSL clients.
-- Flutter `.bat` execution details.
-- UIAutomator/Flutter semantics snapshot format.
-- CDP/browser adapter ownership and whether browser resources run inside Compose or on the host.
-
-## Artifact reproducibility
-
-- Local OCI registry implementation and configuration.
-- Promotion policy for the final image used by a test run.
-- Reference-based image retention and Registry garbage collection.
-- Recording base-image digests and toolchain identity.
-- Rebuild comparison versus exact-artifact replay.
-
-## CI infrastructure
-
-- Native Docker Compose integration coverage on macOS and Windows may require self-hosted runners.
-- Android Emulator integration will require hardware acceleration and platform-specific runners.
-
----
+Native Docker integration on Windows and macOS may need self-hosted Docker-capable runners. Android integration would require suitable hardware acceleration. Documentation age beyond `last_verified` is not currently a CI freshness deadline; metadata validity and discoverability are enforced.

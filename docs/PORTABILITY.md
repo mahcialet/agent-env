@@ -6,48 +6,36 @@ last_verified: 2026-09-07
 
 # Portability
 
-## General
+The module targets Go 1.26.x and 1.27.x, native Windows, macOS, and Linux, with no CGO requirement. Git and the Docker Compose plugin are external runtime prerequisites. Cross-compilation proves build compatibility; it does not prove native process, path, SQLite, or Docker behavior.
 
-- Core source must compile on `windows`, `darwin`, and `linux`.
-- Do not rely on `/tmp`; use Go temporary and platform directory APIs.
-- Do not parse command output affected by localization when a porcelain/JSON form exists.
-- Do not assume newline is `\n`; scanners and log files must tolerate CRLF.
-- Do not assume executable names end without `.exe`, `.cmd`, or `.bat`.
-- Do not use Unix signals as the sole cancellation mechanism.
-- Do not use Unix-domain sockets as a required control channel.
-- Do not use symlinks as a required state-layout feature.
-- Do not assume case-sensitive paths.
-- Do not assume Docker Engine is local; respect the active Docker context, but record it in evidence.
+## State and paths
 
-## Windows
+| Platform | Default state directory |
+| --- | --- |
+| Linux | `$XDG_STATE_HOME/agent-env`, otherwise `~/.local/state/agent-env` |
+| macOS | `~/Library/Application Support/agent-env` |
+| Windows | `%LOCALAPPDATA%/agent-env`, otherwise the user's `AppData/Local/agent-env` |
 
-- Native Windows is supported with Git for Windows and Docker Desktop.
-- Use `filepath` and normalized absolute paths; test repositories under paths containing spaces.
-- Isolate process execution in `execx` with Windows-specific files guarded by build tags.
-- Test `.cmd`/`.bat` invocation because tools such as Flutter or npm may resolve to wrappers.
-- Do not mix Windows worktree paths with WSL-side Git or Docker paths in one lease. Detect and reject obviously mixed path styles where possible.
-- Do not depend on POSIX file locking. Prefer SQLite transactions and, if a separate host lock is required, implement a platform abstraction.
-- If generic managed process runtimes are added later, use Windows Job Objects to manage child process trees rather than attempting to emulate Unix process groups.
+`AGENT_ENV_HOME` overrides the entire directory and must be absolute. Durable SQLite state and evidence use native filesystem APIs. Managed worktrees use unique lease/source paths outside the target checkout. Tests include spaces, Unicode, Windows drive URIs, traversal, and symlink escapes.
 
-## macOS
+Manifest paths within a source use forward slashes. Native absolute local repository paths are permitted on their matching platform. Windows drive paths on non-Windows hosts and mixed path styles are rejected where detectable. No symbolic links are required for the state layout, and SQLite operation locks replace application-level POSIX lock files.
 
-- Support Intel and Apple Silicon builds where dependencies permit.
-- Store durable state under Application Support, not `/tmp`.
-- Docker Compose usually reaches Docker Desktop; record the Docker context and daemon information.
-- Android Emulator availability and hardware acceleration are host concerns for the later adapter.
+## Native tools and cancellation
 
-## Linux
+Commands use executable-plus-argv, explicit working directories, deadlines, and streamed output. Git inspection uses machine-readable output; Docker inspection uses JSON and recorded context identity. Newline handling tolerates CRLF. The Go repository harness invokes standard tools directly and requires no shell scripting language.
 
-- Support Docker Engine or compatible Docker CLI/Compose v2 setups.
-- Rootless Docker should work where Compose itself works, but do not make rootless mode mandatory.
-- Use XDG state/cache variables where present.
+On Unix, managed command process groups provide cancellation of descendants. On Windows, command children are assigned to a Job Object before they run, with job termination used for cancellation and timeout. This supports bounded named tests and probes; it is not a generic persistent host-process runtime. Background programs deliberately escaping OS containment are outside the trusted-repository model. Failure to verify termination is surfaced as a typed unconfirmed-process-tree result; the app must retain a running registry record and refuse cleanup until reviewed recovery establishes completion.
 
-## WSL
+Windows `.cmd` and `.bat` execution is isolated in the Windows adapter. Wrapper arguments are quoted through the platform path; tokens that cannot be represented safely are rejected instead of silently changing argv. Native executable argv tests cover spaces, quotes, trailing separators, and Unicode. Shell-sensitive wrapper behavior is a separately tested boundary.
 
-WSL is not forbidden, but it is treated as Linux. A WSL lease should use WSL-side repositories, Git, Docker connectivity, and paths consistently. Controlling a Windows-host Android Emulator from WSL is deferred and must not be advertised as part of the MVP.
+## Docker contexts
 
----
+Windows and macOS normally use Docker Desktop. Linux may use Docker Engine or rootless Docker where Compose works. The chosen Docker context is captured before allocation and used during observation, logs, and cleanup, even if the user's active context later changes. A reachable context alone does not guarantee that its daemon can access local worktree bind paths; remote-daemon path availability is a host prerequisite.
 
-## Toolchains and evidence
+WSL is treated as Linux. Keep repositories, Git, Docker connectivity, and paths consistently on that side of the boundary. Mixed Windows/WSL leases and Windows-host Android Emulator control from WSL are not supported workflows.
 
-The module baseline is Go 1.26.0 without an automatic toolchain directive. CI must test supported Go 1.26.x and 1.27.x on Windows, macOS, and Linux. Release builds use CGO_ENABLED=0 for windows/amd64, darwin/amd64, darwin/arm64, linux/amd64, and linux/arm64. Cross-compilation is not proof of native runtime behavior; native CI results must be recorded separately.
+## Verification coverage
+
+CI defines native unit/harness jobs for Windows, macOS, and Linux on both supported Go minors. The release-build matrix sets `CGO_ENABLED=0` for windows/amd64, darwin/amd64, darwin/arm64, linux/amd64, and linux/arm64. Linux also runs race tests and explicit real Docker integration.
+
+The initial full CLI Docker integration suite passed locally on Linux with Docker Compose, including concurrent projects, Unicode worktrees, multi-repository pins, named evidence, rollback, and dirty cleanup. That result is not native Windows/macOS Docker evidence. Full product native CI and release-build results must be recorded in the [implementation plan](exec-plans/active/agent-env-mvp.md) before the platform gate is considered satisfied. Docker integration on Windows/macOS remains dependent on suitable runners.

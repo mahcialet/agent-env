@@ -1,0 +1,40 @@
+services:
+  unused:
+    image: busybox:1.37
+    command: [sleep, "3600"]
+    volumes: [foreign-unused:/foreign]
+  database:
+    image: busybox:1.37
+    command: [sleep, "3600"]
+    volumes: [fixture-data:/data]
+    healthcheck:
+      test: [CMD, test, -d, /data]
+      interval: 1s
+      timeout: 1s
+      retries: 10
+  api:
+    image: busybox:1.37
+    command: [httpd, -f, -vv, -p, "8080", -h, /www]
+    depends_on:
+      database: {condition: service_healthy}
+    volumes: [./www:/www:ro]
+    healthcheck:
+      test: [CMD, wget, -q, -O, /dev/null, "http://127.0.0.1:8080/"]
+      interval: 1s
+      timeout: 1s
+      retries: 10
+  dashboard:
+    image: busybox:1.37
+    command: [httpd, -f, -vv, -p, "8081", -h, /www]
+    depends_on:
+      api: {condition: service_healthy}
+    volumes: [./www:/www:ro]
+    healthcheck:
+      test: [CMD, wget, -q, -O, /dev/null, "http://127.0.0.1:8081/"]
+      interval: 1s
+      timeout: 1s
+      retries: 10
+volumes:
+  fixture-data: {}
+  foreign-unused:
+    name: "${AGENT_ENV_TEST_FOREIGN_VOLUME}"

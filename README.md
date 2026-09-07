@@ -1,12 +1,12 @@
 # agent-env
 
-A CLI under development for disposable environment leases built from pinned local Git repositories and isolated Docker Compose projects. The [active implementation plan](docs/exec-plans/active/agent-env-mvp.md) records current availability and verification; the commands below describe the MVP target until that plan confirms completion.
+Create disposable environment leases from pinned local Git commits and isolated Docker Compose projects. Select a stack, inspect its live state, run named tests with retained evidence, then clean up its resources. Multiple repositories and simultaneous leases are supported.
 
-**Environment isolation is not a malicious-code sandbox.** Repository Dockerfiles, Compose configuration, tests, and package scripts can execute code with host access. Use trusted or controlled repositories; arbitrary untrusted PRs require a stronger outer boundary.
+**Environment isolation is not a malicious-code sandbox.** Dockerfiles, Compose configuration, tests, and package scripts execute repository-controlled code. Use trusted or controlled repositories; arbitrary untrusted pull requests need a stronger outer boundary.
 
 ## Build and verify
 
-Use Go 1.26.x or 1.27.x, Git, and Docker with Compose v2. Native Windows, macOS, and Linux are required targets. Docker integration coverage is tracked separately from cross-compilation.
+Use Go 1.26.x or 1.27.x. Runtime operations need Git and Docker with the Compose v2-or-later plugin and a reachable daemon. The repository harness itself needs no Bash, Make, PowerShell, or Docker for ordinary unit checks.
 
 ```text
 go run ./tools/repoctl doctor
@@ -15,29 +15,37 @@ go build ./cmd/agent-env
 go run ./tools/repoctl test-integration
 ```
 
-The Go harness needs no Bash, Make, or PowerShell. See [quality](docs/QUALITY.md) and [portability](docs/PORTABILITY.md) for checks and limitations.
+The last command explicitly runs real Docker fixtures on Linux. Native Windows/macOS/Linux unit CI and five CGO-disabled build targets are separate from Docker integration coverage. Current verification and remaining gates are recorded in the [implementation plan](docs/exec-plans/active/agent-env-mvp.md), [quality guide](docs/QUALITY.md), and [portability notes](docs/PORTABILITY.md).
 
-## Intended workflow
+## Use a trusted repository
 
-Declare sources, runtimes, components, stacks and named argv tests in the target repository's `.agent-env.yaml`; see [manifest schema and examples](docs/product-specs/manifest-v1.md).
+Declare sources, Compose runtimes, components, stacks, and named argv tests in its `.agent-env.yaml`. The [manifest reference](docs/product-specs/manifest-v1.md) has a complete example. For a simple repository with exactly one root Compose file, `init` creates a candidate manifest without overwriting an existing file; review its service selection and host policy before running it.
+
+The following commands run from this checkout; replace the repository path, stack, and named test with your own values:
 
 ```text
-agent-env validate ./control-repo
-agent-env plan ./control-repo --stack api
-agent-env create ./control-repo --stack api --ref HEAD
-agent-env list --output json
-agent-env show <lease-id>
-agent-env test <lease-id> api-smoke
-agent-env destroy <lease-id> --dry-run
-agent-env destroy <lease-id>
+go run ./cmd/agent-env doctor ../trusted-repo
+go run ./cmd/agent-env validate ../trusted-repo
+go run ./cmd/agent-env plan ../trusted-repo --stack api
+go run ./cmd/agent-env create ../trusted-repo --stack api --ref HEAD
+go run ./cmd/agent-env list --output json
+go run ./cmd/agent-env show <lease-id>
+go run ./cmd/agent-env capabilities <lease-id>
+go run ./cmd/agent-env test <lease-id> api-smoke
+go run ./cmd/agent-env destroy <lease-id> --dry-run
+go run ./cmd/agent-env destroy <lease-id>
 ```
 
-`gc` is dry-run by default; `gc --apply` requests cleanup. Dirty tracked worktrees or uncertain cleanup are quarantined, not silently erased. `destroy --force` is explicit and must retain events and available evidence. [CLI contract](docs/product-specs/cli-contract.md) and [reliability](docs/RELIABILITY.md) describe the full target behavior.
+Alternatively, build the executable and put it on PATH to use `agent-env` (`agent-env.exe` on Windows). `plan` resolves commits without allocating resources. `plan` and `create` accept `--manifest <path>` to select a trusted control manifest explicitly; runtime files still come from each pinned source. Multi-repository ref overrides use `--source alias=ref`.
 
-State is outside target repositories. AGENT_ENV_HOME overrides Linux XDG state, macOS Application Support, or Windows LOCALAPPDATA defaults. The registry is local SQLite; worktrees and artifacts are retained according to lifecycle and evidence policy.
+Declare component endpoints to generate dynamic loopback host publishing in the saved execution configuration without editing source Compose files. Compose resources must be project-scoped and mounts must satisfy host policy. Fixed container names, privileged mode, host networking, Docker socket mounts, and unsafe external binds are rejected. Named tests use argv arrays, with stdout, stderr, exit status, and declared artifacts retained after cleanup. See the [CLI contract](docs/product-specs/cli-contract.md) and [security policy](docs/SECURITY.md).
 
-Android Emulator/Flutter, browser/CDP, remote Git caching, and local registry promotion are [roadmap items](docs/roadmap.md), not implemented MVP features.
+`gc` previews expired candidates; only `gc --apply` requests deletion. Tracked changes, uncertain ownership, or incomplete cleanup quarantine a lease. Explicit `destroy --force` retains tracked-diff evidence before discarding tracked edits and never overrides an ownership mismatch.
 
-Contributors start at [AGENTS.md](AGENTS.md) and [documentation index](docs/index.md). Licensed under the existing [MIT license](LICENSE).
+## State and limits
 
-Implemented foundation commands are `version`, `validate [repository]`, and `plan [repository] --stack <name>`, with `--output json` returning `{ "schema_version": 1, "data": ... }`. Planning resolves local Git commits without allocating a lease. Lifecycle integration remains in progress in the active plan.
+State lives outside target repositories. Set `AGENT_ENV_HOME` to an absolute path to override the native defaults: Linux XDG state, macOS Application Support, or Windows LOCALAPPDATA. The home contains `state.db`, managed worktrees, normalized runtime configuration, lease artifacts, and a diagnostic `leases/<id>/environment.json` descriptor. SQLite remains authoritative. Defaults are a 4-hour TTL, a 24-hour maximum TTL, and 8 active reservations; quarantined leases retain reservations. A host policy configuration file is not exposed yet.
+
+Android/Flutter, browser/CDP, remote Git caching, registry promotion, and writable fix leases are [roadmap items](docs/roadmap.md).
+
+Contributors start at [AGENTS.md](AGENTS.md) and the [documentation index](docs/index.md). Licensed under the existing [MIT license](LICENSE).
