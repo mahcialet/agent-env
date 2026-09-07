@@ -304,7 +304,18 @@ func (a Adapter) Validate(ctx context.Context, template string) (domain.AndroidE
 	if err := ctx.Err(); err != nil {
 		return out, err
 	}
-	if _, err := a.sdkPrerequisites(ctx, root); err != nil {
+	if err := validateImageArchitecture(cfg, image, runtime.GOARCH); err != nil {
+		return out, err
+	}
+	prerequisites, err := a.sdkPrerequisites(ctx, root)
+	if err != nil {
+		return out, err
+	}
+	protocol, err := parseADBProtocol(prerequisites["adb"])
+	if err != nil {
+		return out, err
+	}
+	if _, err := a.compatibleADB(ctx, protocol); err != nil {
 		return out, err
 	}
 	out.Template = template
@@ -312,4 +323,31 @@ func (a Adapter) Validate(ctx context.Context, template string) (domain.AndroidE
 	out.TemplatePath = path
 	out.SystemImage = image
 	return out, nil
+}
+
+// Acceleration requires a native guest architecture. Validate the installed
+// image metadata as well as the template: a copied config can name an image
+// whose ABI disagrees with its hardware settings.
+func validateImageArchitecture(cfg map[string]string, image, host string) error {
+	properties, err := readINI(filepath.Join(image, "source.properties"))
+	if err != nil {
+		return fmt.Errorf("AVD system image architecture metadata: %w", err)
+	}
+	abi := properties["SystemImage.Abi"]
+	architectures := map[string]string{"x86": "x86", "x86_64": "x86_64", "arm64-v8a": "arm64"}
+	arch, known := architectures[abi]
+	if !known {
+		return fmt.Errorf("unsupported AVD system image ABI %q", abi)
+	}
+	if configured := cfg["abi.type"]; configured != "" && configured != abi {
+		return fmt.Errorf("AVD template ABI %q differs from system image ABI %q", configured, abi)
+	}
+	if configured := cfg["hw.cpu.arch"]; configured != "" && configured != arch {
+		return fmt.Errorf("AVD template CPU architecture %q differs from system image architecture %q", configured, arch)
+	}
+	compatible := host == "amd64" && (arch == "x86" || arch == "x86_64") || host == "arm64" && arch == "arm64"
+	if !compatible {
+		return fmt.Errorf("AVD system image ABI %q is incompatible with native host architecture %q", abi, host)
+	}
+	return nil
 }

@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -144,7 +145,12 @@ func fixture(t *testing.T) (Adapter, domain.Runtime, *testProcess) {
 	writeFixture(t, filepath.Join(sdk, "system-images", "test", "system.img"), "system")
 	writeFixture(t, filepath.Join(sdk, "system-images", "test", "userdata.img"), "seed")
 	writeFixture(t, filepath.Join(avds, "Pixel.ini"), "path="+template+"\n")
-	writeFixture(t, filepath.Join(template, "config.ini"), "image.sysdir.1=system-images/test/\nhw.cpu.arch=x86_64\nhw.ramSize=1024\n")
+	arch, abi := "x86_64", "x86_64"
+	if runtime.GOARCH == "arm64" {
+		arch, abi = "arm64", "arm64-v8a"
+	}
+	writeFixture(t, filepath.Join(sdk, "system-images", "test", "source.properties"), "SystemImage.Abi="+abi+"\n")
+	writeFixture(t, filepath.Join(template, "config.ini"), "image.sysdir.1=system-images/test/\nabi.type="+abi+"\nhw.cpu.arch="+arch+"\nhw.ramSize=1024\n")
 	writeFixture(t, filepath.Join(template, "userdata-qemu.img"), "private original user data")
 	t.Setenv("ANDROID_HOME", sdk)
 	t.Setenv("ANDROID_SDK_ROOT", sdk)
