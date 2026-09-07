@@ -65,6 +65,22 @@ func (a Adapter) Validate(sourceRoot, projectDir, artifact string) (string, erro
 	if err != nil {
 		return "", err
 	}
+	// Within rejects escapes but intentionally permits internal symlinks. Check
+	// every lexical project component as well, including project_directory=.
+	// Stop at the allocated source root: host ancestors may legitimately be
+	// aliases (for example the native macOS temporary directory).
+	for probe := dir; ; probe = filepath.Dir(probe) {
+		st, err := os.Lstat(probe)
+		if err != nil {
+			return "", fmt.Errorf("Flutter project directory: %w", err)
+		}
+		if st.Mode()&os.ModeSymlink != 0 {
+			return "", fmt.Errorf("Flutter project path contains a symlink: %s", probe)
+		}
+		if probe == filepath.Clean(sourceRoot) {
+			break
+		}
+	}
 	st, err := os.Stat(dir)
 	if err != nil || !st.IsDir() {
 		return "", fmt.Errorf("Flutter project directory is missing or not a directory: %s", dir)

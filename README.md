@@ -21,7 +21,7 @@ The last command explicitly runs real Docker fixtures on Linux. Native Windows/m
 
 ## Use a trusted repository
 
-Declare sources, runtimes, components, stacks, and named argv tests in its `.agent-env.yaml`. The [manifest reference](docs/product-specs/manifest-v1.md) has a complete example. For a simple repository with exactly one root Compose file, `init` creates a candidate manifest without overwriting an existing file; review its service selection and host policy before running it.
+Declare sources, runtimes, optional applications, components, stacks, and named argv tests in its `.agent-env.yaml`. The [manifest reference](docs/product-specs/manifest-v1.md) has a complete example. For a simple repository with exactly one root Compose file, `init` creates a candidate manifest without overwriting an existing file; review its service selection and host policy before running it.
 
 The following commands run from this checkout; replace the repository path, stack, and named test with your own values:
 
@@ -46,12 +46,14 @@ Declare component endpoints to generate dynamic loopback host publishing in the 
 
 ## Android Emulator leases
 
-Declare a runtime with `type: android-emulator`, `source: app`, and `avd: <installed-template>`, and reference it from a component without Compose services. Use `doctor --runtime android-emulator` to inspect SDK prerequisites and `doctor <lease-id>` for live state. Android-only stacks do not require Docker. Each lease gets private writable AVD state and a reserved console/ADB port pair; `show` exposes its serial. See the [Android contract](docs/product-specs/android-emulator.md) for a complete manifest and recovery rules. Flutter builds and APK installation remain separate work.
+Declare a runtime with `type: android-emulator`, `source: app`, and `avd: <installed-template>`, and reference it from a component without Compose services. Use `doctor --runtime android-emulator` to inspect SDK prerequisites and `doctor <lease-id>` for live state. Android-only stacks do not require Docker. Each lease gets private writable AVD state and a reserved console/ADB port pair; `show` exposes its serial. See the [Android contract](docs/product-specs/android-emulator.md) for a complete manifest and recovery rules.
+
+[Flutter Android applications](docs/product-specs/flutter-android-runtime.md) add pinned-source APK builds, installation, backend reverse mappings, and activity launch on these owned Emulators. Declare optional `applications` and select one from a component. Use `doctor <repository> --runtime flutter-android` to check the configured Flutter executable, project and Android prerequisites; a compatible Flutter/Java/Android build toolchain is required.
 
 ## State and limits
 
 State lives outside target repositories. Set `AGENT_ENV_HOME` to an absolute path to override the native defaults: Linux XDG state, macOS Application Support, or Windows LOCALAPPDATA. The home contains `state.db`, managed worktrees, normalized runtime configuration, lease artifacts, and a diagnostic `leases/<id>/environment.json` descriptor. SQLite remains authoritative. Defaults are a 4-hour TTL, a 24-hour maximum TTL, and 8 active reservations; quarantined leases retain reservations. A host policy configuration file is not exposed yet.
 
-Flutter, browser/CDP, remote Git caching, registry promotion, and writable fix leases are [roadmap items](docs/roadmap.md).
+iOS, browser/CDP and UI automation, remote Git caching, registry promotion, and writable fix leases are [roadmap items](docs/roadmap.md).
 
 Contributors start at [AGENTS.md](AGENTS.md) and the [documentation index](docs/index.md). Licensed under the existing [MIT license](LICENSE).

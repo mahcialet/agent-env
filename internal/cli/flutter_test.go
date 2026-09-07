@@ -119,7 +119,7 @@ func TestFlutterRepositoryDoctorReportsConfiguredToolsAndProject(t *testing.T) {
 	}
 }
 
-func TestFlutterDoctorMissingExecutableDoesNotRequireDockerOrAllocateState(t *testing.T) {
+func TestFlutterHostDoctorMissingPrerequisitesIsPure(t *testing.T) {
 	bin := t.TempDir()
 	git := "git"
 	if runtime.GOOS == "windows" {
@@ -129,6 +129,8 @@ func TestFlutterDoctorMissingExecutableDoesNotRequireDockerOrAllocateState(t *te
 		t.Fatal(err)
 	}
 	t.Setenv("PATH", bin)
+	t.Setenv("ANDROID_HOME", filepath.Join(t.TempDir(), "missing-sdk"))
+	t.Setenv("ANDROID_SDK_ROOT", os.Getenv("ANDROID_HOME"))
 	state := filepath.Join(t.TempDir(), "unused")
 	t.Setenv("AGENT_ENV_HOME", state)
 	var out, stderr bytes.Buffer
@@ -148,7 +150,7 @@ func TestFlutterDoctorMissingExecutableDoesNotRequireDockerOrAllocateState(t *te
 		t.Fatal(err)
 	}
 	diagnostics := strings.Join(got.Data.Diagnostics, " ")
-	if got.Data.OK || !strings.Contains(diagnostics, "Flutter version prerequisite") || strings.Contains(strings.ToLower(diagnostics), "docker") {
+	if got.Data.OK || !strings.Contains(diagnostics, "Flutter version prerequisite") || !strings.Contains(diagnostics, "Android SDK prerequisite") || strings.Contains(strings.ToLower(diagnostics), "docker") {
 		t.Fatalf("wrong diagnostics: %s", out.String())
 	}
 	if _, err := os.Stat(state); !os.IsNotExist(err) {
@@ -185,5 +187,83 @@ func TestFlutterPlanJSONIsPureAndIncludesApplication(t *testing.T) {
 	}
 	if _, err := os.Stat(state); !os.IsNotExist(err) {
 		t.Fatalf("plan allocated state: %v", err)
+	}
+}
+
+func TestFlutterPlanTableIncludesSelectedApplicationRequirements(t *testing.T) {
+	t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
+	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
+	repo := originRepository(t, "Flutter table source")
+	manifest := strings.Replace(flutterCLIManifest, "  device: {type:", "  backend: {type: compose, source: self, project_directory: ., files: [compose.yaml]}\n  device: {type:", 1)
+	manifest = strings.Replace(manifest, "    activity: .MainActivity", "    activity: .MainActivity\n    reverse: [{device_port: 8080, endpoint: api.http}]", 1)
+	manifest = strings.Replace(manifest, "  mobile: {runtime: device, application: app}", "  api: {runtime: backend, compose_services: [api], endpoints: {http: {service: api, target: 8080}}}\n  mobile: {runtime: device, application: app, depends_on: [api]}", 1)
+	manifest = strings.Replace(manifest, "  mobile: {roots: [mobile]}", "  mobile: {roots: [mobile]}\n  api: {roots: [api]}", 1)
+	if err := os.WriteFile(filepath.Join(repo, ".agent-env.yaml"), []byte(manifest), 0600); err != nil {
+		t.Fatal(err)
+	}
+	state := filepath.Join(t.TempDir(), "unused")
+	t.Setenv("AGENT_ENV_HOME", state)
+	t.Setenv("ANDROID_HOME", filepath.Join(t.TempDir(), "missing-sdk"))
+	t.Setenv("ANDROID_SDK_ROOT", os.Getenv("ANDROID_HOME"))
+	t.Setenv("DOCKER_HOST", "tcp://127.0.0.1:1")
+	for _, stack := range []string{"mobile", "api"} {
+		var out, stderr bytes.Buffer
+		cmd := New(&out, &stderr)
+		cmd.SetArgs([]string{"plan", repo, "--stack", stack})
+		if err := cmd.Execute(); err != nil {
+			t.Fatalf("pure table plan: %v %s", err, stderr.String())
+		}
+		text := out.String()
+		if stack == "mobile" {
+			for _, want := range []string{"application=app", "Application app", "source=self", "runtime=device", "artifact=build/app.apk", "device tcp:8080 -> api.http"} {
+				if !strings.Contains(text, want) {
+					t.Errorf("table omitted %q:\n%s", want, text)
+				}
+			}
+		} else if strings.Contains(text, "Application ") || strings.Contains(text, "application=app") || strings.Contains(text, "api.http") {
+			t.Fatalf("unselected application in table:\n%s", text)
+		}
+	}
+	if _, err := os.Stat(state); !os.IsNotExist(err) {
+		t.Fatalf("plan allocated state: %v", err)
+	}
+}
+
+type flutterHostAndroidFixture struct {
+	app.AndroidProvider
+	report map[string]string
+	err    error
+	calls  int
+}
+
+func (a *flutterHostAndroidFixture) Doctor(context.Context) (map[string]string, error) {
+	a.calls++
+	return a.report, a.err
+}
+func TestFlutterHostDoctorRequiresBothToolchains(t *testing.T) {
+	for _, failure := range []string{"", "SDK", "emulator", "acceleration", "ADB", "Flutter", "both"} {
+		t.Run(failure, func(t *testing.T) {
+			android := &flutterHostAndroidFixture{report: map[string]string{"adb_server": "fixture compatible", "templates": "fixture"}}
+			flutter := &flutterDoctorFixture{}
+			if failure != "" && failure != "Flutter" {
+				android.err = errors.New("Android " + failure + " unavailable")
+			}
+			if failure == "Flutter" || failure == "both" {
+				flutter.err = errors.New("Flutter unavailable")
+			}
+			report, err := doctorFlutterHost(context.Background(), flutter, android)
+			if (failure == "") != (err == nil) {
+				t.Fatalf("prerequisite %q: %v", failure, err)
+			}
+			if android.err != nil && !errors.Is(err, android.err) || flutter.err != nil && !errors.Is(err, flutter.err) {
+				t.Fatalf("lost prerequisite cause: %v", err)
+			}
+			if android.calls != 1 || !reflect.DeepEqual(flutter.calls, []string{"flutter"}) {
+				t.Fatalf("skipped toolchain: %d %v", android.calls, flutter.calls)
+			}
+			if report["flutter"] != "fixture-version" || report["adb_server"] != "fixture compatible" || report["templates"] != "fixture" {
+				t.Fatalf("lost diagnostics: %v", report)
+			}
+		})
 	}
 }

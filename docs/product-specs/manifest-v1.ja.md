@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/product-specs/manifest-v1.md
-source_sha256: 80245a44a8e03208eee344b1457ecb70b2a24ab76db5193e6d2bf46f3145a80d
+source_sha256: 21c38dd58eed7e2433595f45f2e363f5f8bb04955e7b234b19c5a8ec6b075b30
 ---
 
 [English（翻訳元）](manifest-v1.md)
@@ -83,10 +83,11 @@ tests:
 
 | 位置 | Field と動作 |
 | --- | --- |
-| Root | `version: 1` と空でない `sources`、`runtimes`、`components`、`stacks` が必須。`tests` は任意 |
+| Root | `version: 1` と空でない `sources`、`runtimes`、`components`、`stacks` が必須。`applications` と `tests` は任意 |
 | `sources.<alias>` | ローカル `repository` が必須。`default_ref`（空なら Git HEAD）、`writable`（review mode では false のみ対応）は任意 |
 | `runtimes.<name>` | `type` と `source` が必須。Compose は空でない `files` が必須で `project_directory` は任意。Android は `type: android-emulator` と `avd` が必須で Compose field は不可 |
-| `components.<name>` | `runtime` が必須。Compose は空でない `compose_services` が必須。Android では Compose services/endpoints/readiness を省略。`depends_on`、`provides`、適用可能な `readiness` は任意 |
+| `applications.<name>` | `type: flutter-android`、`source`、Android の `runtime`、`build.command`、`build.artifact`、`package`、`activity`。`project_directory`、`build.timeout`、`reverse` は任意。[Flutter 契約](flutter-android-runtime.ja.md)を参照 |
+| `components.<name>` | `runtime` が必須。Compose は空でない `compose_services` が必須。Android では Compose services/endpoints/readiness を省略し、同じ runtime の `application` を選択可能。`depends_on`、`provides`、適用可能な `readiness` は任意 |
 | `stacks.<name>` | 空でない `roots` が必須。`description` は任意 |
 | `tests.<name>` | `stack`、`source`、空でない argv `command` が必須。`working_directory`、文字列 map の `env`、`timeout`、`artifacts` は任意 |
 
@@ -124,7 +125,7 @@ HTTP URL は明示設定した literal URL です。動的 endpoint の probe UR
 
 ## Named command の環境と artifact
 
-コマンドは引数配列で、shell command string にはしません。named test の argv と環境値では、明示的な `${env:NAME}` と `${lease_id}` の置換だけに対応します。ホスト変数の欠如、未知の式、不正な置換はコマンド実行前に失敗します。shell 展開、pipeline、一般的な template 評価は提供しません。
+コマンドは引数配列で、shell command string にはしません。named test の argv と環境値では、明示的な `${env:NAME}`、`${lease_id}`、`${android:<runtime>:serial}` の置換に対応します。ホスト変数の欠如、未知の式、不正な置換はコマンド実行前に失敗します。Android serial は選択済みでリースの所有権を確認できた runtime のみ解決します。shell 展開、pipeline、一般的な template 評価は提供しません。
 
 資格情報らしい環境名（token、password、secret、key）は、機密値の literal ではなく、正確な `${env:NAME}` 参照を使わなければなりません。
 
@@ -140,7 +141,7 @@ artifact 項目は明示的な source 相対の file/directory path で、glob p
 
 `sources` に別のローカル項目を加え、runtime、test、command probe からその alias を参照します。選択 runtime が 1 つでも、宣言した全 source を固定し materialize します。[統合 fixture](../../internal/cli/integration_test.go)が、別々のローカルリポジトリと alias ごとの commit override を検証します。
 
-[Android Emulator ランタイム](android-emulator.ja.md)は `avd` でローカル AVD テンプレートを選び、Flutter と独立して専用の書き込み状態を割り当てます。plan に SDK は不要で、device を割り当てません。Flutter、browser/CDP、書き込み可能な fix lease、remote source cache、任意の host-process runtime は[延期対象](../roadmap.ja.md)です。それらの提案 field は有効な manifest v1 YAML ではありません。
+[Android Emulator ランタイム](android-emulator.ja.md)は `avd` でローカル AVD テンプレートを選び、Flutter と独立して専用の書き込み状態を割り当てます。plan に SDK は不要で、device を割り当てません。[Flutter アプリケーション](flutter-android-runtime.ja.md)は、任意の `applications` とコンポーネントの `application` フィールドで、ホスト上で APK をビルドし、それらの runtime にインストールします。browser/CDP、書き込み可能な fix lease、remote source cache、任意の host-process runtime は[延期対象](../roadmap.ja.md)です。それらの提案 field は有効な manifest v1 YAML ではありません。
 
 ## Manifest の由来と readiness の上限
 

@@ -34,6 +34,14 @@ transitive dependency of every component selecting that application and use TCP
 Packages and device ports must be unique across applications sharing a runtime;
 separate runtimes and separate leases may reuse them.
 
+Selected applications must not share the same source and normalized source-relative
+APK output path (compared case-insensitively for portability). Several components
+may select the same application. Plan/create reject that collision before builds
+or runtime effects; use distinct project/output paths. Collisions between applications selected only
+by separate stacks do not prevent independent use. Project paths and their ancestors
+through the allocated source root must not be symlinks, even when the target stays
+inside the source; this is checked before and after the build.
+
 ## Lifecycle and evidence
 
 Planning lists selected applications, source, runtime, build artifact and reverse
@@ -49,6 +57,9 @@ APK is hashed before installation. Evidence retains source commit, Flutter
 version, build command/path/output, APK SHA-256 and target runtime/serial.
 A digest identifies the installed build; it does not prove reproducibility or
 promise retention of the APK after destruction.
+
+Application reconciliation skips reverse-mapping and backend-endpoint queries
+when that application declares no reverse mappings.
 
 Creation rejects an already-installed declared package before installing, so a
 package inherited from an AVD template cannot be attributed to the new APK digest.
@@ -72,6 +83,9 @@ cleared only after both required build-log artifacts and final lease state are
 saved successfully. Failed evidence persistence keeps the lease quarantined and
 retains the source/APK during normal or forced cleanup, even after the store
 recovers. Investigate and recover the missing evidence before releasing this guard.
+
+`destroy --dry-run`, including with `--force`, reports either durable build guard
+as a cleanup blocker without changing the lease or removing resources.
 
 Named tests may use `${android:<runtime>:serial}` only for a selected, confirmed
 lease-owned Android runtime. Existing `${lease_id}` and `${env:NAME}` remain

@@ -655,13 +655,8 @@ func (s *Service) quarantine(ctx context.Context, l *domain.Lease, cause error) 
 }
 
 func (s *Service) cleanup(ctx context.Context, l *domain.Lease, force bool) error {
-	for _, a := range l.Applications {
-		if a.BuildEvidenceIncomplete {
-			return s.quarantine(ctx, l, fmt.Errorf("application %s build evidence is incomplete; retain sources and investigate artifact persistence", a.Name))
-		}
-		if a.BuildUnconfirmed {
-			return s.quarantine(ctx, l, fmt.Errorf("application %s build termination is unconfirmed; retain sources and investigate build process evidence", a.Name))
-		}
+	if err := applicationCleanupBarrier(*l); err != nil {
+		return s.quarantine(ctx, l, err)
 	}
 	// Verify all source identities and tracked changes before deleting any resource.
 	for _, source := range l.Sources {

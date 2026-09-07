@@ -16,6 +16,18 @@ type flutterPrerequisites interface {
 	Validate(string, string, string) (string, error)
 }
 
+// Host diagnostics check both toolchains independently so one missing prerequisite
+// does not conceal the other. Neither doctor installs tools or starts a device.
+func doctorFlutterHost(ctx context.Context, flutter flutterPrerequisites, android app.AndroidProvider) (map[string]string, error) {
+	report, androidErr := android.Doctor(ctx)
+	if report == nil {
+		report = map[string]string{}
+	}
+	version, flutterErr := flutter.Doctor(ctx, "flutter")
+	report["flutter"] = version
+	return report, errors.Join(androidErr, flutterErr)
+}
+
 // Repository diagnostics inspect existing source checkouts. Immutable worktree
 // materialization and all selected dependency prerequisites belong to create.
 func doctorFlutterManifest(ctx context.Context, repository string, flutter flutterPrerequisites, android app.AndroidProvider) (string, map[string]any, error) {

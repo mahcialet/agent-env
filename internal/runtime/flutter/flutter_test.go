@@ -261,3 +261,69 @@ func TestBuildRejectsSymlinkArtifactsAndLatePathEscape(t *testing.T) {
 		})
 	}
 }
+
+func TestBuildRejectsInternalProjectSymlinks(t *testing.T) {
+	for _, mode := range []string{"directory", "ancestor", "source-root"} {
+		for _, late := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/late=%t", mode, late), func(t *testing.T) {
+				root := project(t)
+				dir := "app space"
+				link := filepath.Join(root, dir)
+				if mode == "ancestor" {
+					if err := os.Mkdir(filepath.Join(root, "parent"), 0700); err != nil {
+						t.Fatal(err)
+					}
+					if err := os.Rename(link, filepath.Join(root, "parent", dir)); err != nil {
+						t.Fatal(err)
+					}
+					link = filepath.Join(root, "parent")
+					dir = "parent/app space"
+				} else if mode == "source-root" {
+					root = filepath.Join(root, dir)
+					dir = "."
+					link = root
+				}
+				probe := filepath.Join(t.TempDir(), "probe")
+				if err := os.Symlink(link, probe); err != nil {
+					t.Skipf("host cannot create symlink: %v", err)
+				}
+				if err := os.Remove(probe); err != nil {
+					t.Fatal(err)
+				}
+				replace := func() {
+					t.Helper()
+					if err := os.Rename(link, link+"-real"); err != nil {
+						t.Fatal(err)
+					}
+					if err := os.Symlink(link+"-real", link); err != nil {
+						t.Fatal(err)
+					}
+				}
+				if !late {
+					replace()
+				}
+				calls := 0
+				a := Adapter{Runner: runnerFunc(func(_ context.Context, c execx.Command) (execx.Result, error) {
+					calls++
+					if c.Dir == "" {
+						return execx.Result{Stdout: `{"frameworkVersion":"3"}`}, nil
+					}
+					if late {
+						replace()
+					}
+					return execx.Result{}, os.WriteFile(filepath.Join(c.Dir, "result.apk"), []byte("valid APK"), 0600)
+				})}
+				result, err := a.Build(context.Background(), root, dir, []string{"flutter", "build", "apk"}, "result.apk", time.Minute)
+				if err == nil || result.Digest != "" {
+					t.Fatalf("project symlink accepted: %+v %v", result, err)
+				}
+				if !late && calls != 0 {
+					t.Fatalf("invalid project ran %d commands", calls)
+				}
+				if late && calls != 2 {
+					t.Fatalf("late validation did not exercise build: %d commands", calls)
+				}
+			})
+		}
+	}
+}

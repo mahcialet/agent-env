@@ -387,9 +387,7 @@ func addLifecycle(root *cobra.Command, output *string, emit func(any) error, out
 			if doctorRuntime == "android-emulator" {
 				d, err = (androidruntime.Adapter{Runner: execx.OSRunner{}, Processes: execx.NativeDetached{}}).Doctor(cmd.Context())
 			} else if doctorRuntime == "flutter-android" {
-				var version string
-				version, err = (flutterruntime.Adapter{}).Doctor(cmd.Context(), "flutter")
-				d = map[string]string{"flutter": version}
+				d, err = doctorFlutterHost(cmd.Context(), flutterruntime.Adapter{}, androidruntime.Adapter{Runner: execx.OSRunner{}, Processes: execx.NativeDetached{}})
 			} else {
 				d, err = (compose.Client{Runner: execx.OSRunner{}, Policy: policy.Defaults()}).Doctor(cmd.Context())
 			}

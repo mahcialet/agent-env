@@ -316,6 +316,10 @@ func (s *Service) observeApplication(ctx context.Context, l domain.Lease, a *dom
 		a.State = "degraded"
 		return errors.New("declared package is missing")
 	}
+	if len(a.Reverse) == 0 {
+		a.State = "ready"
+		return nil
+	}
 	mappings, err := s.AndroidApplications.ReverseMappings(ctx, r)
 	if err != nil {
 		return err
@@ -453,3 +457,17 @@ func applicationSetConsistent(l domain.Lease) error {
 type applicationCleanupWriteError struct{ error }
 
 func (e applicationCleanupWriteError) Unwrap() error { return e.error }
+
+// Both destructive cleanup and its read-only preview use the same durable
+// barrier. Force never substitutes for process or evidence confirmation.
+func applicationCleanupBarrier(l domain.Lease) error {
+	for _, a := range l.Applications {
+		if a.BuildEvidenceIncomplete {
+			return fmt.Errorf("application %s build evidence is incomplete; retain sources and investigate artifact persistence", a.Name)
+		}
+		if a.BuildUnconfirmed {
+			return fmt.Errorf("application %s build termination is unconfirmed; retain sources and investigate build process evidence", a.Name)
+		}
+	}
+	return nil
+}

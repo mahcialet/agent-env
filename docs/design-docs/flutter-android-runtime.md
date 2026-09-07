@@ -28,6 +28,12 @@ The saga materializes immutable source worktrees, validates and builds selected
 applications before expensive runtime allocation where possible, creates selected
 Compose and Android resources, installs the verified APK, resolves actual host
 endpoints, configures reverse mappings, verifies them and launches the activity.
+Before effects, app rejects selected applications sharing a source and normalized
+source-relative APK output path, compared case-insensitively for portability.
+Multiple components may still select the same application. Build-first ordering
+would otherwise let a later build overwrite an earlier application's install input.
+Separate stack selections
+remain independent; no additional artifact snapshot lifecycle is introduced.
 Reject a preexisting declared package before installation, then verify the newly
 installed package. Resolve only loopback TCP endpoints: ADB reverse targets the
 local server host and cannot silently substitute a remote Docker host.
@@ -70,7 +76,10 @@ APK hashes are provenance, not reproducible-build claims.
 Use execx argument arrays, cancellation and native wrapper handling. The selected
 first build argv element is also the executable used for Flutter version discovery.
 Paths are checked lexically at manifest time and against real pinned project paths
-at runtime; escaped/symlink artifacts and nonregular outputs fail. A missing
+at runtime; project paths and ancestors through the allocated source root reject
+symlinks before and after builds, including links with in-tree targets. Host
+ancestors above the allocated root remain outside this check. Escaped/symlink
+artifacts and nonregular outputs fail. A missing
 executable, invalid project or missing APK is a prerequisite/build failure, never
 a reason to download a toolchain automatically. Builds inherit the existing
 portable execution environment; no custom application environment map is added.

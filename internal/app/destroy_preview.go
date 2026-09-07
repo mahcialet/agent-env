@@ -9,6 +9,10 @@ import (
 
 func (s *Service) previewDestroy(ctx context.Context, l domain.Lease, force bool) (domain.Lease, error) {
 	l.Diagnostics = append(append([]string{}, l.Diagnostics...), "dry-run: no state or resources changed")
+	if err := applicationCleanupBarrier(l); err != nil {
+		l.Diagnostics = append(l.Diagnostics, "would quarantine "+err.Error()+"; preserve all sources and runtimes")
+		return l, nil
+	}
 	for _, source := range l.Sources {
 		o, err := s.Source.Inspect(ctx, source)
 		if err != nil {

@@ -317,3 +317,54 @@ func TestAPKInstallRequiresExplicitSuccess(t *testing.T) {
 		t.Fatal("exit-zero install failure accepted")
 	}
 }
+
+func TestApplicationExecutionFailureRetainsDiagnosticsAndErrorIdentity(t *testing.T) {
+	for _, operation := range []string{"install", "launch", "package", "reverse", "list", "remove"} {
+		t.Run(operation, func(t *testing.T) {
+			t.Setenv("AGENT_ENV_TEST_SECRET", "private diagnostic value")
+			a, r, _, runner, apk := applicationFixture(t)
+			ctx := context.Background()
+			var key string
+			var call func() error
+			switch operation {
+			case "install":
+				key = "install -r " + apk
+				call = func() error { return a.InstallAPK(ctx, r, apk) }
+			case "launch":
+				key = "shell am start -W --user 0 -n com.example.app/.MainActivity"
+				call = func() error { return a.LaunchActivity(ctx, r, "com.example.app", ".MainActivity") }
+			case "package":
+				key = "shell pm list packages --user 0 com.example.app"
+				call = func() error { _, err := a.PackageInstalled(ctx, r, "com.example.app"); return err }
+			case "reverse":
+				key = "reverse --no-rebind tcp:8080 tcp:49173"
+				call = func() error { return a.Reverse(ctx, r, 8080, 49173) }
+			case "list":
+				key = "reverse --list"
+				call = func() error { _, err := a.ReverseMappings(ctx, r); return err }
+			case "remove":
+				key = "reverse --remove tcp:8080"
+				call = func() error { return a.RemoveReverse(ctx, r, 8080, 49173) }
+			}
+			result := execx.Result{ExitCode: 1,
+				Stdout: "command detail\nprivate diagnostic value\n" + strings.Repeat("x", 4096),
+				Stderr: "Failure [INSTALL_FAILED_INSUFFICIENT_STORAGE]\nprivate diagnostic value\x1b[31m",
+			}
+			failure := &execx.ExitError{Command: execx.Command{Name: "adb"}, Result: result, Err: context.DeadlineExceeded}
+			runner.output[key], runner.failure[key] = result, failure
+			err := call()
+			var exit *execx.ExitError
+			if !errors.Is(err, context.DeadlineExceeded) || !errors.As(err, &exit) || exit != failure {
+				t.Fatalf("execution error identity lost: %v", err)
+			}
+			for _, want := range []string{"command detail", "INSTALL_FAILED_INSUFFICIENT_STORAGE", "[REDACTED]", "[truncated]"} {
+				if !strings.Contains(err.Error(), want) {
+					t.Fatalf("missing %q in diagnostic: %v", want, err)
+				}
+			}
+			if strings.Contains(err.Error(), "private") || strings.ContainsAny(err.Error(), "\n\r\x1b") || len(err.Error()) > 2300 {
+				t.Fatalf("unsafe diagnostic: %v", err)
+			}
+		})
+	}
+}

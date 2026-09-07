@@ -44,7 +44,11 @@ func (a Adapter) applicationADB(ctx context.Context, r domain.Runtime, timeout t
 		return execx.Result{}, fmt.Errorf("shared local ADB server is unavailable")
 	}
 	scoped := []string{"-H", "127.0.0.1", "-P", "5037", "-s", r.Android.Serial}
-	return a.runner().Run(ctx, execx.Command{Name: executable(r.Android.SDKPath, "platform-tools", "adb"), Args: append(scoped, args...), UnsetEnv: adbRoutingEnvironment(), Timeout: timeout})
+	result, err := a.runner().Run(ctx, execx.Command{Name: executable(r.Android.SDKPath, "platform-tools", "adb"), Args: append(scoped, args...), UnsetEnv: adbRoutingEnvironment(), Timeout: timeout})
+	if err != nil {
+		return result, applicationOutputError(err, result)
+	}
+	return result, nil
 }
 
 func (a Adapter) InstallAPK(ctx context.Context, r domain.Runtime, path string) error {

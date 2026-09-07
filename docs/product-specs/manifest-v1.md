@@ -81,10 +81,11 @@ Set the explicitly requested host `TEST_TOKEN` variable before invoking this nam
 
 | Location | Fields and behavior |
 | --- | --- |
-| Root | Required `version: 1`, nonempty `sources`, `runtimes`, `components`, and `stacks`; optional `tests` |
+| Root | Required `version: 1`, nonempty `sources`, `runtimes`, `components`, and `stacks`; optional `applications` and `tests` |
 | `sources.<alias>` | Required local `repository`; optional `default_ref` (Git HEAD when empty), `writable` (only false is supported in review mode) |
 | `runtimes.<name>` | Required `type` and `source`; Compose requires nonempty `files` with optional `project_directory`; Android requires `type: android-emulator` and `avd`, without Compose fields |
-| `components.<name>` | Required `runtime`; Compose requires nonempty `compose_services`; Android omits Compose services/endpoints/readiness. Optional `depends_on`, `provides` and applicable `readiness` |
+| `applications.<name>` | `type: flutter-android`, `source`, Android `runtime`, `build.command`, `build.artifact`, `package`, and `activity`; optional `project_directory`, `build.timeout`, and `reverse`. See the [Flutter contract](flutter-android-runtime.md) |
+| `components.<name>` | Required `runtime`; Compose requires nonempty `compose_services`; Android omits Compose services/endpoints/readiness and may select an `application` using the same runtime. Optional `depends_on`, `provides` and applicable `readiness` |
 | `stacks.<name>` | Required nonempty `roots`; optional `description` |
 | `tests.<name>` | Required `stack`, `source`, nonempty argv `command`; optional `working_directory`, string-map `env`, `timeout`, and `artifacts` |
 
@@ -116,7 +117,7 @@ HTTP URLs are literal, explicitly configured URLs. There is no automatic substit
 
 ## Named command environment and artifacts
 
-Commands are argument arrays, never a shell command string. Only explicit `${env:NAME}` and `${lease_id}` substitutions are supported in named-test argv and environment values. Missing host variables, unknown expressions, and malformed substitutions fail before running the command. Shell expansion, pipelines, and general template evaluation are not provided.
+Commands are argument arrays, never a shell command string. Explicit `${env:NAME}`, `${lease_id}`, and `${android:<runtime>:serial}` substitutions are supported in named-test argv and environment values. Missing host variables, unknown expressions, and malformed substitutions fail before running the command. Android serials resolve only for selected runtimes with confirmed lease ownership. Shell expansion, pipelines, and general template evaluation are not provided.
 
 Credential-like environment names (token, password, secret, key) must use an exact `${env:NAME}` reference rather than a literal sensitive value. Expanded configured credentials and recognized inherited credentials are redacted from captured output, argv records, and copied artifacts. The complete environment is not written to evidence. A recognized inherited credential appearing literally anywhere in the canonical manifest, including argv or a noncredential environment key, is rejected before reservation. Configure Compose credentials through secret files instead of resolved credential-bearing environment values in the persisted execution snapshot. Absolute container-path `*_FILE` references are supported.
 
@@ -126,7 +127,7 @@ Artifact entries are explicit source-relative file or directory paths, not glob 
 
 Add another local entry under `sources` and reference its alias from a runtime, test, or command probe. All declared sources are pinned and materialized, even if only one runtime is selected. The [integration fixture](../../internal/cli/integration_test.go) verifies separate local repositories and alias-specific commit overrides.
 
-[Android Emulator runtimes](android-emulator.md) select a local AVD template with `avd` and allocate private writable state independently of Flutter. Planning does not require the SDK or allocate a device. Flutter, browser/CDP, writable fix leases, remote source caches, and arbitrary host-process runtimes remain [deferred](../roadmap.md); their proposed fields are not valid manifest v1 YAML.
+[Android Emulator runtimes](android-emulator.md) select a local AVD template with `avd` and allocate private writable state independently of Flutter. Planning does not require the SDK or allocate a device. [Flutter applications](flutter-android-runtime.md) build APKs on the host and install them on those runtimes using optional `applications` and component `application` fields. Browser/CDP, writable fix leases, remote source caches, and arbitrary host-process runtimes remain [deferred](../roadmap.md); their proposed fields are not valid manifest v1 YAML.
 
 ## Manifest origin and readiness bounds
 

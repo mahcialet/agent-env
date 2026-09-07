@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -114,6 +115,23 @@ func BuildPlan(ctx context.Context, o PlanOptions, source SourceProvider) (Plan,
 	components, err := stack.Resolve(m, o.Stack)
 	if err != nil {
 		return p, err
+	}
+	// All selected builds complete before installation in the same source
+	// worktree. A later build must never overwrite another application's APK.
+	outputs := map[[2]string]string{}
+	for _, component := range components {
+		name := m.Components[component].Application
+		if name == "" {
+			continue
+		}
+		a := m.Applications[name]
+		output := path.Join(a.ProjectDirectory, a.Build.Artifact)
+		// Keep a manifest portable to case-insensitive Windows/macOS filesystems.
+		key := [2]string{a.Source, strings.ToLower(output)}
+		if previous, exists := outputs[key]; exists && previous != name {
+			return p, fmt.Errorf("applications %q and %q use the same source-relative APK output %q in source %q; choose distinct project/output paths", previous, name, output, a.Source)
+		}
+		outputs[key] = name
 	}
 	for alias := range o.SourceRefs {
 		if _, ok := m.Sources[alias]; !ok {

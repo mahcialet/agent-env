@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/product-specs/cli-contract.md
-source_sha256: 9d691e1344d7746ed5e0ae3a5d3f511a88cff4ea39903934b44c6d8758221700
+source_sha256: cc29fea5e74dcdcceb66fbcf6ccd9bdef9cdc8d9f56b87af9f849abfa7e9210e
 ---
 
 [English（翻訳元）](cli-contract.md)
@@ -27,7 +27,7 @@ agent-env renew <lease-id> [--ttl <duration>]
 agent-env destroy <lease-id> [--dry-run] [--force]
 agent-env reconcile [lease-id]
 agent-env gc [--apply]
-agent-env doctor [repository|lease-id] [--runtime compose|android-emulator]
+agent-env doctor [repository|lease-id] [--runtime compose|android-emulator|flutter-android]
 ```
 
 リポジトリ省略時は現在のディレクトリを使います。`init` は認識可能なルート Compose file が 1 つあることを要求し、`.agent-env.yaml` を排他的に新規作成して review が必要と報告します。何も起動しません。
@@ -76,7 +76,7 @@ data の形はコマンドごとに異なります。plan/create は object、li
 | 6 | 隔離を含め、安全に削除を完了できなかった |
 | 7 | 内部、レジストリ、観測の失敗 |
 
-これは CLI の終了 code です。named command 自身の終了 code は run 記録に別途保存します。`doctor` は既定で実行ファイルの利用可否、active Docker context、daemon への到達性、Compose plugin 版、任意指定の manifest を確認します。`--runtime android-emulator` は Docker の代わりにローカル SDK tool と AVD template を確認します。lease ID は実際の lease の診断を選び、ready でない lease は exit 3 を返します。[Android 契約](android-emulator.ja.md)を参照してください。
+これは CLI の終了 code です。named command 自身の終了 code は run 記録に別途保存します。`doctor` は既定で実行ファイルの利用可否、active Docker context、daemon への到達性、Compose plugin 版、任意指定の manifest を確認します。`--runtime android-emulator` は Docker の代わりにローカル SDK tool と AVD template を確認します。`--runtime flutter-android` は Docker なしで既定の Flutter 実行ファイルと Android SDK/AVD の前提条件を検査します。リポジトリを指定すると、宣言した全アプリの設定済み実行ファイル、プロジェクト、Android の前提条件を検査します。[Flutter 契約](flutter-android-runtime.ja.md)を参照してください。lease ID は実際の lease の診断を選び、ready でない lease は exit 3 を返します。[Android 契約](android-emulator.ja.md)を参照してください。
 
 ## 削除と更新
 
