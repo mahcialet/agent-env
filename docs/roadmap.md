@@ -1,0 +1,35 @@
+---
+status: active
+owner: maintainers
+last_verified: 2026-09-07
+---
+
+# Roadmap and unresolved decisions
+
+The implemented scope is local pinned Git sources, detached review worktrees, isolated Compose runtimes, named argv tests, evidence, and a portable repository harness. This roadmap does not advertise deferred features as available commands.
+
+## Settled MVP choices
+
+The module is `github.com/mahcialet/agent-env` and the existing MIT license is retained. AGENTS is capped at 150 lines, package boundaries have structural checks, and database documentation is generated from numbered migrations. Built-in policy rejects fixed published ports and selected external/shared Compose resources. SQLite transactions and renewable fenced operation locks coordinate local processes. Execution snapshots contain only the selected service/resource closure. Native process-tree cancellation is part of the current runner, not a future host-process adapter.
+
+## Trust and host policy
+
+A configurable host policy file, configurable grace/retention periods, and parallel-allocation controls remain future work. Trusted base-manifest plus target overlay merging, `--manifest-ref`, and explicit untrusted-fork execution require a separate trust design. Advisory owner labels do not provide authentication. Do not weaken built-in policy merely to accept an unsafe repository.
+
+## Sources and writable workflows
+
+Remote mirror/cache management, HTTPS/SSH authentication, provider-specific PR shorthand, and automatic fetching are deferred. Writable fix leases need branch ownership, per-source write selection, and recovery rules. Fork/checkpoint/reproduce and live stack expansion/shrink need an explicit identity and artifact model.
+
+## Runtime extensions
+
+Android Emulator/Flutter, browser/CDP and UI snapshots, generic persistent host processes, Podman-specific support, and distributed/multi-host coordination are not implemented. Android support additionally needs SDK/AVD discovery, acceleration-capable runners, and a clear Windows/WSL boundary. Browser resources need explicit ownership and cleanup rules.
+
+## Artifacts and releases
+
+Local OCI registries, image promotion, image-retention references, and exact-artifact replay are deferred. Runtime inspection records actual container image identity, but this is not reproducible image promotion. Automatic artifact expiry, event compaction, migration rollback tooling, generated CLI/JSON Schema references, and a longer-term handoff archive policy remain open.
+
+Release packaging through GitHub Releases or package managers is undecided. A release must cite the tested revision's native and integration evidence; supported build targets are not a substitute for that evidence.
+
+## CI expansion
+
+Native Docker integration on Windows and macOS may need self-hosted Docker-capable runners. Android integration would require suitable hardware acceleration. Documentation age beyond `last_verified` is not currently a CI freshness deadline; metadata validity and discoverability are enforced.

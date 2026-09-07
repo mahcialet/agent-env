@@ -1,0 +1,70 @@
+version: 1
+
+sources:
+  backend:
+    repository: .
+    default_ref: HEAD
+
+runtimes:
+  backend:
+    type: compose
+    source: backend
+    project_directory: .
+    files:
+      - compose.yaml
+      - compose.agent.yaml
+
+components:
+  api:
+    runtime: backend
+    compose_services:
+      - db
+      - api
+    provides:
+      - api
+      - logs
+
+  dashboard:
+    runtime: backend
+    compose_services:
+      - dashboard
+    depends_on:
+      - api
+    provides:
+      - web-ui
+      - browser-e2e
+
+stacks:
+  api:
+    description: Web API only
+    roots:
+      - api
+
+  dashboard:
+    description: Web API and Dashboard
+    roots:
+      - dashboard
+
+  full:
+    description: Alias for the currently available complete web stack
+    roots:
+      - dashboard
+
+tests:
+  api-smoke:
+    stack: api
+    source: backend
+    working_directory: .
+    command:
+      - go
+      - test
+      - ./...
+
+  dashboard-e2e:
+    stack: dashboard
+    source: backend
+    working_directory: dashboard
+    command:
+      - npm
+      - run
+      - test:e2e
