@@ -12,7 +12,7 @@ Start with [architecture](../ARCHITECTURE.md) / [日本語](../ARCHITECTURE.ja.m
 
 Delivered extension: [Android Emulator contract](product-specs/android-emulator.md) / [日本語](product-specs/android-emulator.ja.md) and its [completed ExecPlan](exec-plans/completed/android-emulator-lease.md).
 
-Delivered extension: [Flutter Android contract](product-specs/flutter-android-runtime.md) / [日本語](product-specs/flutter-android-runtime.ja.md) and its [completed ExecPlan](exec-plans/completed/flutter-android-runtime.md) / [日本語](exec-plans/completed/flutter-android-runtime.ja.md).
+Delivered extension: [Flutter Android contract](product-specs/flutter-android-runtime.md) / [日本語](product-specs/flutter-android-runtime.ja.md) and its [reopened active ExecPlan](exec-plans/active/flutter-android-runtime.md) / [日本語](exec-plans/active/flutter-android-runtime.ja.md).
 
 - [Product specifications](product-specs/index.md) / [日本語](product-specs/index.ja.md): user-visible contracts.
 - [Design documents](design-docs/index.md) / [日本語](design-docs/index.ja.md): mechanisms and boundaries.

@@ -1,9 +1,9 @@
 ---
-status: completed
+status: active
 owner: maintainers
 last_verified: 2026-09-08
-translation_of: docs/exec-plans/completed/flutter-android-runtime.md
-source_sha256: b1af6528828cf73c5590534d490a0d4336f662e9baa34ea316a437fda602fce5
+translation_of: docs/exec-plans/active/flutter-android-runtime.md
+source_sha256: a7eb43a8589da238fc305dac430b5b466e148e983da7bc01d7a0a641003056cc
 ---
 
 # 環境リース内にFlutter Androidアプリケーションを実体化する
@@ -198,13 +198,22 @@ tests:
 - [x] 2026-09-08: 最終実装のGo 1.26.8全harnessが全工程成功、Go 1.27.1の `go test -race ./...` も成功。最新ソースCIは `81102f1`、検証済み文書CIは `d4d4289` で成功。
 - [x] 2026-09-08: ネイティブCI `34166963420` は `8975096` で全OS・Go版ジョブ成功。実SDK証拠は別扱いでLinuxのみ。
 - [x] 2026-09-08: Linuxで実Flutter + Emulator結合 `TestRealFlutterAndroidBackendLease` が248.46秒で成功。二つの実リースへの拡張もその後88.99秒で成功。Windows/macOSの実SDK実行は未検証。
-- [x] 2026-09-08: 全受け入れ証拠と振り返りを完成。独立した読み取り専用の最終レビューで具体的指摘なし。
-- [x] 2026-09-08: PLANS方針に従い両言語をcompletedへ移動し索引を更新。
+- [ ] 遅れて判明した完了計画CI失敗への対応後に受け入れを再検証する。前回は証拠・振り返りを完成し独立レビューで具体的指摘なし。
+- [ ] 遅れて判明したCI問題の解決後に再度completedへ移動する。前回の移動・索引更新の履歴は保持。
 
 チェックは予定でなく観測済みの完了を示します。UTC日付、コマンド・テスト・実行識別子、結果を添えます。
 
 
 ## 想定外の発見
+
+- 2026-09-08: 完了計画commit `233192d` の後、PR CI `34169150614` がUbuntu Go 1.27の
+  `TestCleanupStopsIndependentEffectsAfterOperationLockLoss` で失敗したため再開（3.04秒）。
+  `down:d-failing` だけを期待したが、`down:c-failing` も観測された。原因は未確定。
+  ロック喪失fixture・ストア同期は仮説の一つであり、確認済みの発見ではない。
+  記録時のpush CI `34169148759` は12ジョブ中11成功。
+  コード調査前にactiveの実行判断基準を復元し、過去の成功証拠と前回の移動履歴を保持する。
+  必要な修正の検証後だけ再検証・再移動する。
+
 
 - 2026-09-08: 提供計画には日本語版がないため、マイルストーンのcommit前に追加・維持する。
   既存のAndroid予約と操作フェンスは所有規則を変えず利用できる。
@@ -246,6 +255,18 @@ Flutter結合テストによるAPK置換、高速化不足、既存Android所有
 - 2026-09-08: SDK 37.1.11 build 15917651 / netsimd 0.3.114の重点デーモンprobeで、リース専用netsim.ini、gRPCポート39107、HCI 0設定、libslirp有効を確認し、probeデーモンを停止した。
   探索理解に使った公開ソースがインストール版と完全一致するとは主張しない。
   実装は整合したリース専用探索ディレクトリと動的HCI設定を渡すようになった。その後、全ローカルharness/raceと二つの実リース再実行が成功。最終証拠を参照。
+
+- 2026-09-08: `TestLockLossFixtureWaitsForSQLiteWriter` でテストのロック喪失注入器の欠陥を再現。
+  実SQLite writerを保持すると旧helperはトークン置換前に0.063秒で `database is locked (5) (SQLITE_BUSY)` に失敗した。
+  元テストは50回反復で成功（30.267秒）し、過去CIにそのSQLiteエラー自体の直接ログはない。
+  これは再現したfixture欠陥であり、CIにも整合する有力な仕組みだが、過去失敗の厳密な原因を証明したとはしない。
+  helperだけを `SetMaxOpenConns(1)` と `PRAGMA busy_timeout=10000` に変更して既存ストア方針と揃え、
+  エラーは即座に `t.Errorf` で報告し、影響行数が正確に1であることを要求する。
+  production fencingと元の後続作用がないことの厳密assertionは不変。
+  実writer回帰と既存cleanupロック喪失テストは `-race -count=30` で成功（33.834秒）。
+  Go 1.27全harnessも成功（app 21.369秒）、全 `go test -race ./...` も成功（app 25.304秒）。
+  回帰の50ms待ちは保持writerの解放を有限時間後に行うためで、短い成功期限ではない。
+  修正ソースのCIと再移動が未完了。
 
 ## 判断の記録
 
@@ -302,7 +323,16 @@ Flutter結合テストによるAPK置換、高速化不足、既存Android所有
   インストールSDKの重点probeで設定を裏付けたが、その後88.99秒の二つの実リース実行で、他方を生存させる全ライフサイクルを証明した。
   日付・担当: 2026-09-08 / SDK調査を受けたimplementation。
 
+- 決定: テストの外部ロック喪失注入器だけを直し、実SQLite writerを待ってトークンを1行置換したことを証明してから後続fencingを検証する。注入エラーは発生箇所で報告する。
+  理由: 未設定のraw接続はロック喪失を注入する前に失敗し、その後の作用を誤解させる失敗につながり得る。
+  既存ストアのbusy処理に合わせ、production fencingや正確な作用順序のassertionは変更しない。
+  日付・担当: 2026-09-08 / 遅れて判明したCIのfixture再現を受けたimplementation。
+
 ## 成果と振り返り
+
+`233192d` の完了計画CIで遅れて失敗が判明したため再開。下記の完了記録は過去のチェックポイントであり、
+現在の完了を意味しない。調査、必要な修正、最終検証、再度のcompleted移動は未完了。
+
 
 提供成果: `applications` により厳密な固定ソースFlutterビルドを独立所有のAndroidランタイムに結び付ける。
 高コストなランタイム作成前にビルドし、install、正確なパッケージ確認、loopback reverse、起動成功確認の後にREADYとする。
@@ -501,6 +531,22 @@ planと前提検査は読み取り専用です。ビルド失敗で使い捨て�
 元リースの所有物と誤認しません。曖昧なら予約と証拠を保持して隔離し、forceでも所有証明を省略しません。
 
 ## 成果物と注記
+
+- 最終自己点検で、writer保持テストの接続にもBegin前の `SetMaxOpenConns(1)` と `PRAGMA busy_timeout=10000` を設定し、競合準備自体がレジストリ更新と競わないようにした。
+  productionと正確なassertionは不変。先行の全harness/raceは注入器修正を検証し、この小さな準備変更は重点race30反復で成功（33.561秒）。
+
+
+再開後の修正チェックポイント（2026-09-08）:
+
+- 完了計画commit `233192d` ではpush CI `34169148759` が成功し、PR CI `34169150614` はロック喪失テストで失敗。両結果を保持する。
+- 再現したfixture修正は重点 `-race -count=30`（33.834秒）、Go 1.27全harness（app 21.369秒）、
+  Go 1.27全 `go test -race ./...`（app 25.304秒）で成功。
+- 別の読み取り専用レビュアーが実際のテスト限定差分を確認し、具体的問題なし。
+  production fencingと正確なassertionは不変で、回帰のgoroutine合流・リソースcleanupは安全。
+  50ms遅延は保持writerを解放するためであり、短い成功期限を設けるものではない。
+- 過去CIにSQLite失敗そのもののログはない。writer保持テストはfixture欠陥を再現し、過去のエラーメッセージを再現したとはしない。
+  修正ソースCIと再移動だけが未完了。
+
 
 最終完了証拠（2026-09-08）:
 

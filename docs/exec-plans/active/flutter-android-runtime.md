@@ -1,5 +1,5 @@
 ---
-status: completed
+status: active
 owner: maintainers
 last_verified: 2026-09-08
 ---
@@ -247,15 +247,26 @@ validation. Any final syntax must be documented and covered by negative fixtures
 - [x] 2026-09-08: Run real Flutter + Emulator integration on Linux;
       `TestRealFlutterAndroidBackendLease` passed in 248.46s. Two-real-lease
       extension subsequently passed in 88.99s; native Windows/macOS SDK runs remain unverified.
-- [x] 2026-09-08: Completed all acceptance evidence and retrospective;
+- [ ] Revalidate final acceptance after the late archival CI failure. Previous checkpoint: completed evidence and retrospective;
       independent read-only final review reported no concrete findings.
-- [x] 2026-09-08: Moved both languages to `docs/exec-plans/completed/` according to
+- [ ] Re-archive both languages after the late CI issue is resolved. Previously moved according to
       `docs/PLANS.md`.
 
 A checked item means observed completion, not intention. Add the UTC date,
 command/test/run identifier and relevant result when checking an item.
 
 ## Surprises & Discoveries
+
+- 2026-09-08: Reopened after archival commit `233192d`: PR CI
+  `34169150614` failed on Ubuntu Go 1.27 in
+  `TestCleanupStopsIndependentEffectsAfterOperationLockLoss` (3.04s). The test
+  expected only `down:d-failing` but also observed `down:c-failing`. The cause
+  is not established; lost-lock fixture/store synchronization is one hypothesis,
+  not a finding. Push CI `34169148759` had 11 of 12 jobs passed at this record.
+  Restore active execution authority before code investigation; preserve all
+  prior successful evidence and the earlier archival history. Revalidate and
+  re-archive only after the necessary correction is verified.
+
 
 - 2026-09-08: The supplied plan has no Japanese sibling yet. Add and maintain
   that translation before committing the milestone. Existing Android reservations
@@ -337,6 +348,21 @@ ownership assertion.
   The implementation now supplies aligned lease-private discovery directories
   and dynamic HCI configuration. The full local harness/race and two-lease
   real rerun subsequently passed; see final evidence.
+
+- 2026-09-08: `TestLockLossFixtureWaitsForSQLiteWriter` reproduced a defect in
+  the test's lock-loss injector: with a real SQLite writer held, the old helper
+  failed `database is locked (5) (SQLITE_BUSY)` in 0.063s before replacing the
+  token. The original test passed 50 repeats (30.267s), and the historical CI did
+  not directly log that SQLite error. This is a reproduced fixture defect and a
+  probable matching mechanism, not proof of the historical failure's exact cause.
+  The helper now uses `SetMaxOpenConns(1)` and `PRAGMA busy_timeout=10000`, matching
+  store policy; errors immediately call `t.Errorf`, and exactly one affected row
+  is required. Production fencing and the original exact no-later-effects
+  assertion are unchanged. The real-writer regression and existing cleanup
+  lock-loss test passed `-race -count=30` (33.834s). The full Go 1.27 harness
+  passed (app 21.369s), as did full `go test -race ./...` (app 25.304s).
+  The regression's 50ms wait schedules a bounded writer release, not a short
+  success deadline. Fixed-source CI and re-archival remain pending.
 
 ## Decision Log
 
@@ -438,7 +464,21 @@ ownership assertion.
   real two-lease run established complete sibling-preserving lifecycle behavior.
   Date/Author: 2026-09-08 / implementation following SDK investigation.
 
+- Decision: Repair only the test's external lock-loss injector to wait for the
+  real SQLite writer and prove that one token was replaced before asserting
+  subsequent fencing behavior; report injection errors at their source.
+  Rationale: An unconfigured raw connection can fail before actually injecting
+  lock loss, causing a misleading later-effects failure. Match existing store
+  busy handling without changing production fencing or weakening exact effect
+  ordering assertions.
+  Date/Author: 2026-09-08 / implementation following late-CI fixture reproduction.
+
 ## Outcomes & Retrospective
+
+Reopened after late archival CI failure at `233192d`. Earlier completion below
+records the prior checkpoint, not current completion. Investigation, any necessary
+correction, final validation and re-archival remain outstanding.
+
 
 Delivered outcome: `applications` binds strict pinned Flutter builds to
 independently owned Android runtimes. Builds precede expensive runtime creation;
@@ -853,6 +893,30 @@ On ambiguous Android identity, retain reservations/evidence and quarantine.
 `--force` must not bypass ownership proof.
 
 ## Artifacts and Notes
+
+- Final self-review also applies `SetMaxOpenConns(1)` and
+  `PRAGMA busy_timeout=10000` to the held-writer test connection before `Begin`,
+  preventing contention setup itself from racing registry renewal. Production
+  and exact assertions are unchanged. The prior full harness/race validates
+  the injector repair; targeted 30-repeat race validation of this small setup
+  adjustment passed (33.561s).
+
+
+Reopened-plan correction checkpoint (2026-09-08):
+
+- Archival commit `233192d` produced both outcomes: push CI `34169148759`
+  succeeded; PR CI `34169150614` failed the lock-loss test. Preserve both results.
+- The reproduced fixture correction passed targeted `-race -count=30` (33.834s),
+  complete Go 1.27 harness (app 21.369s), and full Go 1.27
+  `go test -race ./...` (app 25.304s).
+- A separate read-only reviewer inspected the actual test-only diff and found
+  no concrete issue: production fencing and exact assertions were unchanged,
+  regression goroutine joins/resource cleanup were safe, and the 50ms delay
+  releases a held writer rather than imposing a short success deadline.
+- The historical CI did not log the exact SQLite failure; the held-writer test
+  reproduces the fixture defect, not the historical error message. Only
+  fixed-source CI and re-archival remain outstanding.
+
 
 Final completion evidence (2026-09-08):
 

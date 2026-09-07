@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/index.md
-source_sha256: 685513616390df3d409affb4637fab8753346c67d723be587db2f34bb286b83d
+source_sha256: 2409394402983fa141748518bd4d4fbf7f1b743b0e13aebcee7d91f49204c7d6
 ---
 
 # リポジトリの知識
@@ -14,7 +14,7 @@ source_sha256: 685513616390df3d409affb4637fab8753346c67d723be587db2f34bb286b83d
 
 提供済みの拡張：[Android Emulatorの契約](product-specs/android-emulator.ja.md)と、その[完了済みExecPlan](exec-plans/completed/android-emulator-lease.md)。
 
-提供済みの拡張：[Flutter Androidの契約](product-specs/flutter-android-runtime.ja.md)と、その[完了済みExecPlan](exec-plans/completed/flutter-android-runtime.ja.md) / [English](exec-plans/completed/flutter-android-runtime.md)。
+提供済みの拡張：[Flutter Androidの契約](product-specs/flutter-android-runtime.ja.md)と、その[再開したExecPlan](exec-plans/active/flutter-android-runtime.ja.md) / [English](exec-plans/active/flutter-android-runtime.md)。
 
 - [製品仕様](product-specs/index.ja.md)：ユーザーに見える契約。
 - [設計文書](design-docs/index.ja.md)：仕組みと責務境界。
