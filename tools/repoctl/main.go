@@ -168,6 +168,20 @@ var markdownLinks = regexp.MustCompile(`!?\[[^\]]*\]\((<[^>]+>|[^)]+)\)`)
 var referenceLinks = regexp.MustCompile(`(?m)^\s*\[[^\]]+\]:\s*(<[^>]+>|\S+)`)
 var codePaths = regexp.MustCompile("`([^`\\n]+)`")
 var planSections = []string{"Purpose / Big Picture", "Progress", "Surprises & Discoveries", "Decision Log", "Outcomes & Retrospective", "Context and Orientation", "Plan of Work", "Concrete Steps", "Validation and Acceptance", "Idempotence and Recovery", "Artifacts and Notes", "Interfaces and Dependencies"}
+var japanesePlanSections = map[string]string{
+	"Purpose / Big Picture":       "目的 / 全体像",
+	"Progress":                    "進捗",
+	"Surprises & Discoveries":     "想定外の発見",
+	"Decision Log":                "判断の記録",
+	"Outcomes & Retrospective":    "成果と振り返り",
+	"Context and Orientation":     "背景と構成",
+	"Plan of Work":                "作業計画",
+	"Concrete Steps":              "具体的な手順",
+	"Validation and Acceptance":   "検証と受け入れ",
+	"Idempotence and Recovery":    "冪等性と復旧",
+	"Artifacts and Notes":         "成果物と注記",
+	"Interfaces and Dependencies": "インターフェースと依存",
+}
 
 func links(data string) []string {
 	var result []string
@@ -322,31 +336,46 @@ func documentStructureCheck(root string, paths []string) error {
 			}
 		}
 		if indexed && filepath.Base(p) != indexName {
-			index := filepath.Join(filepath.Dir(p), indexName)
-			ib, err := os.ReadFile(index)
-			if err != nil {
-				return fmt.Errorf("AGENTENV-DOC-001: %s has no local %s; add an index with a link to this document", rel, indexName)
+			indexes := []string{indexName}
+			if japanese {
+				// Canonical indexes expose both languages; translated indexes
+				// additionally provide navigation within Japanese documentation.
+				indexes = append(indexes, "index.md")
 			}
-			found := false
-			for _, target := range links(string(ib)) {
-				resolved, _, _ := localTarget(root, index, target)
-				if resolved == p {
-					found = true
+			for _, requiredIndex := range indexes {
+				index := filepath.Join(filepath.Dir(p), requiredIndex)
+				ib, err := os.ReadFile(index)
+				if err != nil {
+					return fmt.Errorf("AGENTENV-DOC-001: %s has no local %s; add an index with a link to this document", rel, requiredIndex)
 				}
-			}
-			if !found {
-				return fmt.Errorf("AGENTENV-DOC-001: %s is not linked from its local %s; add an indexed description or move it to an archival directory", rel, indexName)
-			}
-		}
-		if strings.HasPrefix(rel, "docs/exec-plans/active/") && !japanese {
-			for _, section := range planSections {
 				found := false
-				for _, line := range strings.Split(data, "\n") {
-					if strings.HasPrefix(line, "## ") && strings.TrimSpace(strings.TrimPrefix(line, "## ")) == section {
+				for _, target := range visibleDocumentLinks(string(ib)) {
+					resolved, _, _ := localTarget(root, index, target)
+					if resolved == p {
 						found = true
 					}
 				}
 				if !found {
+					return fmt.Errorf("AGENTENV-DOC-001: %s is not linked from its local %s; add an indexed description or move it to an archival directory", rel, requiredIndex)
+				}
+			}
+		}
+		if strings.HasPrefix(rel, "docs/exec-plans/active/") {
+			for _, section := range planSections {
+				found := false
+				for _, line := range strings.Split(documentProse(data), "\n") {
+					if !strings.HasPrefix(line, "## ") {
+						continue
+					}
+					heading := strings.TrimSpace(strings.TrimPrefix(line, "## "))
+					if heading == section || japanese && heading == japanesePlanSections[section] {
+						found = true
+					}
+				}
+				if !found {
+					if japanese {
+						return fmt.Errorf("AGENTENV-DOC-005: %s is missing section %q (or %q); restore the mandatory living-plan section", rel, japanesePlanSections[section], section)
+					}
 					return fmt.Errorf("AGENTENV-DOC-005: %s is missing section %q; restore the mandatory living-plan section", rel, section)
 				}
 			}

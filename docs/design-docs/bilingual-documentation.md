@@ -29,7 +29,10 @@ English. Each Japanese document visibly links back to its canonical source.
 
 ## Translation metadata and review
 
-Japanese front matter retains document status, owner and last_verified and adds:
+Every Japanese document requires valid status, nonempty owner and last_verified
+(YYYY-MM-DD), including root translations whose English source has no front matter.
+When the English source has these fields, their values must match. Japanese front
+matter also adds:
 
 ```yaml
 translation_of: docs/design-docs/bilingual-documentation.md
@@ -60,14 +63,18 @@ allowed. Indexes remain bilingual even when their targets are archival.
 
 The initial exceptions are the generated database schema, the original archived
 handoff, and the four completed MVP/Android implementation and review plans that
-predate this migration. Their English evidence remains intact. New plans require
+predate this migration. The checker fixes that completed-plan allowlist to `agent-env-mvp.md`,
+`android-emulator-lease.md`, `android-emulator-review.md` and
+`android-emulator-review-2.md` under `docs/exec-plans/completed/`; registry entries
+cannot exempt additional completed plans. Their English evidence remains intact. New plans require
 both languages through completion; an old plan materially revised into current
 guidance should lose its exemption and gain a translation.
 
 ## Checks and completion
 
 `go run ./tools/repoctl docs-check` validates required pairs, canonical source
-metadata, freshness hashes, language-specific indexes and local links. Missing
+metadata, freshness hashes, visible source backlinks, both language indexes,
+required Japanese plan sections and local links. Missing
 pairs and stale translations are reported as errors. An orphan Japanese document
 or one pointing to a different canonical path also fails. Existing link, metadata,
 architecture and generated-output checks remain in force.

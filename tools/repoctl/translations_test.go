@@ -19,6 +19,28 @@ func pairFixtureDocuments(t *testing.T, root string) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// Populate canonical indexes before hashing any source. This is positive
+	// fixture setup only; negative cases mutate the resulting files afterward.
+	for _, file := range paths {
+		if filepath.Base(file) == "index.md" {
+			b, err := os.ReadFile(file)
+			if err != nil {
+				t.Fatal(err)
+			}
+			body := string(b)
+			for _, target := range links(body) {
+				if strings.HasSuffix(target, ".md") && !strings.HasSuffix(target, ".ja.md") {
+					ja := strings.TrimSuffix(target, ".md") + ".ja.md"
+					if !strings.Contains(body, "("+ja+")") {
+						body += "\n[日本語](" + ja + ")\n"
+					}
+				}
+			}
+			if err := os.WriteFile(file, []byte(body), 0600); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
 	for _, file := range paths {
 		rel, _ := filepath.Rel(root, file)
 		rel = filepath.ToSlash(rel)
@@ -41,16 +63,18 @@ func pairFixtureDocument(t *testing.T, root, canonical string) {
 	}
 	front := "---\n"
 	for _, key := range []string{"status", "owner", "last_verified"} {
-		if value, ok := fields[key]; ok {
-			front += key + ": " + value + "\n"
+		value, ok := fields[key]
+		if !ok {
+			value = map[string]string{"status": "active", "owner": "maintainers", "last_verified": "2026-09-07"}[key]
 		}
+		front += key + ": " + value + "\n"
 	}
 	front += "translation_of: " + canonical + "\nsource_sha256: " + translationDigest(b) + "\n---\n"
 	// Fixtures preserve headings to test anchors, while all local document links
 	// use the same language. Actual repository translations are human-maintained.
 	body = strings.ReplaceAll(body, ".md", ".ja.md")
 	body = strings.ReplaceAll(body, ".ja.ja.md", ".ja.md")
-	put(t, root, strings.TrimSuffix(canonical, ".md")+".ja.md", front+body)
+	put(t, root, strings.TrimSuffix(canonical, ".md")+".ja.md", front+"\n[English]("+filepath.Base(canonical)+")\n"+body)
 }
 
 func TestTranslationMissingPairsReportedIndividually(t *testing.T) {
@@ -207,7 +231,7 @@ func TestJapaneseLinksAndLanguageSpecificIndex(t *testing.T) {
 			b, _ := os.ReadFile(filepath.Join(root, filepath.FromSlash(tc.path)))
 			data := string(b) + tc.data
 			if tc.data == "" {
-				data = strings.Replace(data, "(design.ja.md)", "(design.md)", 1)
+				data = strings.ReplaceAll(data, "(design.ja.md)", "(design.md)")
 			}
 			put(t, root, tc.path, data)
 			if err := docsCheck(root); err == nil || !strings.Contains(err.Error(), tc.code) {
@@ -222,8 +246,8 @@ func TestJapaneseActivePlanMayTranslateSectionHeadings(t *testing.T) {
 	p := "docs/exec-plans/active/plan.ja.md"
 	b, _ := os.ReadFile(filepath.Join(root, filepath.FromSlash(p)))
 	data := string(b)
-	for n, section := range planSections {
-		data = strings.ReplaceAll(data, "## "+section, fmt.Sprintf("## 日本語の節%d", n))
+	for _, section := range planSections {
+		data = strings.ReplaceAll(data, "## "+section, "## "+japanesePlanSections[section])
 	}
 	put(t, root, p, data)
 	if err := docsCheck(root); err != nil {
@@ -232,7 +256,7 @@ func TestJapaneseActivePlanMayTranslateSectionHeadings(t *testing.T) {
 }
 
 func TestTranslationExceptionsAreExactAndRestricted(t *testing.T) {
-	for _, name := range []string{"docs/generated/schema.md", "docs/references/handoffs/history.md", "docs/exec-plans/completed/history.md"} {
+	for _, name := range []string{"docs/generated/schema.md", "docs/references/handoffs/history.md", "docs/exec-plans/completed/agent-env-mvp.md"} {
 		t.Run(name, func(t *testing.T) {
 			root := fixture(t)
 			put(t, root, name, metadata+"# Archive\n")

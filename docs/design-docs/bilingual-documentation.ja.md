@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/design-docs/bilingual-documentation.md
-source_sha256: 08de781ccf2b4a0b3758196583dc6c2382255c3cecc8c0dd1737b1fc7116ba78
+source_sha256: 522d71dc6ce148915b23c281181df729d9f5b7244ffd7bf8f376d97595a29d31
 ---
 
 # 英語・日本語のドキュメント
@@ -20,7 +20,7 @@ source_sha256: 08de781ccf2b4a0b3758196583dc6c2382255c3cecc8c0dd1737b1fc7116ba78
 
 ## 翻訳メタデータとレビュー
 
-日本語版のfront matterにはstatus、owner、last_verifiedを維持し、以下を追加する。
+すべての日本語文書に、有効なstatus、空でないowner、YYYY-MM-DD形式のlast_verifiedを必須とする。英語の翻訳元にfront matterがないルート文書の日本語訳も含む。英語版にこれらのフィールドがある場合は値を一致させる。日本語版のfront matterには、さらに以下を追加する。
 
 ```yaml
 translation_of: docs/design-docs/bilingual-documentation.md
@@ -37,10 +37,10 @@ source_sha256: <64 lowercase hexadecimal characters>
 
 [例外登録ファイル](../translation-exceptions.json)に、正確なパスと空でない理由を列挙する。認める分類は`docs/generated/`の生成物、`docs/references/handoffs/`の参考資料アーカイブ、そこに登録された移行前の完了済みExecPlanである。ディレクトリ全体や暗黙の例外は認めない。索引はリンク先が過去の資料でも両言語で維持する。
 
-初期の例外は、生成されたDB schema、元のhandoffアーカイブ、この移行より前のMVP・Androidの実装／レビューに関する完了済み計画4件である。これらの英語の証拠はそのまま保持する。新しい計画には完了まで両言語が必要であり、過去の計画を実質的に変更して現在の案内にする場合は、例外を外して翻訳を追加する。
+初期の例外は、生成されたDB schema、元のhandoffアーカイブ、この移行より前のMVP・Androidの実装／レビューに関する完了済み計画4件である。検査で認める完了済み計画は、`docs/exec-plans/completed/`配下の`agent-env-mvp.md`、`android-emulator-lease.md`、`android-emulator-review.md`、`android-emulator-review-2.md`の4件に固定する。登録ファイルへの追加だけで、他の完了済み計画を例外にはできない。これらの英語の証拠はそのまま保持する。新しい計画には完了まで両言語が必要であり、過去の計画を実質的に変更して現在の案内にする場合は、例外を外して翻訳を追加する。
 
 ## 検査と完了
 
-`go run ./tools/repoctl docs-check`は、必要な対訳、翻訳元の英語文書を示すメタデータ、鮮度hash、言語別の索引、ローカルリンクを検証する。対訳の欠落と古い翻訳はエラーとして報告する。対応する英語文書がない日本語文書や、対応すべき英語文書と異なるパスを指す日本語文書も失敗する。既存のリンク、メタデータ、アーキテクチャ、生成物の検査も維持する。
+`go run ./tools/repoctl docs-check`は、必要な対訳、翻訳元の英語文書を示すメタデータ、鮮度hash、読者が辿れる翻訳元リンク、両言語の索引、日本語計画の必須節、ローカルリンクを検証する。対訳の欠落と古い翻訳はエラーとして報告する。対応する英語文書がない日本語文書や、対応すべき英語文書と異なるパスを指す日本語文書も失敗する。既存のリンク、メタデータ、アーキテクチャ、生成物の検査も維持する。
 
 変更した日本語文書を更新し、これらの検査が通るまではactive ExecPlanを完了できない。両言語の計画を一緒に移動し、リンクを修正し、最後の英語編集後に日本語計画のsourceメタデータを更新する。

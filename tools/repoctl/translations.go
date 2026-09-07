@@ -12,6 +12,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -106,6 +107,22 @@ func translationCheck(root string, paths []string) error {
 			problems = append(problems, fmt.Errorf("AGENTENV-DOC-008: %s translation metadata: %w", name, err))
 			continue
 		}
+		if strings.TrimSpace(fields["owner"]) == "" {
+			problems = append(problems, fmt.Errorf("AGENTENV-DOC-006: %s missing nonempty owner", name))
+		}
+		if err := metadataCheck(name, string(documents[name])); err != nil {
+			problems = append(problems, err)
+		}
+		visibleSource := false
+		for _, target := range visibleDocumentLinks(string(documents[name])) {
+			resolved, _, err := localTarget(root, filepath.Join(root, filepath.FromSlash(name)), target)
+			if err == nil && resolved == filepath.Join(root, filepath.FromSlash(canonical)) {
+				visibleSource = true
+			}
+		}
+		if !visibleSource {
+			problems = append(problems, fmt.Errorf("AGENTENV-DOC-012: %s needs a visible Markdown link to its English source %s", name, canonical))
+		}
 		if fields["translation_of"] != canonical {
 			problems = append(problems, fmt.Errorf("AGENTENV-DOC-008: %s translation_of must be exactly %s", name, canonical))
 		}
@@ -119,7 +136,7 @@ func translationCheck(root string, paths []string) error {
 		canonicalFields, err := translationMetadata(source)
 		if err != nil {
 			// Documents without canonical front matter (for example AGENTS.md)
-			// need only translation provenance on their Japanese sibling.
+			// still require valid core metadata on their Japanese sibling above.
 			if bytes.HasPrefix(source, []byte("---\n")) || bytes.HasPrefix(source, []byte("---\r\n")) {
 				problems = append(problems, fmt.Errorf("AGENTENV-DOC-008: %s canonical metadata: %w", canonical, err))
 			}
@@ -230,10 +247,10 @@ func translationExceptions(root string, documents map[string][]byte) (map[string
 	seen := map[string]bool{}
 	for _, entry := range *document.Exceptions {
 		p := entry.Path
-		category := strings.HasPrefix(p, "docs/generated/") || strings.HasPrefix(p, "docs/references/handoffs/") || strings.HasPrefix(p, "docs/exec-plans/completed/")
+		category := strings.HasPrefix(p, "docs/generated/") || strings.HasPrefix(p, "docs/references/handoffs/") || preMigrationCompletedPlan(p)
 		_, exists := documents[p]
 		if !category || path.Clean(p) != p || strings.ContainsAny(p, "\\*?[]") || !strings.HasSuffix(p, ".md") || strings.HasSuffix(p, ".ja.md") || !exists || strings.TrimSpace(entry.Reason) == "" || seen[p] {
-			problems = append(problems, fmt.Errorf("AGENTENV-DOC-010: invalid translation exception %q; use a unique existing exact English Markdown path in generated, archived handoff, or completed-plan categories with a nonempty reason", p))
+			problems = append(problems, fmt.Errorf("AGENTENV-DOC-010: invalid translation exception %q; use a unique existing exact English Markdown path in generated, archived handoff, or fixed pre-migration completed-plan categories with a nonempty reason", p))
 			continue
 		}
 		seen[p] = true
@@ -284,4 +301,139 @@ func uniqueJSONFields(decoder *json.Decoder) error {
 		return err
 	}
 	return nil
+}
+
+// Registry edits cannot enlarge the historical migration boundary.
+func preMigrationCompletedPlan(p string) bool {
+	switch p {
+	case "docs/exec-plans/completed/agent-env-mvp.md",
+		"docs/exec-plans/completed/android-emulator-lease.md",
+		"docs/exec-plans/completed/android-emulator-review.md",
+		"docs/exec-plans/completed/android-emulator-review-2.md":
+		return true
+	}
+	return false
+}
+
+var hiddenMarkdownComments = regexp.MustCompile(`(?s)<!--(?:.*?-->|.*\z)`)
+var escapedMarkdownPunctuation = regexp.MustCompile(`\\[[:punct:]]`)
+var markdownImages = regexp.MustCompile(`!\[[^\]]*\](?:\([^)]*\)|\[[^\]]*\])?`)
+var emptyMarkdownLinks = regexp.MustCompile(`\[\s*\](?:\([^)]*\)|\[[^\]]*\])`)
+var referenceDefinitions = regexp.MustCompile(`(?m)^\s*\[([^\]]+)\]:\s*(<[^>]+>|\S+)[^\n]*$`)
+
+// A provenance field, image, example or unused reference definition is not a
+// navigable source link. Keep extraction consistent with the local link checker.
+func documentProse(data string) string {
+	data = strings.ReplaceAll(data, "\r\n", "\n")
+	if strings.HasPrefix(data, "---\n") {
+		_, body, ok := strings.Cut(data[4:], "\n---\n")
+		if ok {
+			data = body
+		}
+	}
+	var prose strings.Builder
+	var fence byte
+	fenceLength := 0
+	for _, line := range strings.Split(data, "\n") {
+		trimmed := strings.TrimLeft(line, " ")
+		indent := len(line) - len(trimmed)
+		run := 0
+		if len(trimmed) > 0 && (trimmed[0] == '`' || trimmed[0] == '~') {
+			for run < len(trimmed) && trimmed[run] == trimmed[0] {
+				run++
+			}
+		}
+		if fence != 0 {
+			if indent < 4 && run >= fenceLength && trimmed[0] == fence && strings.TrimSpace(trimmed[run:]) == "" {
+				fence = 0
+			}
+			continue
+		}
+		if indent >= 4 || strings.HasPrefix(line, "\t") {
+			continue
+		}
+		if run >= 3 {
+			fence = trimmed[0]
+			fenceLength = run
+			continue
+		}
+		prose.WriteString(line + "\n")
+	}
+	data = stripMarkdownCodeSpans(prose.String())
+	data = hiddenMarkdownComments.ReplaceAllString(data, "")
+	data = escapedMarkdownPunctuation.ReplaceAllString(data, " ")
+	return markdownImages.ReplaceAllString(data, "")
+}
+
+func visibleDocumentLinks(data string) []string {
+	data = emptyMarkdownLinks.ReplaceAllString(documentProse(data), "")
+	definitions := referenceDefinitions.FindAllStringSubmatch(data, -1)
+	body := referenceDefinitions.ReplaceAllString(data, "")
+	result := links(body)
+	// Explicit, collapsed and shortcut references all contain the reference label
+	// in brackets. Definitions alone cannot satisfy the visible-link requirement.
+	references := regexp.MustCompile(`\[([^\]]+)\](?:\[([^\]]*)\]|\([^)]*\))?`)
+	used := map[string]bool{}
+	for _, match := range references.FindAllStringSubmatch(body, -1) {
+		if strings.Contains(match[0], "](") {
+			continue
+		}
+		label := match[2]
+		if label == "" {
+			label = match[1]
+		}
+		used[strings.ToLower(strings.Join(strings.Fields(label), " "))] = true
+	}
+	seen := map[string]bool{}
+	for _, definition := range definitions {
+		label := strings.ToLower(strings.Join(strings.Fields(definition[1]), " "))
+		if seen[label] {
+			continue
+		}
+		seen[label] = true
+		if used[label] {
+			result = append(result, links(definition[0])...)
+		}
+	}
+	return result
+}
+
+// Only a closing backtick run of the same length ends an inline code span.
+func stripMarkdownCodeSpans(s string) string {
+	var out strings.Builder
+	for i := 0; i < len(s); {
+		if s[i] != '`' {
+			out.WriteByte(s[i])
+			i++
+			continue
+		}
+		start := i
+		for i < len(s) && s[i] == '`' {
+			i++
+		}
+		width := i - start
+		end := i
+		found := false
+		for end < len(s) {
+			if s[end] != '`' {
+				end++
+				continue
+			}
+			next := end
+			for next < len(s) && s[next] == '`' {
+				next++
+			}
+			if next-end == width {
+				i = next
+				out.WriteString("code")
+				found = true
+				break
+			}
+			end = next
+		}
+		if !found {
+			out.WriteString(s[start:i])
+		}
+	}
+	return out.String()
 }

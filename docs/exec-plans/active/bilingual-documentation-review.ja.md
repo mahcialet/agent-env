@@ -1,0 +1,67 @@
+---
+status: active
+owner: maintainers
+last_verified: 2026-09-08
+translation_of: docs/exec-plans/active/bilingual-documentation-review.md
+source_sha256: 8cda74d7baed5363e8b0c5b1db1d255d0ca46807b15ea7d7bde182554fdc4dc1
+---
+
+# 二言語文書のレビュー指摘対応
+
+[英語版（翻訳元）](bilingual-documentation-review.md)
+
+## 目的 / 全体像
+
+`feat/bilingual-documentation`でPR #3のレビュー指摘5件に対応する。このactive planを今回の作業の判断基準とする。既存の二言語方針と移植可能なGoハーネスを維持し、runtimeの挙動を変えずに検査の抜けを塞ぐ。
+
+## 進捗
+
+- [x] 2026-09-08：`41545f1`で作業ツリーに差分がないことを確認し、未解決Thread 5件を読んだ。
+- [x] 2026-09-08：5件とも回帰fixtureの失敗で再現し、検査を修正した。repoctlの全テストと全体ハーネスが成功した。
+- [ ] ハーネスを検証し、差分確認後にcommit・pushする。
+- [ ] 対応した全Threadに返信してResolveし、成果を記録して英日両方の計画を完了済みへ移す。
+
+## 想定外の発見
+
+既存テストは任意の日本語見出しと、completed配下の任意の計画の例外登録を明示的に許可していた。正常系fixtureには、ルート日本語文書の必須メタデータと翻訳元リンクもなかった。文書方針に合わせてこれらの前提を変更する。不正fixtureの再生成で不具合が隠れないようにする。
+
+修正前の証拠：翻訳元リンク、メタデータ、completed planのテストは、不正入力にnilが返り失敗した。英語索引のリンク欠落と、日本語の必須12節それぞれの欠落もnilで通過した。修正後はこれらのテストがすべて成功した。既存の索引の不正fixtureは、リンク2件中1件しか削除せず正常なリンクが残っていた。両方を削除するように変更し、本番の受け入れ条件を変えずに意図した不正条件を回復した。
+
+独立レビューでは、単純な文字列抽出がコード例、エスケープ記法、コメント、未使用の参照定義、後続の重複参照定義をリンクや見出しとして受け入れることが分かった。ナビゲーションと必須節検査で共有する本文抽出、先頭の参照定義を使う処理、回帰ケースを追加した。前の実装で方針違反を見逃した原因は、正常系fixtureと許容的なテストが実装と同じ前提を共有していたことにある。今後の受け入れでは、リポジトリ全体の成功だけでなく、各要件を独立に変更した不正fixtureとの対応を確認する。
+
+## 判断の記録
+
+- 2026-09-08／maintainers：レビュー対応は既存のPRブランチで進め、新しいactiveの英日計画を用意する。完了した移行計画は履歴として維持する。
+- 2026-09-08／maintainers：読者に見える翻訳元リンク、両言語の索引、移行時の4計画に固定した例外、日本語計画の必須節、日本語文書の必須メタデータを検証する。既存のGo製リンク・メタデータ検査を再利用し、翻訳計画で英語の節名を使う互換性も維持する。
+
+## 成果と振り返り
+
+対応中。
+
+## 背景と構成
+
+`tools/repoctl/main.go`は文書構造、リンク、共通メタデータを検査する。`tools/repoctl/translations.go`は英日ペア、hash、個別例外を検査する。`tools/repoctl/`のテストは隔離したリポジトリfixtureを使う。契約は`docs/design-docs/bilingual-documentation.md`と`docs/PLANS.md`にある。
+
+## 作業計画
+
+検査を修正する前に回帰fixtureを追加する。不具合を隠さずに正常系fixtureを方針に合わせる。受け入れる日本語の節名を文書化し、過去の例外パスを固定する。文書変更後に翻訳元とhashの同期を確認する。
+
+## 具体的な手順
+
+`go test ./tools/repoctl`で再現と修正を検証する。その後、`go run ./tools/repoctl doctor`、`go run ./tools/repoctl check`、`go test -race ./tools/repoctl`を実行する。`git diff --check`とステージ差分の確認後にcommit・pushする。各レビューThreadに修正内容と検証結果を返信し、Resolveする。
+
+## 検証と受け入れ
+
+従来通過していた不正な5種類の文書を、原因の分かる診断で拒否する。正常な二言語文書、参照形式リンク、CRLF checkout、過去の例外は引き続き成功する。全体ハーネスと対象のraceテストに成功する。対応した全Threadに返信があり、Resolve済みであることを確認する。completedへ移す前に両言語の計画を更新する。
+
+## 冪等性と復旧
+
+検査は翻訳を書き換えない。公開済みcommitを保ち、通常の追加commitで対応する。force pushはしない。検証が失敗したら証拠をこの計画に残し、該当する原因だけを修正する。
+
+## 成果物と注記
+
+PR #3のレビューThread：`PRRT_kwDOURHsR86gCEZX`、`PRRT_kwDOURHsR86gCEZY`、`PRRT_kwDOURHsR86gCEZZ`、`PRRT_kwDOURHsR86gCEZd`、`PRRT_kwDOURHsR86gCEZe`。
+
+## インターフェースと依存
+
+依存の追加はない。主要な作業経路はGoのまま、Windows、macOS、Linuxのネイティブ実行を維持し、POSIX shellを必須にしない。AndroidとFlutterの挙動は今回の対象外とする。
