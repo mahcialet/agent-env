@@ -121,3 +121,16 @@ func TestInventoryReportsConflictingOwnership(t *testing.T) {
 		}
 	}
 }
+
+func TestInventoryFindsComposeOrphansWithOnlyAndroidLeases(t *testing.T) {
+	runtime := &inventoryRuntime{items: map[string][]domain.Resource{"active": {inventoryItem("orphan", "container", "active", "missing-project", "missing-lease")}}}
+	service := Service{Store: inventoryStore{leases: []domain.Lease{{ID: "android-only", Runtimes: []domain.Runtime{{Type: "android-emulator"}}}}}, Runtime: runtime, Home: t.TempDir()}
+	items, err := service.Inventory(context.Background())
+	if err != nil || len(items) != 1 || items[0].Metadata["status"] != "orphaned" || !reflect.DeepEqual(runtime.contexts, []string{"active"}) {
+		t.Fatalf("global discovery lost Compose orphan: items=%+v contexts=%v err=%v", items, runtime.contexts, err)
+	}
+	runtime.doctorError = errors.New("Docker unavailable")
+	if _, err := service.Inventory(context.Background()); err == nil {
+		t.Fatal("incomplete global discovery reported success")
+	}
+}

@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -260,5 +262,49 @@ func TestAndroidUncertainIdentityQuarantinesEvenForce(t *testing.T) {
 	b := next.Runtimes[0].Android
 	if a.ConsolePort == b.ConsolePort || a.ADBPort == b.ADBPort || a.Serial == b.Serial || a.AVDPath == b.AVDPath {
 		t.Fatal("quarantined resources reassigned")
+	}
+}
+
+func TestAndroidDestroyPreviewReportsPrivateCleanupWithoutEffects(t *testing.T) {
+	s, options, source, android := androidAppFixture(t)
+	l, err := s.Create(context.Background(), options, CreateOptions{Owner: "tester"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	before, err := s.Store.Get(context.Background(), l.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	events, err := s.Store.Events(context.Background(), l.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	preview, err := s.Destroy(context.Background(), l.ID, false, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	diagnostics := strings.Join(preview.Diagnostics, "\n")
+	a := l.Runtimes[0].Android
+	for _, want := range []string{"Android Emulator", a.AVDName, a.Serial, a.AVDPath, "retain", "evidence"} {
+		if !strings.Contains(diagnostics, want) {
+			t.Errorf("preview missing %q: %s", want, diagnostics)
+		}
+	}
+	if strings.Contains(diagnostics, "Compose") || strings.Contains(diagnostics, "context") {
+		t.Fatalf("wrong runtime cleanup: %s", diagnostics)
+	}
+	after, err := s.Store.Get(context.Background(), l.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	afterEvents, err := s.Store.Events(context.Background(), l.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(before, after) || !reflect.DeepEqual(events, afterEvents) || android.destroys != 0 || len(android.live) != 1 || len(source.states) != 1 {
+		t.Fatal("dry run changed registry or resources")
+	}
+	if _, err := os.Stat(filepath.Join(a.AVDPath, "userdata-qemu.img")); err != nil {
+		t.Fatal(err)
 	}
 }
