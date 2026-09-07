@@ -1,0 +1,6 @@
+/.codex/
+/.tokensave/
+/agent-env
+/agent-env.exe
+/dist/
+/coverage.out
