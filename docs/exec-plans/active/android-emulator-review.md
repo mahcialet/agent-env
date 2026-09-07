@@ -15,7 +15,7 @@ Address PR #2 review findings without changing Android ownership or portability 
 - [x] 2026-09-08: Reconciled clean branch at `90ae8e7` with four PR findings and completed implementation.
 - [x] 2026-09-08: Fixed global inventory and runtime-specific destroy preview with regressions.
 - [ ] Separate readiness budgets with mixed-runtime regressions.
-- [ ] Validate runnable SDK tools and acceleration before allocation with regressions.
+- [x] 2026-09-08: Validated runnable SDK tools and acceleration before allocation with regressions.
 - [ ] Run harness, relevant integration and native CI; reply to and resolve addressed threads.
 
 ## Surprises & Discoveries
@@ -58,3 +58,5 @@ PR review comments: 3951260551, 3951260553, 3951260556, 3951260560. Both new inv
 ## Interfaces and Dependencies
 
 No new dependencies or architecture edges. Keep SDK commands behind execx native argument arrays and Android separate from Compose and Flutter.
+
+SDK evidence: new real app/SQLite regression reproduced missing emulator/acceleration preflight and late adb failure before the fix. Go 1.26.8 Android package and prerequisite/Doctor regressions repeated 20 times passed; Go 1.27.1 Android package race tests passed. Shared read-only 15-second native SDK probes keep Doctor and Validate aligned; no ADB startup is added to validation.

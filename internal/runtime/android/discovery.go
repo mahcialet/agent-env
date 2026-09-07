@@ -107,14 +107,11 @@ func avdRoot() (string, error) {
 	return filepath.Join(home, ".android", "avd"), err
 }
 
-func (a Adapter) Doctor(ctx context.Context) (map[string]string, error) {
-	result := map[string]string{}
-	root, err := sdkRoot()
-	if err != nil {
-		result["android"] = "unavailable"
-		return result, err
-	}
-	result["sdk"] = root
+// sdkPrerequisites uses only bounded, read-only tool commands. Sharing this
+// check keeps create's pre-allocation validation consistent with doctor without
+// starting the shared ADB server or any Emulator process.
+func (a Adapter) sdkPrerequisites(ctx context.Context, root string) (map[string]string, error) {
+	result := map[string]string{"sdk": root}
 	for _, tool := range []struct{ key, dir, name, arg string }{{"emulator", "emulator", "emulator", "-version"}, {"adb", "platform-tools", "adb", "version"}, {"acceleration", "emulator", "emulator", "-accel-check"}} {
 		r, err := a.runner().Run(ctx, execx.Command{Name: executable(root, tool.dir, tool.name), Args: []string{tool.arg}, Timeout: 15 * time.Second})
 		if err != nil {
@@ -122,6 +119,18 @@ func (a Adapter) Doctor(ctx context.Context) (map[string]string, error) {
 			return result, fmt.Errorf("Android %s prerequisite: %w", tool.key, err)
 		}
 		result[tool.key] = strings.TrimSpace(r.Stdout + "\n" + r.Stderr)
+	}
+	return result, nil
+}
+
+func (a Adapter) Doctor(ctx context.Context) (map[string]string, error) {
+	root, err := sdkRoot()
+	if err != nil {
+		return map[string]string{"android": "unavailable"}, err
+	}
+	result, err := a.sdkPrerequisites(ctx, root)
+	if err != nil {
+		return result, err
 	}
 	protocol, err := parseADBProtocol(result["adb"])
 	if err != nil {
@@ -293,6 +302,9 @@ func (a Adapter) Validate(ctx context.Context, template string) (domain.AndroidE
 		}
 	}
 	if err := ctx.Err(); err != nil {
+		return out, err
+	}
+	if _, err := a.sdkPrerequisites(ctx, root); err != nil {
 		return out, err
 	}
 	out.Template = template

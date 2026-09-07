@@ -2,6 +2,7 @@ package android
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -12,9 +13,59 @@ import (
 
 	"github.com/mahcialet/agent-env/internal/app"
 	"github.com/mahcialet/agent-env/internal/domain"
+	"github.com/mahcialet/agent-env/internal/execx"
 	"github.com/mahcialet/agent-env/internal/policy"
 	"github.com/mahcialet/agent-env/internal/store/sqlite"
 )
+
+type prerequisiteRunner struct {
+	base    execx.Runner
+	failArg string
+	failed  bool
+}
+
+func (r *prerequisiteRunner) Run(ctx context.Context, cmd execx.Command) (execx.Result, error) {
+	if len(cmd.Args) == 1 && cmd.Args[0] == r.failArg {
+		r.failed = true
+		if r.failArg == "-accel-check" {
+			return execx.Result{}, errors.New("host acceleration unavailable")
+		}
+		// The fixture SDK tools are regular files, but not runnable binaries.
+		// Exercise the real native execution boundary for both tools on every OS.
+		return (execx.OSRunner{}).Run(ctx, cmd)
+	}
+	return r.base.Run(ctx, cmd)
+}
+
+func TestSDKPrerequisitesFailBeforeAppAllocation(t *testing.T) {
+	for _, arg := range []string{"-version", "version", "-accel-check"} {
+		t.Run(arg, func(t *testing.T) {
+			a, _, p := fixture(t)
+			runner := &prerequisiteRunner{base: a.Runner, failArg: arg}
+			a.Runner = runner
+			s, options, db := serviceFixture(t, t.TempDir(), "Pixel", a)
+			defer db.Close()
+			// Planning remains SDK-independent even with an unusable SDK.
+			if _, err := app.BuildPlan(context.Background(), options, s.Source); err != nil || runner.failed {
+				t.Fatalf("planning used SDK prerequisite: %v", err)
+			}
+			_, err := s.Create(context.Background(), options, app.CreateOptions{Owner: "prerequisite-fixture"})
+			if !errors.Is(err, app.ErrPrerequisite) || !runner.failed {
+				t.Fatalf("wanted runnable prerequisite failure, got %v (checked=%t)", err, runner.failed)
+			}
+			leases, err := db.List(context.Background())
+			if err != nil || len(leases) != 0 {
+				t.Fatalf("prerequisite failure reserved leases: %+v %v", leases, err)
+			}
+			if len(s.Source.(*appSource).live) != 0 || p.command.Name != "" {
+				t.Fatal("prerequisite failure materialized sources or started a detached process")
+			}
+			if _, err := os.Stat(filepath.Join(s.Home, "leases")); !os.IsNotExist(err) {
+				t.Fatalf("prerequisite failure created lease artifacts: %v", err)
+			}
+		})
+	}
+}
 
 // Source is synthetic here so native Android adapter tests need neither Git nor
 // Docker. App orchestration, runtime adapter and durable SQLite are real.

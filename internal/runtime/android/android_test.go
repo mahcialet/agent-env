@@ -155,6 +155,8 @@ func fixture(t *testing.T) (Adapter, domain.Runtime, *testProcess) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// Tests using this runtime record operations after successful preflight.
+	a.Runner.(*testRunner).commands = nil
 	r := domain.Runtime{LeaseID: "lease-one", Name: "android", Type: "android-emulator", Directory: filepath.Join(base, "leases", "lease-one", "android", "android"), Started: true}
 	port := 0
 	for n := 5554; n <= 5682; n += 2 {
