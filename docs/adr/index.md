@@ -12,3 +12,4 @@ last_verified: 2026-09-08
 - [0002-use-sqlite](0002-use-sqlite.md) / [日本語](0002-use-sqlite.ja.md)
 - [0003-compose-first-runtime](0003-compose-first-runtime.md) / [日本語](0003-compose-first-runtime.ja.md)
 - [0004-repository-native-harness](0004-repository-native-harness.md) / [日本語](0004-repository-native-harness.ja.md)
+- [0005-separate-flutter-applications](0005-separate-flutter-applications.md) / [日本語](0005-separate-flutter-applications.ja.md)

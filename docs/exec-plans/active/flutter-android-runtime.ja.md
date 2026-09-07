@@ -1,0 +1,492 @@
+---
+status: active
+owner: maintainers
+last_verified: 2026-09-08
+translation_of: docs/exec-plans/active/flutter-android-runtime.md
+source_sha256: 052346a49c34f2f6f77a4397c6b44ae5c2da0d865005eed056edd53a366a347f
+---
+
+# 環境リース内にFlutter Androidアプリケーションを実体化する
+
+[English（翻訳元）](flutter-android-runtime.md)
+
+このExecPlanは作業に合わせて更新する文書です。`docs/PLANS.md` に従って管理します。
+予定ブランチは `feat/flutter-android-runtime` です。
+
+実装開始時に変更前の `master` の正確なリビジョンを記録します。
+PR #2（`Add isolated Android Emulator resources to leases`）は必須の前提で、マージ済みです。
+そこで実装したEmulator所有、プロセス、AVD、ポート、ADBサーバー、クリーンアップ、隔離の
+規則を再実装したり弱めたりしません。
+
+開始リビジョン: `5e5c8b19b5880bff8e3dd97d0947ef47ac9ca066`（masterと作業開始時HEAD）。
+
+## 目的 / 全体像
+
+固定GitソースからFlutter Androidアプリを実体化し、リース所有のAndroid Emulatorに
+インストールします。選択Compose APIにリース所有の `adb reverse` で接続し、起動して、
+正確なビルド・インストール証拠を記録します。次のスタックを記述できます。
+
+    api       = Web APIのみ
+    dashboard = Web API + Dashboard
+    mobile    = Web API + Android Emulator + Flutterアプリ
+    full      = Web API + Dashboard + Android Emulator + Flutterアプリ
+
+利用者が確認できる流れ:
+
+    agent-env plan . --stack mobile
+    agent-env create . --stack mobile
+    agent-env show <lease-id>
+    agent-env test <lease-id> mobile-e2e
+    agent-env doctor <lease-id>
+    agent-env destroy <lease-id>
+
+同時に存在する二つのmobileリースは、ワークツリー、Composeプロジェクト、Android書き込み状態、
+Emulator識別情報、ホストエンドポイント割り当てを分離します。Emulatorごとにループバック空間が
+独立しているため、アプリは同じデバイス側バックエンドポートを使えます。
+UI階層、スクリーンショット、タップ、入力、探索操作は後続の `android-ui-observer` で扱います。
+
+## 対象範囲
+
+対象:
+
+- Flutter SDK前提条件の探索と診断
+- `.agent-env.yaml` の明示的Flutter Androidアプリ宣言
+- リースの固定ソースワークツリーからのビルド
+- シェル解釈のない、設定可能なargvビルドコマンド
+- APKパス検証とSHA-256証拠
+- Androidパッケージ・アクティビティの宣言と検証
+- リース所有Emulatorへのインストールと選択Androidランタイムでの起動
+- デバイスTCPポートから選択Composeエンドポイントへの `adb reverse`
+- レジストリに保持するアプリ・ビルド・ネットワーク識別情報
+- 必要に応じたplan/create/show/list/doctor/reconcile/logs/test/destroyの挙動
+- ビルド・インストール・ネットワーク・起動失敗時の逆順補償
+- 名前付きテストでの選択Androidシリアル補間
+- Compose + Android + Flutter混在スタックと同時リース隔離
+- Windows/macOS/Linuxのパス・argv・プロセス挙動とネイティブ偽アダプター検証
+- 適切なSDKと高速化が利用可能な環境での実Flutter + Emulator結合証拠
+- この機能の英日製品文書・設計文書
+
+対象外:
+
+- UIAutomator/Accessibility階層、スクリーンショット、録画
+- 探索的tap/type/back/homeコマンド、観測ストリームとしてのlogcat
+- iOS Simulator、実機Android、リモートAndroidホスト
+- Android/Flutter SDK・システムイメージの自動インストール、SDKライセンス承諾
+- ローカルOCIレジストリ、APK昇格・長期保持、リース消滅後の過去APKの厳密再実行
+- 修正用ワークツリー、悪意あるコードの隔離、今回と無関係な汎用プラグイン基盤
+
+## アーキテクチャ上の意図
+
+既存の `android-emulator` はデバイス・ランタイムリソースです。Flutterを
+`internal/runtime/android` に統合したり、ランタイム型を `flutter-android` に改名したりしません。
+独立したアプリ宣言で、固定ソース、既存Androidランタイム、Flutterプロジェクト、argvビルドコマンド、
+期待APK、パッケージと起動アクティビティ、0個以上のreverseを結び付けます。
+設定・domain・appの調査後にフィールド名を調整しても、この所有境界を維持します。
+境界変更が必要なら実装前に判断を記録し、ADRに昇格します。
+
+当初のマニフェスト案:
+
+```yaml
+version: 1
+
+sources:
+  backend:
+    repository: ../backend
+    default_ref: HEAD
+
+  mobile:
+    repository: ../mobile
+    default_ref: HEAD
+
+runtimes:
+  backend:
+    type: compose
+    source: backend
+    project_directory: .
+    files:
+      - compose.yaml
+
+  phone:
+    type: android-emulator
+    source: mobile
+    avd: Pixel_API_35
+
+applications:
+  mobile-app:
+    type: flutter-android
+    source: mobile
+    runtime: phone
+    project_directory: .
+    build:
+      command:
+        - flutter
+        - build
+        - apk
+        - --debug
+      artifact: build/app/outputs/flutter-apk/app-debug.apk
+    package: com.example.app
+    activity: .MainActivity
+    reverse:
+      - device_port: 8080
+        endpoint: api.http
+
+components:
+  api:
+    runtime: backend
+    compose_services:
+      - api
+    endpoints:
+      http:
+        service: api
+        target: 8080
+
+  mobile:
+    runtime: phone
+    application: mobile-app
+    depends_on:
+      - api
+    provides:
+      - android-ui
+      - mobile-app
+
+stacks:
+  api:
+    roots:
+      - api
+
+  mobile:
+    roots:
+      - mobile
+
+tests:
+  mobile-e2e:
+    stack: mobile
+    source: mobile
+    working_directory: .
+    command:
+      - flutter
+      - test
+      - integration_test
+      - -d
+      - ${android:phone:serial}
+    timeout: 20m
+    artifacts:
+      - build/test-results
+```
+
+これは設計案であり、厳密検証を省略する許可ではありません。最終構文は文書化し負例fixtureで検証します。
+
+## 進捗
+
+- [x] 2026-09-08: masterと作業HEADが `5e5c8b19b5880bff8e3dd97d0947ef47ac9ca066`、ブランチが既に `feat/flutter-android-runtime`、未追跡差分が提供された計画だけであることを確認。
+- [x] 2026-09-08: config/domain/app/runtime/store/CLIを調査。BuildPlan、ソース実体化境界、waitReady/probeReady、cleanup、Reconcile、名前付きテスト展開、CLI接続を拡張する。SQLiteはLease JSON全体を保存するため、追加アプリ記録にSQLマイグレーションは不要。
+- [x] 2026-09-08: 公開CLI変更前に英日製品契約を書く。
+- [x] 2026-09-08: 永続スキーマ変更前に英日設計を書く。
+- [x] 2026-09-08: アプリ宣言の形を決定し文書化する。
+- [x] 2026-09-08: 厳密パースと負例fixtureを追加する。
+- [x] 2026-09-08: Flutter SDK・プロジェクトの前提条件診断を追加する。
+- [x] 2026-09-08: 固定ソースからのビルドを実装する。
+- [x] 2026-09-08: APKダイジェストとビルド識別・証拠を保存する。
+- [x] 2026-09-08: 所有Emulatorシリアルでインストール・起動する。
+- [x] 2026-09-08: エンドポイント解決とリース所有reverseを実装する。
+- [x] 2026-09-08: create補償にアプリを統合する。
+- [x] 2026-09-08: show/doctor/reconcileのアプリ観測を統合する。
+- [x] 2026-09-08: Androidランタイム識別を名前付きテストで明示補間する。
+- [x] 2026-09-08: api/dashboard/mobile/fullの混在fixtureを追加する。
+- [x] 2026-09-08: 同時mobileリース二つの非衝突を証明する。
+- [x] 2026-09-08: 失敗・復旧・隔離の検証を追加する。
+- [ ] 全harnessとGo race検査を実行する。
+- [ ] ネイティブWindows/macOS/Linux証拠と実SDK検証を分けて記録する。
+- [ ] 前提条件が利用可能なら実Flutter + Emulator結合を実行する。
+- [ ] 受け入れ証拠と振り返りを完成する。
+- [ ] PLANS方針に従いcompletedへ移動する。
+
+チェックは予定でなく観測済みの完了を示します。UTC日付、コマンド・テスト・実行識別子、結果を添えます。
+
+
+## 想定外の発見
+
+- 2026-09-08: 提供計画には日本語版がないため、マイルストーンのcommit前に追加・維持する。
+  既存のAndroid予約と操作フェンスは所有規則を変えず利用できる。
+
+OS別Flutter CLI差、Gradle/Java/SDKの設計への影響、追跡ソースへの書き込み、APK・パッケージ・
+アクティビティ探索の制限、install/reverse/起動のcleanupへの影響、Composeエンドポイント解決の制限、
+Flutter結合テストによるAPK置換、高速化不足、既存Android所有・ADB規則との衝突を少なくとも記録します。
+予期しない制限を黙ったskipや所有確認の弱体化に変えません。
+
+- 2026-09-08: 単体・raceテストで、同時mobileリースのソース/APKパス、ダイジェスト証拠、Composeプロジェクト、Android識別、reverseホストポートの分離を検証。失敗fixtureはbuild/install/launch、未確認マッピング所有、パッケージ・reverse欠落、強制cleanupを扱う。
+- 2026-09-08: 独立レビューで初回ビルド隔離だけでは後の強制destroyが生存中かもしれないビルドのソースを削除できると判明。実行前の `build_unconfirmed` 永続化で、再起動後もcleanupを阻止する。復旧には終了証拠の調査が必要で、CLIはガードを黙って解除しない。
+- 2026-09-08: reverse要求は所有の証明ではない。設定を確認できずマッピングが存在する場合は、cleanupで保持・隔離する。不在になれば続行できる。永続書き込みエラーではcleanupを停止する。
+
+## 判断の記録
+
+- 決定: `applications` と `component.application` を使い、既存Lease JSONに識別情報を追加する。
+  選択アプリはソース実体化直後、すべてのランタイムUp前にビルドする。
+  理由: リソース境界と旧行・マニフェスト互換性を保ち、ビルド失敗時の高コスト確保を避ける。
+  日付・担当: 2026-09-08 / implementation。
+- 決定: Flutterアプリのライフサイクルを既存Androidプロバイダーから分離する。
+  理由: PR #2はEmulator単独利用とFlutter非依存を意図し、アプリ処理で所有やcleanupを弱められない。
+  日付・担当: 2026-09-08 / maintainers。
+- 決定: 固定された管理ソースと同じリース内の選択Androidランタイムを必須とする。
+  理由: 出自と所有を明示し、任意の外部Emulatorに接続させない。
+  日付・担当: 2026-09-08 / maintainers。
+- 決定: リース別ホストポートで再ビルドせず、解決TCPエンドポイントへ明示的所有reverseで接続する。
+  理由: デバイスURLを一定にし、ホスト割り当てをComposeプロジェクト別に隔離できる。
+  日付・担当: 2026-09-08 / maintainers。
+- 決定: ビルドはシェル評価のないargv直接実行とする。
+  理由: 3 OSの移植性と既存の実行安全境界を維持する。
+  日付・担当: 2026-09-08 / maintainers。
+- 決定: create時に実際にインストールしたAPKのSHA-256と証拠を保持し、長期昇格は追加しない。
+  理由: レジストリ・保持基盤を早まって導入せず監査可能性を得る。
+  日付・担当: 2026-09-08 / maintainers。
+- 決定: 長期維持する製品・設計文書は英日で提供する。
+  理由: 今後リポジトリ文書を二言語で維持するため。
+  日付・担当: 2026-09-08 / maintainers。
+
+- 決定: 宣言パッケージが既に存在する場合はAPKインストール前に拒否し、インストール後にそのパッケージを必須とする。
+  理由: テンプレートのシステムイメージ由来のパッケージを無関係なAPKダイジェストに結び付けないため。
+  日付・担当: 2026-09-08 / 独立レビューを受けたimplementation。
+- 決定: reverse参照先はループバックTCPホストに限定し、リモートDockerのホストアドレスを捨てて続行せず拒否する。activityでは `$` 入れ子クラスを含むシェル特殊文字を除外する。
+  日付・担当: 2026-09-08 / implementation。
+- 決定: リポジトリのFlutter doctorは現在の宣言ソースcheckoutと全アプリを検査し、ワークツリー確保やDockerを必要としない。createは固定プロジェクトと選択依存先を別途検査する。
+  日付・担当: 2026-09-08 / implementation。
+
+## 成果と振り返り
+
+未完了。完了時に、最終契約、順序、実際のインストールAPKの出自、reverse所有モデル、
+テスト意味、ネイティブ証拠、実Flutter/Emulator証拠、OS・Flutter版の未検証点、
+Android UI観測・成果物昇格の後続作業をまとめます。
+
+## 背景と構成
+
+実装前に読む文書:
+
+- `AGENTS.md`、`ARCHITECTURE.md`、`docs/PLANS.md`
+- `docs/PORTABILITY.md`、`docs/RELIABILITY.md`、`docs/SECURITY.md`、`docs/QUALITY.md`、`docs/roadmap.md`
+- `docs/product-specs/agent-env-mvp.md`、`docs/product-specs/android-emulator.md`
+- `docs/design-docs/android-emulator.md`
+- `docs/exec-plans/completed/agent-env-mvp.md`、`docs/exec-plans/completed/android-emulator-lease.md`
+
+現在の責務:
+
+- config: マニフェストの厳密デコード。stack: 決定的な依存閉包。
+- domain: 具体アダプターに依存しないリース・ソース・コンポーネント・ランタイム・リソース・イベント状態。
+- app: 順序、準備完了判定、補償、証拠、reconcile方針。
+- runtime/compose: Composeの具体操作。runtime/android: Emulatorプロセス・AVD・ポート・デバイス操作。Flutterに依存させない。
+- execx: 移植可能なコマンド・プロセス境界。
+- store/sqlite: 期待状態、リソース識別、予約、イベント、実行、成果物。
+- evidence: 秘匿処理とダイジェスト。paths: ソース内へのパス制限。
+- CLI: 入出力整形・解析。ライフサイクル方針は持たない。
+
+現行名前付きテストの補間は `${lease_id}` と `${env:NAME}` だけです。
+Flutter結合には `${android:phone:serial}` のような安定したランタイム指定を加え、
+環境変数ANDROID_SERIAL、暗黙のadb devices選択、シェル置換に依存させません。
+現Android契約はFlutterビルド、APKインストール、reverse、UI、スクリーンショット、logcatを
+意図的に除外しています。本計画はその安定境界を利用し、所有保証は変更しません。
+
+## 作業計画
+
+### マイルストーン1 — 契約とアプリモデル
+
+現マニフェスト、domainのランタイム・コンポーネント、実行snapshot、SQLiteを調査します。
+製品と設計の `flutter-android-runtime.md` / `flutter-android-runtime.ja.md` を作成し、
+英日索引を更新します。全体移行が未マージでも新規文書の両言語は提供し、無関係な翻訳は重複しません。
+最終名をapplications/workloads等から決め、次を維持します。
+
+1. アプリはEmulatorランタイムとは別。
+2. ソースは固定されリースが実体化する。
+3. 明示選択した所有Emulatorを対象にする。
+4. 設定は厳密かつ移植可能。
+5. 未使用なら旧マニフェストは有効。
+6. アプリ識別は永続化され観測できる。
+
+新しい依存ノードを追加する場合、ARCHITECTUREと日本語版、arch-check、ADRを同時に更新します。
+`agent-env plan . --stack mobile --output json` はアプリ、ソース、対象ランタイム、APKパス、
+reverse要件を表示し、ビルド・ポート確保・Docker/Emulator起動・SDK変更を行いません。
+
+### マイルストーン2 — Flutter前提条件の探索
+
+注入可能でテストできるCLI探索を実装します。インストールやツール変更をせず、実行可能性、
+解析可能なバージョンと証拠、固定ソース内のプロジェクト存在、Androidビルドに必要なメタデータ、
+制限された相対APKパス、package/activity構文、Androidランタイム、選択依存先エンドポイント、
+TCPおよびポート範囲・重複を検査します。通常診断でSDK取得やホスト変更を伴うflutter doctorを使いません。
+`agent-env doctor <repository> --runtime flutter-android` または最終的な文書化済み同等コマンドが、
+環境を確保せず前提条件を報告します。
+
+### マイルストーン3 — ビルドとAPKの出自
+
+固定ワークツリー作成後、可能なら高コスト確保前にビルドします。コマンドはargvで、指定プロジェクト内で
+文書化した環境だけを受け取り、execxで時間制限・キャンセル可能にし、パス逸脱を許さず、stdout/stderrを
+証拠化します。可能なら失敗時に無関係な高コストリソースを起動しません。
+成功後はAPK存在、シンボリックリンク・逸脱拒否、通常ファイル、SHA-256を検査し、コマンド、
+ソースコミット、Flutter版、パス、ダイジェストを保存します。長期昇格とは区別し、ハッシュだけで
+再現可能ビルドと主張しません。show JSONから「どの固定ソースとAPKをインストールしたか」を分かるようにします。
+
+### マイルストーン4 — インストール、reverse、起動
+
+AndroidがREADYになったら、正確な所有シリアルに記録APKをインストールし、パッケージ存在を確認し、
+実Compose観測から依存エンドポイントを解決し、そのシリアルへreverseを設定・検証し、明示アクティビティを
+起動します。すべて成功した後だけアプリをREADYにします。adb devicesの先頭や外部シリアルは使いません。
+
+    emulator-5554 localhost:8080 -> host 127.0.0.1:49173
+    emulator-5556 localhost:8080 -> host 127.0.0.1:49218
+
+このように同じデバイスURLでホストポートを分離します。reverseは既存Androidの互換ローカルADBサーバー
+方針を使い、第二の独立ADBデーモン方針を導入しません。
+
+### マイルストーン5 — 補償、destroy、reconcile
+
+create sagaにアプリ操作を加えます。失敗時は所有を確認したreverseを除去し、ビルド証拠を保持し、
+既存ランタイムを逆順にcleanupし、確認後だけソースをcleanupします。専用Emulator書き込み状態の
+破棄でアプリも消えるため、外部に状態が残らなければグローバルなアンインストール工程は不要です。
+reconcileはAndroid識別、パッケージ存在、reverseの記録先一致、レジストリ内のAPK・ビルド整合性を調べます。
+アプリの前面・実行継続は要求しません。手動アンインストールや必須reverse欠落はDEGRADED、
+識別の曖昧さは未証明デバイスの修復・killでなく隔離にします。
+
+### マイルストーン6 — 名前付きテストとFlutter結合
+
+`${android:<runtime-name>:serial}` を追加し、たとえば
+`[flutter, test, integration_test, -d, '${android:phone:serial}']` で所有デバイスを選べるようにします。
+固定snapshotと観測した所有ランタイムから解決し、不明・不在・非Androidを拒否し、環境の暗黙選択を避け、
+既存のlease_id/env補間を保ちます。integration_testは別テストAPKを再ビルド・再インストールすることがあるため、
+createのAPKを実行したと主張しません。製品・設計とテスト出力に区別を記録します。
+厳密なcreate APKのブラックボックス操作は、証明可能な手段がなければUI observerの後続範囲です。
+
+### マイルストーン7 — スタックfixtureと並行実行
+
+api/dashboard/mobile/fullの依存閉包を検証します。apiとdashboardは明示要求がなければAndroid/Flutterを
+確保せず、mobileはAPI + Emulator + Flutter、fullはさらにDashboardを選びます。
+同時mobile二つのワークツリー、Compose、ホストエンドポイント、AVD状態、シリアル、APKビルド記録を分離し、
+同じデバイスreverseポートを利用可能にし、一方の破棄後も他方がREADYで利用可能と証明します。
+
+### マイルストーン8 — ネイティブ検証と実結合証拠
+
+偽・注入アダプターとパス・argvのテストは3 OSのネイティブCIで実行します。
+`go run ./tools/repoctl check` と文書化済みGo race検査を実行します。
+明示選択する実結合fixtureでは、必要に応じた実Gitワークツリー、実Composeバックエンド、
+Flutterビルド、Emulatorリース、APKインストール、reverse、起動、最終cleanupを使います。
+明示選択後の前提条件不足はskipでなく失敗にします。実Windows/macOSの適切なランナーがなければ
+未解決の実行差として記録し、クロスビルドや偽テストを実SDK検証と報告しません。
+
+## 具体的な手順
+
+1. `git switch master && git pull --ff-only`。
+2. 正確な開始リビジョンを記録する。
+3. `feat/flutter-android-runtime` を作成し切り替える。
+4. harnessと上記の関連文書を読む。
+5. config/domain/app/runtime/storeのスキーマを調査する。
+6. 英日製品・設計を作る。
+7. 最終モデル判断と必要なADRを記録する。
+8. 厳密パースと負例を加える。
+9. 永続フィールド決定後、必要な場合だけマイグレーションを加える。
+10. 注入インターフェースでFlutterコマンド・探索を加える。
+11. ビルドと証拠を実装する。
+12. 既存Android所有モデルでinstall/launch/reverseを実装する。
+13. create補償とdestroy/reconcileに統合する。
+14. 明示シリアル補間を拡張する。
+15. スタック解決と同時リースのテストを加える。
+16. 実結合fixtureを加える。
+17. 重点テスト、全harness、raceを繰り返し実行する。
+18. 検証済みのまとまったcommitを履歴を書き換えずpushする。
+19. 全受け入れ項目に直接証拠を記録する。
+20. 成果と振り返りを完成する。
+21. completedへ移動しリンクを更新する。
+
+## 検証と受け入れ
+
+| ID | 必須の挙動 | 証拠 |
+| --- | --- | --- |
+| F1 | 旧Composeのみ・Androidのみのマニフェストは有効で挙動不変。 | 未検証 |
+| F2 | 不正なアプリ設定を外部作用前の厳密検証で拒否。 | 未検証 |
+| F3 | mobile planがビルド・ランタイム操作なしで要件を表示。 | 未検証 |
+| F4 | Flutter実行ファイル・プロジェクト不足を前提失敗としリソースを漏らさない。 | 未検証 |
+| F5 | 固定ソースでargvビルドしコミット・Flutter版・ログ・APK SHA-256を記録。 | 未検証 |
+| F6 | 記録APKだけを選択した所有Emulatorシリアルへインストール。 | 未検証 |
+| F7 | package/activity起動成功、または安全なcreate補償。 | 未検証 |
+| F8 | 宣言デバイスTCPを実選択Compose先へreverseし記録。 | 未検証 |
+| F9 | 二つのmobileは同じデバイスポートを使いホストとEmulatorを隔離。 | 未検証 |
+| F10 | reverse/install/launch失敗後に非所有操作を残さず証拠保持。 | 未検証 |
+| F11 | 手動パッケージ除去・reverse欠落をDEGRADEDとして観測。 | 未検証 |
+| F12 | reconcileが未証明の外部デバイスに接続・killしない。 | 未検証 |
+| F13 | 一方破棄後も他方がREADYで利用可能。 | 未検証 |
+| F14 | Androidシリアル補間は所有する選択Androidだけを解決し暗黙選択しない。 | 未検証 |
+| F15 | テスト証拠が再ビルド・再インストールとcreate APKを区別。 | 未検証 |
+| F16 | 4スタックが文書化した最小のコンポーネント集合へ解決。 | 未検証 |
+| F17 | 新規製品・設計文書に英日版と索引がある。 | 未検証 |
+| F18 | 新しい責務境界追加後のarchitecture/docs検査が成功。 | 未検証 |
+| F19 | 最終実装の全harnessとraceが成功。 | 未検証 |
+| F20 | 3 OSネイティブ証拠を実Flutter + Emulatorと区別して正確に記録。 | 未検証 |
+| F21 | 利用可能なら少なくとも1回の実Flutter + Emulator + backend結合が成功、または不足基盤を偽証拠で代用せず明記。 | 未検証 |
+
+すべてに直接証拠が必要です。成功した実行を記録しないテスト名だけでは証拠になりません。
+
+## 冪等性と復旧
+
+planと前提検査は読み取り専用です。ビルド失敗で使い捨てワークツリーに未追跡出力が残っても、
+既存のtracked-dirty・所有規則に従います。出力除去のために隔離を弱めません。
+ビルド後の外部作用は後続が依存する前に永続識別情報を持ちます。
+アプリcleanupが除去できるのは、記録シリアル・リースの所有を証明したreverse、
+リース成果物・状態ディレクトリ内のアプリ証拠、所有AVD破棄で間接的に消える専用アプリ状態だけです。
+
+グローバルにADB kill-server、SDK/Flutter共有キャッシュ削除、ユーザーAVDテンプレート削除、
+無関係デバイスのuninstall、任意シリアルのclear、現在の空き具合だけによるポート・リソース除去を行いません。
+反復destroy/reconcileを安全にし、再利用ホストポート・シリアル・PID・AVD名・別デバイスパッケージを
+元リースの所有物と誤認しません。曖昧なら予約と証拠を保持して隔離し、forceでも所有証明を省略しません。
+
+## 成果物と注記
+
+実装マイルストーンの検証（2026-09-08）:
+
+- `go test ./internal/config`: 成功。設定形式・依存関係の負例を含む。
+- `go test ./internal/app`: 成功。mobileの並行実行、補償、DEGRADED観測、所有シリアル補間、永続的な未確認状態ガードを検証。
+- Go 1.27.1で `go test -race ./...`: Linuxで成功。
+- `go test ./internal/runtime/android -count=10`: 成功。Androidの汎用argv、識別、共有サーバー、パッケージ、アクティビティ、reverseのfixtureを検証。
+- `go test ./internal/app -run 'TestMobile(ConcurrentNamed|FailedNamed|Unconfirmed)' -count=10`: 成功。名前付きテストは各リースのシリアルを使い、APK出自に関する注記を保持。
+- 全harnessは当初、並行作業中の未整形の新規ファイルで失敗。その後、この計画の更新中に意図的に未同期だった日本語版で失敗。検査は弱めていない。commit前に整合したチェックポイントで再実行する必要がある。
+- 実Flutter fixtureは `flutterintegration` で明示選択する。最初のローカル実行はSDK依存準備を確認するため実装担当が中断した。この失敗は製品の受け入れ証拠ではない。fixtureを変えず通常のFlutter/Gradle依存で再実行中。
+
+
+成功・失敗の試行を再構成できる簡潔な証拠を保持します。
+
+- リースID、ソース別名と固定コミット、マニフェストダイジェスト
+- Flutter実行ファイル・版、秘匿済みargv、ビルド作業ディレクトリ、stdout/stderr
+- APK相対パスとSHA-256
+- Androidランタイム名とシリアル、パッケージとアクティビティ
+- エンドポイント識別、デバイスポートと解決ホスト先
+- install/reverse/launch結果、関連時刻、cleanup・補償結果
+
+継承した秘密をSQLite、ログ、argv snapshot、成果物メタデータに保存せず既存秘匿処理を使います。
+大きなGradle/Flutterキャッシュは証拠でないため成果物ストアにコピーしません。
+
+## インターフェースと依存
+
+app/domain分離を保つ追加・拡張を行います。概念上の形:
+
+    FlutterProvider.Validate(...)
+    FlutterProvider.Build(...)
+    AndroidApplicationProvider.Install(...)
+    AndroidApplicationProvider.Inspect(...)
+    AndroidApplicationProvider.ConfigureReverse(...)
+    AndroidApplicationProvider.Launch(...)
+    AndroidApplicationProvider.Cleanup(...)
+
+調査後に最終名を変えても、Emulator所有や独立start/stopを持つプロバイダーを作りません。
+それは `app.AndroidProvider` のままです。appがsource → Flutter build → Compose/Android作成 →
+APK install → endpoint解決 → reverse → activity起動 → observationの順序・補償を担い、
+runtimeはapp方針が要求した具体外部操作だけを行います。
+
+外部ツールはFlutter、互換Dart/Gradle/Java/Androidビルドツール、adb、既存プロバイダー経由の
+Emulator、選択スタックに必要な場合のDocker Composeです。コア手順にPOSIX shell、Bash、Make、
+PowerShell、symlink契約、CGO、暗黙の先頭デバイス、固定ホスト公開ポートを導入しません。
+
+## マイルストーン1で決める未解決事項
+
+1. applications/workloads等の最終名。
+2. package/activityを明示必須とするか、脆い追加依存なしにAPKから探索できるか。
+3. Flutter選択をPATHのみとするか、明示ホストパスも認めるか。
+4. build/application/reverseのSQLite正規化とリソースJSONの使い分け。
+5. シリアル補間を汎用ランタイムプロパティへ広げるか、Android専用に留めるか。
+6. mutableキャッシュを再現入力とせず、どのキャッシュメタデータを証拠にするか。
+7. 実結合を既存CIで実行できるか、高速化可能な任意選択ランナー・ローカルで行うか。
+
+関連公開契約を安定とする前に、判断の記録で明示的に解決します。

@@ -1,0 +1,76 @@
+---
+status: active
+owner: maintainers
+last_verified: 2026-09-08
+---
+
+# Flutter Android applications
+
+[日本語](flutter-android-runtime.ja.md)
+
+A Flutter application is separate from its lease-owned `android-emulator` runtime.
+Existing Compose-only and Android-only manifests require no changes.
+
+## Manifest contract
+
+Declare `applications.<name>` with `type: flutter-android`, a known `source`,
+a known Android `runtime`, and source-relative `project_directory` (default `.`).
+Declare `build.command` as a nonempty argv array: its first element selects the
+Flutter executable on PATH or an explicit host path; subsequent arguments are
+passed literally without shell interpretation. `build.artifact` is a nonempty
+project-relative `.apk` path confined to that project. Optional `build.timeout`
+is a positive duration, defaulting to `20m`. The package and launch activity are
+always explicit: `package` is a dotted Android identifier; `activity` is either
+a fully qualified class name or a leading-dot class relative to the package.
+Activity segments start with an ASCII letter or underscore and contain only ASCII
+letters, digits and underscores; nested-class `$` names are deliberately excluded
+to keep device-shell commands literal.
+
+A component selects an application with `application: <name>` and must use the
+same Android runtime. An optional `reverse` array declares `device_port` in
+1..65535 and `endpoint: <component>.<endpoint>`. The endpoint must belong to a
+transitive dependency of every component selecting that application and use TCP
+(the endpoint protocol defaults to TCP). Endpoint references must be unambiguous.
+Packages and device ports must be unique across applications sharing a runtime;
+separate runtimes and separate leases may reuse them.
+
+## Lifecycle and evidence
+
+Planning lists selected applications, source, runtime, build artifact and reverse
+requirements without building or allocating runtimes. Prerequisite diagnostics
+are available through `agent-env doctor <repository> --runtime flutter-android`.
+They inspect every declared application in its current source checkout, check the
+selected Flutter executable, project metadata and Android AVD prerequisites, and
+require no Docker or worktree allocation. They do not install SDKs or accept
+licenses. Create independently validates pinned projects and selected dependencies.
+Builds run in pinned disposable source worktrees,
+with bounded argv execution and captured, redacted output. A regular confined
+APK is hashed before installation. Evidence retains source commit, Flutter
+version, build command/path/output, APK SHA-256 and target runtime/serial.
+A digest identifies the installed build; it does not prove reproducibility or
+promise retention of the APK after destruction.
+
+Creation rejects an already-installed declared package before installing, so a
+package inherited from an AVD template cannot be attributed to the new APK digest.
+It installs only on the confirmed lease-owned serial and verifies the package,
+resolves actual selected Compose host endpoints, requires loopback TCP addresses
+(remote Docker hosts are rejected), configures and verifies reverse
+mappings, then launches the explicit activity. READY requires all these steps.
+The application need not remain foreground or running afterward. Missing packages
+or required mappings degrade a lease; ambiguous device identity quarantines it.
+A requested mapping is not proven owned: if establishment was never confirmed
+and a mapping exists, cleanup quarantines it without removal. An absent mapping
+is safe to leave absent. Cleanup removes only confirmed owned mappings and
+destroys private Emulator state
+through the existing Android lifecycle. Build and failure evidence remain available.
+A durable `build_unconfirmed` guard is set before the build and remains after a
+crash or unconfirmed process/output termination. It blocks subsequent source
+cleanup, including forced destroy after restart. Investigate termination evidence;
+the CLI does not silently clear this guard.
+
+Named tests may use `${android:<runtime>:serial}` only for a selected, confirmed
+lease-owned Android runtime. Existing `${lease_id}` and `${env:NAME}` remain
+supported. Flutter integration tests may rebuild/reinstall a different APK;
+their results do not prove execution of the lifecycle-installed APK. Named-test
+output and persisted run `notes` state this distinction. UI automation and
+historical artifact promotion remain separate follow-up work.
