@@ -37,6 +37,18 @@ func fixture(t *testing.T) string {
 
 const metadata = "---\nstatus: active\nowner: maintainers\nlast_verified: 2026-09-07\n---\n"
 
+func TestFormattingCRLFAndActualDrift(t *testing.T) {
+	root := t.TempDir()
+	put(t, root, "main.go", "package main\r\n\r\nfunc main() {}\r\n")
+	if err := formatCheck(root); err != nil {
+		t.Fatalf("Windows checkout rejected: %v", err)
+	}
+	put(t, root, "main.go", "package main\r\nfunc main(){ }\r\n")
+	if err := formatCheck(root); err == nil || !strings.Contains(err.Error(), "FMT-001") {
+		t.Fatalf("real formatting drift missed: %v", err)
+	}
+}
+
 func TestDocsBrokenFixtures(t *testing.T) {
 	for _, tc := range []struct{ name, path, data, code string }{
 		{"missing-link", "ARCHITECTURE.md", "[missing](nowhere.md)", "DOC-004"},
@@ -116,6 +128,8 @@ func TestArchitectureBoundaries(t *testing.T) {
 		{"runtime/compose", "internal/cli", true},
 		{"store/sqlite", "internal/app", true},
 		{"store/sqlite", "internal/domain", false},
+		{"cli", "internal/runtime/compose", false},
+		{"cli", "internal/app", false},
 	} {
 		t.Run(tc.pkg+"/"+tc.dependency, func(t *testing.T) {
 			root := fixture(t)

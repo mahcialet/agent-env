@@ -154,7 +154,9 @@ func formatCheck(root string) error {
 		if err != nil {
 			return err
 		}
-		if !bytes.Equal(b, formatted) {
+		// Git for Windows can check out text files with CRLF. Newline encoding
+		// does not change Go formatting; all other gofmt differences still fail.
+		if !bytes.Equal(bytes.ReplaceAll(b, []byte("\r\n"), []byte("\n")), formatted) {
 			return fmt.Errorf("AGENTENV-FMT-001: %s needs formatting; run gofmt -w on this file", p)
 		}
 	}

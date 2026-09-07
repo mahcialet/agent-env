@@ -21,9 +21,12 @@ Deliver a usable native Windows/macOS/Linux CLI that reads an explicit target ma
 - [ ] Milestones 4–7: Compose adapter, create/destroy saga, reconciliation/TTL/GC, named tests and evidence.
 - [ ] Milestone 8: concurrency, rollback, dirty-source and multi-repository integration tests; actual native CI evidence; completion audit and plan relocation.
 
-Current next action: complete and run the initial harness, then implement the domain/paths/store and manifest/stack units. Bootstrap documents describe required contracts; their presence is not proof of product behavior. Acceptance below remains pending until direct evidence is recorded.
+Current next action: integrate Compose with create/destroy and evidence, then validate concurrent real-container lifecycle behavior. Domain, paths, SQLite, strict manifest/stack and Git adapter units pass locally; native tests for this new slice remain pending. Bootstrap documents describe required contracts; their presence is not proof of product behavior. Acceptance below remains pending until direct evidence is recorded.
 
 ## Surprises & Discoveries
+
+- 2026-09-07: bootstrap commit 327ca02 pushed to origin/feat/agent-env-mvp. CI run 34117876714 passed Linux/macOS on both Go minors and all five cross-builds; both Windows checks failed because CRLF checkout bytes differed from gofmt LF output. Format validation now normalizes CRLF only, with a regression proving actual formatting drift still fails. Native rerun pending.
+- 2026-09-07: Go 1.27.1 full repoctl check passed for domain/paths/policy/config/stack/Git/SQLite/read-only CLI foundation; SQLite targeted tests also passed Go 1.26.8 and race. Compose/lifecycle/evidence remain under implementation.
 
 - 2026-09-07: the handoff called license selection unresolved, but actual LICENSE is MIT, copyright 2026 mahcialet. Preserve it.
 - 2026-09-07: Go was absent from PATH. Coordinator verified official SHA-256 downloads for Go 1.27.1 and 1.26.8; select an explicit installed toolchain or install a supported version before running commands. Do not add a toolchain directive solely to hide the missing prerequisite.
