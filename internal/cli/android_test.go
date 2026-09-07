@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"github.com/mahcialet/agent-env/internal/domain"
 	"github.com/mahcialet/agent-env/internal/store/sqlite"
 	"os"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"strings"
 	"testing"
@@ -156,5 +158,80 @@ func TestAndroidDoctorLeaseIDInspectsRecordedLeaseWithoutPrerequisites(t *testin
 	}
 	if got.SchemaVersion != 1 || got.Data.Lease.ID != l.ID || got.Data.Lease.Observed != "released" || got.Data.OK {
 		t.Fatalf("lease ID interpreted as repository/prerequisite request: %s", out.String())
+	}
+}
+
+type manifestAndroidValidator struct {
+	app.AndroidProvider
+	calls   []string
+	invalid map[string]error
+}
+
+func (a *manifestAndroidValidator) Validate(_ context.Context, template string) (domain.AndroidEmulator, error) {
+	a.calls = append(a.calls, template)
+	return domain.AndroidEmulator{Template: template}, a.invalid[template]
+}
+
+func TestAndroidRepositoryDoctorValidatesEverySelectedTemplate(t *testing.T) {
+	repo := t.TempDir()
+	manifest := strings.Replace(androidCLIManifest, "components:", "  second: {type: android-emulator, source: self, avd: Other_API35}\ncomponents:", 1)
+	if err := os.WriteFile(filepath.Join(repo, ".agent-env.yaml"), []byte(manifest), 0600); err != nil {
+		t.Fatal(err)
+	}
+	for _, problem := range []string{"", "missing template", "locked template", "corrupt config", "unsupported image architecture"} {
+		t.Run(problem, func(t *testing.T) {
+			validator := &manifestAndroidValidator{invalid: map[string]error{}}
+			if problem != "" {
+				validator.invalid["Pixel.API35"] = errors.New(problem)
+			}
+			digest, err := doctorManifest(context.Background(), repo, "android-emulator", validator)
+			if !reflect.DeepEqual(validator.calls, []string{"Pixel.API35", "Other_API35"}) {
+				t.Fatalf("selected AVD validation missing: %v", validator.calls)
+			}
+			if problem == "" {
+				if err != nil || digest == "" {
+					t.Fatalf("valid templates: %q %v", digest, err)
+				}
+			} else if err == nil || !strings.Contains(err.Error(), "device (AVD Pixel.API35): "+problem) {
+				t.Fatalf("invalid selected AVD reported healthy: %q %v", digest, err)
+			}
+		})
+	}
+	validator := &manifestAndroidValidator{}
+	if _, err := doctorManifest(context.Background(), repo, "compose", validator); err != nil || len(validator.calls) != 0 {
+		t.Fatalf("Compose doctor unexpectedly checked Android: %v %v", validator.calls, err)
+	}
+}
+
+func TestAndroidRepositoryDoctorReportsSelectedAVDDiagnostics(t *testing.T) {
+	repo := t.TempDir()
+	if err := os.WriteFile(filepath.Join(repo, ".agent-env.yaml"), []byte(androidCLIManifest), 0600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("ANDROID_HOME", filepath.Join(t.TempDir(), "absent-sdk"))
+	t.Setenv("ANDROID_SDK_ROOT", os.Getenv("ANDROID_HOME"))
+	state := filepath.Join(t.TempDir(), "unused-state")
+	t.Setenv("AGENT_ENV_HOME", state)
+	var out, diagnostics bytes.Buffer
+	cmd := New(&out, &diagnostics)
+	cmd.SetArgs([]string{"doctor", repo, "--runtime", "android-emulator", "--output", "json"})
+	err := cmd.Execute()
+	if err == nil || ExitCode(err) != 3 {
+		t.Fatalf("unusable selected AVD accepted: %v %s", err, out.String())
+	}
+	var response struct {
+		Data struct {
+			OK          bool     `json:"ok"`
+			Diagnostics []string `json:"diagnostics"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(out.Bytes(), &response); err != nil {
+		t.Fatal(err)
+	}
+	if response.Data.OK || !strings.Contains(strings.Join(response.Data.Diagnostics, "; "), "Android runtime device (AVD Pixel.API35)") {
+		t.Fatalf("missing selected-runtime diagnostic: %s", out.String())
+	}
+	if _, err := os.Stat(state); !os.IsNotExist(err) {
+		t.Fatalf("doctor allocated state: %v", err)
 	}
 }

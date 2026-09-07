@@ -17,6 +17,7 @@ Resolve seven new PR #2 findings on dedicated branch `feat/android-emulator-leas
 - [x] 2026-09-08: Rejected incompatible image architectures and shared ADB prerequisites before reservation.
 - [x] 2026-09-08: Rejected overlap with immutable Android inputs and portable case-folding runtime collisions.
 - [x] 2026-09-08: Continued independent reverse runtime cleanup after a failure, retaining sources and quarantine.
+- [ ] Repair observed Linux process-exit observation race without weakening ownership checks.
 - [ ] Validate harness, regression/race tests and native CI; commit/push; reply and resolve threads.
 
 ## Surprises & Discoveries
@@ -70,3 +71,7 @@ Harness checkpoint: first check overlapped unfinished CLI test formatting and fa
 Independent reviews found no blocker in SDK/cleanup, but identified CLI registry creation before app preflight as an additional input-mutation path. Accepted: delay CREATE's store initialization until reservation, rather than duplicate validation. Root's app path tests alone did not establish full CLI input immutability. CLI correction in progress.
 
 Combined harness and real Docker integration passed. Actual repository-specific Android doctor passed using the provided SDK and retained template (read-only probes, no Emulator startup). First full race run failed while creating a fixture in `TestLifecycleCleanupFailureAndDirtySourceQuarantine/down`, before its failure injection, with a context deadline. The shared fixture has a 50ms readiness budget; targeted repeat and full rerun will distinguish scheduling sensitivity. No test deadline or production check was weakened.
+
+Final CLI factory correction: CREATE defers opening SQLite/home until first Reserve; no duplicate preflight. Factory+app tests with real Git verify template/image inputs and absent homes remain untouched on rejection, and successful reserve/destroy/close work. Final combined harness and CLI race passed. Full race rerun and the earlier failing fixture repeated ten times passed with unchanged deadlines.
+
+CI finding on implementation `1dc0592`: Ubuntu Go 1.26 failed `TestDetachedSurvivesLaunchingCLI/root_exits_true` at detached_test.go:103 (`read /proc/2837/stat: no such process`), job101859998959/run34160140655. This is a concrete Linux process-exit observation race; investigating the native adapter rather than rerunning away the failure or weakening identity checks.

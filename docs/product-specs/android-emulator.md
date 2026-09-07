@@ -26,12 +26,18 @@ stacks:
 template. Android runtimes reject Compose files, project directories, services
 and endpoints. Compose and Android may coexist in one stack. Components sharing
 one Android runtime share that lease's Emulator; different leases always receive
-distinct writable state, AVD identities, console/ADB ports and serials.
+distinct writable state, AVD identities, console/ADB ports and serials. Android
+runtime names must also be distinct under case folding on every OS. Generated
+runtime directories must not overlap any selected template or system-image tree,
+including aliases through existing symlinks.
 
 `plan . --stack android-runtime --output json` describes the requirement without
 SDK discovery, reservations or runtime effects. `create` validates runnable SDK tools, host acceleration, and AVD
 before reservation; Android-only stacks do not require Docker. Missing tools or
-templates are prerequisite failures (exit status 3). Default boot budget is two
+templates are prerequisite failures (exit status 3). Installed image ABI metadata
+(`source.properties`) must identify an accelerated native-host-compatible image;
+template ABI/CPU settings must agree. Existing shared ADB servers are checked
+before reservation; an absent server is allowed and started later. Default boot budget is two
 minutes. Ready requires the owned device's Android boot-completed property. The local ADB
 server must be compatible with the selected SDK. Creation starts an absent server
 separately from Emulator containment; malformed or incompatible existing servers
@@ -41,10 +47,17 @@ and destroying a lease never stops that shared SDK service.
 `runtimes[].android` records the template, SDK/system image, private paths, unique
 AVD name, console/ADB ports, serial, native process birth identity and state.
 `doctor --runtime android-emulator` reports SDK and AVD prerequisites;
-`doctor <lease-id>` reports live lease diagnostics. Show/list/reconcile observe
+`doctor <lease-id>` reports live lease diagnostics. With a repository argument,
+Android doctor validates each declared Android runtime's selected AVD, including
+its template, image and host prerequisites. `logs <lease-id>` exposes retained
+Emulator and shared-ADB stdout/stderr for active or released leases, with
+`--component` selection and secret redaction; these are process logs, not logcat. Show/list/reconcile observe
 the live device; confirmed manual termination degrades an active lease.
 
-Boot failure compensates in reverse order. Destroy verifies the unique AVD name
+Boot failure compensates in reverse order. A runtime cleanup failure retains its
+evidence and reservation while independent runtimes are still cleaned up.
+Sources remain until all runtime cleanup is confirmed. Operation cancellation or
+loss of the registry fence stops further effects. Destroy verifies the unique AVD name
 and requests stop on the same authenticated console connection, then confirms
 termination before deleting private writable state. Ambiguous process/AVD
 identity, changed ownership evidence, unsafe paths or incomplete cleanup
