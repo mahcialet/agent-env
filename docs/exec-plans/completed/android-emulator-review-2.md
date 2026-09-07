@@ -1,5 +1,5 @@
 ---
-status: active
+status: completed
 owner: maintainers
 last_verified: 2026-09-08
 ---
@@ -18,7 +18,7 @@ Resolve seven new PR #2 findings on dedicated branch `feat/android-emulator-leas
 - [x] 2026-09-08: Rejected overlap with immutable Android inputs and portable case-folding runtime collisions.
 - [x] 2026-09-08: Continued independent reverse runtime cleanup after a failure, retaining sources and quarantine.
 - [x] 2026-09-08: Repaired observed Linux process-exit observation race without weakening ownership checks.
-- [ ] Validate harness, regression/race tests and native CI; commit/push; reply and resolve threads.
+- [x] 2026-09-08: Validated harness, regression/race tests, real Docker integration and native CI; committed/pushed; replied to and resolved all seven new threads.
 
 ## Surprises & Discoveries
 
@@ -30,7 +30,9 @@ Prior read-only SDK tool checks did not validate architecture or shared ADB comp
 
 ## Outcomes & Retrospective
 
-Pending.
+All seven new review findings are implemented with regression coverage and responses; all 11 existing threads are resolved. Input isolation required deferring the CLI registry open, because app-level preflight alone did not prevent that earlier write. Independent cleanup required distinguishing local adapter deadlines from global cancellation. Native CI also exposed a Linux procfs exit race, now covered by a deterministic kernel-boundary regression.
+
+No ownership, fencing, portability or timeout check was relaxed. The previously observed real Emulator rootless-group shutdown limitation remains unresolved; this follow-up validated the supplied SDK through read-only doctor and did not claim a new successful full Emulator integration run. Real macOS/Windows SDK execution remains unverified. The review-fix acceptance criteria are satisfied by local harness/race/real Docker tests, native OS CI, and confirmed thread resolution.
 
 ## Context and Orientation
 
@@ -79,3 +81,5 @@ CI finding on implementation `1dc0592`: Ubuntu Go 1.26 failed `TestDetachedSurvi
 Linux race fix: per-PID stat reads classify ESRCH alongside ENOENT; leader absence still requires whole-group observation, and disappeared census entries still make the census unstable (never proof of cleanup). Deterministic real-kernel test opens stat while child lives and reads after reaping to exercise ESRCH. Native focused tests repeated 100 times, race tests repeated 50 times and full execx package passed. Other read errors remain errors. Independent review confirmed conservative behavior.
 
 All seven new PR threads received commit/test-specific replies and were resolved. GitHub query confirms all 11 current threads resolved. Separate review verified CREATE's lazy store closes the input registry-write issue and independently passed its factory/store tests.
+
+Final combined local validation at `fcf3f3c`: Go 1.26.8 `repoctl check` passed all format/unit/vet/docs/generated/architecture stages; Go 1.27.1 full `go test -race ./...` passed. Real CLI/Docker integration after the lazy-create-factory change also passed. Native Windows/macOS/Linux on Go 1.26/1.27 and five CGO-disabled target builds passed in both push/PR CI (22 successful checks); the two redundant CI integration jobs were still running at this documentation checkpoint. Final PR check status is verified after the documentation push.
