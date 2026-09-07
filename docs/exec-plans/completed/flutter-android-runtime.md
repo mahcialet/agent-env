@@ -1,5 +1,5 @@
 ---
-status: active
+status: completed
 owner: maintainers
 last_verified: 2026-09-08
 ---
@@ -241,14 +241,15 @@ validation. Any final syntax must be documented and covered by negative fixtures
 - [x] 2026-09-08: Prove two concurrent mobile leases do not collide.
 - [x] 2026-09-08: Add failure/recovery/quarantine coverage.
 - [x] 2026-09-08: Final implementation Go 1.26.8 full harness passed all
-      phases; Go 1.27.1 `go test -race ./...` passed. Latest-source CI is pending.
+      phases; Go 1.27.1 `go test -race ./...` passed. Latest-source CI passed at `81102f1` and validated docs at `d4d4289`.
 - [x] 2026-09-08: Native CI `34166963420` passed all OS/toolchain jobs at
       `8975096`; real SDK evidence remains separate and Linux-only.
 - [x] 2026-09-08: Run real Flutter + Emulator integration on Linux;
       `TestRealFlutterAndroidBackendLease` passed in 248.46s. Two-real-lease
       extension subsequently passed in 88.99s; native Windows/macOS SDK runs remain unverified.
-- [ ] Complete acceptance evidence and retrospective.
-- [ ] Move this plan to `docs/exec-plans/completed/` according to
+- [x] 2026-09-08: Completed all acceptance evidence and retrospective;
+      independent read-only final review reported no concrete findings.
+- [x] 2026-09-08: Moved both languages to `docs/exec-plans/completed/` according to
       `docs/PLANS.md`.
 
 A checked item means observed completion, not intention. Add the UTC date,
@@ -439,7 +440,7 @@ ownership assertion.
 
 ## Outcomes & Retrospective
 
-Draft delivered outcome: `applications` binds strict pinned Flutter builds to
+Delivered outcome: `applications` binds strict pinned Flutter builds to
 independently owned Android runtimes. Builds precede expensive runtime creation;
 install, exact package verification, loopback reverse and confirmed launch precede
 READY. Existing Lease JSON retains source/build/APK/network identity and separate
@@ -449,7 +450,7 @@ Two real debug leases now prove separate guest connectivity, private helper
 lifetimes and sibling-preserving non-force cleanup. UI observation, long-term APK
 promotion and real Windows/macOS SDK validation remain follow-up work.
 
-Retrospective draft: green injected tests did not expose a real shared netsimd
+Retrospective: green injected tests did not expose a real shared netsimd
 lifetime coupling. Strict process-group cleanup correctly quarantined that case;
 fixing helper discovery and port ownership preserved the safety check. Process
 termination, required evidence persistence and launch success needed independent
@@ -457,24 +458,18 @@ durable confirmation to survive crashes and later forced cleanup. Negative
 fixtures now exercise each distinction. Timing-based fake readiness failures
 required deterministic triggers without removing wait-loop cancellation coverage.
 Temporary-storage sizing is an infrastructure prerequisite, not a reason to resize
-templates or weaken checks. Local final race/harness passed; finish latest-source CI before archival.
+templates or weaken checks. Local final race/harness and latest-source native CI passed. Both language
+versions are archived with the failure history and remaining real-SDK platform gaps.
 
 
-Not completed. Contracts (`4457dfd`) and lifecycle (`8975096`) were pushed;
-draft PR #4 is open. One real Linux Flutter/Emulator/backend run has passed.
-Two-real-lease integration has now passed after helper isolation. Latest-source native CI and archival remain outstanding.
-
-At completion, summarize:
-
-- delivered manifest/application contract;
-- final lifecycle ordering;
-- exact provenance retained for the installed APK;
-- endpoint/reverse ownership model;
-- test integration semantics;
-- native platform evidence;
-- real Flutter/Emulator evidence;
-- known platform or Flutter-version gaps;
-- follow-up work for Android UI observation and artifact promotion.
+Completed on 2026-09-08. Contracts (`4457dfd`), initial lifecycle (`8975096`),
+recovery guards (`e2c23f8`), diagnostic/test fixes (`aee0982`) and final private
+helper isolation/two-lease fixture (`81102f1`) were delivered through PR #4.
+The validated bilingual documentation checkpoint is `d4d4289`. All F1–F21
+requirements have direct evidence below, including the successful two-real-lease
+Linux run and complete native CI. Human PR approval/merge is separate from this
+implementation and plan completion. Real Windows/macOS Flutter/Emulator runs
+remain an explicitly recorded platform gap, as permitted by F20/F21.
 
 ## Context and Orientation
 
@@ -816,8 +811,8 @@ tests must not be reported as real Emulator/Flutter validation.
 | F16 | `api`, `dashboard`, `mobile` and `full` stacks resolve to the documented lightest component sets. | PASS same check: `TestMobilePlanStackClosure` covers all four named stacks. |
 | F17 | New durable Flutter Android product/design docs exist in both English and Japanese and are indexed. | PASS `docs-check` within Go 1.26.8 full check at `8975096`; English/Japanese product/design docs and both indexes present. |
 | F18 | Architecture/docs validators pass after any new application/workload dependency boundary is introduced. | PASS `arch-check` and `docs-check` in same full check; `TestArchitectureBoundaries` includes explicit Flutter cross-adapter negative fixtures. |
-| F19 | Full repository harness and Go race checks pass on final implementation. | PASS final local implementation: Go 1.26.8 full harness all phases and Go 1.27.1 full `go test -race ./...`. Latest implementation native CI pending; earlier failures retained below. |
-| F20 | Native Windows/macOS/Linux portability evidence is recorded honestly and separately from real Flutter+Emulator execution. | Linux native unit/race and real SDK evidence recorded separately below. Native CI `34166963420` passed all jobs at `8975096`; later source changes await final CI. Windows/macOS real SDK runs unverified. |
+| F19 | Full repository harness and Go race checks pass on final implementation. | PASS final local implementation: Go 1.26.8 full harness all phases and Go 1.27.1 full `go test -race ./...`. Latest implementation CI passed at `81102f1`; validated documentation CI passed at `d4d4289`. Earlier failures retained below. |
+| F20 | Native Windows/macOS/Linux portability evidence is recorded honestly and separately from real Flutter+Emulator execution. | PASS recorded separately: Linux real SDK run; native six OS/Go and five cross-build plus integration CI succeeded at final implementation `81102f1` and documentation `d4d4289`. Real Windows/macOS SDK runs remain unverified. |
 | F21 | At least one real Flutter+Emulator+backend integration run passes when suitable local/CI prerequisites are available, or the missing infrastructure is explicitly recorded without substituting fake evidence. | PASS `TestRealFlutterAndroidBackendLease`: initial one-lease run 248.46s and latest two-debug-lease run 88.99s, including fresh sibling guest HTTP and both normal cleanups. Toolchain/source/APK evidence below. |
 
 Acceptance requires direct evidence for every item. A test name without a
@@ -859,15 +854,34 @@ On ambiguous Android identity, retain reservations/evidence and quarantine.
 
 ## Artifacts and Notes
 
+Final completion evidence (2026-09-08):
+
+- Final implementation `81102f1`: [push CI 34168707969](https://github.com/mahcialet/agent-env/actions/runs/34168707969)
+  and [PR CI 34168710704](https://github.com/mahcialet/agent-env/actions/runs/34168710704)
+  both passed. Validated documentation checkpoint `d4d4289`:
+  [push CI 34168751870](https://github.com/mahcialet/agent-env/actions/runs/34168751870)
+  and [PR CI 34168753637](https://github.com/mahcialet/agent-env/actions/runs/34168753637)
+  both passed all 12 jobs: six native Windows/macOS/Linux × Go 1.26/1.27, five
+  cross-build targets and integration.
+- A separate read-only reviewer, not the production namespace change's author,
+  inspected `81102f1`: lifecycle/layout/ownership markers and full cleanup path,
+  detached environment including Windows case folding/Job checks, unit mappings,
+  and docs. No concrete findings were reported. This independent review and
+  native CI do not replace actual Windows/macOS Flutter/Emulator execution.
+- All acceptance items are satisfied with the scope-qualified evidence below.
+  Both plans moved to completed and navigation was updated. Past failed checks,
+  failed real attempts and real-SDK platform gaps remain preserved.
+
+
 - Final implementation and two-lease fixture were committed as `81102f1` and
   pushed for latest-source CI. The local harness/race and successful real run
-  below validate this implementation; archival waits for that commit's CI.
+  below validate this implementation; that commit's CI subsequently passed.
 
 
 - Final implementation local validation passed: Go 1.27.1
   `go test -race ./...` (app 22.990s, Android 2.145s, CLI 1.769s, SQLite 11.985s)
   and Go 1.26.8 full harness, all phases (Android 0.322s, CLI 0.228s,
-  SQLite 5.810s). Latest implementation native CI remains pending; no archival yet.
+  SQLite 5.810s). Latest implementation CI passed at `81102f1`; validated documentation CI passed at `d4d4289`.
 
 
 Successful two-real-lease evidence (2026-09-08):
@@ -889,8 +903,8 @@ Successful two-real-lease evidence (2026-09-08):
 - At 22:59:38 UTC, ADB and both exactly scoped Compose projects were empty.
   This successful run supersedes the open two-lease acceptance gap but does not
   erase the historical failed attempts recorded below. Latest-source full race
-  and Go 1.26.8 full harness subsequently passed; native CI remains pending,
-  so the plan is not ready for archival yet.
+  and Go 1.26.8 full harness subsequently passed; latest implementation and
+  validated documentation CI then passed, satisfying the archival gate.
 
 
 - Push CI `34168074785` and PR CI `34168077225` at `aee0982` passed all

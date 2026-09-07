@@ -1,9 +1,9 @@
 ---
-status: active
+status: completed
 owner: maintainers
 last_verified: 2026-09-08
-translation_of: docs/exec-plans/active/flutter-android-runtime.md
-source_sha256: ad507c70e7b58a84884582cdc7bb558e2cda6e7fb615288fff0eb33287f06d5c
+translation_of: docs/exec-plans/completed/flutter-android-runtime.md
+source_sha256: b1af6528828cf73c5590534d490a0d4336f662e9baa34ea316a437fda602fce5
 ---
 
 # 環境リース内にFlutter Androidアプリケーションを実体化する
@@ -195,11 +195,11 @@ tests:
 - [x] 2026-09-08: api/dashboard/mobile/fullの混在fixtureを追加する。
 - [x] 2026-09-08: 同時mobileリース二つの非衝突を証明する。
 - [x] 2026-09-08: 失敗・復旧・隔離の検証を追加する。
-- [x] 2026-09-08: 最終実装のGo 1.26.8全harnessが全工程成功、Go 1.27.1の `go test -race ./...` も成功。最新ソースCIは未完了。
+- [x] 2026-09-08: 最終実装のGo 1.26.8全harnessが全工程成功、Go 1.27.1の `go test -race ./...` も成功。最新ソースCIは `81102f1`、検証済み文書CIは `d4d4289` で成功。
 - [x] 2026-09-08: ネイティブCI `34166963420` は `8975096` で全OS・Go版ジョブ成功。実SDK証拠は別扱いでLinuxのみ。
 - [x] 2026-09-08: Linuxで実Flutter + Emulator結合 `TestRealFlutterAndroidBackendLease` が248.46秒で成功。二つの実リースへの拡張もその後88.99秒で成功。Windows/macOSの実SDK実行は未検証。
-- [ ] 受け入れ証拠と振り返りを完成する。
-- [ ] PLANS方針に従いcompletedへ移動する。
+- [x] 2026-09-08: 全受け入れ証拠と振り返りを完成。独立した読み取り専用の最終レビューで具体的指摘なし。
+- [x] 2026-09-08: PLANS方針に従い両言語をcompletedへ移動し索引を更新。
 
 チェックは予定でなく観測済みの完了を示します。UTC日付、コマンド・テスト・実行識別子、結果を添えます。
 
@@ -304,27 +304,25 @@ Flutter結合テストによるAPK置換、高速化不足、既存Android所有
 
 ## 成果と振り返り
 
-提供成果の草案: `applications` により厳密な固定ソースFlutterビルドを独立所有のAndroidランタイムに結び付ける。
+提供成果: `applications` により厳密な固定ソースFlutterビルドを独立所有のAndroidランタイムに結び付ける。
 高コストなランタイム作成前にビルドし、install、正確なパッケージ確認、loopback reverse、起動成功確認の後にREADYとする。
 既存Lease JSONにソース・ビルド・APK・ネットワーク識別と、プロセス・証拠・起動の独立した確認を保持する。
 名前付きテストは観測した所有シリアルを使い、テストAPKの再ビルド可能性とcreateの出自を明確に区別する。
 実debugリース二つで別々のゲスト接続、専用補助プロセス寿命、他方を保つforceなしcleanupを証明した。
 UI観測、長期APK昇格、Windows/macOSの実SDK検証は後続作業。
 
-振り返りの草案: 注入テスト成功では実netsimd共有の寿命結合を検出できなかった。
+振り返り: 注入テスト成功では実netsimd共有の寿命結合を検出できなかった。
 厳密なプロセスグループcleanupは正しく隔離し、補助探索とポート所有を直すことで検査を維持できた。
 クラッシュや後の強制cleanupに備え、プロセス終了、必須証拠保存、起動成功を独立して永続確認する必要があった。
 負例fixtureは各区別を検証する。偽準備完了の時間依存失敗は、待機キャンセル検証を残して決定的な発火条件に直した。
-一時容量は基盤の前提であり、テンプレート縮小や検査弱体化の理由ではない。ローカル最終race/harnessは成功。移動前に最新ソースのCIを終える。
+一時容量は基盤の前提であり、テンプレート縮小や検査弱体化の理由ではない。ローカル最終race/harnessと最新ソースのネイティブCIは成功。過去失敗と実SDKの残るOS差を保持し、両言語を完了計画として保存した。
 
 
-未完了。契約（`4457dfd`）とライフサイクル（`8975096`）をpushし、draft PR #4を作成済み。
-Linuxの実Flutter/Emulator/backend実行は1回成功。二つの実リースによる結合は補助隔離後に成功。
-最新ソースのネイティブCIと完了計画への移動は未完了。
-
-完了時に、最終契約、順序、実際のインストールAPKの出自、reverse所有モデル、
-テスト意味、ネイティブ証拠、実Flutter/Emulator証拠、OS・Flutter版の未検証点、
-Android UI観測・成果物昇格の後続作業をまとめます。
+2026-09-08に完了。契約（`4457dfd`）、初回ライフサイクル（`8975096`）、復旧ガード（`e2c23f8`）、
+診断・テスト修正（`aee0982`）、最終の専用補助隔離と二つのリースfixture（`81102f1`）をPR #4で提供した。
+検証済み二言語文書のチェックポイントは `d4d4289`。F1〜F21すべての直接証拠を下記に記録し、
+Linuxの二つの実リース成功と全ネイティブCIを含む。人間によるPR承認・mergeは実装・計画完了とは別。
+Windows/macOSの実Flutter/Emulator実行は、F20/F21で認める明示的なOS検証差として残す。
 
 ## 背景と構成
 
@@ -483,8 +481,8 @@ Flutterビルド、Emulatorリース、APKインストール、reverse、起動�
 | F16 | 4スタックが文書化した最小のコンポーネント集合へ解決。 | 同全検査の `TestMobilePlanStackClosure` が4スタックを検証し成功。 |
 | F17 | 新規製品・設計文書に英日版と索引がある。 | `8975096` のGo 1.26.8全検査内のdocs-checkで成功。英日製品・設計文書と両索引あり。 |
 | F18 | 新しい責務境界追加後のarchitecture/docs検査が成功。 | 同全検査のarch-checkとdocs-checkが成功。`TestArchitectureBoundaries` にFlutterのアダプター間依存の明示負例を追加。 |
-| F19 | 最終実装の全harnessとraceが成功。 | 最終ローカル実装で成功: Go 1.26.8全harness全工程とGo 1.27.1全 `go test -race ./...`。最新実装のネイティブCIは未完了。過去失敗は下記に保持。 |
-| F20 | 3 OSネイティブ証拠を実Flutter + Emulatorと区別して正確に記録。 | Linuxネイティブ単体・raceと実SDK証拠は下記で区別。ネイティブCI `34166963420` は `8975096` で全ジョブ成功。後続ソース変更は最終CI待ち。Windows/macOSの実SDKは未検証。 |
+| F19 | 最終実装の全harnessとraceが成功。 | 最終ローカル実装で成功: Go 1.26.8全harness全工程とGo 1.27.1全 `go test -race ./...`。最新実装CIは `81102f1`、検証済み文書CIは `d4d4289` で成功。過去失敗は下記に保持。 |
+| F20 | 3 OSネイティブ証拠を実Flutter + Emulatorと区別して正確に記録。 | 区別して記録し成功: Linux実SDK、最終実装 `81102f1` と文書 `d4d4289` の6 OS/Goネイティブ・5クロスビルド・結合CI。Windows/macOS実SDKは未検証。 |
 | F21 | 利用可能なら少なくとも1回の実Flutter + Emulator + backend結合が成功、または不足基盤を偽証拠で代用せず明記。 | `TestRealFlutterAndroidBackendLease` 成功: 初回1リース248.46秒、最新debug2リース88.99秒。他方の新しいゲストHTTPと両方の通常cleanupを含む。ツール・ソース・APK証拠は下記。 |
 
 すべてに直接証拠が必要です。成功した実行を記録しないテスト名だけでは証拠になりません。
@@ -504,12 +502,26 @@ planと前提検査は読み取り専用です。ビルド失敗で使い捨て�
 
 ## 成果物と注記
 
+最終完了証拠（2026-09-08）:
+
+- 最終実装 `81102f1` の[push CI 34168707969](https://github.com/mahcialet/agent-env/actions/runs/34168707969)と
+  [PR CI 34168710704](https://github.com/mahcialet/agent-env/actions/runs/34168710704)は両方成功。
+  検証済み文書 `d4d4289` の[push CI 34168751870](https://github.com/mahcialet/agent-env/actions/runs/34168751870)は
+  [PR CI 34168753637](https://github.com/mahcialet/agent-env/actions/runs/34168753637)とともに
+  全12ジョブ成功（Windows/macOS/Linux × Go 1.26/1.27の6ネイティブ、5クロスビルド、結合）。
+- production namespace変更の実装者とは別の読み取り専用レビュアーが `81102f1` を確認。
+  lifecycle/layout/所有マーカーとcleanup全体、Windows大小文字・Job検査を含むdetached環境、単体検証の対応、文書を調査し、具体的指摘なし。
+  この独立レビューとネイティブCIはWindows/macOSの実Flutter/Emulator実行を代替しない。
+- 全受け入れ項目は下記の検証範囲を明示した証拠で充足。両計画をcompletedへ移動し索引を更新した。
+  過去の検査失敗、実実行失敗、実SDKのOS検証差は保持する。
+
+
 - 最終実装と二つのリースfixtureを `81102f1` としてcommitし、最新ソースCIのためpushした。
-  下記のローカルharness/raceと実実行成功はこの実装を検証する。移動はこのcommitのCIを待つ。
+  下記のローカルharness/raceと実実行成功はこの実装を検証する。このcommitのCIはその後成功した。
 
 
 - 最終実装のローカル検証が成功。Go 1.27.1の `go test -race ./...`（app 22.990秒、Android 2.145秒、CLI 1.769秒、SQLite 11.985秒）と、Go 1.26.8の全harness全工程（Android 0.322秒、CLI 0.228秒、SQLite 5.810秒）が成功。
-  最新実装のネイティブCIは未完了で、まだ移動しない。
+  最新実装CIは `81102f1`、検証済み文書CIは `d4d4289` で成功。
 
 
 二つの実リースの成功証拠（2026-09-08）:
@@ -526,7 +538,7 @@ planと前提検査は読み取り専用です。ビルド失敗で使い捨て�
   ホストだけの確認ではなく、存続するゲスト接続を証明した。両方の通常Destroyが成功しfixtureルートも削除。
 - 22:59:38 UTCにADBと両方の対象限定Composeプロジェクトが空であることを確認。
   二つのリースの受け入れ不足は解消したが、下記の過去失敗履歴は残す。
-  最新ソースの全raceとGo 1.26.8全harnessはその後成功。ネイティブCIは未完了で、まだ完了計画へ移動しない。
+  最新ソースの全raceとGo 1.26.8全harnessはその後成功。その後、最新実装と検証済み文書のネイティブCIが成功し、移動条件を満たした。
 
 
 - `aee0982` のpush CI `34168074785` とPR CI `34168077225` は全ジョブ成功（6ネイティブOS/Go、5クロスビルド、結合）。
