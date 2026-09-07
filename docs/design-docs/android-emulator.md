@@ -87,5 +87,5 @@ PID reuse, concurrent reservations, compensation, sibling isolation and quaranti
 Native CI and cross-builds are distinct from actual accelerated Emulator tests.
 Actual SDK integration has been exercised on Linux; real Windows/macOS SDK,
 acceleration and shared-server startup behavior remain unverified.
-The [ExecPlan](../exec-plans/active/android-emulator-lease.md) records evidence,
+The [ExecPlan](../exec-plans/completed/android-emulator-lease.md) records evidence,
 implementation decisions, unresolved prerequisites and platform gaps.

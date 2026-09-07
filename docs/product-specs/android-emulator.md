@@ -54,7 +54,7 @@ state are never deleted. An externally occupied reserved port fails creation wit
 
 SDK images and compatible host acceleration are external prerequisites. Native
 fake-adapter and process tests cover Windows/macOS/Linux; actual Emulator evidence
-is recorded separately in the [ExecPlan](../exec-plans/active/android-emulator-lease.md).
+is recorded separately in the [ExecPlan](../exec-plans/completed/android-emulator-lease.md).
 Missing SDKs and cross-builds are never reported as real Emulator validation.
 See the [design](../design-docs/android-emulator.md) for recovery and reservations.
 

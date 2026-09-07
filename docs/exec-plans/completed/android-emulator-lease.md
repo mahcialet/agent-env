@@ -1,5 +1,5 @@
 ---
-status: active
+status: completed
 owner: maintainers
 last_verified: 2026-09-07
 ---
@@ -75,16 +75,19 @@ Out of scope:
       retention and immutable identity implemented; SQLite Go 1.26 tests and
       Go 1.27 race tests passed, including concurrent independent connections.
 - [x] 2026-09-07 UTC: Adapter lifecycle and durable markers implemented with
-      fake native console/app/SQLite integration; real SDK validation continues.
+      fake native console/app/SQLite integration and successful real Linux SDK validation.
 - [x] 2026-09-07 UTC: Integrated Android create/destroy compensation and dispatch.
 - [x] 2026-09-07 UTC: Added live missing/degraded and identity quarantine behavior.
 - [x] 2026-09-07 UTC: App tests with real SQLite prove distinct concurrent AVDs,
       port pairs and serials, sibling survival, timeout compensation and forced
       cleanup refusal. Go 1.26 focused suite x20 and Go 1.27 race x10 passed.
 - [x] 2026-09-07 UTC: All six native Windows/macOS/Linux Go minor jobs pass
-      on 8777125; real Linux SDK integration passed. Real Windows/macOS
+      on final implementation 6638e1f; real Linux SDK integration passed. Real Windows/macOS
       Emulator/acceleration remains unverified and is explicitly recorded.
-- [ ] Complete acceptance evidence and retrospective.
+- [x] 2026-09-07 15:45 UTC: All acceptance evidence and retrospective completed.
+      Final implementation 6638e1f passed CI 34139612127 (all 12 jobs);
+      real Linux SDK integration passed on 5dedf9e, whose Linux implementation
+      is unchanged by the final Windows-only completion fix.
 
 A checked item means observed completion, not intention. Add the UTC date
 and evidence when checking an item.
@@ -212,7 +215,7 @@ and evidence when checking an item.
   integration; final Doctor change receives the next harness/native CI pass.
 
 - 2026-09-07 UTC: Final shared-ADB implementation `5dedf9e` passed root's real
-  Emulator fixture in 37.437s (two isolated READY resources, sibling survival,
+  Emulator fixture (exit 0) (two isolated READY resources, sibling survival,
   manual-stop DEGRADED and complete cleanup). Native Doctor reports SDK tools,
   KVM v12 and `adb_server: compatible protocol 41` (exit 0).
 - 2026-09-07 UTC: CI 34138988850 passed Android tests on all native platforms,
@@ -225,6 +228,11 @@ and evidence when checking an item.
   is the guardian's final filesystem effect, and a deterministic real empty-Job
   regression plus immediate evidence-directory removal test cover the race.
   Windows Go 1.26/1.27 cross-builds pass; native CI is the remaining proof.
+
+- 2026-09-07 15:45 UTC: CI 34139612127 on `6638e1f` passed all six native OS/Go
+  jobs (including the Windows atomic-completion regressions), all five no-CGO
+  builds, Linux race and actual Compose integration. This closes the final
+  platform finding; acceptance is complete and this plan is archived.
 
 Record unexpected emulator, AVD, path, locking, process, or platform
 behavior here. Include the failing command or test name and the resulting
@@ -275,10 +283,40 @@ design consequence.
 
 ## Outcomes & Retrospective
 
-Not completed.
+Delivered Android Emulator resources through manifest planning, SDK/AVD/shared-ADB
+diagnostics, transactionally exclusive reservations, create/readiness, live inspection,
+reconciliation and conservative destroy/compensation. Private AVDs start with fresh
+writable state from SDK images; template userdata and sibling state remain isolated.
+Flutter behavior is not coupled to this lifecycle.
 
-At completion, summarize delivered behavior, native-platform evidence,
-known limitations, accepted tradeoffs, and follow-up plans.
+Final implementation `6638e1f` passed all 12 jobs in CI
+[34139612127](https://github.com/mahcialet/agent-env/actions/runs/34139612127):
+six native Windows/macOS/Linux Go 1.26/1.27 jobs, five CGO-disabled builds and
+Linux race/real Compose integration. Local full harness and race checks also pass.
+Real Linux/KVM Emulator integration passed repeatedly, including on `5dedf9e`;
+the subsequent implementation change touches only Windows completion evidence.
+That fixture exercises real app/SQLite/SDK behavior with a synthetic Source;
+actual Git worktrees and Compose remain covered by their separate real integration.
+
+The useful lessons were observable rather than theoretical: modern images can use
+a data seed directory, Emulator shutdown may exceed ten seconds, a Windows Job
+name does not survive without a retained handle, and zero live members precedes
+completion of the guardian's evidence writes. Independent reviews and native tests
+turned these findings into conservative barriers and explicit regressions. Shared
+ADB startup also had to stay outside Emulator and bounded-command containment.
+No tests, architecture gates, ownership checks or portability requirements were relaxed.
+
+Known limits and follow-up scope:
+
+- Real Windows/macOS Emulator and acceleration were not executed; native process,
+  path, argv, protocol-fixture and harness tests did execute on both platforms.
+- Unix rootless live groups and ambiguous Windows identity/proof retain quarantine
+  rather than assuming lineage. Direct cross-tool ADB server/version replacement
+  remains outside coordination; use a stable compatible local server.
+- Failed-run evidence remains at the two recorded temporary roots; all four leases
+  were recovered through ordinary destroy and independently confirmed released.
+- Flutter builds/APK installation, UI observation, physical devices and remote
+  Emulator hosts remain separate future work.
 
 ## Context and Orientation
 
@@ -320,7 +358,7 @@ writable state atomically under the existing operation-lock model.
 
 Observable result:
 
-    agent-env doctor
+    agent-env doctor --runtime android-emulator
 
 reports emulator prerequisites accurately.
 
@@ -379,9 +417,9 @@ the other usable.
 | A5 | Emulator boot timeout triggers compensation. | `TestAndroidBootTimeoutCompensates` uses explicit 50ms budget and verifies resources removed plus durable allocation failure event; repeated race passed. |
 | A6 | Cleanup uncertainty results in quarantine. | `TestAndroidUncertainIdentityQuarantinesEvenForce`, reused console/marker, partial launch, canceled handshake, released-state and stopped-marker reappearance regressions all pass. |
 | A7 | Manual emulator termination is detected by reconcile. | `TestAndroidMissingProcessReconcilesDegraded` and adapter missing-process/sibling test pass; real fixture passed owned manual console termination and DEGRADED reconcile. |
-| A8 | Destroying one lease leaves a sibling lease unchanged. | App concurrent test checks sibling ready and unchanged userdata after repeated destroy; real two-Emulator fixture running. |
-| A9 | Windows/macOS/Linux path and argv handling has native evidence. | All six native OS/Go jobs passed on 8777125 (CI 34137644672), including Windows guardian/argv/Unicode/session tests and macOS cancellation x50. Final narrower PID-race guard is being verified on 007969d. Real Windows/macOS SDK execution is an explicit gap. |
-| A10 | Repository harness and race tests pass. | Go 1.26 full repoctl check twice; Go 1.27 full race on dfff6c2 passed (exit 0); real Docker regression passed. Final revised native CI pending. |
+| A8 | Destroying one lease leaves a sibling lease unchanged. | App concurrent test checks sibling ready and unchanged userdata after repeated destroy; real two-Emulator fixture passed on 5dedf9e. |
+| A9 | Windows/macOS/Linux path and argv handling has native evidence. | All six native OS/Go jobs passed on final 6638e1f (CI 34139612127), including Windows guardian/argv/Unicode/session/atomic-completion tests and macOS cancellation x50. Actual Windows/macOS Emulator execution remains an explicit gap. |
+| A10 | Repository harness and race tests pass. | Repeated local Go 1.26 repoctl check and Go 1.27 race passed. Final CI 34139612127 on 6638e1f passed every native harness job, Linux full race and real Docker integration. Five CGO-disabled build targets also passed. |
 
 ## Idempotence and Recovery
 
@@ -401,7 +439,25 @@ Store compact evidence references in this plan. Put large emulator logs,
 test outputs, and screenshots in the configured artifact location rather
 than embedding them into the plan.
 
-Record:
+Final reproducible commands (set SDK/template environment variables using the
+native environment mechanism for the host, not a required shell script):
+
+```text
+go run ./tools/repoctl check
+go test -race ./...
+go run ./tools/repoctl test-integration
+go test -tags=androidintegration ./internal/runtime/android -run ^TestRealAndroidEmulatorLeases$ -v -count=1
+go run ./cmd/agent-env doctor --runtime android-emulator --output json
+```
+
+The real fixture used `ANDROID_HOME=/home/mahcialet/Android/Sdk`,
+`ANDROID_AVD_HOME=/tmp/agent-env-android-template-yd9v9q2t/avd`, and
+`AGENT_ENV_ANDROID_TEMPLATE=agent_env_test_api35`. The SDK image is
+`system-images;android-35;default;x86_64` revision 2, Emulator 37.1.11.0
+build 15917651, platform-tools 37.0.1-15733141 and KVM v12 on Linux 6.12.107.
+Template/tool paths are temporary validation assets, not required production paths.
+
+Evidence records distinguish:
 
 - tested revision
 - host OS
@@ -413,17 +469,19 @@ Record:
 
 ## Interfaces and Dependencies
 
-Expected interfaces:
+Delivered interfaces:
 
+    AndroidProvider.Doctor(...)
     AndroidProvider.Validate(...)
-    AndroidProvider.Plan(...)
     AndroidProvider.Create(...)
     AndroidProvider.Inspect(...)
     AndroidProvider.Destroy(...)
 
-Do not expose raw subprocess management to the application layer.
-The adapter uses the existing cross-platform command runner and returns
-stable domain observations.
+Planning remains pure in app; it does not invoke an Android provider. Raw subprocess
+management stays inside the adapter/execx boundary. Bounded SDK commands use Runner,
+persistent Emulator/shared-SDK startup uses DetachedProcess, and the adapter returns
+stable domain observations. SQLite Reserve assigns durable port identities inside
+its transaction; app re-reads that snapshot under the acquired operation lock.
 
 Expected external tools:
 

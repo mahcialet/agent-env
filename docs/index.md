@@ -8,7 +8,7 @@ last_verified: 2026-09-07
 
 Start with [architecture](../ARCHITECTURE.md), [MVP specification](product-specs/agent-env-mvp.md), and the [completed ExecPlan](exec-plans/completed/agent-env-mvp.md).
 
-Current extension: [Android Emulator contract](product-specs/android-emulator.md) and its [active ExecPlan](exec-plans/active/android-emulator-lease.md).
+Delivered extension: [Android Emulator contract](product-specs/android-emulator.md) and its [completed ExecPlan](exec-plans/completed/android-emulator-lease.md).
 
 - [Product specifications](product-specs/index.md): user-visible contracts.
 - [Design documents](design-docs/index.md): mechanisms and boundaries.
