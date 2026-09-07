@@ -1,7 +1,7 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-07
+last_verified: 2026-09-08
 ---
 
 # Reliability and recovery
@@ -58,3 +58,18 @@ Plans and leases record the selected absolute, symlink-resolved `manifest_path`,
 SQLite reserves private AVD identities and even/odd console/ADB port pairs before startup. An ownership marker records launch intent and native process birth identity outside disposable AVD state. Cleanup verifies AVD identity and sends kill on the same authenticated console connection, then requires process-tree and port absence before deleting private writable state. Logs and markers remain evidence. A missing launch identity, recycled resource, or uncertain descendant observation quarantines the lease and retains reservations; force cannot override it.
 
 Android-only registry reconciliation does not require Docker inventory. Compose orphan inventory runs when Compose leases are registered, or for an empty registry; Android inspection is scoped to recorded identities. Reconcile observes manual termination but never adopts or restarts an Emulator.
+
+The shared local ADB server has a separate lifetime from each lease. Creation
+establishes protocol compatibility at `127.0.0.1:5037` with a direct read-only
+`host:version` probe before launching an Emulator; an absent server is started
+separately through the detached-process API. A mismatched, malformed or
+unobservable existing server causes a prerequisite failure without replacement.
+Boot observation repeats the compatibility guard before running the SDK client;
+it reports a missing shared prerequisite instead of starting or replacing it.
+
+Startup diagnostics and identity remain in `adb-server.stdout.log`, `adb-server.stderr.log` and
+`adb-server-start.json` beside the runtime evidence. A later allocation failure
+does not authorize stopping this host service. Destroy and GC remove only owned
+Emulator resources; they never issue global ADB server cleanup. Recovery must
+restore the shared prerequisite without treating its process as a lease-owned
+Emulator or discarding failed-start evidence.

@@ -20,6 +20,8 @@ import (
 type Adapter struct {
 	Runner    execx.Runner
 	Processes execx.DetachedProcess
+	// ProbeADB injects the read-only shared-server protocol boundary in tests.
+	ProbeADB func(context.Context) (protocol int, exists bool, err error)
 }
 
 func (a Adapter) runner() execx.Runner {
@@ -120,6 +122,19 @@ func (a Adapter) Doctor(ctx context.Context) (map[string]string, error) {
 			return result, fmt.Errorf("Android %s prerequisite: %w", tool.key, err)
 		}
 		result[tool.key] = strings.TrimSpace(r.Stdout + "\n" + r.Stderr)
+	}
+	protocol, err := parseADBProtocol(result["adb"])
+	if err != nil {
+		return result, err
+	}
+	ready, err := a.compatibleADB(ctx, protocol)
+	if err != nil {
+		result["adb_server"] = "unavailable"
+		return result, err
+	}
+	result["adb_server"] = "not running; separate SDK server startup required"
+	if ready {
+		result["adb_server"] = fmt.Sprintf("compatible protocol %d", protocol)
 	}
 	avds, err := avdRoot()
 	if err != nil {

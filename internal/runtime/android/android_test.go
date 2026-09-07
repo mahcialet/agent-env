@@ -28,7 +28,10 @@ func (r *testRunner) Run(_ context.Context, c execx.Command) (execx.Result, erro
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.commands = append(r.commands, c)
-	if len(c.Args) > 4 && c.Args[4] == "shell" {
+	if len(c.Args) == 1 && c.Args[0] == "version" {
+		return execx.Result{Stdout: "Android Debug Bridge version 1.0.41\nVersion 37.0.1\n"}, nil
+	}
+	if len(c.Args) > 6 && c.Args[6] == "shell" {
 		return execx.Result{Stdout: r.boot}, nil
 	}
 	return execx.Result{Stdout: "fake prerequisite version"}, nil
@@ -147,7 +150,7 @@ func fixture(t *testing.T) (Adapter, domain.Runtime, *testProcess) {
 	t.Setenv("ANDROID_SDK_ROOT", sdk)
 	t.Setenv("ANDROID_AVD_HOME", avds)
 	p := &testProcess{}
-	a := Adapter{Runner: &testRunner{boot: "1\n"}, Processes: p}
+	a := Adapter{Runner: &testRunner{boot: "1\n"}, Processes: p, ProbeADB: func(context.Context) (int, bool, error) { return 41, true, nil }}
 	d, err := a.Validate(context.Background(), "Pixel")
 	if err != nil {
 		t.Fatal(err)
@@ -504,9 +507,9 @@ func TestReadinessPinsLocalADBServer(t *testing.T) {
 	runner.mu.Unlock()
 	found := false
 	for _, cmd := range commands {
-		if len(cmd.Args) > 4 && cmd.Args[4] == "shell" {
+		if len(cmd.Args) > 6 && cmd.Args[6] == "shell" {
 			found = true
-			if strings.Join(cmd.Args[:4], " ") != "-L tcp:localhost:5037 -s "+r.Android.Serial {
+			if strings.Join(cmd.Args[:6], " ") != "-H 127.0.0.1 -P 5037 -s "+r.Android.Serial {
 				t.Fatalf("unscoped adb: %+v", cmd)
 			}
 			for _, key := range []string{"ADB_SERVER_SOCKET", "ANDROID_ADB_SERVER_ADDRESS", "ANDROID_ADB_SERVER_PORT", "ANDROID_SERIAL"} {

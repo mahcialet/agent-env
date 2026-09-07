@@ -81,7 +81,9 @@ Out of scope:
 - [x] 2026-09-07 UTC: App tests with real SQLite prove distinct concurrent AVDs,
       port pairs and serials, sibling survival, timeout compensation and forced
       cleanup refusal. Go 1.26 focused suite x20 and Go 1.27 race x10 passed.
-- [ ] Verify supported native platforms or record explicit platform gaps.
+- [x] 2026-09-07 UTC: All six native Windows/macOS/Linux Go minor jobs pass
+      on 8777125; real Linux SDK integration passed. Real Windows/macOS
+      Emulator/acceleration remains unverified and is explicitly recorded.
 - [ ] Complete acceptance evidence and retrospective.
 
 A checked item means observed completion, not intention. Add the UTC date
@@ -179,6 +181,36 @@ and evidence when checking an item.
   narrow second-read PID reuse race; the missing-job branch now rejects any live
   PID on that second read before considering empty-Job evidence.
 
+- 2026-09-07 UTC: Root independently reran the real integration on committed
+  revision `007969d` with Go 1.27.1: PASS (exit 0), READY serials 5554/5556,
+  sibling survival, manual-stop DEGRADED observation and final cleanup. Full
+  Go 1.26 harness and Go 1.27 race passed before that commit. CI 34137644672
+  passed every native OS/Go job and five no-CGO builds on `8777125`; final
+  `007969d` CI 34137899276 passed all 12 jobs, including Linux race/real Compose.
+
+- 2026-09-07 UTC: Final source review established that Windows ADB daemon
+  startup uses DETACHED_PROCESS without escaping inherited Jobs (AOSP Android 17
+  and Microsoft Job documentation). Auto-start inside an Emulator Job could keep
+  its cleanup alive forever. The adapter now establishes a compatible shared ADB
+  service before Emulator launch, using a separate detached startup only if absent.
+  Shared-server PID, errors and stdout/stderr remain separate retained diagnostics;
+  neither compensation nor destroy targets this host service.
+- 2026-09-07 UTC: ADB clients can automatically kill protocol-mismatched servers
+  even with a non-autostart numeric host. Direct bounded `host:version` observation
+  now rejects malformed/incompatible existing servers before operational SDK
+  commands. Boot probes explicitly prohibit autostart; short-lived/racing SDK
+  starters may converge through observed compatible readiness without assigning
+  shared-server identity to an Emulator. Focused startup/order/cancel/version
+  regressions were added; final integrated checks are running.
+
+- 2026-09-07 UTC: Independent review accepted shared ADB containment and the
+  steady-server version guard. Direct external server replacement between probe
+  and SDK command remains outside coordination; this is documented in Security.
+  A host-wide lock or a complete replacement for SDK ADB operations is not added.
+  Doctor now reports compatible/absent/incompatible shared-server state without
+  starting or stopping it. Full Go 1.26 harness and Go 1.27 race passed after
+  integration; final Doctor change receives the next harness/native CI pass.
+
 Record unexpected emulator, AVD, path, locking, process, or platform
 behavior here. Include the failing command or test name and the resulting
 design consequence.
@@ -204,6 +236,12 @@ design consequence.
   uncertain lineage, since recycled PGIDs cannot prove ownership for a kill.
   Rationale: native CI disproved name persistence without handles; ownership
   checks must survive both launcher exit and root exit. Date: 2026-09-07.
+- Decision: Shared ADB is an SDK host service, outside each Emulator Job/group.
+  Probe its protocol directly; start it through a separate detached process when
+  absent, preserve diagnostics and wait at most 20s for compatible readiness.
+  Use non-autostart operational clients and never stop the shared server during
+  lease cleanup. Rationale: preserves Windows job termination and avoids SDK
+  auto-replacement of incompatible host daemons. Date: 2026-09-07.
 - Decision: Manifest runtime type is `android-emulator`, with `source` and `avd`;
   Android components omit compose_services. Doctor gains runtime selection and
   lease diagnostics while existing Compose defaults remain. Rationale: explicit
@@ -327,7 +365,7 @@ the other usable.
 | A6 | Cleanup uncertainty results in quarantine. | `TestAndroidUncertainIdentityQuarantinesEvenForce`, reused console/marker, partial launch, canceled handshake, released-state and stopped-marker reappearance regressions all pass. |
 | A7 | Manual emulator termination is detected by reconcile. | `TestAndroidMissingProcessReconcilesDegraded` and adapter missing-process/sibling test pass; real fixture passed owned manual console termination and DEGRADED reconcile. |
 | A8 | Destroying one lease leaves a sibling lease unchanged. | App concurrent test checks sibling ready and unchanged userdata after repeated destroy; real two-Emulator fixture running. |
-| A9 | Windows/macOS/Linux path and argv handling has native evidence. | Native macOS/Linux Go 1.26/1.27 passed on dfff6c2 (CI 34136969462). Windows exposed named Job lifetime failure; repair and new native evidence pending. Cross-builds alone do not satisfy this row. |
+| A9 | Windows/macOS/Linux path and argv handling has native evidence. | All six native OS/Go jobs passed on 8777125 (CI 34137644672), including Windows guardian/argv/Unicode/session tests and macOS cancellation x50. Final narrower PID-race guard is being verified on 007969d. Real Windows/macOS SDK execution is an explicit gap. |
 | A10 | Repository harness and race tests pass. | Go 1.26 full repoctl check twice; Go 1.27 full race on dfff6c2 passed (exit 0); real Docker regression passed. Final revised native CI pending. |
 
 ## Idempotence and Recovery

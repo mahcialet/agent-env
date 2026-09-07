@@ -1,7 +1,7 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-07
+last_verified: 2026-09-08
 ---
 
 # Security and trust
@@ -39,3 +39,16 @@ Cleanup validates pinned source and runtime ownership before deletion. Dirty tra
 ## Android host trust
 
 Installed SDK tools, immutable system images and AVD templates are trusted host inputs. Templates contribute hardware configuration; each lease starts with fresh private writable state, without sharing template userdata or snapshots. The adapter rejects unsafe writable paths, symlinks and template locks. Console authentication remains enabled; its token is read locally and never stored in registry metadata. ADB targets the local server explicitly. Direct host modification can invalidate ownership and cause quarantine; these leases do not isolate hostile SDK tools or users.
+
+The server on `127.0.0.1:5037` is shared host state. Before Emulator launch or an
+ADB boot query, the adapter directly requests `host:version` and checks it against
+the SDK client's protocol version. It rejects mismatches and malformed replies
+without invoking a client that could kill the existing server on mismatch.
+An absent server may be started separately through the SDK's detached startup
+path, with diagnostics retained. Its process identity does not confer lease
+ownership: compensation, destroy and GC never stop or replace the global server.
+Inherited ADB routing and serial variables are cleared, and boot queries name the
+reserved serial explicitly. These guards do not lock out concurrent host changes
+or make a hostile local server trustworthy.
+
+The ADB protocol check is an observation of the current shared server, not a host-wide lock. Direct external server replacement or SDK version changes between that observation and an SDK command can still race with the SDK's own version handling. Keep a compatible shared server stable while leases are active; cross-tool server replacement is outside agent-env coordination.

@@ -184,6 +184,12 @@ func (a Adapter) Create(ctx context.Context, r domain.Runtime) (domain.Runtime, 
 	if err := makePrivateAVD(r); err != nil {
 		return r, err
 	}
+	if err := a.ensureADBServer(ctx, r); err != nil {
+		if ctx.Err() != nil {
+			return r, err
+		}
+		return r, errors.Join(app.ErrPrerequisite, err)
+	}
 	if err := ctx.Err(); err != nil {
 		return r, err
 	}
@@ -192,7 +198,7 @@ func (a Adapter) Create(ctx context.Context, r domain.Runtime) (domain.Runtime, 
 		return r, err
 	}
 	d := r.Android
-	cmd := execx.Command{Name: executable(d.SDKPath, "emulator", "emulator"), Args: []string{"-avd", d.AVDName, "-port", strconv.Itoa(d.ConsolePort), "-no-window", "-no-audio", "-no-boot-anim", "-no-snapshot", "-no-cache", "-wipe-data"}, Dir: r.Directory, Env: map[string]string{"ANDROID_AVD_HOME": d.AVDHome, "ANDROID_HOME": d.SDKPath, "ANDROID_SDK_ROOT": d.SDKPath}, UnsetEnv: []string{"ADB_SERVER_SOCKET", "ANDROID_ADB_SERVER_ADDRESS", "ANDROID_ADB_SERVER_PORT", "ANDROID_SERIAL"}}
+	cmd := execx.Command{Name: executable(d.SDKPath, "emulator", "emulator"), Args: []string{"-avd", d.AVDName, "-port", strconv.Itoa(d.ConsolePort), "-no-window", "-no-audio", "-no-boot-anim", "-no-snapshot", "-no-cache", "-wipe-data"}, Dir: r.Directory, Env: map[string]string{"ANDROID_AVD_HOME": d.AVDHome, "ANDROID_HOME": d.SDKPath, "ANDROID_SDK_ROOT": d.SDKPath}, UnsetEnv: adbRoutingEnvironment()}
 	id, err := a.processes().Start(ctx, cmd, filepath.Join(r.Directory, "emulator.stdout.log"), filepath.Join(r.Directory, "emulator.stderr.log"))
 	d.ProcessID = id.PID
 	d.ProcessStart = id.StartID
@@ -267,7 +273,19 @@ func (a Adapter) Inspect(ctx context.Context, r domain.Runtime) (app.RuntimeObse
 		return out, identityError("Android console exists without the recorded process identity")
 	}
 	out.Exists = true
-	result, bootErr := a.runner().Run(ctx, execx.Command{Name: executable(d.SDKPath, "platform-tools", "adb"), Args: []string{"-L", "tcp:localhost:5037", "-s", d.Serial, "shell", "getprop", "sys.boot_completed"}, UnsetEnv: []string{"ADB_SERVER_SOCKET", "ANDROID_ADB_SERVER_ADDRESS", "ANDROID_ADB_SERVER_PORT", "ANDROID_SERIAL"}, Timeout: 5 * time.Second})
+	protocol, err := a.adbProtocol(ctx, d.SDKPath)
+	if err != nil {
+		return out, err
+	}
+	available, err := a.compatibleADB(ctx, protocol)
+	if err != nil {
+		return out, err
+	}
+	if !available {
+		out.Diagnostics = []string{"shared local ADB server is unavailable"}
+		return out, nil
+	}
+	result, bootErr := a.runner().Run(ctx, execx.Command{Name: executable(d.SDKPath, "platform-tools", "adb"), Args: []string{"-H", "127.0.0.1", "-P", "5037", "-s", d.Serial, "shell", "getprop", "sys.boot_completed"}, UnsetEnv: adbRoutingEnvironment(), Timeout: 5 * time.Second})
 	if observed, err := c.command("avd name"); err != nil || strings.TrimSpace(observed) != d.AVDName {
 		return out, identityError("Android identity changed during boot inspection")
 	}

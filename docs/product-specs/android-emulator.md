@@ -32,7 +32,11 @@ distinct writable state, AVD identities, console/ADB ports and serials.
 SDK discovery, reservations or runtime effects. `create` validates SDK and AVD
 before reservation; Android-only stacks do not require Docker. Missing tools or
 templates are prerequisite failures (exit status 3). Default boot budget is two
-minutes. Ready requires the owned device's Android boot-completed property.
+minutes. Ready requires the owned device's Android boot-completed property. The local ADB
+server must be compatible with the selected SDK. Creation starts an absent server
+separately from Emulator containment; malformed or incompatible existing servers
+are refused without automatic replacement. Shared-server diagnostics are retained,
+and destroying a lease never stops that shared SDK service.
 
 `runtimes[].android` records the template, SDK/system image, private paths, unique
 AVD name, console/ADB ports, serial, native process birth identity and state.

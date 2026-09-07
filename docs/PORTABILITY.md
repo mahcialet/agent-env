@@ -1,7 +1,7 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-07
+last_verified: 2026-09-08
 ---
 
 # Portability
@@ -44,4 +44,8 @@ CI 34124194139 on c641286 passed all six native OS/Go jobs and all five CGO-disa
 
 Android uses a separate detached-process API with native file-backed output. It survives the invoking CLI and its request context. Linux/macOS retain process-group identity and treat surviving descendants after root exit as uncertain lineage that prevents cleanup; Windows assigns the suspended process to a named Job before resuming it; a private helper retains its handle until the Job is empty and records that evidence. Missing helper evidence or a different logon session prevents cleanup. Birth identities reject reused processes, and uncertain observation prevents writable-state deletion. Persistent launch requires native executables, with no batch wrapper or shell dependency.
 
-SDK discovery uses `ANDROID_HOME`, then `ANDROID_SDK_ROOT` (conflicting values fail), then platform defaults. Templates use `ANDROID_AVD_HOME`, `ANDROID_USER_HOME/avd`, or the user's `.android/avd`. Emulator architecture and usable host acceleration are prerequisites. ADB inspection explicitly selects `-L tcp:localhost:5037` and clears inherited server routing; this local socket form permits normal ADB server startup. Native unit CI and actual Emulator integration are distinct; the Android ExecPlan records their evidence and remaining platform gaps.
+SDK discovery uses `ANDROID_HOME`, then `ANDROID_SDK_ROOT` (conflicting values fail), then platform defaults. Templates use `ANDROID_AVD_HOME`, `ANDROID_USER_HOME/avd`, or the user's `.android/avd`. Emulator architecture and usable host acceleration are prerequisites.
+
+A compatible local ADB server on `127.0.0.1:5037` is a shared prerequisite. The adapter compares a direct read-only `host:version` response with the SDK client's protocol version before startup or boot inspection. It refuses incompatible or malformed servers. If absent, the SDK's `adb -L tcp:localhost:5037 start-server` runs through a separate detached launch before the Emulator, with retained startup diagnostics. Bounded boot inspection uses `-H 127.0.0.1 -P 5037 -s <reserved-serial>` and clears inherited server-routing variables; it does not start a missing server. The compatibility probe prevents the normal SDK client's version-mismatch replacement path. Shared ADB is outside lease cleanup.
+
+Native unit CI and actual Emulator integration are distinct. Real SDK integration has been exercised on Linux; actual Windows/macOS SDK startup, acceleration and shared-server lifetime remain unverified. The Android ExecPlan records the tested revisions and remaining platform gaps.

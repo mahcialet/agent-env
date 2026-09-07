@@ -1,7 +1,7 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-07
+last_verified: 2026-09-08
 ---
 
 # Android Emulator resource design
@@ -48,6 +48,36 @@ session, is uncertainty. Confirmed manual termination degrades;
 uncertain ownership quarantines. Reconcile never adopts or restarts an Emulator.
 A released runtime's old ports convey no continuing ownership.
 
+## Shared ADB server lifetime
+
+The local ADB server on port 5037 is a shared SDK prerequisite. Before launching
+an Emulator, the adapter reads the SDK client's protocol version with `adb version`
+and directly probes `127.0.0.1:5037` using the read-only `host:version` protocol.
+An incompatible, malformed or unobservable existing server fails the prerequisite
+without attempting replacement. A refused connection identifies an absent server;
+when startup is needed, it invokes `adb -L tcp:localhost:5037 start-server` through
+the detached-process API, separately from the Emulator's native containment.
+A bounded readiness wait repeats the compatibility probe before Emulator launch.
+Server startup has its own `adb-server.stdout.log`, `adb-server.stderr.log` and
+`adb-server-start.json` beside the retained runtime evidence. Its identity is not
+stored as the Emulator's process identity. Lease compensation, destroy and GC
+never stop the shared server, including one started during a failed allocation.
+
+Boot observation checks the shared protocol again before invoking
+`adb -H 127.0.0.1 -P 5037 -s <reserved-serial> shell getprop sys.boot_completed`.
+Inherited server-routing and serial variables are cleared. This client socket
+form avoids auto-start when the server disappears. The direct compatibility
+check is also necessary: [ADB's version-mismatch path can kill an existing server
+even with `-H`](https://android.googlesource.com/platform/packages/modules/adb/+/9084198a2d4b0f6a0f174260fb42da33485b684d/client/adb_client.cpp#311).
+A missing shared prerequisite degrades readiness; observation does not repair it.
+
+This separation matters on Windows: [ADB daemon startup uses
+`DETACHED_PROCESS`](https://android.googlesource.com/platform/packages/modules/adb/+/9084198a2d4b0f6a0f174260fb42da33485b684d/adb.cpp#938),
+which detaches its console but does not escape inherited Job membership.
+[Windows Job rules](https://learn.microsoft.com/en-us/windows/win32/procthread/job-objects)
+would otherwise put an auto-started server inside a bounded command's terminating
+Job, or leave it counted as a surviving member of an Emulator's Job.
+
 ## Portability and evidence
 
 Native argv, explicit paths/environments and no shell/CGO are required. SDK and
@@ -55,5 +85,7 @@ image architecture compatibility remain host prerequisites; WSL is a Linux host.
 Tests cover discovery, unsafe templates, console ownership, detached lifetime,
 PID reuse, concurrent reservations, compensation, sibling isolation and quarantine.
 Native CI and cross-builds are distinct from actual accelerated Emulator tests.
+Actual SDK integration has been exercised on Linux; real Windows/macOS SDK,
+acceleration and shared-server startup behavior remain unverified.
 The [ExecPlan](../exec-plans/active/android-emulator-lease.md) records evidence,
 implementation decisions, unresolved prerequisites and platform gaps.
