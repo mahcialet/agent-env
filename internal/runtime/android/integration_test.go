@@ -131,17 +131,14 @@ func TestRealAndroidEmulatorLeases(t *testing.T) {
 	defer cancelStop()
 	for {
 		alive, err := a.processes().Alive(stopCtx, execx.ProcessIdentity{PID: y.ProcessID, StartID: y.ProcessStart})
-		if err != nil {
-			t.Fatalf("observe manually stopped tree: %v", err)
-		}
-		if !alive && portAvailable(y.ConsolePort) && portAvailable(y.ADBPort) {
+		if err == nil && !alive && portAvailable(y.ConsolePort) && portAvailable(y.ADBPort) {
 			break
 		}
 		timer := time.NewTimer(100 * time.Millisecond)
 		select {
 		case <-stopCtx.Done():
 			timer.Stop()
-			t.Fatalf("manual emulator termination incomplete: %v", stopCtx.Err())
+			t.Fatalf("manual emulator termination incomplete: %v; observation=%v", stopCtx.Err(), err)
 		case <-timer.C:
 		}
 	}

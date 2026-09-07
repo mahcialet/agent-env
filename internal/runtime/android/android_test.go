@@ -28,22 +28,23 @@ func (r *testRunner) Run(_ context.Context, c execx.Command) (execx.Result, erro
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.commands = append(r.commands, c)
-	if len(c.Args) > 6 && c.Args[6] == "shell" {
+	if len(c.Args) > 4 && c.Args[4] == "shell" {
 		return execx.Result{Stdout: r.boot}, nil
 	}
 	return execx.Result{Stdout: "fake prerequisite version"}, nil
 }
 
 type testProcess struct {
-	alive         atomic.Bool
-	mu            sync.Mutex
-	name          string
-	listener      net.Listener
-	conversations [][]string
-	command       execx.Command
-	startError    error
-	partial       bool
-	onName        func()
+	alive              atomic.Bool
+	uncertainAfterStop atomic.Int32
+	mu                 sync.Mutex
+	name               string
+	listener           net.Listener
+	conversations      [][]string
+	command            execx.Command
+	startError         error
+	partial            bool
+	onName             func()
 }
 
 func (p *testProcess) Start(_ context.Context, c execx.Command, stdout, stderr string) (execx.ProcessIdentity, error) {
@@ -80,6 +81,10 @@ func (p *testProcess) Start(_ context.Context, c execx.Command, stdout, stderr s
 	return execx.ProcessIdentity{PID: 42, StartID: "process-birth"}, nil
 }
 func (p *testProcess) Alive(_ context.Context, id execx.ProcessIdentity) (bool, error) {
+	if !p.alive.Load() && p.uncertainAfterStop.Load() > 0 {
+		p.uncertainAfterStop.Add(-1)
+		return true, execx.ErrProcessTreeUnconfirmed
+	}
 	return p.alive.Load() && id.PID == 42 && id.StartID == "process-birth", nil
 }
 func (p *testProcess) serve(c net.Conn) {
@@ -499,9 +504,9 @@ func TestReadinessPinsLocalADBServer(t *testing.T) {
 	runner.mu.Unlock()
 	found := false
 	for _, cmd := range commands {
-		if len(cmd.Args) > 6 && cmd.Args[6] == "shell" {
+		if len(cmd.Args) > 4 && cmd.Args[4] == "shell" {
 			found = true
-			if strings.Join(cmd.Args[:6], " ") != "-H 127.0.0.1 -P 5037 -s "+r.Android.Serial {
+			if strings.Join(cmd.Args[:4], " ") != "-L tcp:localhost:5037 -s "+r.Android.Serial {
 				t.Fatalf("unscoped adb: %+v", cmd)
 			}
 			for _, key := range []string{"ADB_SERVER_SOCKET", "ANDROID_ADB_SERVER_ADDRESS", "ANDROID_ADB_SERVER_PORT", "ANDROID_SERIAL"} {
@@ -613,5 +618,45 @@ func TestStoppedMarkerNeverAuthorizesCleanupOfReappearedResource(t *testing.T) {
 				t.Fatal(err)
 			}
 		})
+	}
+}
+
+func TestMatchingConsoleWithoutRecordedTreeIsQuarantined(t *testing.T) {
+	a, r, p := fixture(t)
+	r, err := a.Create(context.Background(), r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p.alive.Store(false)
+	if _, err := a.Inspect(context.Background(), r); !errors.Is(err, domain.ErrResourceIdentity) {
+		t.Fatalf("same-name console without recorded tree became ready: %v", err)
+	}
+	if err := a.Destroy(context.Background(), r); !errors.Is(err, domain.ErrResourceIdentity) {
+		t.Fatalf("same-name console without recorded tree was stopped: %v", err)
+	}
+	if _, err := os.Stat(r.Android.AVDPath); err != nil {
+		t.Fatal("ambiguous AVD removed")
+	}
+	p.listener.Close()
+	if err := a.Destroy(context.Background(), r); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestDestroyWaitsForPostKillTreeConfirmation(t *testing.T) {
+	a, r, p := fixture(t)
+	r, err := a.Create(context.Background(), r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p.uncertainAfterStop.Store(2)
+	if err := a.Destroy(context.Background(), r); err != nil {
+		t.Fatalf("did not wait for confirmed tree absence: %v", err)
+	}
+	if p.uncertainAfterStop.Load() != 0 {
+		t.Fatal("cleanup bypassed uncertain observations")
+	}
+	if _, err := os.Stat(r.Android.AVDHome); !os.IsNotExist(err) {
+		t.Fatal("confirmed cleanup left writable state")
 	}
 }

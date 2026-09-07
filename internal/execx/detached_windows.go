@@ -130,7 +130,10 @@ func detachedTreeAlive(id ProcessIdentity) (bool, error) {
 			if err != nil {
 				return false, err
 			}
-			if alive && actual == fields[3] {
+			if alive {
+				if actual != fields[3] {
+					return false, errors.New("detached job root identity reused during observation")
+				}
 				return false, errors.New("live detached root lost its job identity")
 			}
 			proof, proofErr := os.ReadFile(fields[4])

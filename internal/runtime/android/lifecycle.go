@@ -267,7 +267,7 @@ func (a Adapter) Inspect(ctx context.Context, r domain.Runtime) (app.RuntimeObse
 		return out, identityError("Android console exists without the recorded process identity")
 	}
 	out.Exists = true
-	result, bootErr := a.runner().Run(ctx, execx.Command{Name: executable(d.SDKPath, "platform-tools", "adb"), Args: []string{"-H", "127.0.0.1", "-P", "5037", "-s", d.Serial, "shell", "getprop", "sys.boot_completed"}, UnsetEnv: []string{"ADB_SERVER_SOCKET", "ANDROID_ADB_SERVER_ADDRESS", "ANDROID_ADB_SERVER_PORT", "ANDROID_SERIAL"}, Timeout: 5 * time.Second})
+	result, bootErr := a.runner().Run(ctx, execx.Command{Name: executable(d.SDKPath, "platform-tools", "adb"), Args: []string{"-L", "tcp:localhost:5037", "-s", d.Serial, "shell", "getprop", "sys.boot_completed"}, UnsetEnv: []string{"ADB_SERVER_SOCKET", "ANDROID_ADB_SERVER_ADDRESS", "ANDROID_ADB_SERVER_PORT", "ANDROID_SERIAL"}, Timeout: 5 * time.Second})
 	if observed, err := c.command("avd name"); err != nil || strings.TrimSpace(observed) != d.AVDName {
 		return out, identityError("Android identity changed during boot inspection")
 	}
@@ -354,21 +354,23 @@ func (a Adapter) Destroy(ctx context.Context, r domain.Runtime) error {
 			if killErr != nil {
 				return errors.Join(domain.ErrResourceIdentity, killErr, ctx.Err())
 			}
-			stopCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+			// Emulator 37 permits its own 20-second graceful shutdown window.
+			// Observe beyond that window; never substitute an early PID-only kill.
+			stopCtx, cancel := context.WithTimeout(ctx, 45*time.Second)
 			defer cancel()
 			for {
 				alive, err = a.processes().Alive(stopCtx, execx.ProcessIdentity{PID: d.ProcessID, StartID: d.ProcessStart})
-				if err != nil {
-					return errors.Join(domain.ErrResourceIdentity, err)
-				}
-				if !alive && portAvailable(d.ConsolePort) && portAvailable(d.ADBPort) {
+				// An authenticated kill may reap the leader before its descendants.
+				// Wait without further effects through that uncertainty; only a later
+				// successful, empty-tree observation authorizes writable cleanup.
+				if err == nil && !alive && portAvailable(d.ConsolePort) && portAvailable(d.ADBPort) {
 					break
 				}
 				timer := time.NewTimer(100 * time.Millisecond)
 				select {
 				case <-stopCtx.Done():
 					timer.Stop()
-					return errors.Join(domain.ErrResourceIdentity, stopCtx.Err())
+					return errors.Join(domain.ErrResourceIdentity, stopCtx.Err(), err)
 				case <-timer.C:
 				}
 			}

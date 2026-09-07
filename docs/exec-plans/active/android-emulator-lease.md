@@ -131,7 +131,7 @@ and evidence when checking an item.
   on rerun. Non-timeout Android tests now use a 5s setup budget; the explicit boot
   timeout regression still uses 50ms and asserts compensation. Production defaults
   and safety assertions are unchanged. Real Compose harness passed, including
-  concurrent leases, multi-repository dirty GC and readiness rollback (114.483s CLI).
+  concurrent leases, multi-repository dirty GC and readiness rollback (exit 0).
 
 - 2026-09-07 15:10 UTC: Go 1.26 full harness passed again after modern image
   and stopped-marker recovery fixes. Android app race x20 passed (23.845s).
@@ -157,6 +157,27 @@ and evidence when checking an item.
   the local endpoint while permitting startup; inherited routing variables remain
   cleared. A temporary real OSRunner probe proved Linux daemon survival after the
   bounded probe exits. The isolated daemon was stopped; shared ADB was untouched.
+
+- 2026-09-07 UTC: Real Emulator integration passed in 37.128s on `8777125`
+  plus the final Android fixes. Linux 6.12.107, Emulator 37.1.11.0 build 15917651,
+  adb 37.0.1-15733141, `system-images;android-35;default;x86_64` revision 2,
+  KVM v12. Two leases became READY with distinct AVDs and serials 5554/5556;
+  destroying one preserved the sibling READY. Manual owned-console termination
+  of the second reconciled DEGRADED, then normal destroy released it. The test
+  removed its temporary state only after both cleanups were confirmed.
+- 2026-09-07 UTC: First real destroy failed because Emulator 37 has an internal
+  20s graceful stop period, exceeding the adapter's 10s budget. A second attempt
+  exposed transient rootless groups during shutdown. The adapter now waits up to
+  45s after authenticated kill through uncertain observations, without further
+  effects; only confirmed empty tree and free ports authorize deletion. Both
+  failed fixture registries were recovered with normal app/adapter destroy after
+  confirmed absence, using a temporary test overlay only to restore synthetic
+  source observations. Four leases released; logs/registry evidence retained in
+  `/tmp/agent-env Android integration 日本語 4112866359` and
+  `/tmp/agent-env Android integration 日本語 2928383494`. No manual AVD deletion.
+- 2026-09-07 UTC: Independent guardian review accepted the mechanism and found a
+  narrow second-read PID reuse race; the missing-job branch now rejects any live
+  PID on that second read before considering empty-Job evidence.
 
 Record unexpected emulator, AVD, path, locking, process, or platform
 behavior here. Include the failing command or test name and the resulting
@@ -300,14 +321,14 @@ the other usable.
 | --- | --- | --- |
 | A1 | Missing Android SDK is reported as a prerequisite failure. | `TestAndroidPrerequisitesFailBeforeAllocation`, `TestAndroidDoctorMissingSDKStructuredWithoutDocker` and adapter unsafe/missing prerequisites tests; Go 1.26 harness and Go 1.27 race passed. |
 | A2 | Missing AVD template is reported without partial allocation. | Same pre-allocation app test asserts zero rows/worktrees/starts; `TestValidateRejectsMissingAndUnsafePrerequisites` covers absent template. Initial real test failed before allocation for missing Pixel template. |
-| A3 | A created lease records AVD, serial, port, and observed state. | `TestAndroidConcurrentLeasesAndSiblingCleanup` re-reads actual SQLite; `TestRealAdapterThroughAppPersistsOwnedResource` verifies real adapter/app/store with fake native tools. Real SDK fixture running. |
+| A3 | A created lease records AVD, serial, port, and observed state. | `TestAndroidConcurrentLeasesAndSiblingCleanup` re-reads actual SQLite; `TestRealAdapterThroughAppPersistsOwnedResource` verifies real adapter/app/store with fake native tools. Real `TestRealAndroidEmulatorLeases` passed (37.128s); see recorded SDK evidence. |
 | A4 | Two leases never share writable AVD state or ports. | `TestAndroidConcurrentIndependentReservations`, slot exhaustion, immutable identity and overlap tests; app concurrent leases fixture checks distinct writable paths, names, ports and serials. |
 | A5 | Emulator boot timeout triggers compensation. | `TestAndroidBootTimeoutCompensates` uses explicit 50ms budget and verifies resources removed plus durable allocation failure event; repeated race passed. |
 | A6 | Cleanup uncertainty results in quarantine. | `TestAndroidUncertainIdentityQuarantinesEvenForce`, reused console/marker, partial launch, canceled handshake, released-state and stopped-marker reappearance regressions all pass. |
-| A7 | Manual emulator termination is detected by reconcile. | `TestAndroidMissingProcessReconcilesDegraded` and adapter missing-process/sibling test pass; real fixture now includes owned manual console termination and reconcile. |
+| A7 | Manual emulator termination is detected by reconcile. | `TestAndroidMissingProcessReconcilesDegraded` and adapter missing-process/sibling test pass; real fixture passed owned manual console termination and DEGRADED reconcile. |
 | A8 | Destroying one lease leaves a sibling lease unchanged. | App concurrent test checks sibling ready and unchanged userdata after repeated destroy; real two-Emulator fixture running. |
 | A9 | Windows/macOS/Linux path and argv handling has native evidence. | Native macOS/Linux Go 1.26/1.27 passed on dfff6c2 (CI 34136969462). Windows exposed named Job lifetime failure; repair and new native evidence pending. Cross-builds alone do not satisfy this row. |
-| A10 | Repository harness and race tests pass. | Go 1.26 full repoctl check twice; Go 1.27 full race on dfff6c2 passed (app 14.146s, Android 1.848s); real Docker regression passed. Final revised native CI pending. |
+| A10 | Repository harness and race tests pass. | Go 1.26 full repoctl check twice; Go 1.27 full race on dfff6c2 passed (exit 0); real Docker regression passed. Final revised native CI pending. |
 
 ## Idempotence and Recovery
 

@@ -46,10 +46,27 @@ termination before deleting private writable state. Ambiguous process/AVD
 identity, changed ownership evidence, unsafe paths or incomplete cleanup
 quarantine the lease and retain reservations. Force never bypasses this barrier.
 Repeated destroy cannot affect a new user of released ports. Template and sibling
-state are never deleted. Global adb shutdown or Emulator pruning is forbidden.
+state are never deleted. An externally occupied reserved port fails creation with compensation; allocation does not silently move to a different port. Global adb shutdown or Emulator pruning is forbidden.
 
 SDK images and compatible host acceleration are external prerequisites. Native
 fake-adapter and process tests cover Windows/macOS/Linux; actual Emulator evidence
 is recorded separately in the [ExecPlan](../exec-plans/active/android-emulator-lease.md).
 Missing SDKs and cross-builds are never reported as real Emulator validation.
 See the [design](../design-docs/android-emulator.md) for recovery and reservations.
+
+## Real integration verification
+
+Install a compatible SDK image and create a stopped AVD template. Set
+`AGENT_ENV_ANDROID_TEMPLATE` to its name and SDK/AVD discovery variables as needed,
+then run this native Go command:
+
+```text
+go test -tags=androidintegration ./internal/runtime/android -run ^TestRealAndroidEmulatorLeases$ -v -count=1
+```
+
+The opt-in test requires free reserved Emulator ports and usable acceleration;
+missing prerequisites fail rather than skip. It starts two real Emulators with
+real SQLite/app orchestration and a synthetic source provider, checks sibling
+survival and manual termination, then removes only confirmed owned resources.
+Uncertain cleanup retains the temporary state path printed by the test for recovery.
+It does not replace the separate Git/Compose integration fixtures.

@@ -48,7 +48,11 @@ func sdkRoot() (string, error) {
 	if other := os.Getenv("ANDROID_SDK_ROOT"); root == "" {
 		root = other
 	} else if other != "" && filepath.Clean(root) != filepath.Clean(other) {
-		return "", fmt.Errorf("ANDROID_HOME and ANDROID_SDK_ROOT disagree")
+		one, oneErr := os.Stat(root)
+		two, twoErr := os.Stat(other)
+		if oneErr != nil || twoErr != nil || !os.SameFile(one, two) {
+			return "", fmt.Errorf("ANDROID_HOME and ANDROID_SDK_ROOT disagree")
+		}
 	}
 	if root == "" {
 		home, err := os.UserHomeDir()
@@ -59,7 +63,11 @@ func sdkRoot() (string, error) {
 		case "darwin":
 			root = filepath.Join(home, "Library", "Android", "sdk")
 		case "windows":
-			root = filepath.Join(os.Getenv("LOCALAPPDATA"), "Android", "Sdk")
+			local := os.Getenv("LOCALAPPDATA")
+			if local == "" {
+				local = filepath.Join(home, "AppData", "Local")
+			}
+			root = filepath.Join(local, "Android", "Sdk")
 		default:
 			root = filepath.Join(home, "Android", "Sdk")
 		}
