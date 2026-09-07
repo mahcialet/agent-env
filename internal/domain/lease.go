@@ -26,6 +26,7 @@ type Source struct {
 }
 
 type Component struct {
+	Application  string   `json:"application,omitempty"`
 	Name         string   `json:"name"`
 	Runtime      string   `json:"runtime"`
 	Services     []string `json:"services"`
@@ -97,6 +98,7 @@ type Lease struct {
 	Manifest         json.RawMessage `json:"manifest"`
 	Sources          []Source        `json:"sources"`
 	Components       []Component     `json:"components"`
+	Applications     []Application   `json:"applications,omitempty"`
 	Runtimes         []Runtime       `json:"runtimes"`
 	Resources        []Resource      `json:"resources"`
 	Diagnostics      []string        `json:"diagnostics"`
@@ -111,6 +113,7 @@ type Event struct {
 }
 
 type CommandRun struct {
+	Notes      []string  `json:"notes,omitempty"`
 	ID         string    `json:"id"`
 	LeaseID    string    `json:"lease_id"`
 	Name       string    `json:"name"`

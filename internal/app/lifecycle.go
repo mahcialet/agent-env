@@ -64,16 +64,18 @@ type SourceDiff interface {
 }
 
 type Service struct {
-	Store             Store
-	Source            SourceProvider
-	Runtime           RuntimeProvider
-	Android           AndroidProvider
-	Home              string
-	Policy            policy.Policy
-	Runner            execx.Runner
-	Stdout, Stderr    io.Writer
-	ReadinessTimeout  time.Duration
-	ReadinessInterval time.Duration
+	Flutter             FlutterProvider
+	AndroidApplications AndroidApplicationProvider
+	Store               Store
+	Source              SourceProvider
+	Runtime             RuntimeProvider
+	Android             AndroidProvider
+	Home                string
+	Policy              policy.Policy
+	Runner              execx.Runner
+	Stdout, Stderr      io.Writer
+	ReadinessTimeout    time.Duration
+	ReadinessInterval   time.Duration
 }
 type CreateOptions struct {
 	Owner, Purpose, Mode string
@@ -124,6 +126,14 @@ func (s *Service) Create(ctx context.Context, o PlanOptions, options CreateOptio
 			}
 		}
 	}
+	for _, a := range plan.Applications {
+		if s.Flutter == nil || s.AndroidApplications == nil {
+			return lease, fmt.Errorf("%w: Flutter or Android application provider unavailable", ErrPrerequisite)
+		}
+		if _, e := s.Flutter.Doctor(ctx, a.Command[0]); e != nil {
+			return lease, fmt.Errorf("%w: application %s: %v", ErrPrerequisite, a.Name, e)
+		}
+	}
 	doctor := map[string]string{}
 	for i := range plan.Runtimes {
 		r := &plan.Runtimes[i]
@@ -164,7 +174,7 @@ func (s *Service) Create(ctx context.Context, o PlanOptions, options CreateOptio
 	}
 	now := time.Now().UTC()
 	id := newID()
-	lease = domain.Lease{ID: id, Owner: options.Owner, Purpose: options.Purpose, Mode: options.Mode, Repository: plan.Repository, Stack: plan.Stack, Desired: "active", Observed: "requested", CreatedAt: now, HeartbeatAt: now, ExpiresAt: now.Add(ttl), ManifestDigest: plan.ManifestDigest, ManifestPath: plan.ManifestPath, ManifestCommit: plan.ManifestCommit, ManifestModified: plan.ManifestModified, SourceSetDigest: plan.SourceSetDigest, Manifest: manifest, Sources: plan.Sources, Components: plan.Components, Runtimes: plan.Runtimes, Resources: []domain.Resource{}, Diagnostics: append([]string{}, plan.Diagnostics...)}
+	lease = domain.Lease{ID: id, Owner: options.Owner, Purpose: options.Purpose, Mode: options.Mode, Repository: plan.Repository, Stack: plan.Stack, Desired: "active", Observed: "requested", CreatedAt: now, HeartbeatAt: now, ExpiresAt: now.Add(ttl), ManifestDigest: plan.ManifestDigest, ManifestPath: plan.ManifestPath, ManifestCommit: plan.ManifestCommit, ManifestModified: plan.ManifestModified, SourceSetDigest: plan.SourceSetDigest, Manifest: manifest, Sources: plan.Sources, Components: plan.Components, Runtimes: plan.Runtimes, Applications: plan.Applications, Resources: []domain.Resource{}, Diagnostics: append([]string{}, plan.Diagnostics...)}
 	roots := map[string]string{}
 	for i := range lease.Sources {
 		source := &lease.Sources[i]
@@ -234,6 +244,9 @@ func (s *Service) Create(ctx context.Context, o PlanOptions, options CreateOptio
 	lease.Observed = "failed"
 	evidenceErr := s.event(cleanupCtx, id, "allocation_failed", err.Error())
 	saveErr := s.persist(cleanupCtx, lease)
+	if errors.Is(err, execx.ErrProcessTreeUnconfirmed) || errors.Is(err, execx.ErrOutputIncomplete) {
+		return lease, errors.Join(err, evidenceErr, saveErr, s.quarantine(cleanupCtx, &lease, err))
+	}
 	cleanupErr := s.cleanup(cleanupCtx, &lease, false)
 	return lease, errors.Join(err, evidenceErr, saveErr, cleanupErr)
 }
@@ -261,6 +274,9 @@ func (s *Service) allocate(ctx context.Context, l *domain.Lease, home string) er
 			return err
 		}
 		roots = append(roots, source.WorktreePath)
+	}
+	if err := s.buildApplications(ctx, l); err != nil {
+		return err
 	}
 	for i := range l.Runtimes {
 		r := &l.Runtimes[i]
@@ -343,6 +359,9 @@ func (s *Service) allocate(ctx context.Context, l *domain.Lease, home string) er
 		return err
 	}
 	if err := s.probeReady(ctx, l); err != nil {
+		return err
+	}
+	if err := s.startApplications(ctx, l); err != nil {
 		return err
 	}
 	l.Observed = "ready"
@@ -636,6 +655,11 @@ func (s *Service) quarantine(ctx context.Context, l *domain.Lease, cause error) 
 }
 
 func (s *Service) cleanup(ctx context.Context, l *domain.Lease, force bool) error {
+	for _, a := range l.Applications {
+		if a.BuildUnconfirmed {
+			return s.quarantine(ctx, l, fmt.Errorf("application %s build termination is unconfirmed; retain sources and investigate build process evidence", a.Name))
+		}
+	}
 	// Verify all source identities and tracked changes before deleting any resource.
 	for _, source := range l.Sources {
 		o, err := s.Source.Inspect(ctx, source)
@@ -681,6 +705,10 @@ func (s *Service) cleanup(ctx context.Context, l *domain.Lease, force bool) erro
 			if s.Android == nil {
 				return false, errors.New("Android provider unavailable")
 			}
+			if err := s.cleanupApplications(ctx, l, *r); err != nil {
+				var writeErr applicationCleanupWriteError
+				return operationLost(ctx) || errors.As(err, &writeErr), err
+			}
 			if err := s.event(ctx, l.ID, "runtime_down_requested", r.Name); err != nil {
 				return true, err
 			}
@@ -696,6 +724,7 @@ func (s *Service) cleanup(ctx context.Context, l *domain.Lease, force bool) erro
 			}
 			r.Started = false
 			r.Android.State = "released"
+			releaseApplications(l, r.Name)
 			if err := s.persist(ctx, *l); err != nil {
 				return true, err
 			}
@@ -858,6 +887,19 @@ func (s *Service) Reconcile(ctx context.Context, id string) (lease domain.Lease,
 		}
 		resources = append(resources, o.Resources...)
 		diagnostics = append(diagnostics, o.Diagnostics...)
+	}
+	if lease.Desired == "active" {
+		if e := applicationSetConsistent(lease); e != nil {
+			ready = false
+			diagnostics = append(diagnostics, "applications: "+e.Error())
+		}
+		for i := range lease.Applications {
+			if e := s.observeApplication(ctx, lease, &lease.Applications[i]); e != nil {
+				ready = false
+				dirty = dirty || errors.Is(e, domain.ErrResourceIdentity)
+				diagnostics = append(diagnostics, "application "+lease.Applications[i].Name+": "+e.Error())
+			}
+		}
 	}
 	wasReleased := lease.Observed == "released"
 	if ready && lease.Desired == "active" && !wasReleased {

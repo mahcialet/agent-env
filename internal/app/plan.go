@@ -39,18 +39,19 @@ type PlanOptions struct {
 	SourceRefs                           map[string]string
 }
 type Plan struct {
-	Repository       string             `json:"repository"`
-	Stack            string             `json:"stack"`
-	ManifestDigest   string             `json:"manifest_digest"`
-	ManifestPath     string             `json:"manifest_path"`
-	ManifestCommit   string             `json:"manifest_commit"`
-	ManifestModified bool               `json:"manifest_modified"`
-	SourceSetDigest  string             `json:"source_set_digest"`
-	Sources          []domain.Source    `json:"sources"`
-	Components       []domain.Component `json:"components"`
-	Runtimes         []domain.Runtime   `json:"runtimes"`
-	Diagnostics      []string           `json:"diagnostics"`
-	Manifest         *config.Manifest   `json:"-"`
+	Repository       string               `json:"repository"`
+	Stack            string               `json:"stack"`
+	ManifestDigest   string               `json:"manifest_digest"`
+	ManifestPath     string               `json:"manifest_path"`
+	ManifestCommit   string               `json:"manifest_commit"`
+	ManifestModified bool                 `json:"manifest_modified"`
+	SourceSetDigest  string               `json:"source_set_digest"`
+	Sources          []domain.Source      `json:"sources"`
+	Components       []domain.Component   `json:"components"`
+	Applications     []domain.Application `json:"applications,omitempty"`
+	Runtimes         []domain.Runtime     `json:"runtimes"`
+	Diagnostics      []string             `json:"diagnostics"`
+	Manifest         *config.Manifest     `json:"-"`
 }
 
 func BuildPlan(ctx context.Context, o PlanOptions, source SourceProvider) (Plan, error) {
@@ -155,7 +156,20 @@ func BuildPlan(ctx context.Context, o PlanOptions, source SourceProvider) (Plan,
 	byRuntime := map[string]int{}
 	for _, name := range components {
 		c := m.Components[name]
-		p.Components = append(p.Components, domain.Component{Name: name, Runtime: c.Runtime, Services: c.ComposeServices, Capabilities: c.Provides})
+		p.Components = append(p.Components, domain.Component{Name: name, Application: c.Application, Runtime: c.Runtime, Services: c.ComposeServices, Capabilities: c.Provides})
+		if c.Application != "" && !applicationSelected(p.Applications, c.Application) {
+			spec := m.Applications[c.Application]
+			a := domain.Application{Name: c.Application, Type: spec.Type, Source: spec.Source, Runtime: spec.Runtime, ProjectDirectory: spec.ProjectDirectory, Command: append([]string(nil), spec.Build.Command...), Artifact: spec.Build.Artifact, Timeout: spec.Build.Timeout, Package: spec.Package, Activity: spec.Activity, State: "planned"}
+			for _, src := range p.Sources {
+				if src.Alias == a.Source {
+					a.SourceCommit = src.Commit
+				}
+			}
+			for _, binding := range spec.Reverse {
+				a.Reverse = append(a.Reverse, domain.ReverseBinding{DevicePort: binding.DevicePort, Endpoint: binding.Endpoint})
+			}
+			p.Applications = append(p.Applications, a)
+		}
 		i, exists := byRuntime[c.Runtime]
 		if !exists {
 			r := m.Runtimes[c.Runtime]
