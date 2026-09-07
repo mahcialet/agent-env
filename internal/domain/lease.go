@@ -42,19 +42,40 @@ type Resource struct {
 }
 
 type Runtime struct {
-	LeaseID      string   `json:"lease_id"`
-	Name         string   `json:"name"`
-	Type         string   `json:"type"`
-	Source       string   `json:"source"`
-	Project      string   `json:"project"`
-	Directory    string   `json:"directory"`
-	Files        []string `json:"files"`
-	Services     []string `json:"services"`
-	Context      string   `json:"docker_context"`
-	ConfigDigest string   `json:"config_digest"`
-	ConfigPath   string   `json:"config_path"`
-	Started      bool     `json:"started"`
+	LeaseID      string           `json:"lease_id"`
+	Name         string           `json:"name"`
+	Type         string           `json:"type"`
+	Source       string           `json:"source"`
+	Project      string           `json:"project"`
+	Directory    string           `json:"directory"`
+	Files        []string         `json:"files"`
+	Services     []string         `json:"services"`
+	Context      string           `json:"docker_context"`
+	ConfigDigest string           `json:"config_digest"`
+	ConfigPath   string           `json:"config_path"`
+	Started      bool             `json:"started"`
+	Android      *AndroidEmulator `json:"android,omitempty"`
 }
+
+// AndroidEmulator records a lease-owned slot, private writable AVD and process
+// birth identity. Port availability and a PID alone never establish ownership.
+type AndroidEmulator struct {
+	Template     string `json:"template"`
+	SDKPath      string `json:"sdk_path,omitempty"`
+	TemplatePath string `json:"template_path,omitempty"`
+	SystemImage  string `json:"system_image,omitempty"`
+	AVDName      string `json:"avd_name,omitempty"`
+	AVDHome      string `json:"avd_home,omitempty"`
+	AVDPath      string `json:"avd_path,omitempty"`
+	ConsolePort  int    `json:"console_port,omitempty"`
+	ADBPort      int    `json:"adb_port,omitempty"`
+	Serial       string `json:"serial,omitempty"`
+	ProcessID    int    `json:"process_id,omitempty"`
+	ProcessStart string `json:"process_start,omitempty"`
+	State        string `json:"state,omitempty"`
+}
+
+var ErrResourceIdentity = errors.New("resource ownership is uncertain; quarantine without deleting")
 
 type Lease struct {
 	ID               string          `json:"id"`

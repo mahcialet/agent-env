@@ -69,11 +69,13 @@ Out of scope:
       uses immediate fenced transactions; execx bounded commands kill descendants.
 - [x] 2026-09-07 UTC: Added indexed Android product contract and design document.
 - [x] 2026-09-07 UTC: Selected private per-lease writable AVDs with durable port pairs.
-- [ ] Implement Android SDK and Emulator discovery.
+- [x] 2026-09-07 UTC: SDK/AVD discovery and native Doctor implemented; focused
+      discovery and CLI prerequisite tests pass.
 - [x] 2026-09-07 UTC: Durable slot/port reservation, migration 003, quarantine
       retention and immutable identity implemented; SQLite Go 1.26 tests and
       Go 1.27 race tests passed, including concurrent independent connections.
-- [ ] Implement start, inspect, stop, and destroy operations.
+- [x] 2026-09-07 UTC: Adapter lifecycle and durable markers implemented with
+      fake native console/app/SQLite integration; real SDK validation continues.
 - [x] 2026-09-07 UTC: Integrated Android create/destroy compensation and dispatch.
 - [x] 2026-09-07 UTC: Added live missing/degraded and identity quarantine behavior.
 - [x] 2026-09-07 UTC: App tests with real SQLite prove distinct concurrent AVDs,
@@ -110,6 +112,26 @@ and evidence when checking an item.
 - 2026-09-07 UTC: Initial full harness encountered an unformatted in-progress
   adapter test file during parallel editing; no check was relaxed. Focused app,
   CLI, config and harness tests passed after integration; full rerun remains.
+
+- 2026-09-07 UTC: Full Go 1.26 `go run ./tools/repoctl check` passed after
+  integration: formatting, all unit tests, vet, docs, generated schema and architecture.
+- 2026-09-07 UTC: User supplied `/home/mahcialet/Android/Sdk`; Doctor now finds
+  Emulator 37.1.11.0 (15917651), adb 37.0.1 and usable KVM v12. Installed official
+  AOSP API35 default x86_64 revision 2 under the existing SDK license (unchanged,
+  no agreement input). A temporary stopped template enables real validation.
+  This image has a `data/` seed directory instead of `userdata.img`; the initial
+  adapter assumption rejected it and is being corrected with regression coverage.
+- 2026-09-07 UTC: Detached tree observation now retains surviving descendants
+  after root/CLI exit using Unix process groups and persistent Windows Jobs.
+  Go 1.26 repeated tests x20, Go 1.27 race x20 and Windows/macOS cross-builds pass;
+  actual native Windows/macOS execution is still pending CI.
+
+- 2026-09-07 UTC: Full Go 1.27 race suite first failed the identity fixture's
+  inherited 50ms readiness deadline under simultaneous Docker load, then passed
+  on rerun. Non-timeout Android tests now use a 5s setup budget; the explicit boot
+  timeout regression still uses 50ms and asserts compensation. Production defaults
+  and safety assertions are unchanged. Real Compose harness passed, including
+  concurrent leases, multi-repository dirty GC and readiness rollback (114.483s CLI).
 
 Record unexpected emulator, AVD, path, locking, process, or platform
 behavior here. Include the failing command or test name and the resulting

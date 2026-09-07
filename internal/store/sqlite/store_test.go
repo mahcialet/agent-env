@@ -46,7 +46,7 @@ func TestPersistenceNormalizedAndMigrations(t *testing.T) {
 		var n int
 		wantCount := 1
 		if table == "schema_migrations" {
-			wantCount = 2
+			wantCount = 3
 		}
 		if err := s.db.QueryRow("SELECT count(*) FROM " + table).Scan(&n); err != nil || n != wantCount {
 			t.Fatalf("%s count %d: %v", table, n, err)
