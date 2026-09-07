@@ -19,6 +19,9 @@ jobs:
           go-version: ${{ matrix.go }}
       - run: go run ./tools/repoctl doctor
       - run: go run ./tools/repoctl check
+      - name: Repeat process cancellation on macOS
+        if: runner.os == 'macOS'
+        run: go test ./internal/app -run '^TestDestroyCancelsActualCommandTreeBeforeSourceCleanup$' -count=50 -timeout=5m
       - run: go build ./cmd/agent-env
   integration:
     runs-on: ubuntu-latest

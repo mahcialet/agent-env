@@ -143,7 +143,12 @@ func TestDestroyCancelsActualCommandTreeBeforeSourceCleanup(t *testing.T) {
 	destroyService.Store = other
 	destroyed, err := destroyService.Destroy(context.Background(), lease.ID, false, false)
 	if err != nil {
-		t.Fatal(err)
+		select {
+		case result := <-done:
+			t.Fatalf("destroy: %v; command status %s: %v", err, result.run.Status, result.err)
+		case <-time.After(5 * time.Second):
+			t.Fatalf("destroy: %v; command did not return", err)
+		}
 	}
 	if destroyed.Observed != "released" || !source.removed.Load() {
 		t.Fatalf("cleanup %+v", destroyed)
