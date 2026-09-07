@@ -1,10 +1,12 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-07
+last_verified: 2026-09-08
 ---
 
 # ExecPlan policy
+
+[日本語](PLANS.ja.md)
 
 Each substantial change uses a dedicated branch and a version-controlled active ExecPlan under `docs/exec-plans/active/`. The active ExecPlan is the authority for the expected branch and current work; state both explicitly in the plan. Keep it self-contained and update it at every meaningful checkpoint. Include exact paths, commands, results, remaining work, decisions, and safe recovery steps. Evidence distinguishes tests run locally, cross-builds, and actual native CI. The [completed MVP plan](exec-plans/completed/agent-env-mvp.md) preserves historical scope and evidence.
 
@@ -13,3 +15,10 @@ Mandatory sections are: Purpose / Big Picture; Progress; Surprises & Discoveries
 Durable plan metadata contains status, owner, and last_verified. Progress uses dated checked/unchecked items. A checkbox means observed completion, never intention. Preserve failed verification results and unresolved platform gaps. Record decisions with date, author role, and rationale; promote durable decisions into ADRs.
 
 Move a plan from active to completed only after every acceptance requirement has direct evidence and outcomes/retrospective is filled. Update all links when moving it. Completed plans preserve history; do not delete them. Historical reference archives are inputs, not operational authority.
+
+Any substantial change that adds or modifies durable human-facing documentation
+must include the corresponding Japanese translation before the ExecPlan can be
+completed. This includes the living ExecPlan itself. Keep both plan files in the
+same active/completed directory and update both sets of links when moving them.
+Only explicitly registered pre-migration historical plans are exempt. Follow the
+[language policy](design-docs/bilingual-documentation.md) and verify `repoctl docs-check`.

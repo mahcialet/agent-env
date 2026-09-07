@@ -1,5 +1,7 @@
 # agent-env
 
+[日本語](README.ja.md)
+
 Create disposable environment leases from pinned local Git commits and isolated Docker Compose projects or private Android Emulators. Select a stack, inspect its live state, run named tests with retained evidence, then clean up its resources. Multiple repositories and simultaneous leases are supported.
 
 **Environment isolation is not a malicious-code sandbox.** Dockerfiles, Compose configuration, tests, and package scripts execute repository-controlled code. Use trusted or controlled repositories; arbitrary untrusted pull requests need a stronger outer boundary.

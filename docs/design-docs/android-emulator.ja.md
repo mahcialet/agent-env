@@ -1,0 +1,37 @@
+---
+status: active
+owner: maintainers
+last_verified: 2026-09-08
+translation_of: docs/design-docs/android-emulator.md
+source_sha256: 6f8e96ead0627330d7ac0907e56279cf7d8133336e34c99b5e921a480d55cef6
+---
+
+[English（正本）](android-emulator.md)
+
+# Android Emulator リソース設計
+
+[製品仕様](../product-specs/android-emulator.ja.md)では、独立した `app.AndroidProvider` を追加し、`runtime/android` が実装します。App は saga の順序、ロック、readiness、永続化を担当します。Domain は純粋な識別情報、SQLite は排他的な予約、`execx` は OS ネイティブの切り離されたプロセス操作を担当します。Android は Compose や Flutter を import しません。実行時間を制限したコマンドツリーは既存のキャンセル動作を維持し、常駐する Emulator プロセスには別の API を使います。
+
+## 専用 AVD と予約
+
+各ランタイムに、lease から導出した一意の AVD 名と `leases/<id>/android/<runtime>/avd/` 以下のパスを割り当てます。テンプレートは読み取り専用の設定と不変の SDK イメージを提供します。テンプレートの userdata、snapshot、lock を書き込み可能な状態として共有することはありません。危険な書き込み先、シンボリックリンク、稼働中のテンプレートは検証に失敗します。
+
+1 回の即時 SQLite トランザクションで、lease/worktree の識別情報、AVD の識別情報、console/ADB のポートペアを予約します。console ポートは 5554〜5682 の偶数で、その次の奇数ポートを ADB が使います。一意性制約が同時実行する CLI プロセス間を調停します。ポート確認は外部との競合を検出するだけで、所有権を証明せず、未記録の代替ポートを選びません。隔離中はポートと容量を保持し、確認済みの `released` 状態だけが予約を解放します。
+
+## Saga と保守的な復旧
+
+App は副作用の発生前に起動意図を永続化します。アダプターは起動前に破棄可能な AVD 状態の外側へ所有権マーカーを書き、起動後に PID とプロセス生成時の識別情報を記録します。起動識別情報の永続化前にクラッシュすると所有権が曖昧になるため、隔離が必要です。保持する stdout/stderr はローカルプロセスの診断情報であり、logcat ではありません。レジストリと環境記述子は予約と観測結果を保持します。
+
+停止処理では、`kill` に使うものと同じ認証済み console 接続で lease 由来の AVD 名を確認し、再利用されたポートでの確認と停止の競合を防ぎます。OS ネイティブの生成時識別情報で PID の再利用を検出します。書き込み可能な状態を削除する前に、ネイティブのプロセスグループ全体または Windows Job の終了と、ポートの不在を確認しなければなりません。Unix では、ルートプロセス終了後にグループのメンバーが残っていると削除を阻止しますが、停止を許可する系統の証明にはなりません。グループが不在になるまで観測は不確定を報告します。Windows では、リソースごとの専用 helper が CLI/ルートプロセス終了後も名前付き Job のハンドルを保持します。helper は明示したハンドルを継承し、全 Job メンバーの停止に応じた終了と、対応する空 Job の証拠の永続化を行います。その証拠なしに Job 名が失われた場合や、別の Windows ログオンセッションから観測した場合は不確定です。手動終了を確認できれば degraded にし、所有権が不確定なら隔離します。Reconcile は Emulator を引き取ったり再起動したりしません。解放済みランタイムの旧ポートは、継続する所有権を意味しません。
+
+## 共有 ADB サーバーの寿命
+
+ポート 5037 のローカル ADB サーバーは共有 SDK 前提条件です。Emulator 起動前に、アダプターは `adb version` で SDK クライアントのプロトコル版を読み、読み取り専用の `host:version` プロトコルで `127.0.0.1:5037` を直接確認します。既存サーバーが非互換、不正、観測不能なら、置き換えを試みず前提条件エラーにします。接続拒否をサーバー不在と判定し、起動が必要なら切り離されたプロセス API で `adb -L tcp:localhost:5037 start-server` を実行します。Emulator のネイティブなプロセス管理範囲とは分離します。上限付きの readiness 待機で、Emulator 起動前に互換性を再確認します。サーバー起動には専用の `adb-server.stdout.log`、`adb-server.stderr.log`、`adb-server-start.json` があり、保持されるランタイム証拠の隣に置きます。その識別情報を Emulator のプロセス識別情報として保存しません。lease の補償処理、destroy、GC は、失敗した割り当て中に起動したものも含め、共有サーバーを停止しません。
+
+起動状態の観測は、`adb -H 127.0.0.1 -P 5037 -s <reserved-serial> shell getprop sys.boot_completed` の実行前に共有プロトコルを再確認します。継承されたサーバー接続先と serial の変数はクリアします。このクライアント接続形式は、サーバー消失時の自動起動を避けます。直接の互換性確認も必要です。[ADB のバージョン不一致処理は `-H` を指定しても既存サーバーを停止する可能性があります](https://android.googlesource.com/platform/packages/modules/adb/+/9084198a2d4b0f6a0f174260fb42da33485b684d/client/adb_client.cpp#311)。共有前提条件が失われれば readiness は degraded となり、観測処理は修復しません。
+
+この分離は Windows で重要です。[ADB daemon の起動は `DETACHED_PROCESS` を使い](https://android.googlesource.com/platform/packages/modules/adb/+/9084198a2d4b0f6a0f174260fb42da33485b684d/adb.cpp#938)、console を切り離しますが、継承した Job への所属は解除しません。[Windows Job の規則](https://learn.microsoft.com/en-us/windows/win32/procthread/job-objects)により、分離しなければ自動起動したサーバーが終了対象の bounded command Job に入るか、Emulator の Job の生存メンバーとして数えられ続けます。
+
+## 移植性と証拠
+
+ネイティブの argv、明示したパスと環境、shell/CGO 不要という条件を守ります。SDK とイメージのアーキテクチャ互換性はホスト側の前提条件であり、WSL は Linux ホストとして扱います。テストは discovery、危険なテンプレート、console 所有権、切り離されたプロセスの寿命、PID 再利用、同時予約、補償、兄弟 lease の分離、隔離を対象にします。ネイティブ CI とクロスビルドは、実際のアクセラレーション付き Emulator テストとは別です。実 SDK の統合は Linux で実行済みですが、Windows/macOS の実 SDK、アクセラレーション、共有サーバー起動動作は未検証です。[ExecPlan](../exec-plans/completed/android-emulator-lease.md)に、証拠、実装判断、未解決の前提条件、プラットフォーム上の不足を記録します。

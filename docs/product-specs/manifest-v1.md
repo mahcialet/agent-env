@@ -1,10 +1,12 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-07
+last_verified: 2026-09-08
 ---
 
 # Manifest v1
+
+[日本語](manifest-v1.ja.md)
 
 `.agent-env.yaml` is a strict, single-document YAML contract. Unknown fields, duplicate keys, unsupported versions, empty required collections, invalid names, dependency cycles, and references to missing sources/runtimes/components/stacks are rejected. `agent-env validate <file-or-repository>` checks the contract without running Git or Docker.
 

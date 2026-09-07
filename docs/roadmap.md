@@ -1,10 +1,12 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-07
+last_verified: 2026-09-08
 ---
 
 # Roadmap and unresolved decisions
+
+[日本語](roadmap.ja.md)
 
 The implemented scope is local pinned Git sources, detached review worktrees, isolated Compose and Android Emulator runtimes, named argv tests, evidence, and a portable repository harness. This roadmap does not advertise deferred features as available commands.
 

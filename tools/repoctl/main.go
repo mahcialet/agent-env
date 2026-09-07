@@ -3,6 +3,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"go/format"
 	"go/parser"
@@ -228,10 +229,14 @@ func headingAnchor(s string) string {
 }
 
 func docsCheck(root string) error {
-	paths, err := files(root)
+	paths, err := documentationFiles(root)
 	if err != nil {
 		return err
 	}
+	return errors.Join(documentStructureCheck(root, paths), translationCheck(root, paths))
+}
+
+func documentStructureCheck(root string, paths []string) error {
 	agents := filepath.Join(root, "AGENTS.md")
 	b, err := os.ReadFile(agents)
 	if err != nil {
@@ -259,7 +264,8 @@ func docsCheck(root string) error {
 		}
 		rel, _ := filepath.Rel(root, p)
 		rel = filepath.ToSlash(rel)
-		if strings.HasPrefix(rel, "docs/references/handoffs/") {
+		japanese := strings.HasSuffix(rel, ".ja.md")
+		if strings.HasPrefix(rel, "docs/references/handoffs/") && !japanese {
 			continue
 		}
 		b, err := os.ReadFile(p)
@@ -306,16 +312,20 @@ func docsCheck(root string) error {
 		}
 		indexed := strings.HasPrefix(rel, "docs/design-docs/") || strings.HasPrefix(rel, "docs/product-specs/") || strings.HasPrefix(rel, "docs/adr/")
 		plan := strings.HasPrefix(rel, "docs/exec-plans/active/") || strings.HasPrefix(rel, "docs/exec-plans/completed/")
-		if (indexed || plan) && filepath.Base(p) != "index.md" {
+		indexName := "index.md"
+		if japanese {
+			indexName = "index.ja.md"
+		}
+		if (indexed || plan) && filepath.Base(p) != indexName {
 			if err := metadataCheck(rel, data); err != nil {
 				return err
 			}
 		}
-		if indexed && filepath.Base(p) != "index.md" {
-			index := filepath.Join(filepath.Dir(p), "index.md")
+		if indexed && filepath.Base(p) != indexName {
+			index := filepath.Join(filepath.Dir(p), indexName)
 			ib, err := os.ReadFile(index)
 			if err != nil {
-				return fmt.Errorf("AGENTENV-DOC-001: %s has no local index.md; add an index with a link to this document", rel)
+				return fmt.Errorf("AGENTENV-DOC-001: %s has no local %s; add an index with a link to this document", rel, indexName)
 			}
 			found := false
 			for _, target := range links(string(ib)) {
@@ -325,10 +335,10 @@ func docsCheck(root string) error {
 				}
 			}
 			if !found {
-				return fmt.Errorf("AGENTENV-DOC-001: %s is not linked from its local index.md; add an indexed description or move it to an archival directory", rel)
+				return fmt.Errorf("AGENTENV-DOC-001: %s is not linked from its local %s; add an indexed description or move it to an archival directory", rel, indexName)
 			}
 		}
-		if strings.HasPrefix(rel, "docs/exec-plans/active/") {
+		if strings.HasPrefix(rel, "docs/exec-plans/active/") && !japanese {
 			for _, section := range planSections {
 				found := false
 				for _, line := range strings.Split(data, "\n") {

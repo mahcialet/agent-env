@@ -1,10 +1,12 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-07
+last_verified: 2026-09-08
 ---
 
 # Compose runtime
+
+[日本語](compose-runtime.ja.md)
 
 ## Invocation
 

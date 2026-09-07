@@ -1,10 +1,12 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-07
+last_verified: 2026-09-08
 ---
 
 # Android Emulator leases
+
+[日本語](android-emulator.ja.md)
 
 An `android-emulator` runtime owns one Emulator and private writable AVD state,
 independently of Flutter. APK installation, builds, adb reverse, UI interaction,

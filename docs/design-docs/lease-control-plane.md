@@ -1,10 +1,12 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-07
+last_verified: 2026-09-08
 ---
 
 # Lease control plane
+
+[日本語](lease-control-plane.ja.md)
 
 ## Environment
 

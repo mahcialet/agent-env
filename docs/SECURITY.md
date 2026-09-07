@@ -6,6 +6,8 @@ last_verified: 2026-09-08
 
 # Security and trust
 
+[日本語](SECURITY.ja.md)
+
 Environment leases isolate names, worktrees, and lifecycle ownership. They are **not a malicious-code sandbox**. Repository Dockerfiles, Compose builds, tests, package hooks, and command probes can execute code with the privileges available to their tools. Use trusted repositories or a separately controlled outer sandbox for untrusted code.
 
 ## Manifest authority
