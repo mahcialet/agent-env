@@ -32,7 +32,7 @@ func runProcessTree(_ context.Context, cmd *exec.Cmd) error {
 	}
 	err := cmd.Wait()
 	if cleanupErr := terminate(); cleanupErr != nil {
-		err = errors.Join(err, fmt.Errorf("terminate command process group: %w", cleanupErr))
+		err = errors.Join(err, ErrProcessTreeUnconfirmed, fmt.Errorf("terminate command process group: %w", cleanupErr))
 	}
 	return err
 }

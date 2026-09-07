@@ -44,7 +44,11 @@ func TestPersistenceNormalizedAndMigrations(t *testing.T) {
 	}
 	for _, table := range []string{"repositories", "leases", "lease_sources", "lease_components", "lease_runtimes", "runtime_resources", "schema_migrations"} {
 		var n int
-		if err := s.db.QueryRow("SELECT count(*) FROM " + table).Scan(&n); err != nil || n != 1 {
+		wantCount := 1
+		if table == "schema_migrations" {
+			wantCount = 2
+		}
+		if err := s.db.QueryRow("SELECT count(*) FROM " + table).Scan(&n); err != nil || n != wantCount {
 			t.Fatalf("%s count %d: %v", table, n, err)
 		}
 	}

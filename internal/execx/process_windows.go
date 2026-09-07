@@ -43,9 +43,19 @@ func runProcessTree(ctx context.Context, cmd *exec.Cmd) error {
 		return err
 	}
 	abort := func(cause error) error {
-		_ = cmd.Process.Kill()
-		_ = windows.TerminateJobObject(job, 1)
-		_ = cmd.Wait()
+		killErr := cmd.Process.Kill()
+		if errors.Is(killErr, os.ErrProcessDone) {
+			killErr = nil
+		}
+		jobErr := windows.TerminateJobObject(job, 1)
+		waitErr := cmd.Wait()
+		var exitErr *exec.ExitError
+		if errors.As(waitErr, &exitErr) {
+			waitErr = nil
+		}
+		if cleanupErr := errors.Join(killErr, jobErr, waitErr, waitForEmptyJob(job)); cleanupErr != nil {
+			return errors.Join(cause, ErrProcessTreeUnconfirmed, cleanupErr)
+		}
 		return cause
 	}
 	process, err := windows.OpenProcess(windows.PROCESS_SET_QUOTA|windows.PROCESS_TERMINATE, false, uint32(cmd.Process.Pid))
@@ -64,9 +74,12 @@ func runProcessTree(ctx context.Context, cmd *exec.Cmd) error {
 	}
 	waitErr := cmd.Wait()
 	if err = windows.TerminateJobObject(job, 1); err != nil {
-		return errors.Join(waitErr, fmt.Errorf("terminate command job: %w", err))
+		return errors.Join(waitErr, ErrProcessTreeUnconfirmed, fmt.Errorf("terminate command job: %w", err))
 	}
-	return errors.Join(waitErr, waitForEmptyJob(job))
+	if err := waitForEmptyJob(job); err != nil {
+		return errors.Join(waitErr, ErrProcessTreeUnconfirmed, err)
+	}
+	return waitErr
 }
 
 func resumeInitialThread(pid uint32) error {

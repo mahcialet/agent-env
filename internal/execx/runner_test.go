@@ -98,3 +98,16 @@ func TestMissingCommand(t *testing.T) {
 		t.Fatalf("%+v %v", r, err)
 	}
 }
+
+type failingOutputWriter struct{}
+
+func (failingOutputWriter) Write([]byte) (int, error) {
+	return 0, errors.New("injected output write failure")
+}
+
+func TestOutputWriteFailureIsIncompleteEvidence(t *testing.T) {
+	_, err := (OSRunner{}).Run(context.Background(), Command{Name: os.Args[0], Args: []string{"-test.run=^TestProcessHelper$"}, Env: map[string]string{"AGENT_ENV_EXECX_HELPER": "1", "GORACE": "atexit_sleep_ms=0"}, Stdout: failingOutputWriter{}, Timeout: 5 * time.Second})
+	if !errors.Is(err, ErrOutputIncomplete) {
+		t.Fatalf("output failure marker missing: %v", err)
+	}
+}

@@ -3,7 +3,10 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -24,20 +27,30 @@ type SourceObservation struct {
 	Commit                           string
 }
 
+// SourceManifestOrigin observes the selected control file independently of refs
+// used to materialize runtime sources. Providers without Git origin support may
+// omit it; the canonical file snapshot remains explicit authority.
+type SourceManifestOrigin interface {
+	Origin(context.Context, string) (commit string, modified bool, err error)
+}
+
 type PlanOptions struct {
-	Repository, Stack, Ref string
-	SourceRefs             map[string]string
+	Repository, Stack, Ref, ManifestPath string
+	SourceRefs                           map[string]string
 }
 type Plan struct {
-	Repository      string             `json:"repository"`
-	Stack           string             `json:"stack"`
-	ManifestDigest  string             `json:"manifest_digest"`
-	SourceSetDigest string             `json:"source_set_digest"`
-	Sources         []domain.Source    `json:"sources"`
-	Components      []domain.Component `json:"components"`
-	Runtimes        []domain.Runtime   `json:"runtimes"`
-	Diagnostics     []string           `json:"diagnostics"`
-	Manifest        *config.Manifest   `json:"-"`
+	Repository       string             `json:"repository"`
+	Stack            string             `json:"stack"`
+	ManifestDigest   string             `json:"manifest_digest"`
+	ManifestPath     string             `json:"manifest_path"`
+	ManifestCommit   string             `json:"manifest_commit"`
+	ManifestModified bool               `json:"manifest_modified"`
+	SourceSetDigest  string             `json:"source_set_digest"`
+	Sources          []domain.Source    `json:"sources"`
+	Components       []domain.Component `json:"components"`
+	Runtimes         []domain.Runtime   `json:"runtimes"`
+	Diagnostics      []string           `json:"diagnostics"`
+	Manifest         *config.Manifest   `json:"-"`
 }
 
 func BuildPlan(ctx context.Context, o PlanOptions, source SourceProvider) (Plan, error) {
@@ -50,12 +63,50 @@ func BuildPlan(ctx context.Context, o PlanOptions, source SourceProvider) (Plan,
 		return p, err
 	}
 	p.Repository = abs
-	m, err := config.Load(abs)
+	manifestPath := o.ManifestPath
+	if info, e := os.Stat(abs); e == nil && !info.IsDir() {
+		if manifestPath != "" {
+			return p, fmt.Errorf("pass a repository directory with --manifest, or a manifest file alone")
+		}
+		manifestPath = abs
+		abs = filepath.Dir(abs)
+		p.Repository = abs
+	}
+	if manifestPath == "" {
+		manifestPath = abs
+	} else if !filepath.IsAbs(manifestPath) {
+		manifestPath = filepath.Join(abs, manifestPath)
+	}
+	if info, e := os.Stat(manifestPath); e == nil && info.IsDir() {
+		manifestPath = filepath.Join(manifestPath, ".agent-env.yaml")
+	}
+	manifestPath, err = filepath.EvalSymlinks(manifestPath)
+	if err != nil {
+		return p, fmt.Errorf("manifest path: %w", err)
+	}
+	p.ManifestPath = manifestPath
+	m, err := config.Load(manifestPath)
 	if err != nil {
 		return p, err
 	}
 	p.Manifest = m
 	p.ManifestDigest = config.Digest(m)
+	if origin, ok := source.(SourceManifestOrigin); ok {
+		p.ManifestCommit, p.ManifestModified, err = origin.Origin(ctx, manifestPath)
+		if err != nil {
+			if errors.Is(err, exec.ErrNotFound) {
+				return p, fmt.Errorf("%w: %v", ErrPrerequisite, err)
+			}
+			return p, fmt.Errorf("manifest origin: %w", err)
+		}
+	} else {
+		p.ManifestModified = true
+	}
+	if p.ManifestCommit == "" {
+		p.Diagnostics = append(p.Diagnostics, "manifest has no recorded Git commit; selected file path, canonical snapshot and digest are authoritative")
+	} else if p.ManifestModified {
+		p.Diagnostics = append(p.Diagnostics, "manifest differs from its control checkout HEAD or is untracked; canonical snapshot and digest are authoritative")
+	}
 	if o.Stack == "" {
 		return p, fmt.Errorf("--stack is required; choose one of %s", strings.Join(sortedKeys(m.Stacks), ", "))
 	}
@@ -89,9 +140,13 @@ func BuildPlan(ctx context.Context, o PlanOptions, source SourceProvider) (Plan,
 		}
 		resolved, err := source.Resolve(ctx, repo, ref)
 		if err != nil {
+			if errors.Is(err, exec.ErrNotFound) {
+				return p, fmt.Errorf("%w: %v", ErrPrerequisite, err)
+			}
 			return p, fmt.Errorf("source %s: %w", alias, err)
 		}
 		resolved.Alias = alias
+		resolved.ResolvedAt = resolved.ResolvedAt.UTC()
 		resolved.CheckoutMode = "detached"
 		resolved.Writable = false
 		p.Sources = append(p.Sources, resolved)

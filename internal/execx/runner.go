@@ -15,6 +15,12 @@ import (
 	"time"
 )
 
+// ErrProcessTreeUnconfirmed prevents callers from assuming cleanup is safe.
+var ErrProcessTreeUnconfirmed = errors.New("command process tree termination unconfirmed")
+
+// ErrOutputIncomplete identifies failed or truncated command evidence.
+var ErrOutputIncomplete = errors.New("command output capture incomplete")
+
 type Command struct {
 	Name           string
 	Args           []string
@@ -138,7 +144,10 @@ func runCaptured(ctx context.Context, cmd *exec.Cmd) error {
 			}
 		}
 	}
-	return errors.Join(append([]error{runErr}, drainErrors...)...)
+	if drainErr := errors.Join(drainErrors...); drainErr != nil {
+		return errors.Join(runErr, ErrOutputIncomplete, drainErr)
+	}
+	return runErr
 }
 
 func mergeEnv(base []string, overrides map[string]string) []string {

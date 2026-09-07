@@ -37,7 +37,7 @@ func TestStateMachineAndQuarantine(t *testing.T) {
 
 func TestGCSafety(t *testing.T) {
 	now := time.Now()
-	l := Lease{Desired: "active", Observed: "ready", ExpiresAt: now.Add(-time.Minute)}
+	l := Lease{Desired: "active", Observed: "ready", ExpiresAt: now.Add(-10 * time.Minute), HeartbeatAt: now.Add(-2 * time.Minute)}
 	if !GCEligible(l, now) {
 		t.Fatal("expired ready lease should be candidate")
 	}
@@ -51,5 +51,26 @@ func TestGCSafety(t *testing.T) {
 	l.ExpiresAt = now.Add(time.Hour)
 	if GCEligible(l, now) {
 		t.Fatal("live lease collected")
+	}
+}
+
+func TestGCGraceBoundaries(t *testing.T) {
+	now := time.Now()
+	l := Lease{Desired: "active", Observed: "ready", ExpiresAt: now.Add(-5 * time.Minute), HeartbeatAt: now.Add(-time.Minute)}
+	if !GCEligible(l, now) {
+		t.Fatal("elapsed grace boundaries should qualify")
+	}
+	l.ExpiresAt = now.Add(-5*time.Minute + time.Nanosecond)
+	if GCEligible(l, now) {
+		t.Fatal("expiry grace not elapsed")
+	}
+	l.ExpiresAt = now.Add(-10 * time.Minute)
+	l.HeartbeatAt = now.Add(-time.Minute + time.Nanosecond)
+	if GCEligible(l, now) {
+		t.Fatal("recent heartbeat ignored")
+	}
+	l.ExpiresAt = time.Time{}
+	if GCEligible(l, now) {
+		t.Fatal("missing expiry cannot prove collection eligibility")
 	}
 }

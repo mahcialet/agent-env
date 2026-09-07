@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"text/tabwriter"
 	"time"
 
 	"github.com/mahcialet/agent-env/internal/app"
@@ -48,6 +49,13 @@ func New(out, errOut io.Writer) *cobra.Command {
 			for _, c := range p.Components {
 				fmt.Fprintf(out, "Component %-12s runtime=%s services=%v\n", c.Name, c.Runtime, c.Services)
 			}
+		case []domain.Lease:
+			w := tabwriter.NewWriter(out, 0, 4, 2, ' ', 0)
+			fmt.Fprintln(w, "ID\tSTACK\tOWNER\tDESIRED\tOBSERVED\tEXPIRES")
+			for _, l := range p {
+				fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n", l.ID, l.Stack, l.Owner, l.Desired, l.Observed, l.ExpiresAt.Format(time.RFC3339))
+			}
+			return w.Flush()
 		default:
 			b, err := json.MarshalIndent(v, "", "  ")
 			if err != nil {
@@ -89,8 +97,10 @@ func New(out, errOut io.Writer) *cobra.Command {
 	}}
 	plan.Flags().StringVar(&options.Stack, "stack", "", "named component stack")
 	plan.Flags().StringVar(&options.Ref, "ref", "", "requested ref for a single-source manifest")
+	plan.Flags().StringVar(&options.ManifestPath, "manifest", "", "explicit manifest path relative to repository")
 	plan.Flags().StringToStringVar(&options.SourceRefs, "source", nil, "source alias=ref overrides")
 	root.AddCommand(plan)
+	addLifecycle(root, &output, emit, out, errOut)
 	return root
 }
 

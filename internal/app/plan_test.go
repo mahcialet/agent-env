@@ -63,3 +63,24 @@ func TestPlanClosureAndNoAllocation(t *testing.T) {
 		t.Fatalf("plan modified repository: %v %v", entries, err)
 	}
 }
+
+func TestExplicitManifestUsesControlRepositoryForSources(t *testing.T) {
+	repo := t.TempDir()
+	fixture, err := os.ReadFile("../../testdata/manifests/api-dashboard.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(repo, "custom.yaml")
+	if err = os.WriteFile(path, fixture, 0644); err != nil {
+		t.Fatal(err)
+	}
+	for _, options := range []PlanOptions{{Repository: repo, ManifestPath: "custom.yaml", Stack: "api"}, {Repository: path, Stack: "api"}} {
+		p, err := BuildPlan(context.Background(), options, &planningSource{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if p.Repository != repo || p.Sources[0].RepositoryPath != repo {
+			t.Fatalf("manifest filename used as source base: %+v", p)
+		}
+	}
+}

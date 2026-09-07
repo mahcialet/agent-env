@@ -18,7 +18,7 @@ Deliver a usable native Windows/macOS/Linux CLI that reads an explicit target ma
 - [x] 2026-09-07: initial `go run ./tools/repoctl docs-check` passed with Go 1.27.1 (exit 0); negative checker tests and complete harness verification remain pending.
 - [x] 2026-09-07: Milestone 0 local bootstrap verified: repoctl check passes (format, unit including negative fixtures, vet, docs, generated, architecture); CLI version executes; CGO_ENABLED=0 builds pass for windows/amd64, darwin/amd64, darwin/arm64, linux/amd64, linux/arm64. Native CI is configured and its results remain pending.
 - [x] 2026-09-07: Milestones 1–3 foundational packages and read-only validate/plan CLI implemented and targeted Linux tests pass; native Windows/macOS execution of this slice remains pending CI.
-- [ ] Milestones 4–7: Compose adapter, create/destroy saga, reconciliation/TTL/GC, named tests and evidence.
+- [x] 2026-09-07: Milestones 4–7 implemented: owned Compose snapshots, create/destroy compensation, reconciliation, TTL/GC grace and running-run protection, named tests/evidence, process-tree cancellation, source provenance and endpoint descriptors. Final integrated Go 1.26.8/1.27.1 repoctl check and Linux race pass.
 - [ ] Milestone 8: concurrency, rollback, dirty-source and multi-repository integration tests; actual native CI evidence; completion audit and plan relocation.
 
 Current next action: finish review fixes, rerun full harness and Docker integration, push coherent adapter/lifecycle slices, and obtain native CI for the final implementation. Domain, paths, SQLite, strict manifest/stack and Git adapter units pass locally; native tests for this new slice remain pending. Bootstrap documents describe required contracts; their presence is not proof of product behavior. Acceptance below remains pending until direct evidence is recorded.
@@ -248,39 +248,39 @@ All items initially pending. Replace status with verified only after recording a
 
 | ID | Required behavior | Status / evidence |
 | --- | --- | --- |
-| 1 | A fixture repository with `api` and `dashboard` components can validate successfully. | Pending — no complete verification recorded. |
-| 2 | `plan --stack api` resolves only the API dependency closure. | Pending — no complete verification recorded. |
-| 3 | `plan --stack dashboard` resolves API plus Dashboard in deterministic topological order. | Pending — no complete verification recorded. |
-| 4 | Invalid cycles and unknown references fail with actionable diagnostics. | Pending — no complete verification recorded. |
-| 5 | `create` records the exact requested ref and resolved commit before runtime startup. | Pending — no complete verification recorded. |
-| 6 | Two simultaneous leases from the same repository and commit receive distinct worktrees and Compose project names. | Pending — no complete verification recorded. |
-| 7 | Destroying one lease does not alter the other lease’s containers, volumes, networks, or worktree. | Pending — no complete verification recorded. |
-| 8 | `list --output json` returns both leases with source, stack, component, desired, and observed state. | Pending — no complete verification recorded. |
-| 9 | If a Compose project is manually stopped or removed, a subsequent list/reconcile marks the lease degraded rather than still ready. | Pending — no complete verification recorded. |
-| 10 | A create failure after worktree creation triggers compensating cleanup; if cleanup fails, the lease remains visible as quarantined. | Pending — no complete verification recorded. |
-| 11 | A dirty tracked worktree is not silently deleted by GC. | Pending — no complete verification recorded. |
-| 12 | `gc` without `--apply` deletes nothing. | Pending — no complete verification recorded. |
-| 13 | A named test streams output, records exit code, and stores stdout/stderr evidence. | Pending — no complete verification recorded. |
-| 14 | Multiple local repository sources are resolved and their commit tuple is visible in `show` and JSON output. | Pending — no complete verification recorded. |
-| 15 | The CLI compiles with `CGO_ENABLED=0` for at least:  windows/amd64 darwin/amd64 darwin/arm64 linux/amd64 linux/arm64  | Pending — no complete verification recorded. |
-| 16 | Unit tests pass on Windows, macOS, and Linux CI runners. | Pending — no complete verification recorded. |
-| 17 | Paths containing spaces and Unicode are covered by tests. | Pending — no complete verification recorded. |
-| 18 | No test requires Bash on Windows. | Pending — no complete verification recorded. |
-| 19 | Command arguments containing spaces and quotes survive round-trip execution on each OS. | Pending — no complete verification recorded. |
-| 20 | `doctor` reports missing `git`, `docker`, or Compose v2 without a panic or misleading success. | Pending — no complete verification recorded. |
-| 21 | README includes an explicit statement that environment isolation is not a malicious-code sandbox. | Pending — no complete verification recorded. |
-| 22 | `ARCHITECTURE.md` explains the lease/source/runtime/reconciliation boundaries without duplicating low-level implementation details. | Pending — no complete verification recorded. |
-| 23 | `.agent-env.yaml` schema and examples are documented. | Pending — no complete verification recorded. |
-| 24 | Destructive commands document dry-run, force, and quarantine behavior. | Pending — no complete verification recorded. |
-| 25 | Deferred Android/browser/registry features are documented as roadmap items, not presented as implemented. | Pending — no complete verification recorded. |
-| 26 | `AGENTS.md` is no more than 150 lines, acts as a map, and all repository paths it references exist. | Pending — no complete verification recorded. |
-| 27 | `docs/exec-plans/active/agent-env-mvp.md` contains the mandatory living-plan sections and accurately identifies current progress and next actions throughout implementation. | Pending — no complete verification recorded. |
-| 28 | All design documents, product specifications, and ADRs are discoverable through their local indexes; a deliberately unindexed file causes `repoctl docs-check` to fail with an actionable diagnostic. | Pending — no complete verification recorded. |
-| 29 | `go run ./tools/repoctl check` runs without Bash, Make, or PowerShell as a requirement on Windows, macOS, and Linux. | Pending — no complete verification recorded. |
-| 30 | `repoctl generated-check` detects a deliberate drift in `docs/generated/db-schema.md` after migrations exist. | Pending — no complete verification recorded. |
-| 31 | `repoctl arch-check` detects at least one fixture or synthetic forbidden dependency and explains the expected repair direction. | Pending — no complete verification recorded. |
-| 32 | The checked-in active ExecPlan plus repository documents are sufficient for a fresh Codex run to identify the branch, current milestone, required commands, acceptance behavior, and recovery path without consulting this chat. | Pending — no complete verification recorded. |
-| 33 | At completion, the ExecPlan is moved to `docs/exec-plans/completed/` with an outcomes/retrospective entry; historical handoff provenance remains under `docs/references/` if committed. | Pending — no complete verification recorded. |
+| 1 | A fixture repository with `api` and `dashboard` components can validate successfully. | Passed locally: strict config fixture tests and real CLI concurrent integration validate the API/dashboard manifest. |
+| 2 | `plan --stack api` resolves only the API dependency closure. | Passed locally: stack TestClosure and real CLI plan assert API closure only. |
+| 3 | `plan --stack dashboard` resolves API plus Dashboard in deterministic topological order. | Passed locally: stack TestClosure/TestDeterminismAndNoMutation and real dashboard lease assert ordered full closure. |
+| 4 | Invalid cycles and unknown references fail with actionable diagnostics. | Passed locally: TestStrictManifest cycle/reference negatives and deterministic stack tests. |
+| 5 | `create` records the exact requested ref and resolved commit before runtime startup. | Passed locally: lifecycle pinning tests and real CLI create/show inspect requested refs and resolved commits; explicit control origin is independent. |
+| 6 | Two simultaneous leases from the same repository and commit receive distinct worktrees and Compose project names. | Passed locally: TestIntegrationConcurrentLeasesClosureAndEvidence starts two creates concurrently and compares worktree/project identities. |
+| 7 | Destroying one lease does not alter the other lease’s containers, volumes, networks, or worktree. | Passed locally: same integration compares surviving sibling exact resource IDs/worktree and unrelated volume after destroy. |
+| 8 | `list --output json` returns both leases with source, stack, component, desired, and observed state. | Passed locally: concurrent integration checks versioned list JSON and both lease models. |
+| 9 | If a Compose project is manually stopped or removed, a subsequent list/reconcile marks the lease degraded rather than still ready. | Passed locally: integration manually removes Compose runtime then verifies list degradation; reconcile readiness regressions cover promotion guards. |
+| 10 | A create failure after worktree creation triggers compensating cleanup; if cleanup fails, the lease remains visible as quarantined. | Passed locally: actual readiness-failure integration rolls back resources/worktrees; lifecycle fake rollback failure asserts quarantine. |
+| 11 | A dirty tracked worktree is not silently deleted by GC. | Passed locally: multi-repository dirty GC integration retains tracked changes and quarantines; forced cleanup preserves diff. |
+| 12 | `gc` without `--apply` deletes nothing. | Passed locally: integration compares source/runtime state before and after default GC preview; expiry/heartbeat/running-run guards have unit coverage. |
+| 13 | A named test streams output, records exit code, and stores stdout/stderr evidence. | Passed locally: real named pass/fail test asserts streamed output, exit5, redacted logs/argv/artifacts; cancellation evidence-failure regression now preserves the running barrier and original report. |
+| 14 | Multiple local repository sources are resolved and their commit tuple is visible in `show` and JSON output. | Passed locally: TestIntegrationMultiRepositoryPinsAndDirtyGC checks each requested ref and resolved commit in show/JSON. |
+| 15 | The CLI compiles with `CGO_ENABLED=0` for at least:  windows/amd64 darwin/amd64 darwin/arm64 linux/amd64 linux/arm64  | Adapter revision b153331: all five CGO-disabled build jobs passed in CI 34122233326. Final lifecycle revision pending. |
+| 16 | Unit tests pass on Windows, macOS, and Linux CI runners. | Adapter revision b153331: six native OS/Go jobs passed in CI 34122233326. Final lifecycle revision pending. |
+| 17 | Paths containing spaces and Unicode are covered by tests. | Passed locally and adapter native CI: path, Git and execx tests use spaces/Unicode; real Linux integration uses spaced Unicode checkout/home. |
+| 18 | No test requires Bash on Windows. | Adapter native Windows jobs pass without Bash; helper commands use test executables and native wrappers. Final product native rerun pending. |
+| 19 | Command arguments containing spaces and quotes survive round-trip execution on each OS. | Passed on all native adapter jobs: TestNativeRoundTrip, Windows wrapper tests and repoctl TestCommandArgvRoundTrip. |
+| 20 | `doctor` reports missing `git`, `docker`, or Compose v2 without a panic or misleading success. | Passed locally: structured CLI missing-prerequisite tests and Compose doctor missing docker/old plugin/daemon fixtures. |
+| 21 | README includes an explicit statement that environment isolation is not a malicious-code sandbox. | Verified README and security guide explicitly state isolation is not a malicious-code sandbox. |
+| 22 | `ARCHITECTURE.md` explains the lease/source/runtime/reconciliation boundaries without duplicating low-level implementation details. | Verified ARCHITECTURE.md maps lease/source/runtime/store/app observation boundaries; architecture checker passes. |
+| 23 | `.agent-env.yaml` schema and examples are documented. | Verified manifest-v1 spec and testdata/manifests examples; strict parser validates fixtures. |
+| 24 | Destructive commands document dry-run, force, and quarantine behavior. | Verified CLI/security/reliability docs explain destroy preview, explicit force, dirty protection and quarantine. |
+| 25 | Deferred Android/browser/registry features are documented as roadmap items, not presented as implemented. | Verified roadmap clearly defers Android, browser pooling, remote providers and external registry. |
+| 26 | `AGENTS.md` is no more than 150 lines, acts as a map, and all repository paths it references exist. | Passed repoctl docs-check and negative length/path fixtures; root AGENTS.md is a concise indexed map. |
+| 27 | `docs/exec-plans/active/agent-env-mvp.md` contains the mandatory living-plan sections and accurately identifies current progress and next actions throughout implementation. | Verified living plan contains mandatory sections and records bootstrap, foundation, adapters, review findings and final gates. |
+| 28 | All design documents, product specifications, and ADRs are discoverable through their local indexes; a deliberately unindexed file causes `repoctl docs-check` to fail with an actionable diagnostic. | Passed repoctl docs-check and negative unindexed/link/metadata/plan fixtures. |
+| 29 | `go run ./tools/repoctl check` runs without Bash, Make, or PowerShell as a requirement on Windows, macOS, and Linux. | Adapter revision native repoctl check passed all six OS/Go jobs; final product native rerun pending. |
+| 30 | `repoctl generated-check` detects a deliberate drift in `docs/generated/db-schema.md` after migrations exist. | Passed TestGeneratedDrift and generated-check; migration 002 schema is regenerated from SQL. |
+| 31 | `repoctl arch-check` detects at least one fixture or synthetic forbidden dependency and explains the expected repair direction. | Passed TestArchitectureBoundaries negative forbidden imports with repair diagnostics and final arch-check. |
+| 32 | The checked-in active ExecPlan plus repository documents are sufficient for a fresh Codex run to identify the branch, current milestone, required commands, acceptance behavior, and recovery path without consulting this chat. | Verified plan and indexed docs contain branch, commands, current evidence, remaining gates and recovery without chat dependency. |
+| 33 | At completion, the ExecPlan is moved to `docs/exec-plans/completed/` with an outcomes/retrospective entry; historical handoff provenance remains under `docs/references/` if committed. | Pending: final native verification, retrospective and completed-plan relocation. |
 
 
 Failure fixtures must prove docs-check detects broken links, missing plan sections and unindexed docs with repairs; generated-check detects schema drift; arch-check detects forbidden imports. Integration must prove isolated simultaneous leases and destruction, selected closure, pinning, rollback/quarantine, manual runtime removal, dirty tracked protection, evidence output, and paths with spaces. Native tests cover Windows wrappers and quote/Unicode/backslash round trips without Bash. doctor missing prerequisites must fail accurately. Record unsuccessful or unavailable checks explicitly.
@@ -317,3 +317,11 @@ Implementation checkpoint (2026-09-07):
 - SQLite now supplies operation contexts, cancellation on renewal loss/watchdog, and transaction token fences. App preserves original ownership through ordinary-cancel compensation, avoids stale cleanup after loss, and preserves local command evidence without stale registry writes. Actual token-replacement tests passed on both Go minors and race.
 - Native runner now kills ordinary descendant trees before returning: Unix process groups; Windows suspended Job assignment before resume. Linux late-write regression failed before fix and passes afterward. Deliberate Unix detachment remains outside trusted-code containment; native Windows/macOS final CI pending.
 - Initial documentation and all 33 acceptance rows remain active. Final audit, native verification of current code, and completion-plan relocation are not yet done.
+
+Final integration checkpoint (2026-09-07): b153331 native path-alias repair passed all 12 jobs in CI 34122233326, including Windows/macOS/Linux on both Go minors and five CGO-disabled targets. Full lifecycle tree passes repoctl check on Go 1.26.8 and 1.27.1 and go test -race ./.... Actual Docker rerun and final lifecycle native CI are pending. Cross-process destroy cancellation is covered using two SQLite connections and an actual process tree; cleanup asserts final evidence before source removal. Manifest provenance tests use clean/dirty/untracked/ignored control files and linked worktrees; runtime refs remain independent.
+
+Final local Docker evidence: repoctl test-integration passed; CLI suite 110.663 seconds. All three actual Docker scenarios passed; fixture lease containers, volumes, networks and unrelated-fixture volumes were absent afterward by label-filtered inventory. Independent cancellation review found evidence-finalization errors could permit deletion after a terminal run was saved; repair and regression are in progress before committing lifecycle.
+
+Independent lifecycle review checkpoint: exact-run cancellation identity, lock acquisition races, stale-running refusal and SQLite fencing were reviewed with no additional findings. Two P1s were accepted: terminal run publication preceded successful artifact finalization, and terminal cancellation could hide unconfirmed process-tree termination. Both require a durable cleanup gate and failure regressions; they are not counted complete until fixes and re-review pass.
+
+Cancellation review resolution: both P1 findings were fixed and independently re-reviewed with no remaining findings. Terminal run persistence now occurs only after source/lease/event and every evidence write succeed. Typed ErrProcessTreeUnconfirmed and ErrOutputIncomplete keep cleanup blocked on ambiguous termination or incomplete captured output. Concurrent force-destroy regressions retain the running record and original report on all three failure classes. Focused app/execx tests and Windows execx crosscompile pass; final harness and Docker rerun are underway.

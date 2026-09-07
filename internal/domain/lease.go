@@ -57,25 +57,28 @@ type Runtime struct {
 }
 
 type Lease struct {
-	ID              string          `json:"id"`
-	Owner           string          `json:"owner"`
-	Purpose         string          `json:"purpose"`
-	Mode            string          `json:"mode"`
-	Repository      string          `json:"repository"`
-	Stack           string          `json:"stack"`
-	Desired         string          `json:"desired_state"`
-	Observed        string          `json:"observed_state"`
-	CreatedAt       time.Time       `json:"created_at"`
-	HeartbeatAt     time.Time       `json:"heartbeat_at"`
-	ExpiresAt       time.Time       `json:"expires_at"`
-	ManifestDigest  string          `json:"manifest_digest"`
-	SourceSetDigest string          `json:"source_set_digest"`
-	Manifest        json.RawMessage `json:"manifest"`
-	Sources         []Source        `json:"sources"`
-	Components      []Component     `json:"components"`
-	Runtimes        []Runtime       `json:"runtimes"`
-	Resources       []Resource      `json:"resources"`
-	Diagnostics     []string        `json:"diagnostics"`
+	ID               string          `json:"id"`
+	Owner            string          `json:"owner"`
+	Purpose          string          `json:"purpose"`
+	Mode             string          `json:"mode"`
+	Repository       string          `json:"repository"`
+	Stack            string          `json:"stack"`
+	Desired          string          `json:"desired_state"`
+	Observed         string          `json:"observed_state"`
+	CreatedAt        time.Time       `json:"created_at"`
+	HeartbeatAt      time.Time       `json:"heartbeat_at"`
+	ExpiresAt        time.Time       `json:"expires_at"`
+	ManifestDigest   string          `json:"manifest_digest"`
+	ManifestPath     string          `json:"manifest_path"`
+	ManifestCommit   string          `json:"manifest_commit"`
+	ManifestModified bool            `json:"manifest_modified"`
+	SourceSetDigest  string          `json:"source_set_digest"`
+	Manifest         json.RawMessage `json:"manifest"`
+	Sources          []Source        `json:"sources"`
+	Components       []Component     `json:"components"`
+	Runtimes         []Runtime       `json:"runtimes"`
+	Resources        []Resource      `json:"resources"`
+	Diagnostics      []string        `json:"diagnostics"`
 }
 
 type Event struct {
@@ -150,5 +153,14 @@ func Transition(l *Lease, next string) error {
 }
 
 func GCEligible(l Lease, now time.Time) bool {
-	return l.Desired != "released" && !l.ExpiresAt.After(now) && l.Observed != "quarantined" && l.Observed != "allocating" && l.Observed != "starting" && l.Observed != "releasing"
+	return GCEligibleWithGrace(l, now, 5*time.Minute, time.Minute)
+}
+
+// GCEligibleWithGrace protects recently expired or recently used leases. It is
+// only the temporal/state gate; app also checks active runs and resource identity.
+func GCEligibleWithGrace(l Lease, now time.Time, expiryGrace, heartbeatGrace time.Duration) bool {
+	if expiryGrace < 0 || heartbeatGrace < 0 || l.ExpiresAt.IsZero() {
+		return false
+	}
+	return l.Desired != "released" && !l.ExpiresAt.Add(expiryGrace).After(now) && !l.HeartbeatAt.Add(heartbeatGrace).After(now) && l.Observed != "quarantined" && l.Observed != "allocating" && l.Observed != "starting" && l.Observed != "releasing"
 }

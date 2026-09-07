@@ -15,6 +15,8 @@ type Policy struct {
 	DefaultTTL           time.Duration
 	MaxTTL               time.Duration
 	MaxActive            int
+	GCGrace              time.Duration
+	HeartbeatGrace       time.Duration
 	ForbidPrivileged     bool
 	ForbidHostNetwork    bool
 	ForbidDockerSocket   bool
@@ -23,7 +25,7 @@ type Policy struct {
 }
 
 func Defaults() Policy {
-	return Policy{DefaultTTL: 4 * time.Hour, MaxTTL: 24 * time.Hour, MaxActive: 8, ForbidPrivileged: true, ForbidHostNetwork: true, ForbidDockerSocket: true, ForbidContainerName: true}
+	return Policy{DefaultTTL: 4 * time.Hour, MaxTTL: 24 * time.Hour, MaxActive: 8, GCGrace: 5 * time.Minute, HeartbeatGrace: time.Minute, ForbidPrivileged: true, ForbidHostNetwork: true, ForbidDockerSocket: true, ForbidContainerName: true}
 }
 
 func (p Policy) TTL(ttl time.Duration) (time.Duration, error) {
