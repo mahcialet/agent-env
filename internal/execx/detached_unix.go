@@ -58,8 +58,10 @@ func detachedTreeAlive(id ProcessIdentity) (bool, error) {
 		}
 		return false, nil
 	}
-	// A surviving group with a reaped leader must remain a cleanup barrier.
-	// A later group whose leader has also exited is indistinguishable, so it
-	// likewise remains alive rather than authorizing deletion.
-	return rootAlive || groupAlive, nil
+	// Occupancy cannot distinguish descendants from a recycled PGID whose new
+	// leader also exited. Retain the barrier without authorizing unsafe signals.
+	if groupAlive {
+		return true, errors.Join(ErrProcessTreeUnconfirmed, errors.New("detached leader absent; live group ownership is uncertain"))
+	}
+	return false, nil
 }

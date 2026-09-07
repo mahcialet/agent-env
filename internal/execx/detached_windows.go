@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
@@ -35,8 +36,8 @@ func startDetached(ctx context.Context, cmd *exec.Cmd) (ProcessIdentity, error) 
 		return ProcessIdentity{}, err
 	}
 	defer windows.CloseHandle(job)
-	// Intentionally no KILL_ON_JOB_CLOSE: the named job lives while any member
-	// lives, so another CLI can inspect descendants after the launcher exits.
+	// No KILL_ON_JOB_CLOSE: a per-resource guardian retains a handle while
+	// members live, preserving named observation after this CLI exits.
 	cmd.SysProcAttr = &syscall.SysProcAttr{CreationFlags: windows.CREATE_NEW_PROCESS_GROUP | windows.DETACHED_PROCESS | windows.CREATE_SUSPENDED}
 	if err := ctx.Err(); err != nil {
 		return ProcessIdentity{}, err
@@ -64,6 +65,19 @@ func startDetached(ctx context.Context, cmd *exec.Cmd) (ProcessIdentity, error) 
 		return abort(errors.Join(err, errors.New("suspended process identity unavailable")))
 	}
 	id.StartID = "job|" + strconv.FormatUint(uint64(session), 10) + "|" + name + "|" + birth
+	output, ok := cmd.Stdout.(*os.File)
+	if !ok {
+		return abort(errors.New("detached output file unavailable"))
+	}
+	proof := filepath.Join(filepath.Dir(output.Name()), ".detached-"+hex.EncodeToString(nonce[:])+"-empty")
+	proof, err = filepath.Abs(proof)
+	if err != nil {
+		return abort(err)
+	}
+	if err := startDetachedGuardian(job, name, proof); err != nil {
+		return abort(err)
+	}
+	id.StartID += "|" + proof
 	if err := ctx.Err(); err != nil {
 		return abort(err)
 	}
@@ -77,8 +91,11 @@ var openDetachedJob = windows.NewLazySystemDLL("kernel32.dll").NewProc("OpenJobO
 
 func detachedTreeAlive(id ProcessIdentity) (bool, error) {
 	fields := strings.Split(id.StartID, "|")
-	if len(fields) != 4 || fields[0] != "job" || !strings.HasPrefix(fields[2], "Local\\agent-env-") || fields[3] == "" {
+	if len(fields) != 5 || fields[0] != "job" || !strings.HasPrefix(fields[2], "Local\\agent-env-") || fields[3] == "" || !filepath.IsAbs(fields[4]) {
 		return false, errors.New("detached job identity missing")
+	}
+	if filepath.Base(fields[4]) != ".detached-"+strings.TrimPrefix(fields[2], "Local\\agent-env-")+"-empty" {
+		return false, errors.New("detached guardian proof identity mismatch")
 	}
 	wantedSession, err := strconv.ParseUint(fields[1], 10, 32)
 	if err != nil {
@@ -115,6 +132,10 @@ func detachedTreeAlive(id ProcessIdentity) (bool, error) {
 			}
 			if alive && actual == fields[3] {
 				return false, errors.New("live detached root lost its job identity")
+			}
+			proof, proofErr := os.ReadFile(fields[4])
+			if proofErr != nil || string(proof) != fields[2] {
+				return false, errors.New("detached job missing without confirmed empty-process evidence")
 			}
 			return false, nil
 		}

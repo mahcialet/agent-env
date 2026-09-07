@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -109,8 +110,9 @@ func testDetachedSurvivesLaunchingCLI(t *testing.T, tree bool) {
 			}
 			time.Sleep(10 * time.Millisecond)
 		}
-		if alive, err := process.Alive(context.Background(), identity); err != nil || !alive {
-			t.Fatalf("live descendant behind exited root lost: %v %v", alive, err)
+		alive, err := process.Alive(context.Background(), identity)
+		if !alive || (runtime.GOOS == "windows" && err != nil) || (runtime.GOOS != "windows" && !errors.Is(err, ErrProcessTreeUnconfirmed)) {
+			t.Fatalf("descendant ownership after root exit: %v %v", alive, err)
 		}
 	}
 	deadline := time.Now().Add(5 * time.Second)

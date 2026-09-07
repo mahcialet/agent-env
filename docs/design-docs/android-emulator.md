@@ -38,7 +38,13 @@ logcat. Registry and environment descriptors retain reservation and observation.
 Stop checks the lease-derived AVD name on the same authenticated console
 connection used for `kill`, preventing a check/stop race on a recycled port.
 Native birth identity detects PID reuse. Termination of the entire native process group or Windows Job and port absence must be
-confirmed before writable deletion. Confirmed manual termination degrades;
+confirmed before writable deletion. On Unix, surviving group members after root
+exit prevent cleanup but do not prove lineage for a stop; observation reports
+uncertainty until the group is absent. Windows uses a private helper per resource
+to retain the named Job handle across CLI/root exit. It inherits explicit handles,
+exits when all Job members stop and persists matching empty-Job evidence. A lost
+Job name without that evidence, or observation from a different Windows logon
+session, is uncertainty. Confirmed manual termination degrades;
 uncertain ownership quarantines. Reconcile never adopts or restarts an Emulator.
 A released runtime's old ports convey no continuing ownership.
 
