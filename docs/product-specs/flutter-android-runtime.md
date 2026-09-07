@@ -97,9 +97,13 @@ weaken ownership checks to fit.
 go test -tags=flutterintegration -run TestRealFlutterAndroidBackendLease -v ./internal/cli -timeout=40m
 ```
 
-This opt-in test creates a disposable Flutter project, builds and installs its
-APK, launches it against a real Compose backend through reverse, observes its
-HTTP request, and destroys the lease without force. Explicit selection fails
+This opt-in test creates a disposable Flutter project and two concurrent leases.
+Each builds and installs a debug APK, launches it against its own real Compose
+backend through reverse, observes the Flutter HTTP request, and runs a named
+`adb get-state` test with the lease-owned serial. It destroys the first lease
+without force and checks that the sibling remains READY and issues a fresh guest
+HTTP request to its backend,
+then destroys the sibling. Explicit selection fails
 when prerequisites are absent. Normal Flutter/Gradle builds may download declared
 dependencies under already accepted licenses; the fixture does not accept licenses.
 Run it separately from tests that reserve real Emulator ports. Failed cleanup

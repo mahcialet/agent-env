@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/product-specs/android-emulator.md
-source_sha256: 25633f8663cd793ae0c2bb04240bbea4f5ec10d21965f2eb5b437bd9d0b05e84
+source_sha256: 7f87b688b61611c75ed6c0dda32e179d4177c2c32d14c8d4ea1042765de30385
 ---
 
 [English（翻訳元）](android-emulator.md)
@@ -57,3 +57,12 @@ go test -tags=androidintegration ./internal/runtime/android -run ^TestRealAndroi
 ```
 
 この明示実行のテストには、空いている予約対象 Emulator ポートと使用可能なアクセラレーションが必要です。前提条件が欠けていれば skip ではなく失敗します。実際の SQLite/app orchestration と合成 source provider で 2 台の実 Emulator を起動し、兄弟の生存と手動終了を確認してから、所有を確認したリソースだけを削除します。削除が不確定なら、復旧用にテストが表示した一時状態パスを保持します。別途用意された Git/Compose の統合 fixture を置き換えるものではありません。
+
+## Emulator補助プロセスの専用状態
+
+Emulatorの子プロセスには、リースのAndroid状態内の専用一時領域とnetsim探索パスを渡します。
+これによりリース間の補助デーモンを隔離し、ホスト環境や共有ADBサーバー方針は変更しません。
+各インスタンスは動的HCIポートを要求し、固定ホストポートを避けるためnetsimの補助Web UIを
+無効にします。無線シミュレーションとゲストネットワークは有効のままです。
+専用の補助プロセスも既存のネイティブ所有確認・cleanup完了確認の対象であり、
+生存するプロセスグループの識別が曖昧なら隔離を維持します。

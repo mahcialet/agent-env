@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/product-specs/flutter-android-runtime.md
-source_sha256: 9b60d3f10c42de2badff738435e7acff0d8645dc4654d04de809e0ffd9f19d5e
+source_sha256: 9baa002f33fc8c737b1ea3f27b16de0fefc8df3dc4d58af19b2544cd58227496
 ---
 
 # Flutter Androidアプリケーション
@@ -90,9 +90,11 @@ PATH上のGit・Flutter・Docker Compose、稼働中のDockerエンジン、`AND
 go test -tags=flutterintegration -run TestRealFlutterAndroidBackendLease -v ./internal/cli -timeout=40m
 ```
 
-明示選択するこのテストは、使い捨てFlutterプロジェクトを作成してAPKをビルド・インストールし、
-reverse経由で実Composeバックエンドにつないで起動し、HTTPリクエストを観測した後、forceなしで
-リースを破棄します。前提条件不足は失敗にします。通常のFlutter/Gradleビルドは承諾済み
+明示選択するこのテストは、使い捨てFlutterプロジェクトと同時に存在する二つのリースを作成します。
+それぞれdebug APKをビルド・インストールし、reverse経由で専用の実Composeバックエンドにつないで
+起動し、FlutterのHTTPリクエストを観測し、所有シリアルを使う名前付き `adb get-state` テストを
+実行します。一方をforceなしで破棄し、他方がREADYでゲストからバックエンドへ新しいHTTPリクエストを送れることを確認してから、
+他方も破棄します。前提条件不足は失敗にします。通常のFlutter/Gradleビルドは承諾済み
 ライセンスの下で宣言された依存を取得する場合がありますが、fixtureはライセンスを承諾しません。
 実Emulatorポートを予約する他のテストとは分けて実行してください。
 cleanup失敗時は証拠とリソースを保持し、明示的な調査を必要とします。

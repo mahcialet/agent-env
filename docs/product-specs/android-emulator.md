@@ -89,3 +89,13 @@ real SQLite/app orchestration and a synthetic source provider, checks sibling
 survival and manual termination, then removes only confirmed owned resources.
 Uncertain cleanup retains the temporary state path printed by the test for recovery.
 It does not replace the separate Git/Compose integration fixtures.
+
+## Private Emulator helper state
+
+Emulator child processes receive private temporary and netsim discovery paths
+inside their lease's Android state. This isolates helper daemons across leases
+without changing the host environment or the shared ADB-server policy. Each
+instance requests a dynamic HCI port; the auxiliary netsim web UI is disabled to
+avoid its fixed host port. Radio simulation and guest networking remain enabled.
+Private helper processes are still part of the existing native process ownership
+and confirmed-cleanup checks; a surviving ambiguous group remains quarantined.

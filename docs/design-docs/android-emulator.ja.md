@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/design-docs/android-emulator.md
-source_sha256: 6f8e96ead0627330d7ac0907e56279cf7d8133336e34c99b5e921a480d55cef6
+source_sha256: 2fce48e939186d76ed412583e69b2dce3b7dd17fd901af15e3959b973bff8eb9
 ---
 
 [English（翻訳元）](android-emulator.md)
@@ -41,3 +41,22 @@ Windows では、リソースごとの専用 helper が CLI/ルートプロセ�
 ## 移植性と証拠
 
 ネイティブの argv、明示したパスと環境、shell/CGO 不要という条件を守ります。SDK とイメージのアーキテクチャ互換性はホスト側の前提条件であり、WSL は Linux ホストとして扱います。テストは discovery、危険なテンプレート、console 所有権、切り離されたプロセスの寿命、PID 再利用、同時予約、補償、兄弟 lease の分離、隔離を対象にします。ネイティブ CI とクロスビルドは、実際のアクセラレーション付き Emulator テストとは別です。実 SDK の統合は Linux で実行済みですが、Windows/macOS の実 SDK、アクセラレーション、共有サーバー起動動作は未検証です。[ExecPlan](../exec-plans/completed/android-emulator-lease.md)に、証拠、実装判断、未解決の前提条件、プラットフォーム上の不足を記録します。
+
+## netsim探索と補助プロセスの専用化
+
+Emulatorとnetsimd補助プロセスは、同じリース専用デーモンを探索する必要があります。
+子プロセスだけの `TMPDIR`・`TMP`・`TEMP`・`XDG_RUNTIME_DIR` を
+`<AVDHome>/emulator-data/Temp` に設定し、Windowsでは子の `LOCALAPPDATA` を
+`<AVDHome>/emulator-data` に設定します。ホスト全体の環境は変更しません。
+これによりEmulatorクライアントの一時ファイル探索を、Linuxのデーモンruntimeパス、
+Windowsの `LOCALAPPDATA/Temp`、macOSのOS標準一時パスと揃えます。
+
+`NETSIM_INSTANCE=1` はクライアントの既定インスタンスに合わせ、`NETSIM_HCI_PORT=0` は
+一時的に割り当てるHCIリスナーを要求します。Emulator argvに `-netsim-args --no-web-ui` を
+渡し、補助UIの固定8080ポートを避けます。無効にするのは補助Web UIだけで、無線とゲスト
+ネットワークは維持します。共有ADB方針、プロセス誕生・group・Jobの証明、保守的cleanupは変更しません。
+
+SDK 37.1.11 build 15917651 / netsimd 0.3.114の専用デーモンprobeで、専用 `netsim.ini`、
+gRPCリスナー、HCIポート0設定、libslirp有効を確認し、そのデーモンは停止しました。
+この重点probeは二つのEmulatorの全ライフサイクル成功を証明しません。
+その別検証と、隔離の契機となった共有補助プロセスのcleanup失敗はFlutter実行計画に記録します。

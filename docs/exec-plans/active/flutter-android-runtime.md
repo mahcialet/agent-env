@@ -240,12 +240,13 @@ validation. Any final syntax must be documented and covered by negative fixtures
 - [x] 2026-09-08: Add mixed `api`, `dashboard`, `mobile` and `full` stack fixtures.
 - [x] 2026-09-08: Prove two concurrent mobile leases do not collide.
 - [x] 2026-09-08: Add failure/recovery/quarantine coverage.
-- [ ] Run the complete repository harness and Go race checks.
+- [x] 2026-09-08: Final implementation Go 1.26.8 full harness passed all
+      phases; Go 1.27.1 `go test -race ./...` passed. Latest-source CI is pending.
 - [x] 2026-09-08: Native CI `34166963420` passed all OS/toolchain jobs at
       `8975096`; real SDK evidence remains separate and Linux-only.
 - [x] 2026-09-08: Run real Flutter + Emulator integration on Linux;
       `TestRealFlutterAndroidBackendLease` passed in 248.46s. Two-real-lease
-      extension remains in progress; native Windows/macOS SDK runs remain unverified.
+      extension subsequently passed in 88.99s; native Windows/macOS SDK runs remain unverified.
 - [ ] Complete acceptance evidence and retrospective.
 - [ ] Move this plan to `docs/exec-plans/completed/` according to
       `docs/PLANS.md`.
@@ -292,15 +293,16 @@ ownership assertion.
   `launch_confirmed` now persists only after successful launch. Observation also
   requires confirmed build termination and matching executable/project directory.
   `TestMobileReconcileRejectsIncompleteApplicationSnapshot` covers launch,
-  executable and directory inconsistencies; these latest changes are not yet
-  committed or covered by the earlier native CI run.
+  executable and directory inconsistencies. These guards were subsequently
+  committed as `e2c23f8` and passed final local harness/race validation.
 
 - 2026-09-08: The two-real-lease fixture built both APKs successfully, but both
   Emulator launches reported insufficient free space for their userdata
   partitions. The default temporary directory is memory-backed and the template
   requires 12 GiB free. Allow normal readiness failure and compensation to
   finish, then rerun with a process-local `TMPDIR` on a disk with ample space.
-  Do not resize the template or weaken checks. The rerun result remains pending.
+  No template resizing or weakened checks was used. The later disk-backed
+  two-lease run passed in 88.99s after helper isolation; see final evidence.
 
 - 2026-09-08: Final safety review found that clearing the process uncertainty
   guard after build exit, while required build-evidence writes failed, allowed
@@ -309,7 +311,31 @@ ownership assertion.
   A durable `build_evidence_incomplete` flag is now set before build and cleared
   only after both required log artifacts and final lease state persist.
   `TestMobileIncompleteBuildEvidenceBlocksCleanup` injects `SaveArtifact` failure
-  and checks APK retention; final validation of this latest change is pending.
+  and checks APK retention. This guard subsequently passed the final local
+  harness/race validation.
+
+- 2026-09-08: The latest strict two-debug-lease real run brought both leases
+  to READY; both Flutter HTTP markers and named device tests passed. First
+  Destroy then quarantined a live process group after the Emulator leader
+  exited. A cleanup retry failed while the sibling remained live; second-lease
+  cleanup succeeded, and both process groups were empty after the sibling died.
+  Emulator logs showed the same netsim Wi-Fi localhost port 34339. This suggests
+  shared `netsimd` may have kept the first group live, but that cause is not yet
+  proven by those logs alone. Investigation led to the private-helper isolation
+  below. Normal recovery later succeeded, and the final two-lease run passed
+  in 88.99s; ownership checks and quarantine were not weakened.
+
+- 2026-09-08: After the sibling exited, normal first-lease Destroy succeeded
+  at 22:52:12 UTC. Both leases were RELEASED; exact scoped Compose queries,
+  worktrees, AVD state, ADB devices and process groups were empty. The original
+  150.28s real debug attempt remains a failed integration, not a retroactive pass.
+- 2026-09-08: A focused SDK 37.1.11 build 15917651 / netsimd 0.3.114 daemon
+  probe confirmed lease-private `netsim.ini`, gRPC port 39107, HCI 0 configuration
+  and libslirp enabled, then stopped the probe daemon. Public source used to
+  understand discovery is not asserted to match this installed release exactly.
+  The implementation now supplies aligned lease-private discovery directories
+  and dynamic HCI configuration. The full local harness/race and two-lease
+  real rerun subsequently passed; see final evidence.
 
 ## Decision Log
 
@@ -399,12 +425,44 @@ ownership assertion.
   all seven initial Milestone 1 questions.
   Date/Author: 2026-09-08 / implementation contract reconciliation.
 
+- Decision: Isolate generic Android Emulator helper discovery with child-only
+  `TMPDIR`/`TMP`/`TEMP`/`XDG_RUNTIME_DIR` under `AVDHome/emulator-data/Temp`, and
+  Windows child `LOCALAPPDATA` under `AVDHome/emulator-data`. Set
+  `NETSIM_INSTANCE=1`, `NETSIM_HCI_PORT=0` and `-netsim-args --no-web-ui`.
+  Rationale: The Emulator client and daemon need matching private discovery
+  locations; the default instance must agree, HCI must not claim a shared fixed
+  port, and the auxiliary web UI must not bind default 8080. Keep radio/guest
+  networking, shared ADB policy and process ownership/cleanup proof unchanged.
+  A focused installed-SDK probe supports these settings. The subsequent 88.99s
+  real two-lease run established complete sibling-preserving lifecycle behavior.
+  Date/Author: 2026-09-08 / implementation following SDK investigation.
+
 ## Outcomes & Retrospective
+
+Draft delivered outcome: `applications` binds strict pinned Flutter builds to
+independently owned Android runtimes. Builds precede expensive runtime creation;
+install, exact package verification, loopback reverse and confirmed launch precede
+READY. Existing Lease JSON retains source/build/APK/network identity and separate
+process, evidence and launch confirmation. Named tests use observed owned serials
+and explicitly distinguish possible test-APK rebuilding from creation provenance.
+Two real debug leases now prove separate guest connectivity, private helper
+lifetimes and sibling-preserving non-force cleanup. UI observation, long-term APK
+promotion and real Windows/macOS SDK validation remain follow-up work.
+
+Retrospective draft: green injected tests did not expose a real shared netsimd
+lifetime coupling. Strict process-group cleanup correctly quarantined that case;
+fixing helper discovery and port ownership preserved the safety check. Process
+termination, required evidence persistence and launch success needed independent
+durable confirmation to survive crashes and later forced cleanup. Negative
+fixtures now exercise each distinction. Timing-based fake readiness failures
+required deterministic triggers without removing wait-loop cancellation coverage.
+Temporary-storage sizing is an infrastructure prerequisite, not a reason to resize
+templates or weaken checks. Local final race/harness passed; finish latest-source CI before archival.
+
 
 Not completed. Contracts (`4457dfd`) and lifecycle (`8975096`) were pushed;
 draft PR #4 is open. One real Linux Flutter/Emulator/backend run has passed.
-Two-real-lease integration, final sequential harness, complete native CI evidence
-and final retrospective remain outstanding.
+Two-real-lease integration has now passed after helper isolation. Latest-source native CI and archival remain outstanding.
 
 At completion, summarize:
 
@@ -748,19 +806,19 @@ tests must not be reported as real Emulator/Flutter validation.
 | F6 | The exact recorded APK is installed only on the selected lease-owned Emulator serial. | PASS same check: `TestApplicationOperationsUseOwnedSerialAndLocalServer`, `TestAPKInstallRequiresExplicitSuccess`, `TestMobileConcurrentLeasesAndObservation`; real Linux install passed. |
 | F7 | Package/activity launch succeeds or create compensates safely. | PASS same check: `TestActivityLaunchReportsExitZeroFailures`, `TestMobileFailureCompensation`; real Linux launch passed. |
 | F8 | `adb reverse` binds a declared device TCP port to the actual selected Compose endpoint and records the mapping. | PASS same check: `TestApplicationOperationsUseOwnedSerialAndLocalServer`, `TestReverseEndpointRejectsRemoteAndMalformed`; real Dart HTTP request reached the Compose backend. |
-| F9 | Two mobile leases may use the same device-side port while host endpoints and Emulator identities remain isolated. | PASS injected concurrency and race: `TestMobileConcurrentLeasesAndObservation`; two-real-lease extension remains pending. |
+| F9 | Two mobile leases may use the same device-side port while host endpoints and Emulator identities remain isolated. | PASS injected concurrency/race and real two-debug-lease run (88.99s): isolated devices/backends/reverse ports; normal first Destroy preserved sibling READY and a fresh guest HTTP request. Exact evidence below. |
 | F10 | Failed reverse/install/launch leaves no unowned effect and preserves required evidence. | PASS same check: `TestMobileFailureCompensation`, `TestMobileUnconfirmedReversePreservesMapping`, `TestMobileUnconfirmedBuildBlocksLaterForcedCleanup`, `TestReverseCleanupRequiresExactMapping`. |
 | F11 | Manual package removal or required reverse loss is observed as DEGRADED. | PASS same check: `TestMobileConcurrentLeasesAndObservation` explicitly removes package and mapping, each yielding DEGRADED. |
 | F12 | Reconcile never attaches to or kills an unproven external device. | PASS same check: `TestMobileUnknownIdentityAndCleanupPreservation`, `TestApplicationOperationsRefuseOwnershipOrServerMismatch`, `TestApplicationChecksServerAgainAfterObservation`. |
-| F13 | Destroying one mobile lease leaves a sibling mobile lease READY and usable. | PASS injected concurrency and race: `TestMobileConcurrentLeasesAndObservation`; two-real-lease sibling survival remains pending. |
+| F13 | Destroying one mobile lease leaves a sibling mobile lease READY and usable. | PASS injected concurrency/race and real two-debug-lease run (88.99s): isolated devices/backends/reverse ports; normal first Destroy preserved sibling READY and a fresh guest HTTP request. Exact evidence below. |
 | F14 | `${android:<runtime>:serial}` resolves only the lease-owned selected Android runtime and works without ambient device selection. | PASS same check and repeated focused run: `TestAndroidSerialInterpolation`, `TestMobileConcurrentNamedTestsUseOwnedSerialAndPersistWarning`. |
 | F15 | Named-test evidence distinguishes tests that rebuild/reinstall from the lifecycle-installed APK identity. | PASS same check and repeated focused run: `TestMobileConcurrentNamedTestsUseOwnedSerialAndPersistWarning`, `TestMobileFailedNamedTestRetainsEvidenceAndReadyLease`. |
 | F16 | `api`, `dashboard`, `mobile` and `full` stacks resolve to the documented lightest component sets. | PASS same check: `TestMobilePlanStackClosure` covers all four named stacks. |
 | F17 | New durable Flutter Android product/design docs exist in both English and Japanese and are indexed. | PASS `docs-check` within Go 1.26.8 full check at `8975096`; English/Japanese product/design docs and both indexes present. |
 | F18 | Architecture/docs validators pass after any new application/workload dependency boundary is introduced. | PASS `arch-check` and `docs-check` in same full check; `TestArchitectureBoundaries` includes explicit Flutter cross-adapter negative fixtures. |
-| F19 | Full repository harness and Go race checks pass on final implementation. | Checkpoint PASS: Go 1.26.8 full check at `8975096`, Go 1.27.1 full race earlier. Sequential Go 1.27 full harness subsequently passed; later deterministic test/diagnostic edits and final CI remain pending. Port-conflict and CI timer failures are recorded below. |
+| F19 | Full repository harness and Go race checks pass on final implementation. | PASS final local implementation: Go 1.26.8 full harness all phases and Go 1.27.1 full `go test -race ./...`. Latest implementation native CI pending; earlier failures retained below. |
 | F20 | Native Windows/macOS/Linux portability evidence is recorded honestly and separately from real Flutter+Emulator execution. | Linux native unit/race and real SDK evidence recorded separately below. Native CI `34166963420` passed all jobs at `8975096`; later source changes await final CI. Windows/macOS real SDK runs unverified. |
-| F21 | At least one real Flutter+Emulator+backend integration run passes when suitable local/CI prerequisites are available, or the missing infrastructure is explicitly recorded without substituting fake evidence. | PASS one real Linux run: `TestRealFlutterAndroidBackendLease`, 248.46s, toolchain/source/APK/HTTP/cleanup evidence below. Two-real-lease extension pending. |
+| F21 | At least one real Flutter+Emulator+backend integration run passes when suitable local/CI prerequisites are available, or the missing infrastructure is explicitly recorded without substituting fake evidence. | PASS `TestRealFlutterAndroidBackendLease`: initial one-lease run 248.46s and latest two-debug-lease run 88.99s, including fresh sibling guest HTTP and both normal cleanups. Toolchain/source/APK evidence below. |
 
 Acceptance requires direct evidence for every item. A test name without a
 recorded successful run is not evidence.
@@ -801,6 +859,58 @@ On ambiguous Android identity, retain reservations/evidence and quarantine.
 
 ## Artifacts and Notes
 
+- Final implementation and two-lease fixture were committed as `81102f1` and
+  pushed for latest-source CI. The local harness/race and successful real run
+  below validate this implementation; archival waits for that commit's CI.
+
+
+- Final implementation local validation passed: Go 1.27.1
+  `go test -race ./...` (app 22.990s, Android 2.145s, CLI 1.769s, SQLite 11.985s)
+  and Go 1.26.8 full harness, all phases (Android 0.322s, CLI 0.228s,
+  SQLite 5.810s). Latest implementation native CI remains pending; no archival yet.
+
+
+Successful two-real-lease evidence (2026-09-08):
+
+- `TestRealFlutterAndroidBackendLease` passed in 88.99s with two simultaneous
+  debug APK leases on Linux amd64: Go 1.26.8, Flutter 3.47.2, Dart 3.13.2,
+  JBR Java 25, Gradle 9.3.1, NDK 28.2.13676358. Generated pinned source:
+  `58f38ffb6598bd08d890cf742119c74654311457`.
+- `emulator-5554` used backend host port 32832 and APK SHA-256
+  `adfc18293649617d5c969697811ce194974a396671813533560e021238564f62`;
+  `emulator-5556` used backend host port 32833 and APK SHA-256
+  `8bc3a8b1c27005b5097a63afb258a3491dba9e8a1aad2bff36d458e2cf835bef`.
+  Both used device port 8080; isolated netsim listeners were 43277 and 41769.
+- Both reached READY, made Flutter HTTP requests to their own backends and passed
+  the named scoped ADB device test. After normal first Destroy, a fresh sibling
+  guest HTTP request increased the observed baseline, proving surviving guest
+  connectivity rather than merely reusing an old request or host-only check.
+  Both normal Destroy operations passed and the fixture root was removed.
+- At 22:59:38 UTC, ADB and both exactly scoped Compose projects were empty.
+  This successful run supersedes the open two-lease acceptance gap but does not
+  erase the historical failed attempts recorded below. Latest-source full race
+  and Go 1.26.8 full harness subsequently passed; native CI remains pending,
+  so the plan is not ready for archival yet.
+
+
+- Push CI `34168074785` and PR CI `34168077225` at `aee0982` passed all
+  jobs (six native OS/Go jobs, five cross-build targets and integration).
+  They predate the generic Android helper-isolation change and cannot validate it.
+- The complete local Go 1.27 harness passed all phases after helper isolation.
+  The subsequent two-lease real rerun passed in 88.99s. Installed-SDK
+  evidence remains Linux-only; native Windows/macOS fake/process CI and
+  cross-builds do not prove those platforms' actual Flutter/Emulator behavior.
+
+
+- Diagnostic/test/plan checkpoint `aee0982` was pushed. The product description
+  of the two-lease fixture was then an uncommitted update awaiting success;
+  the subsequent 88.99s run now validates that behavior.
+  The latest real run proved both strict debug startups, Flutter HTTP markers
+  and named device tests, but did not pass final sibling-preserving cleanup;
+  see the process-group discovery above. Do not count this as a passing complete
+  two-lease integration.
+
+
 - PR CI `34167569456` at `e2c23f8` passed all jobs; push CI `34167566940`
   at the same commit failed the timing-sensitive case recorded below. Retain
   both results; a successful sibling run does not invalidate the failure.
@@ -810,7 +920,7 @@ On ambiguous Android identity, retain reservations/evidence and quarantine.
   and returns `(false, nil)` so the select cancellation branch executes. Its
   repeated validation passed: all three readiness cases plus diagnostics,
   `-race -count=30`, 1.759s; `arch-check` also passed. The next two-debug-lease
-  real run has started and remains pending.
+  real run later passed in 88.99s; see successful evidence above.
 
 
 Latest validation checkpoint (2026-09-08):
@@ -823,11 +933,12 @@ Latest validation checkpoint (2026-09-08):
   not an unexpected Emulator launch. A deterministic test repair cancels at
   `Start` and injects unavailable `ProbeADB` errors only after `Start`, retaining
   the exact startup and no-Emulator assertions. Repeated race validation is
-  ongoing; neither this repair nor later diagnostics inherit prior CI success.
+  subsequently passed (three cases, `-race -count=30`, 1.759s); neither this
+  repair nor later diagnostics inherit prior CI success.
 - Install/launch failure diagnostics now retain bounded, redacted stdout/stderr;
   launch still requires explicit `Status: ok`. The prior two-real-lease disk
   attempt had an unknown activity status. Its cleanup retry was confirmed
-  RELEASED. The next two-real-lease rerun result remains pending.
+  RELEASED. Later helper isolation produced the successful 88.99s two-lease run.
 
 
 Evidence checkpoint (2026-09-08, after `8975096`):
@@ -839,13 +950,13 @@ Evidence checkpoint (2026-09-08, after `8975096`):
 - A later Go 1.27.1 full check overlapped the real Emulator integration and
   failed existing `TestRealAdapterThroughAppPersistsOwnedResource`: its reserved
   port 5554 was occupied by that integration. Tests were not weakened. A
-  sequential rerun after real cleanup is pending.
+  sequential Go 1.27 full harness rerun after real cleanup subsequently passed.
 - [Native CI run `34166963420`](https://github.com/mahcialet/agent-env/actions/runs/34166963420)
   passed at `8975096`: all six native OS × Go 1.26/1.27 jobs, five OS/architecture
   cross-build targets, and integration (race plus real Compose) passed.
   Native Windows/macOS real Flutter/Emulator execution remains unverified.
 - Local Go 1.27.1 `go run ./tools/repoctl test-integration` subsequently exited 0.
-  A later uncommitted Reconcile guard preserves build uncertainty quarantine
+  A later Reconcile guard, subsequently committed in `e2c23f8`, preserves uncertainty quarantine
   independently of desired state; focused regression
   `TestMobileUnconfirmedBuildRemainsQuarantinedOnObservation` passed. Native CI
   at `8975096` does not establish verification of that later change.
@@ -857,7 +968,7 @@ Evidence checkpoint (2026-09-08, after `8975096`):
   Build, install, package verification, reverse and launch passed. The Dart
   application's HTTP request reached the nginx backend; Show reported READY;
   non-force Destroy passed. Extending the fixture to two simultaneously active
-  real leases is ongoing and is not yet acceptance evidence.
+  real leases subsequently passed in 88.99s, with exact evidence above.
 
 
 Implementation milestone validation (2026-09-08):
