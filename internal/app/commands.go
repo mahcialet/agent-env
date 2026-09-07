@@ -308,7 +308,7 @@ func (s *Service) collectTestArtifact(ctx context.Context, run domain.CommandRun
 					return errors.New("artifact directory symlinks are not followed")
 				}
 			}
-			return s.collectTestArtifact(ctx, run, root, rel, filepath.Join(destination, evidence.RedactString(sub, secrets)), secrets)
+			return s.collectTestArtifact(ctx, run, root, filepath.ToSlash(rel), filepath.Join(destination, evidence.RedactString(sub, secrets)), secrets)
 		})
 	}
 	if !info.Mode().IsRegular() {

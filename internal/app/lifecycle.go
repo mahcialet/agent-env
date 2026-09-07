@@ -138,7 +138,7 @@ func (s *Service) Create(ctx context.Context, o PlanOptions, options CreateOptio
 	if err != nil {
 		return lease, err
 	}
-	if evidence.RedactString(string(manifest), evidence.InheritedSecrets()) != string(manifest) {
+	if evidence.ContainsSecretString(plan.Manifest, evidence.InheritedSecrets()) {
 		return lease, errors.New("manifest contains inherited credentials; replace literal values with ${env:NAME} references")
 	}
 	now := time.Now().UTC()

@@ -18,7 +18,8 @@ import (
 
 	"github.com/mahcialet/agent-env/internal/domain"
 	"github.com/mahcialet/agent-env/migrations"
-	_ "modernc.org/sqlite"
+	sqliteDriver "modernc.org/sqlite"
+	sqliteCodes "modernc.org/sqlite/lib"
 )
 
 var ErrNotFound = sql.ErrNoRows
@@ -36,7 +37,7 @@ func Open(path string) (*Store, error) {
 		return nil, err
 	}
 	u := url.URL{Scheme: "file", Path: uriPath(filepath.ToSlash(abs))}
-	q := url.Values{"_pragma": {"foreign_keys(1)", "busy_timeout(10000)", "journal_mode(WAL)"}, "_txlock": {"immediate"}}
+	q := url.Values{"_pragma": {"foreign_keys(1)", "busy_timeout(10000)"}, "_txlock": {"immediate"}}
 	u.RawQuery = q.Encode()
 	db, err := sql.Open("sqlite", u.String())
 	if err != nil {
@@ -45,7 +46,9 @@ func Open(path string) (*Store, error) {
 	db.SetMaxOpenConns(1)
 	db.SetMaxIdleConns(1)
 	s := &Store{db: db}
-	if err = s.initialize(); err != nil {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err = s.initializeWithRetry(ctx); err != nil {
 		db.Close()
 		return nil, err
 	}
@@ -60,27 +63,50 @@ func uriPath(path string) string {
 	return path
 }
 
-func (s *Store) initialize() error {
+// WAL promotion can return SQLITE_BUSY immediately when concurrent readers
+// also need its exclusive lock, bypassing busy_timeout. Retry only initialization;
+// each failed migration transaction is rolled back before the next attempt.
+func (s *Store) initializeWithRetry(ctx context.Context) error {
+	for {
+		err := s.initialize(ctx)
+		if err == nil {
+			return nil
+		}
+		var sqliteErr *sqliteDriver.Error
+		if !errors.As(err, &sqliteErr) || sqliteErr.Code()&0xff != sqliteCodes.SQLITE_BUSY {
+			return err
+		}
+		timer := time.NewTimer(25 * time.Millisecond)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return errors.Join(ctx.Err(), err)
+		case <-timer.C:
+		}
+	}
+}
+
+func (s *Store) initialize(ctx context.Context) error {
 	var foreign, busy int
 	var journal string
-	if err := s.db.QueryRow("PRAGMA foreign_keys").Scan(&foreign); err != nil {
+	if err := s.db.QueryRowContext(ctx, "PRAGMA foreign_keys").Scan(&foreign); err != nil {
 		return err
 	}
-	if err := s.db.QueryRow("PRAGMA busy_timeout").Scan(&busy); err != nil {
+	if err := s.db.QueryRowContext(ctx, "PRAGMA busy_timeout").Scan(&busy); err != nil {
 		return err
 	}
-	if err := s.db.QueryRow("PRAGMA journal_mode").Scan(&journal); err != nil {
+	if err := s.db.QueryRowContext(ctx, "PRAGMA journal_mode=WAL").Scan(&journal); err != nil {
 		return err
 	}
 	if foreign != 1 || busy < 1000 || journal != "wal" {
 		return fmt.Errorf("SQLite invariants unavailable: foreign_keys=%d busy_timeout=%d journal_mode=%s", foreign, busy, journal)
 	}
-	tx, err := s.db.Begin()
+	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
-	if _, err = tx.Exec("CREATE TABLE IF NOT EXISTS schema_migrations (name TEXT PRIMARY KEY, applied_at TEXT NOT NULL)"); err != nil {
+	if _, err = tx.ExecContext(ctx, "CREATE TABLE IF NOT EXISTS schema_migrations (name TEXT PRIMARY KEY, applied_at TEXT NOT NULL)"); err != nil {
 		return err
 	}
 	entries, err := migrations.Files.ReadDir(".")
@@ -93,7 +119,7 @@ func (s *Store) initialize() error {
 			continue
 		}
 		var count int
-		if err := tx.QueryRow("SELECT count(*) FROM schema_migrations WHERE name=?", entry.Name()).Scan(&count); err != nil {
+		if err := tx.QueryRowContext(ctx, "SELECT count(*) FROM schema_migrations WHERE name=?", entry.Name()).Scan(&count); err != nil {
 			return err
 		}
 		if count > 0 {
@@ -103,10 +129,10 @@ func (s *Store) initialize() error {
 		if err != nil {
 			return err
 		}
-		if _, err = tx.Exec(string(data)); err != nil {
+		if _, err = tx.ExecContext(ctx, string(data)); err != nil {
 			return fmt.Errorf("migration %s: %w", entry.Name(), err)
 		}
-		if _, err = tx.Exec("INSERT INTO schema_migrations(name,applied_at) VALUES(?,?)", entry.Name(), stamp(time.Now())); err != nil {
+		if _, err = tx.ExecContext(ctx, "INSERT INTO schema_migrations(name,applied_at) VALUES(?,?)", entry.Name(), stamp(time.Now())); err != nil {
 			return err
 		}
 	}
