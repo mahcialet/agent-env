@@ -284,6 +284,32 @@ func TestApplicationInputsRejectImplicitOrShellDeviceCommands(t *testing.T) {
 	}
 }
 
+func TestApplicationFailureDiagnosticsAreRedactedAndBounded(t *testing.T) {
+	t.Setenv("AGENT_ENV_TEST_SECRET", "private diagnostic value")
+	a, r, _, runner, apk := applicationFixture(t)
+	runner.output["shell am start -W --user 0 -n com.example.app/.MainActivity"] = execx.Result{
+		Stdout: "Starting: Intent {}\nStatus: timeout\nprivate diagnostic value\n" + strings.Repeat("x", 4096),
+		Stderr: "activity manager diagnostic\nprivate diagnostic value\x1b[31m",
+	}
+	err := a.LaunchActivity(context.Background(), r, "com.example.app", ".MainActivity")
+	if err == nil {
+		t.Fatal("timeout accepted")
+	}
+	for _, want := range []string{"did not report OK status", "Status: timeout", "activity manager diagnostic", "[REDACTED]", "[truncated]"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Fatalf("missing %q in diagnostic: %v", want, err)
+		}
+	}
+	if strings.Contains(err.Error(), "private") || strings.ContainsAny(err.Error(), "\n\r\x1b") || len(err.Error()) > 2300 {
+		t.Fatalf("unsafe or unbounded diagnostic: %v", err)
+	}
+	runner.output["install -r "+apk] = execx.Result{Stderr: "Failure [INSTALL_FAILED_TEST]: private diagnostic value"}
+	err = a.InstallAPK(context.Background(), r, apk)
+	if err == nil || !strings.Contains(err.Error(), "INSTALL_FAILED_TEST") || !strings.Contains(err.Error(), "[REDACTED]") || strings.Contains(err.Error(), "private") {
+		t.Fatalf("install failure diagnostic: %v", err)
+	}
+}
+
 func TestAPKInstallRequiresExplicitSuccess(t *testing.T) {
 	a, r, _, runner, apk := applicationFixture(t)
 	runner.output["install -r "+apk] = execx.Result{Stdout: "Failure [INSTALL_FAILED_INVALID_APK]"}

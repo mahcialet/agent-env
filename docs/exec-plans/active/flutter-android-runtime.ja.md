@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/exec-plans/active/flutter-android-runtime.md
-source_sha256: 9d01e189952416afb333bc681b1ec2332d378d2cfffdea518fb609cb32a16fbc
+source_sha256: c065cbc4676e4bd37a9df1951114986cfa31b708aeb8afb8ac1549cf56982443
 ---
 
 # 環境リース内にFlutter Androidアプリケーションを実体化する
@@ -277,6 +277,11 @@ Flutter結合テストによるAPK置換、高速化不足、既存Android所有
   ストア復旧後も、証拠の失敗を調査・復旧するまで、reconcileは隔離し、通常・強制cleanupはソース/APKを保持する。
   日付・担当: 2026-09-08 / 最終安全性レビューを受けたimplementation。
 
+- 決定: 残る当初の契約課題を明示的に解決する。APK推測でなくpackage/activityを必須とし、ビルドargv先頭でPATHまたは明示パスのFlutterと版探索を選ぶ。シリアル補間はAndroid専用、変更されるキャッシュ情報は証拠対象外、実Flutter/Emulator検証は高速化ホストの明示選択とする。
+  理由: 厳密で移植可能な挙動を保ち、追加APKツールや時期尚早な汎用基盤を避け、出自と実SDK実行を未証明の再現性・OS対応の主張から区別する。
+  既存のapplications/Lease JSON判断と合わせ、当初のマイルストーン1の7課題をすべて解決した。
+  日付・担当: 2026-09-08 / 実装契約の照合。
+
 ## 成果と振り返り
 
 未完了。契約（`4457dfd`）とライフサイクル（`8975096`）をpushし、draft PR #4を作成済み。
@@ -444,7 +449,7 @@ Flutterビルド、Emulatorリース、APKインストール、reverse、起動�
 | F16 | 4スタックが文書化した最小のコンポーネント集合へ解決。 | 同全検査の `TestMobilePlanStackClosure` が4スタックを検証し成功。 |
 | F17 | 新規製品・設計文書に英日版と索引がある。 | `8975096` のGo 1.26.8全検査内のdocs-checkで成功。英日製品・設計文書と両索引あり。 |
 | F18 | 新しい責務境界追加後のarchitecture/docs検査が成功。 | 同全検査のarch-checkとdocs-checkが成功。`TestArchitectureBoundaries` にFlutterのアダプター間依存の明示負例を追加。 |
-| F19 | 最終実装の全harnessとraceが成功。 | チェックポイント成功: `8975096` のGo 1.26.8全検査と先行Go 1.27.1全race。進行中のfixture変更後の最終逐次harnessは未実施。並行ポート衝突の失敗は下記。 |
+| F19 | 最終実装の全harnessとraceが成功。 | チェックポイント成功: `8975096` のGo 1.26.8全検査と先行Go 1.27.1全race。その後のGo 1.27全harness逐次実行は成功。後続の決定的テスト修正・診断変更と最終CIは未検証。ポート衝突とCIタイマー失敗は下記。 |
 | F20 | 3 OSネイティブ証拠を実Flutter + Emulatorと区別して正確に記録。 | Linuxネイティブ単体・raceと実SDK証拠は下記で区別。ネイティブCI `34166963420` は `8975096` で全ジョブ成功。後続ソース変更は最終CI待ち。Windows/macOSの実SDKは未検証。 |
 | F21 | 利用可能なら少なくとも1回の実Flutter + Emulator + backend結合が成功、または不足基盤を偽証拠で代用せず明記。 | 実Linux実行1回成功: `TestRealFlutterAndroidBackendLease`、248.46秒。ツール・ソース・APK・HTTP・cleanup証拠は下記。二つの実リースへの拡張は未検証。 |
 
@@ -464,6 +469,24 @@ planと前提検査は読み取り専用です。ビルド失敗で使い捨て�
 元リースの所有物と誤認しません。曖昧なら予約と証拠を保持して隔離し、forceでも所有証明を省略しません。
 
 ## 成果物と注記
+
+- `e2c23f8` のPR CI `34167569456` は全ジョブ成功。同じcommitのpush CI `34167566940` は下記の時間依存ケースで失敗した。両方を保持し、他方の成功で失敗を取り消さない。
+- Android診断・準備完了の重点テストは `-race -count=30` で成功（1.502秒）。
+  独立レビューを受け待機ループのキャンセルも明示検証する。第三の `canceled_while_waiting` ケースはStart後の最初の未準備probeでキャンセルし、`(false, nil)` を返してselectのキャンセル分岐を通す。反復検証は全3準備完了ケースと診断を `-race -count=30` で実行し成功（1.759秒）。arch-checkも成功。次の二つのdebug実リース実行は開始済みで結果待ち。
+
+
+最新検証チェックポイント（2026-09-08）:
+
+- 実Emulatorのcleanup後、Go 1.27の全harnessを逐次実行して成功。未確認・証拠・起動ガードを `e2c23f8` としてcommit/pushした。
+- push CI `34167566940` はUbuntu Go 1.27の既存 `TestSharedADBReadinessFailureNeverLaunchesEmulator/unavailable` で失敗。
+  100ms期限が偽共有サーバーの開始前に切れた（`starts=[]`）ためで、Emulatorの予期しない起動ではない。
+  決定的な修正としてStart時にキャンセルし、Start後だけProbeADBに利用不能エラーを注入する。
+  正確な起動列とEmulator未起動のassertionは維持する。反復race検証は進行中。
+  この修正や後続診断変更が先行CIの成功で検証されたとは扱わない。
+- install/launch失敗診断は長さを制限し秘匿したstdout/stderrを保持するようになった。
+  起動には引き続き明示の `Status: ok` が必要。先行するディスク上の二つの実リース実行はactivity状態が不明だった。
+  cleanup再試行でRELEASEDを確認した。次の二つの実リース再実行結果は未確定。
+
 
 証拠チェックポイント（2026-09-08、`8975096` 後）:
 
@@ -534,14 +557,14 @@ runtimeはapp方針が要求した具体外部操作だけを行います。
 Emulator、選択スタックに必要な場合のDocker Composeです。コア手順にPOSIX shell、Bash、Make、
 PowerShell、symlink契約、CGO、暗黙の先頭デバイス、固定ホスト公開ポートを導入しません。
 
-## マイルストーン1で決める未解決事項
+## マイルストーン1の解決済み事項
 
-1. applications/workloads等の最終名。
-2. package/activityを明示必須とするか、脆い追加依存なしにAPKから探索できるか。
-3. Flutter選択をPATHのみとするか、明示ホストパスも認めるか。
-4. build/application/reverseのSQLite正規化とリソースJSONの使い分け。
-5. シリアル補間を汎用ランタイムプロパティへ広げるか、Android専用に留めるか。
-6. mutableキャッシュを再現入力とせず、どのキャッシュメタデータを証拠にするか。
-7. 実結合を既存CIで実行できるか、高速化可能な任意選択ランナー・ローカルで行うか。
+当初の7項目はすべて、判断の記録と実装済み契約で解決しました。
 
-関連公開契約を安定とする前に、判断の記録で明示的に解決します。
+1. `applications` と `component.application` を採用し、汎用ワークロード基盤は追加しない。
+2. package/activityは常に明示し、識別子を厳密に検証する。APK調査ツールへの依存やactivity推測は導入しない。
+3. `build.command[0]` でPATH上または明示ホストパスのFlutterを選び、同じ実行ファイルからバージョン証拠を得る。
+4. アプリ・ビルド・reverse記録は既存Lease JSONに追加し、リース状態と一括保存する。SQLマイグレーションや別テーブルは不要。
+5. `${android:<runtime>:serial}` はAndroid専用に留め、汎用ランタイム補間基盤は導入しない。
+6. Flutter版、固定ソース、秘匿済みビルドargv・ログ、APKダイジェストを保持する。変更されるFlutter/Gradleキャッシュのメタデータは保持せず、再現性を主張しない。
+7. 実Flutter/Emulator/backend検証は適切な高速化ローカル・ランナーホストで明示選択する `flutterintegration` fixtureにする。既存CIのネイティブ偽アダプターと実Composeは別の証拠であり、Windows/macOSの実Flutter/Emulator実行を意味しない。

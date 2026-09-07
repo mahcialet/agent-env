@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/mahcialet/agent-env/internal/domain"
+	"github.com/mahcialet/agent-env/internal/evidence"
 	"github.com/mahcialet/agent-env/internal/execx"
 )
 
@@ -68,14 +69,14 @@ func (a Adapter) InstallAPK(ctx context.Context, r domain.Runtime, path string) 
 		line = strings.TrimSpace(line)
 		lower := strings.ToLower(line)
 		if strings.HasPrefix(lower, "failure") || strings.HasPrefix(lower, "error") || strings.Contains(lower, "exception") {
-			return fmt.Errorf("ADB install reported failure")
+			return applicationOutputError(fmt.Errorf("ADB install reported failure"), result)
 		}
 		if line == "Success" {
 			success = true
 		}
 	}
 	if !success {
-		return fmt.Errorf("ADB install did not confirm success")
+		return applicationOutputError(fmt.Errorf("ADB install did not confirm success"), result)
 	}
 	return nil
 }
@@ -199,7 +200,27 @@ func (a Adapter) LaunchActivity(ctx context.Context, r domain.Runtime, pkg, acti
 	if err != nil {
 		return err
 	}
-	return activityStartResult(result.Stdout + "\n" + result.Stderr)
+	if err := activityStartResult(result.Stdout + "\n" + result.Stderr); err != nil {
+		return applicationOutputError(err, result)
+	}
+	return nil
+}
+
+// Redact before compacting or truncating so a secret spanning whitespace or
+// the diagnostic limit cannot leak partially. Quote control characters and
+// bound each stream independently so stdout cannot crowd out stderr.
+func applicationOutputError(err error, result execx.Result) error {
+	secrets := evidence.InheritedSecrets()
+	compact := func(output string) string {
+		output = strings.Join(strings.Fields(evidence.RedactString(output, secrets)), " ")
+		output = strconv.QuoteToASCII(output)
+		const limit = 1024
+		if len(output) > limit {
+			output = output[:limit] + "... [truncated]"
+		}
+		return output
+	}
+	return fmt.Errorf("%w; stdout=%s; stderr=%s", err, compact(result.Stdout), compact(result.Stderr))
 }
 
 func activityStartResult(output string) error {

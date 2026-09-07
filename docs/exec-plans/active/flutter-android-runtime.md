@@ -387,6 +387,18 @@ ownership assertion.
   store recovers, until the evidence failure is investigated and recovered.
   Date/Author: 2026-09-08 / implementation following final safety review.
 
+- Decision: Settle the remaining initial contract questions explicitly: require
+  package/activity instead of APK inference; use the first build argv element
+  for PATH or explicit-path Flutter selection and version discovery; keep serial
+  interpolation Android-specific; exclude mutable cache metadata from evidence;
+  keep real Flutter/Emulator validation opt-in on an accelerated host.
+  Rationale: These choices preserve strict portable behavior, avoid extra APK
+  tools or a premature generic framework, and distinguish build provenance and
+  actual SDK execution from unsupported reproducibility/platform claims.
+  Together with the existing applications/Lease-JSON decisions, this resolves
+  all seven initial Milestone 1 questions.
+  Date/Author: 2026-09-08 / implementation contract reconciliation.
+
 ## Outcomes & Retrospective
 
 Not completed. Contracts (`4457dfd`) and lifecycle (`8975096`) were pushed;
@@ -746,7 +758,7 @@ tests must not be reported as real Emulator/Flutter validation.
 | F16 | `api`, `dashboard`, `mobile` and `full` stacks resolve to the documented lightest component sets. | PASS same check: `TestMobilePlanStackClosure` covers all four named stacks. |
 | F17 | New durable Flutter Android product/design docs exist in both English and Japanese and are indexed. | PASS `docs-check` within Go 1.26.8 full check at `8975096`; English/Japanese product/design docs and both indexes present. |
 | F18 | Architecture/docs validators pass after any new application/workload dependency boundary is introduced. | PASS `arch-check` and `docs-check` in same full check; `TestArchitectureBoundaries` includes explicit Flutter cross-adapter negative fixtures. |
-| F19 | Full repository harness and Go race checks pass on final implementation. | Checkpoint PASS: Go 1.26.8 full check at `8975096`, Go 1.27.1 full race earlier. Final sequential harness after ongoing fixture edits is pending; concurrent port-conflict failure recorded below. |
+| F19 | Full repository harness and Go race checks pass on final implementation. | Checkpoint PASS: Go 1.26.8 full check at `8975096`, Go 1.27.1 full race earlier. Sequential Go 1.27 full harness subsequently passed; later deterministic test/diagnostic edits and final CI remain pending. Port-conflict and CI timer failures are recorded below. |
 | F20 | Native Windows/macOS/Linux portability evidence is recorded honestly and separately from real Flutter+Emulator execution. | Linux native unit/race and real SDK evidence recorded separately below. Native CI `34166963420` passed all jobs at `8975096`; later source changes await final CI. Windows/macOS real SDK runs unverified. |
 | F21 | At least one real Flutter+Emulator+backend integration run passes when suitable local/CI prerequisites are available, or the missing infrastructure is explicitly recorded without substituting fake evidence. | PASS one real Linux run: `TestRealFlutterAndroidBackendLease`, 248.46s, toolchain/source/APK/HTTP/cleanup evidence below. Two-real-lease extension pending. |
 
@@ -788,6 +800,35 @@ On ambiguous Android identity, retain reservations/evidence and quarantine.
 `--force` must not bypass ownership proof.
 
 ## Artifacts and Notes
+
+- PR CI `34167569456` at `e2c23f8` passed all jobs; push CI `34167566940`
+  at the same commit failed the timing-sensitive case recorded below. Retain
+  both results; a successful sibling run does not invalidate the failure.
+- Focused Android diagnostics/readiness tests passed `-race -count=30` (1.502s).
+  Independent review requested explicit wait-loop cancellation coverage; a third
+  `canceled_while_waiting` case cancels after the first post-start unready probe
+  and returns `(false, nil)` so the select cancellation branch executes. Its
+  repeated validation passed: all three readiness cases plus diagnostics,
+  `-race -count=30`, 1.759s; `arch-check` also passed. The next two-debug-lease
+  real run has started and remains pending.
+
+
+Latest validation checkpoint (2026-09-08):
+
+- The full Go 1.27 harness passed sequentially after real Emulator cleanup.
+  Uncertainty, evidence and launch guards were committed/pushed as `e2c23f8`.
+- Push CI `34167566940` failed on Ubuntu Go 1.27 in existing
+  `TestSharedADBReadinessFailureNeverLaunchesEmulator/unavailable`: its 100ms
+  deadline expired before fake shared-server startup (`starts=[]`). This was
+  not an unexpected Emulator launch. A deterministic test repair cancels at
+  `Start` and injects unavailable `ProbeADB` errors only after `Start`, retaining
+  the exact startup and no-Emulator assertions. Repeated race validation is
+  ongoing; neither this repair nor later diagnostics inherit prior CI success.
+- Install/launch failure diagnostics now retain bounded, redacted stdout/stderr;
+  launch still requires explicit `Status: ok`. The prior two-real-lease disk
+  attempt had an unknown activity status. Its cleanup retry was confirmed
+  RELEASED. The next two-real-lease rerun result remains pending.
+
 
 Evidence checkpoint (2026-09-08, after `8975096`):
 
@@ -911,23 +952,23 @@ No POSIX shell, Bash, Make, PowerShell, symlink-based contract, CGO requirement,
 implicit first-device selection, or fixed host-published port may be introduced
 into the core workflow.
 
-## Unresolved issues to settle during Milestone 1
+## Resolved Milestone 1 questions
 
-1. Final manifest noun: `applications` versus `workloads` or a narrower
-   Flutter-specific field.
-2. Whether package/activity must always be explicit or may be safely discovered
-   from the built APK without introducing fragile extra tool dependencies.
-3. Whether Flutter executable selection is PATH-only in this phase or supports an
-   explicit host configuration path.
-4. Exact SQLite normalization for build/application/reverse identity versus
-   resource metadata JSON.
-5. Whether named-test Android serial interpolation should be generalized into a
-   broader runtime-property interpolation system now or remain intentionally
-   Android-specific.
-6. How much Flutter/Gradle cache metadata is useful evidence without treating
-   mutable caches as reproducibility inputs.
-7. Whether real integration can run in existing CI or remains an opt-in
-   acceleration-capable runner/local fixture.
+All seven initial questions are resolved in the Decision Log and implemented
+contracts:
 
-Resolve these explicitly in the Decision Log before the associated public
-contract is considered stable.
+1. `applications` with `component.application`; no generic workload framework.
+2. Package and activity are always explicit, strictly validated identifiers.
+   No APK inspection tool dependency or inferred activity is introduced.
+3. `build.command[0]` selects Flutter on PATH or by explicit host executable path;
+   the same executable supplies version evidence.
+4. Additive application/build/reverse records live in existing Lease JSON and
+   persist atomically with lease state; no SQL migration or separate table.
+5. `${android:<runtime>:serial}` remains Android-specific; no broader runtime
+   interpolation framework is introduced.
+6. Retain Flutter version, pinned source, redacted build argv/logs and APK digest;
+   do not retain mutable Flutter/Gradle cache metadata or claim reproducibility.
+7. Real Flutter/Emulator/backend validation remains an explicit
+   `flutterintegration` fixture on a suitable accelerated local/runner host.
+   Existing CI covers native fake adapters and real Compose separately; it does
+   not establish real Flutter/Emulator execution on Windows or macOS.
