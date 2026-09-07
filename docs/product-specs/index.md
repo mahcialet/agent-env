@@ -9,3 +9,4 @@ last_verified: 2026-09-07
 - [agent-env-mvp](agent-env-mvp.md)
 - [cli-contract](cli-contract.md)
 - [manifest-v1](manifest-v1.md)
+- [android-emulator](android-emulator.md)

@@ -139,3 +139,125 @@ func TestLegacyAggregateCannotPretendComponentIsolation(t *testing.T) {
 		t.Fatalf("legacy logs unavailable: %v %v", all, err)
 	}
 }
+
+func TestAndroidProcessLogsActiveReleasedAndComponentIsolation(t *testing.T) {
+	t.Setenv("ANDROID_LOG_TEST_TOKEN", "private-android-test-secret")
+	for _, state := range []string{"ready", "released"} {
+		t.Run(state, func(t *testing.T) {
+			home := t.TempDir()
+			t.Setenv("AGENT_ENV_HOME", home)
+			db, err := sqlite.Open(filepath.Join(home, "state.db"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			lease := logLease()
+			lease.Observed = "ready"
+			lease.Components = []domain.Component{{Name: "phone", Runtime: "device"}, {Name: "tablet", Runtime: "second"}}
+			lease.Runtimes = nil
+			for _, name := range []string{"device", "second"} {
+				dir := filepath.Join(home, "leases", lease.ID, "android", name)
+				if err := os.MkdirAll(dir, 0700); err != nil {
+					t.Fatal(err)
+				}
+				lease.Runtimes = append(lease.Runtimes, domain.Runtime{Name: name, Type: "android-emulator", Directory: dir, Android: &domain.AndroidEmulator{Template: "Pixel_API35", AVDName: "ae_" + name, AVDHome: filepath.Join(dir, "avd"), AVDPath: filepath.Join(dir, "avd", "ae_"+name+".avd")}})
+				for _, filename := range []string{"emulator.stdout.log", "emulator.stderr.log", "adb-server.stdout.log", "adb-server.stderr.log"} {
+					if err := os.WriteFile(filepath.Join(dir, filename), []byte(name+" "+filename+" private-android-test-secret"), 0600); err != nil {
+						t.Fatal(err)
+					}
+				}
+			}
+			if err := db.Reserve(context.Background(), lease, 0); err != nil {
+				t.Fatal(err)
+			}
+			if state == "released" {
+				saved, err := db.Get(context.Background(), lease.ID)
+				if err != nil {
+					t.Fatal(err)
+				}
+				saved.Observed, saved.Desired = "released", "released"
+				if err := db.Save(context.Background(), saved); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := db.Close(); err != nil {
+				t.Fatal(err)
+			}
+			for _, component := range []string{"", "phone", "tablet"} {
+				var out, diagnostic bytes.Buffer
+				cmd := New(&out, &diagnostic)
+				args := []string{"logs", lease.ID, "--output", "json"}
+				if component != "" {
+					args = append(args, "--component", component)
+				}
+				cmd.SetArgs(args)
+				if err := cmd.Execute(); err != nil {
+					t.Fatal(err)
+				}
+				var response struct {
+					Data struct {
+						Logs map[string]string `json:"logs"`
+					} `json:"data"`
+				}
+				if err := json.Unmarshal(out.Bytes(), &response); err != nil {
+					t.Fatal(err)
+				}
+				wantCount := 8
+				if component != "" {
+					wantCount = 4
+				}
+				if len(response.Data.Logs) != wantCount {
+					t.Fatalf("missing retained process logs: %s", out.String())
+				}
+				for name, data := range response.Data.Logs {
+					if strings.Contains(data, "private-android-test-secret") || !strings.Contains(data, "[REDACTED]") {
+						t.Fatalf("unredacted process output: %q", data)
+					}
+					if component == "phone" && !strings.HasPrefix(name, "device/") || component == "tablet" && !strings.HasPrefix(name, "second/") {
+						t.Fatalf("component leaked sibling logs: %s", out.String())
+					}
+				}
+			}
+		})
+	}
+}
+
+func TestAndroidProcessLogsRejectUnsafeFilesAndIgnoreAbsentLogs(t *testing.T) {
+	home := t.TempDir()
+	runtime := domain.Runtime{Name: "phone", Directory: filepath.Join(home, "leases", "lease", "android", "phone")}
+	if err := os.MkdirAll(runtime.Directory, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if logs, err := androidProcessLogEntries(home, "lease", runtime); err != nil || len(logs) != 0 {
+		t.Fatalf("absent diagnostics: %v %v", logs, err)
+	}
+	outside := filepath.Join(t.TempDir(), "private.log")
+	if err := os.WriteFile(outside, []byte("must not read"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	t.Run("outside-directory", func(t *testing.T) {
+		altered := runtime
+		altered.Directory = filepath.Dir(outside)
+		if _, err := androidProcessLogEntries(home, "lease", altered); err == nil {
+			t.Fatal("read unrelated directory")
+		}
+	})
+	t.Run("symlink-log", func(t *testing.T) {
+		if err := os.Symlink(outside, filepath.Join(runtime.Directory, "emulator.stdout.log")); err != nil {
+			t.Skipf("symlink unavailable: %v", err)
+		}
+		if _, err := androidProcessLogEntries(home, "lease", runtime); err == nil {
+			t.Fatal("read symlink log")
+		}
+	})
+	t.Run("symlink-runtime", func(t *testing.T) {
+		altered := runtime
+		altered.Name = "sibling"
+		altered.Directory = filepath.Join(filepath.Dir(runtime.Directory), altered.Name)
+		if err := os.Symlink(filepath.Dir(outside), altered.Directory); err != nil {
+			t.Skipf("symlink unavailable: %v", err)
+		}
+		if _, err := androidProcessLogEntries(home, "lease", altered); err == nil {
+			t.Fatal("read redirected runtime")
+		}
+	})
+}

@@ -67,6 +67,7 @@ type Service struct {
 	Store             Store
 	Source            SourceProvider
 	Runtime           RuntimeProvider
+	Android           AndroidProvider
 	Home              string
 	Policy            policy.Policy
 	Runner            execx.Runner
@@ -95,8 +96,8 @@ func (s *Service) defaults() policy.Policy {
 }
 
 func (s *Service) Create(ctx context.Context, o PlanOptions, options CreateOptions) (lease domain.Lease, err error) {
-	if s.Store == nil || s.Source == nil || s.Runtime == nil {
-		return lease, errors.New("store, source and runtime providers are required")
+	if s.Store == nil || s.Source == nil {
+		return lease, errors.New("store and source providers are required")
 	}
 	if options.Mode == "" {
 		options.Mode = "review"
@@ -123,12 +124,32 @@ func (s *Service) Create(ctx context.Context, o PlanOptions, options CreateOptio
 			}
 		}
 	}
-	doctor, err := s.Runtime.Doctor(ctx)
-	if err != nil {
-		return lease, fmt.Errorf("%w: %v", ErrPrerequisite, err)
-	}
-	if doctor["context"] == "" {
-		return lease, errors.New("Docker context identity is missing")
+	doctor := map[string]string{}
+	for i := range plan.Runtimes {
+		r := &plan.Runtimes[i]
+		if r.Type == "android-emulator" {
+			if s.Android == nil {
+				return lease, fmt.Errorf("%w: Android provider unavailable", ErrPrerequisite)
+			}
+			validated, e := s.Android.Validate(ctx, r.Android.Template)
+			if e != nil {
+				return lease, fmt.Errorf("%w: runtime %s: %v", ErrPrerequisite, r.Name, e)
+			}
+			r.Android = &validated
+			continue
+		}
+		if s.Runtime == nil {
+			return lease, fmt.Errorf("%w: Compose provider unavailable", ErrPrerequisite)
+		}
+		if doctor["context"] == "" {
+			doctor, err = s.Runtime.Doctor(ctx)
+			if err != nil {
+				return lease, fmt.Errorf("%w: %v", ErrPrerequisite, err)
+			}
+			if doctor["context"] == "" {
+				return lease, errors.New("Docker context identity is missing")
+			}
+		}
 	}
 	home, err := filepath.Abs(s.Home)
 	if err != nil || s.Home == "" {
@@ -155,11 +176,21 @@ func (s *Service) Create(ctx context.Context, o PlanOptions, options CreateOptio
 		r.LeaseID = id
 		root := roots[r.Source]
 		r.Project = projectName(id, r.Name)
+		if r.Type == "android-emulator" {
+			r.Directory = filepath.Join(home, "leases", id, "android", r.Name)
+			r.Android.AVDName = r.Project
+			r.Android.AVDHome = filepath.Join(r.Directory, "avd")
+			r.Android.AVDPath = filepath.Join(r.Android.AVDHome, r.Android.AVDName+".avd")
+			continue
+		}
 		r.Context = doctor["context"]
 		r.Directory = filepath.Join(root, filepath.FromSlash(r.Directory))
 		for j, p := range r.Files {
 			r.Files[j] = filepath.Join(root, filepath.FromSlash(p))
 		}
+	}
+	if err = validateAndroidInputPaths(lease); err != nil {
+		return domain.Lease{}, err
 	}
 	if err = s.Store.Reserve(ctx, lease, p.MaxActive); err != nil {
 		return lease, err
@@ -169,6 +200,10 @@ func (s *Service) Create(ctx context.Context, o PlanOptions, options CreateOptio
 		return lease, err
 	}
 	defer func() { err = errors.Join(err, release()) }()
+	lease, err = s.Store.Get(ctx, id)
+	if err != nil {
+		return lease, err
+	}
 	if err = s.event(ctx, id, "allocation_requested", "Reserved immutable source identities, paths and runtime projects"); err != nil {
 		return lease, err
 	}
@@ -176,12 +211,14 @@ func (s *Service) Create(ctx context.Context, o PlanOptions, options CreateOptio
 	if err = s.persist(ctx, lease); err != nil {
 		return lease, err
 	}
-	doctorData, e := json.MarshalIndent(doctor, "", "  ")
-	if e != nil {
-		return lease, e
-	}
-	if err = s.saveTextArtifact(ctx, lease, "docker-info", "docker-info.json", string(doctorData)); err != nil {
-		return lease, err
+	if len(doctor) > 0 {
+		doctorData, e := json.MarshalIndent(doctor, "", "  ")
+		if e != nil {
+			return lease, e
+		}
+		if err = s.saveTextArtifact(ctx, lease, "docker-info", "docker-info.json", string(doctorData)); err != nil {
+			return lease, err
+		}
 	}
 	err = s.allocate(ctx, &lease, home)
 	if err == nil {
@@ -227,6 +264,28 @@ func (s *Service) allocate(ctx context.Context, l *domain.Lease, home string) er
 	}
 	for i := range l.Runtimes {
 		r := &l.Runtimes[i]
+		if r.Type == "android-emulator" {
+			r.Started = true
+			l.Observed = "starting"
+			if err := s.persist(ctx, *l); err != nil {
+				return err
+			}
+			if err := s.event(ctx, l.ID, "runtime_up_requested", r.Name); err != nil {
+				return err
+			}
+			started, startErr := s.Android.Create(ctx, *r)
+			*r = started
+			if saveErr := s.persist(ctx, *l); saveErr != nil {
+				return errors.Join(startErr, saveErr)
+			}
+			if startErr != nil {
+				return fmt.Errorf("start runtime %s: %w", r.Name, startErr)
+			}
+			if err := s.event(ctx, l.ID, "runtime_started", r.Name); err != nil {
+				return err
+			}
+			continue
+		}
 		var sourceRoot string
 		for _, source := range l.Sources {
 			if source.Alias == r.Source {
@@ -388,15 +447,20 @@ func (s *Service) waitReady(ctx context.Context, l *domain.Lease) error {
 	if err := json.Unmarshal(l.Manifest, &manifest); err != nil {
 		return err
 	}
+	timeouts := make(map[string]time.Duration, len(l.Runtimes))
+	for _, runtime := range l.Runtimes {
+		timeouts[runtime.Name] = timeout
+	}
 	for _, component := range l.Components {
-		for _, probe := range manifest.Components[component.Name].Readiness {
+		c := manifest.Components[component.Name]
+		for _, probe := range c.Readiness {
 			if probe.Type != "compose" {
 				continue
 			}
 			if probe.Timeout != "" {
 				value, _ := time.ParseDuration(probe.Timeout)
-				if value < timeout {
-					timeout = value
+				if value < timeouts[c.Runtime] {
+					timeouts[c.Runtime] = value
 				}
 			}
 			if probe.Interval != "" {
@@ -409,12 +473,34 @@ func (s *Service) waitReady(ctx context.Context, l *domain.Lease) error {
 	}
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
+	started := time.Now()
+	ready := make(map[string]bool, len(l.Runtimes))
 	for {
 		allReady := true
 		resources := []domain.Resource{}
 		diagnostics := []string{}
-		for _, r := range l.Runtimes {
-			o, err := s.Runtime.Inspect(ctx, r)
+		for i := range l.Runtimes {
+			r := &l.Runtimes[i]
+			// A satisfied Compose probe must not shorten another runtime's
+			// boot budget. Continue observing it for ownership and health,
+			// but only pending readiness is bounded by its probe deadline.
+			deadline := started.Add(timeouts[r.Name])
+			inspectionDeadline, _ := ctx.Deadline()
+			pendingName := r.Name
+			for _, pending := range l.Runtimes {
+				if pendingDeadline := started.Add(timeouts[pending.Name]); !ready[pending.Name] && pendingDeadline.Before(inspectionDeadline) {
+					inspectionDeadline = pendingDeadline
+					pendingName = pending.Name
+				}
+			}
+			inspectCtx, cancelInspect := context.WithDeadline(ctx, inspectionDeadline)
+			o, err := s.inspectRuntime(inspectCtx, *r)
+			inspectErr := inspectCtx.Err()
+			cancelInspect()
+			observeAndroid(r, o, err)
+			if inspectErr != nil {
+				return fmt.Errorf("readiness deadline for runtime %s: %w", pendingName, inspectErr)
+			}
 			if err != nil {
 				return fmt.Errorf("inspect runtime %s: %w", r.Name, err)
 			}
@@ -427,7 +513,11 @@ func (s *Service) waitReady(ctx context.Context, l *domain.Lease) error {
 			}
 			resources = append(resources, o.Resources...)
 			diagnostics = append(diagnostics, o.Diagnostics...)
-			allReady = allReady && o.Ready && o.Exists
+			ready[r.Name] = o.Ready && o.Exists
+			if !ready[r.Name] && !time.Now().Before(deadline) {
+				return fmt.Errorf("readiness deadline for runtime %s: %w: %s", r.Name, context.DeadlineExceeded, strings.Join(o.Diagnostics, "; "))
+			}
+			allReady = allReady && ready[r.Name]
 		}
 		l.Resources = resources
 		l.Diagnostics = diagnostics
@@ -437,10 +527,18 @@ func (s *Service) waitReady(ctx context.Context, l *domain.Lease) error {
 		if allReady {
 			return nil
 		}
+		wait := interval
+		for _, r := range l.Runtimes {
+			if !ready[r.Name] {
+				if remaining := time.Until(started.Add(timeouts[r.Name])); remaining < wait {
+					wait = remaining
+				}
+			}
+		}
 		select {
 		case <-ctx.Done():
 			return fmt.Errorf("readiness deadline: %w: %s", ctx.Err(), strings.Join(diagnostics, "; "))
-		case <-time.After(interval):
+		case <-time.After(wait):
 		}
 	}
 }
@@ -575,48 +673,95 @@ func (s *Service) cleanup(ctx context.Context, l *domain.Lease, force bool) erro
 	if err := s.persist(ctx, *l); err != nil {
 		return err
 	}
-	for i := len(l.Runtimes) - 1; i >= 0; i-- {
-		r := &l.Runtimes[i]
-		o, err := s.Runtime.Inspect(ctx, *r)
+	// A failed runtime must retain its own evidence and reservation, but should
+	// not strand independently owned siblings. Durable-write failures still halt
+	// the saga immediately; no further effects are safe after fencing is lost.
+	cleanupRuntime := func(r *domain.Runtime) (halt bool, err error) {
+		if r.Type == "android-emulator" {
+			if s.Android == nil {
+				return false, errors.New("Android provider unavailable")
+			}
+			if err := s.event(ctx, l.ID, "runtime_down_requested", r.Name); err != nil {
+				return true, err
+			}
+			if err := s.Android.Destroy(ctx, *r); err != nil {
+				return false, fmt.Errorf("remove Android runtime %s: %w", r.Name, err)
+			}
+			remaining, err := s.Android.Inspect(ctx, *r)
+			if err != nil || remaining.Exists {
+				if err == nil {
+					err = errors.New("Android resources remain after cleanup")
+				}
+				return false, err
+			}
+			r.Started = false
+			r.Android.State = "released"
+			if err := s.persist(ctx, *l); err != nil {
+				return true, err
+			}
+			return false, nil
+		}
+		o, err := s.inspectRuntime(ctx, *r)
 		if err != nil {
-			return s.quarantine(ctx, l, err)
+			return false, err
 		}
 		if err := ownedResources(l.ID, o.Resources); err != nil {
-			return s.quarantine(ctx, l, err)
+			return false, err
 		}
 		if o.Exists {
 			if err := s.event(ctx, l.ID, "runtime_logs_requested", r.Name); err != nil {
-				return err
+				return true, err
 			}
 			for _, service := range r.Services {
 				scoped := *r
 				scoped.Services = []string{service}
 				logs, err := s.Runtime.Logs(ctx, scoped)
 				if err != nil {
-					return s.quarantine(ctx, l, fmt.Errorf("collect logs for %s/%s before cleanup: %w", r.Name, service, err))
+					return false, fmt.Errorf("collect logs for %s/%s before cleanup: %w", r.Name, service, err)
 				}
 				if err := s.saveTextArtifact(ctx, *l, "compose-log/"+r.Name+"/"+service, r.Project+"-"+service+".log", logs); err != nil {
-					return s.quarantine(ctx, l, err)
+					return true, err
 				}
 			}
 			if err := s.event(ctx, l.ID, "runtime_down_requested", r.Name); err != nil {
-				return err
+				return true, err
 			}
 			if err := s.Runtime.Down(ctx, *r); err != nil {
-				return s.quarantine(ctx, l, fmt.Errorf("remove runtime %s: %w", r.Name, err))
+				return false, fmt.Errorf("remove runtime %s: %w", r.Name, err)
 			}
 			remaining, err := s.Runtime.Inspect(ctx, *r)
 			if err != nil || remaining.Exists {
 				if err == nil {
 					err = errors.New("runtime resources remain after cleanup")
 				}
-				return s.quarantine(ctx, l, err)
+				return false, err
 			}
 		}
 		r.Started = false
 		if err := s.persist(ctx, *l); err != nil {
-			return err
+			return true, err
 		}
+		return false, nil
+	}
+	var runtimeErrors error
+	for i := len(l.Runtimes) - 1; i >= 0; i-- {
+		if err := context.Cause(ctx); err != nil {
+			return errors.Join(runtimeErrors, err)
+		}
+		halt, err := cleanupRuntime(&l.Runtimes[i])
+		if err != nil {
+			runtimeErrors = errors.Join(runtimeErrors, fmt.Errorf("cleanup runtime %s: %w", l.Runtimes[i].Name, err))
+		}
+		if halt {
+			return s.quarantine(ctx, l, runtimeErrors)
+		}
+		if context.Cause(ctx) != nil || errors.Is(err, domain.ErrLockLost) {
+			return s.quarantine(ctx, l, errors.Join(runtimeErrors, context.Cause(ctx)))
+		}
+	}
+	if runtimeErrors != nil {
+		// Keep every source and reservation until every runtime is confirmed gone.
+		return s.quarantine(ctx, l, runtimeErrors)
 	}
 	for i := len(l.Sources) - 1; i >= 0; i-- {
 		source := l.Sources[i]
@@ -691,9 +836,12 @@ func (s *Service) Reconcile(ctx context.Context, id string) (lease domain.Lease,
 			diagnostics = append(diagnostics, "source "+source.Alias+" has tracked changes")
 		}
 	}
-	for _, r := range lease.Runtimes {
-		o, e := s.Runtime.Inspect(ctx, r)
+	for i := range lease.Runtimes {
+		r := &lease.Runtimes[i]
+		o, e := s.inspectRuntime(ctx, *r)
+		observeAndroid(r, o, e)
 		if e != nil {
+			dirty = dirty || errors.Is(e, domain.ErrResourceIdentity)
 			unknown = true
 			diagnostics = append(diagnostics, "runtime "+r.Name+": "+e.Error())
 			continue

@@ -22,13 +22,16 @@ func (s *Service) previewDestroy(ctx context.Context, l domain.Lease, force bool
 		}
 	}
 	for _, r := range l.Runtimes {
-		o, err := s.Runtime.Inspect(ctx, r)
+		o, err := s.inspectRuntime(ctx, r)
 		if err != nil {
 			l.Diagnostics = append(l.Diagnostics, "would quarantine runtime "+r.Name+": "+err.Error())
 			continue
 		}
 		if err := ownedResources(l.ID, o.Resources); err != nil {
 			l.Diagnostics = append(l.Diagnostics, "would quarantine: "+err.Error())
+		} else if r.Type == "android-emulator" && r.Android != nil {
+			a := r.Android
+			l.Diagnostics = append(l.Diagnostics, fmt.Sprintf("would verify ownership, stop Android Emulator %s (%s) if running, and remove private writable AVD state at %s; retain runtime evidence and process logs", a.AVDName, a.Serial, a.AVDPath))
 		} else if o.Exists {
 			l.Diagnostics = append(l.Diagnostics, "would retain logs and remove Compose project "+r.Project+" in context "+r.Context)
 		}

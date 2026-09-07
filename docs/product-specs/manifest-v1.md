@@ -81,8 +81,8 @@ Set the explicitly requested host `TEST_TOKEN` variable before invoking this nam
 | --- | --- |
 | Root | Required `version: 1`, nonempty `sources`, `runtimes`, `components`, and `stacks`; optional `tests` |
 | `sources.<alias>` | Required local `repository`; optional `default_ref` (Git HEAD when empty), `writable` (only false is supported in review mode) |
-| `runtimes.<name>` | Required `type: compose`, `source`, and nonempty `files`; optional `project_directory` defaults to the source root |
-| `components.<name>` | Required `runtime` and nonempty `compose_services`; optional `depends_on`, `provides`, `readiness`, and `endpoints` |
+| `runtimes.<name>` | Required `type` and `source`; Compose requires nonempty `files` with optional `project_directory`; Android requires `type: android-emulator` and `avd`, without Compose fields |
+| `components.<name>` | Required `runtime`; Compose requires nonempty `compose_services`; Android omits Compose services/endpoints/readiness. Optional `depends_on`, `provides` and applicable `readiness` |
 | `stacks.<name>` | Required nonempty `roots`; optional `description` |
 | `tests.<name>` | Required `stack`, `source`, nonempty argv `command`; optional `working_directory`, string-map `env`, `timeout`, and `artifacts` |
 
@@ -124,7 +124,7 @@ Artifact entries are explicit source-relative file or directory paths, not glob 
 
 Add another local entry under `sources` and reference its alias from a runtime, test, or command probe. All declared sources are pinned and materialized, even if only one runtime is selected. The [integration fixture](../../internal/cli/integration_test.go) verifies separate local repositories and alias-specific commit overrides.
 
-Android/Flutter, browser/CDP, writable fix leases, remote source caches, and arbitrary host-process runtimes are [deferred](../roadmap.md). Their proposed fields are not valid manifest v1 YAML.
+[Android Emulator runtimes](android-emulator.md) select a local AVD template with `avd` and allocate private writable state independently of Flutter. Planning does not require the SDK or allocate a device. Flutter, browser/CDP, writable fix leases, remote source caches, and arbitrary host-process runtimes remain [deferred](../roadmap.md); their proposed fields are not valid manifest v1 YAML.
 
 ## Manifest origin and readiness bounds
 

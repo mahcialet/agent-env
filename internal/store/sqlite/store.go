@@ -158,6 +158,10 @@ func (s *Store) Reserve(ctx context.Context, lease domain.Lease, maxActive int) 
 			return ErrCapacity
 		}
 	}
+	lease, err = allocateAndroid(ctx, tx, lease)
+	if err != nil {
+		return err
+	}
 	if err = writeLease(ctx, tx, lease, true); err != nil {
 		return err
 	}
@@ -205,6 +209,9 @@ func writeLease(ctx context.Context, tx *sql.Tx, l domain.Lease, insert bool) er
 	}
 	if n != 1 {
 		return ErrNotFound
+	}
+	if err := saveAndroid(ctx, tx, l, insert); err != nil {
+		return err
 	}
 	for _, table := range []string{"lease_sources", "lease_components", "lease_runtimes", "runtime_resources"} {
 		if _, err := tx.ExecContext(ctx, "DELETE FROM "+table+" WHERE lease_id=?", l.ID); err != nil {

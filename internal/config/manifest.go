@@ -37,6 +37,7 @@ type Runtime struct {
 	Source           string   `yaml:"source" json:"source"`
 	ProjectDirectory string   `yaml:"project_directory" json:"project_directory"`
 	Files            []string `yaml:"files" json:"files"`
+	AVD              string   `yaml:"avd,omitempty" json:"avd,omitempty"`
 }
 type Component struct {
 	Runtime         string              `yaml:"runtime" json:"runtime"`
@@ -230,13 +231,31 @@ func Validate(m *Manifest) error {
 			return fmt.Errorf("manifest: source %s has an invalid default_ref", n)
 		}
 	}
+	androidNames := map[string]string{}
 	for _, n := range keys(m.Runtimes) {
 		r := m.Runtimes[n]
-		if r.Type != "compose" {
-			return fmt.Errorf("manifest: runtime %s type %q is unsupported; MVP requires compose", n, r.Type)
+		if r.Type != "compose" && r.Type != "android-emulator" {
+			return fmt.Errorf("manifest: runtime %s type %q is unsupported; use compose or android-emulator", n, r.Type)
 		}
 		if _, ok := m.Sources[r.Source]; !ok {
 			return fmt.Errorf("manifest: runtime %s references unknown source %q", n, r.Source)
+		}
+		if r.Type == "android-emulator" {
+			folded := strings.ToLower(n)
+			if previous, exists := androidNames[folded]; exists {
+				return fmt.Errorf("manifest: Android runtime names %q and %q collide under case folding", previous, n)
+			}
+			androidNames[folded] = n
+			if !namePattern.MatchString(r.AVD) {
+				return fmt.Errorf("manifest: Android runtime %s requires a valid avd template name", n)
+			}
+			if r.ProjectDirectory != "" || len(r.Files) != 0 {
+				return fmt.Errorf("manifest: Android runtime %s cannot use Compose files or project_directory", n)
+			}
+			continue
+		}
+		if r.AVD != "" {
+			return fmt.Errorf("manifest: Compose runtime %s cannot use avd", n)
 		}
 		if err := RelativePath(r.ProjectDirectory); err != nil {
 			return fmt.Errorf("manifest: runtime %s project_directory: %w", n, err)
@@ -255,7 +274,11 @@ func Validate(m *Manifest) error {
 		if _, ok := m.Runtimes[c.Runtime]; !ok {
 			return fmt.Errorf("manifest: component %s references unknown runtime %q", n, c.Runtime)
 		}
-		if err := distinct("component "+n+" compose_services", c.ComposeServices, true); err != nil {
+		android := m.Runtimes[c.Runtime].Type == "android-emulator"
+		if android && (len(c.ComposeServices) != 0 || len(c.Endpoints) != 0) {
+			return fmt.Errorf("manifest: Android component %s cannot use Compose services or endpoints", n)
+		}
+		if err := distinct("component "+n+" compose_services", c.ComposeServices, !android); err != nil {
 			return err
 		}
 		for _, service := range c.ComposeServices {
@@ -275,6 +298,9 @@ func Validate(m *Manifest) error {
 			return err
 		}
 		for i, p := range c.Readiness {
+			if android && p.Type == "compose" {
+				return fmt.Errorf("manifest: Android component %s cannot use Compose readiness", n)
+			}
 			if err := probe(m, p); err != nil {
 				return fmt.Errorf("manifest: component %s readiness[%d]: %w", n, i, err)
 			}

@@ -36,6 +36,9 @@ func (s *Service) Inventory(ctx context.Context) ([]domain.Resource, error) {
 	for _, l := range leases {
 		byID[l.ID] = l
 		for _, r := range l.Runtimes {
+			if r.Type == "android-emulator" {
+				continue
+			}
 			projects[r.Context+"\x00"+r.Project] = l.ID
 			if r.Context != "" {
 				contexts[r.Context] = true
@@ -48,6 +51,7 @@ func (s *Service) Inventory(ctx context.Context) ([]domain.Resource, error) {
 		}
 	}
 	var failures []error
+	// Global discovery must find orphan projects even when no Compose rows survive.
 	if s.Runtime == nil {
 		failures = append(failures, fmt.Errorf("runtime inventory provider is missing"))
 	} else {

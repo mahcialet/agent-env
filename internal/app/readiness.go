@@ -108,7 +108,7 @@ func (s *Service) Endpoints(ctx context.Context, l domain.Lease) (map[string]str
 	}
 	result := map[string]string{}
 	for _, r := range l.Runtimes {
-		o, err := s.Runtime.Inspect(ctx, r)
+		o, err := s.inspectRuntime(ctx, r)
 		if err != nil {
 			return nil, err
 		}

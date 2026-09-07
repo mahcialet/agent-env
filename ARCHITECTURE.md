@@ -6,7 +6,7 @@ last_verified: 2026-09-07
 
 # Architecture
 
-The system materializes pinned local Git sources and a selected component closure into a Compose environment lease. The [MVP specification](docs/product-specs/agent-env-mvp.md) defines behavior; the [completed plan](docs/exec-plans/completed/agent-env-mvp.md) records delivered boundaries and verification evidence.
+The system materializes pinned local Git sources and a selected component closure into an environment lease with Compose and/or Android Emulator resources. The [MVP specification](docs/product-specs/agent-env-mvp.md) defines behavior; the [completed plan](docs/exec-plans/completed/agent-env-mvp.md) records delivered boundaries and verification evidence.
 
 The CLI parses arguments and formats output, then delegates use cases to app. Domain types model leases, immutable source sets, components, resources and events without concrete adapters. Config strictly decodes the manifest; stack resolves deterministic dependency closure. App coordinates source and runtime interfaces, policy, readiness, evidence, and compensating cleanup.
 
@@ -28,4 +28,6 @@ Use argument arrays and platform-native paths, with Windows wrapper handling iso
 
 Allocation is a saga across separate authorities. Save intent before effects, record results, and compensate in reverse order. Dirty tracked sources, ambiguous identities, or incomplete cleanup remain quarantined with events and artifacts. Lease isolation prevents accidental collisions; it is not a malicious-code sandbox.
 
-The development harness is separate from the target manifest: [agent instructions](AGENTS.md), indexed docs, plans, repoctl and CI describe this repository; `.agent-env.yaml` describes target-repository startup. Future Android/browser adapters may reuse runtime and observation interfaces without entering the initial Compose scope.
+The development harness is separate from the target manifest: [agent instructions](AGENTS.md), indexed docs, plans, repoctl and CI describe this repository; `.agent-env.yaml` describes target-repository startup.
+
+Android Emulator resources extend Compose through a separate `app.AndroidProvider` and `internal/runtime/android` adapter. The adapter uses domain identities, app observations and `execx` native process boundaries; it never imports Compose. SQLite owns exclusive AVD/port reservations, and app owns compensation and readiness. Detached processes are distinct from bounded command process trees. See the [Android design](docs/design-docs/android-emulator.md) and [completed execution evidence](docs/exec-plans/completed/android-emulator-lease.md). Browser and Flutter integration remain separate work.
