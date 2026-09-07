@@ -93,7 +93,9 @@ documentation drift and must not be intentionally introduced.
 * [x] 2026-09-08: Translate ADRs where applicable.
 * [x] 2026-09-08: Translate Android Emulator documentation delivered by PR #2.
 * [x] 2026-09-08: Ran the complete repository harness successfully; rerun after final review fixes.
-* [ ] Record acceptance evidence and retrospective.
+* [x] 2026-09-08: Verified all 24 PR checks at `6dbfc60`, including native Windows/macOS/Linux CI.
+* [x] 2026-09-08: Completed repository-grounded review and safe prose revision of all 29 Japanese documents, followed by an independent fresh-reader pass. Replaced all 64 pre-existing occurrences of the broad Japanese authority term with explicit source or precedence relationships.
+* [x] 2026-09-08: Recorded acceptance evidence, remaining semantic questions and retrospective; archived this bilingual plan together.
 
 ## Surprises & Discoveries
 
@@ -102,6 +104,10 @@ The user-provided untracked plan and dedicated branch were already present. Its 
 Record documentation categories that cannot reasonably follow the normal
 pairing rule, validator portability problems, or cases where translation
 drift cannot be determined mechanically.
+
+* Reader-first review found one pre-existing canonical documentation discrepancy and one scope ambiguity: `lease-control-plane` lists `stopped` states absent from the current CLI state model, and the aggregate Compose deadline described in `manifest-v1` does not clearly identify the aggregation boundary, while `waitAll` applies per-runtime deadlines. Safe prose revision preserves these claims; resolving their meaning requires a separate canonical change. The recommended SQLite minimum of 5000 ms is consistent with the implemented 10000 ms. Historical MVP statements about deferring Android describe the original scope.
+
+* Two further scope questions remain outside safe prose revision: `PORTABILITY` broadly describes Git and Docker Compose as external-runtime prerequisites despite the Android-only path, and the roadmap uses “real-device” without distinguishing physical devices from real Emulators. Both Japanese translations preserve their canonical meaning pending clarification.
 
 ## Decision Log
 
@@ -122,9 +128,19 @@ drift cannot be determined mechanically.
   maintenance economics from durable human-facing knowledge.
   Date/Author: 2026-09-08 / maintainers.
 
+* Decision: Review repository evidence before safely revising Japanese prose, preserving technical literals, links, conditions and obligations. Record unresolved semantic discrepancies separately.
+  Rationale: The requested reader-first review must improve comprehension without silently changing the canonical contract.
+  Date/Author: 2026-09-08 / maintainers.
+
+* Decision: Replace broad Japanese terminology for authority with the specific relationship: English as the content reference and translation source, SQLite as the record used for lease-state decisions, migrations as schema-generation input, and the active ExecPlan as the expected branch/work reference.
+  Rationale: The user requested a repository-wide terminology review so readers can identify what to consult or prioritize.
+  Date/Author: 2026-09-08 / maintainers.
+
 ## Outcomes & Retrospective
 
-Not completed.
+Completed: the bilingual documentation policy, 29 Japanese counterparts and portable missing/stale-translation checks are delivered. Repository-grounded review covered every Japanese document locally and globally, with an independent fresh-reader pass and a final meaning comparison. Prose now separates conditions and actions, identifies lease-specific GC exclusions and reservation limits, and explains source/precedence relationships explicitly. Commands, identifiers and link targets were retained.
+
+The hash detects source drift but cannot judge translation quality; human-readable review remains necessary. Existing state-model discrepancies and scope ambiguities were recorded separately above because resolving them would change canonical meaning beyond safe prose revision. Native SDK/Emulator validation limits are unchanged. The final documentation revision passed `repoctl docs-check`, `repoctl check` and `git diff --check` locally; the implementation at `6dbfc60` had already passed all 24 remote CI checks.
 
 ## Context and Orientation
 
@@ -287,3 +303,7 @@ Harness checkpoint: repoctl unit tests and Go 1.26 race repetitions passed (init
 Independent harness review (2026-09-08) found three enforceability gaps: case-insensitive JSON struct field matching could bypass exact duplicate-key rejection; unbalanced metadata quotes were accepted; the shared source enumerator skipped hidden/vendor directories inside docs despite the policy covering them. Accepted all three findings for fixes and regressions before final verification. No exception was added to hide them.
 
 Final local acceptance (2026-09-08): all three harness review findings were fixed with actual docsCheck regressions. `repoctl doctor`, `docs-check`, and full `check` passed with Go 1.26.8. Final repoctl race tests repeated three times and Go 1.27.1 unit tests passed; Windows/amd64 and Darwin/arm64 CGO-disabled cross-builds passed. The initial migration contains 29 required EN/JA pairs and six documented exact-path exceptions. Generated files, historical handoff and pre-migration completed plans are unchanged. Native CI remains to be verified after push.
+
+Native CI acceptance (2026-09-08): all 24 checks passed at `6dbfc60` (push run `34162436866`, PR run `34162472137`). The matrix covers native Windows, macOS and Linux with Go 1.26.x/1.27.x, Linux integration/race tests and five CGO-disabled cross-build targets. This is harness evidence, not real Android SDK/Emulator validation on every platform.
+
+Reader-first coverage: all 29 Japanese files received local structural and global review, followed by independent reading. The prose review recorded 68 candidates: 31 findings (30 safely revised and one retained state-model discrepancy), 34 excluded candidates and three unresolved scope questions. The user-requested terminology sweep separately revised 64 pre-existing occurrences; this did not reclassify contextual wording as factual errors. External citations were not re-fetched.

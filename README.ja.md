@@ -6,7 +6,7 @@ translation_of: README.md
 source_sha256: 9c90ad8c71412b0c3523e2a8218895c7ed0d4285f4ec1ccc1d947993712a0fe7
 ---
 
-[English（正本）](README.md)
+[英語版（翻訳元）](README.md)
 
 # agent-env
 
@@ -48,7 +48,9 @@ go run ./cmd/agent-env destroy <lease-id>
 
 実行ファイルをビルドしてPATHに追加すれば、`agent-env`（Windowsでは`agent-env.exe`）として使用できます。`plan`はリソースを割り当てずにコミットを解決します。`plan`と`create`は`--manifest <path>`で信頼する制御用マニフェストを明示的に選択できます。runtimeのファイルは引き続き各固定ソースから取得します。複数リポジトリのref上書きには`--source alias=ref`を使います。
 
-コンポーネントのendpointを宣言すると、ソースのComposeファイルを編集せずに、保存される実行設定へ動的なloopbackホスト公開設定を生成できます。Composeリソースはプロジェクト単位に限定され、mountはホストポリシーを満たす必要があります。固定コンテナー名、privileged mode、host networking、Docker socketのmount、安全でない外部bindは拒否されます。名前付きテストはargv配列を使い、stdout、stderr、終了ステータス、宣言した成果物はcleanup後も保持されます。[CLI契約](docs/product-specs/cli-contract.ja.md)と[セキュリティポリシー](docs/SECURITY.ja.md)を参照してください。
+コンポーネントのendpointを宣言すると、ソースのComposeファイルを編集せずに、保存される実行設定へ動的なloopbackホスト公開設定を生成できます。Composeリソースはプロジェクト単位に限定され、mountはホストポリシーを満たす必要があります。固定コンテナー名、privileged mode、host networking、Docker socketのmount、安全でない外部bindは拒否されます。
+
+名前付きテストはargv配列を使い、stdout、stderr、終了ステータス、宣言した成果物はcleanup後も保持されます。[CLI契約](docs/product-specs/cli-contract.ja.md)と[セキュリティポリシー](docs/SECURITY.ja.md)を参照してください。
 
 `gc`は期限切れ候補をプレビューし、削除を要求するのは`gc --apply`だけです。追跡対象の変更、所有権の不確定、不完全なcleanupがあるリースはquarantinedになります。明示的な`destroy --force`は、追跡対象の編集を破棄する前に差分証拠を保持し、所有権の不一致を上書きすることはありません。
 
@@ -58,7 +60,7 @@ go run ./cmd/agent-env destroy <lease-id>
 
 ## 状態と制限
 
-状態は対象リポジトリの外に保存されます。`AGENT_ENV_HOME`に絶対パスを指定すると、OS標準の保存先（LinuxのXDG state、macOSのApplication Support、WindowsのLOCALAPPDATA）を上書きできます。このhomeには`state.db`、管理対象worktree、正規化したruntime設定、リースの成果物、診断用の`leases/<id>/environment.json`記述子が入ります。正本はSQLiteです。既定のTTLは4時間、最大TTLは24時間、有効な予約数は8です。quarantinedのリースは予約を保持します。ホストポリシー設定ファイルはまだ公開していません。
+状態は対象リポジトリの外に保存されます。`AGENT_ENV_HOME`に絶対パスを指定すると、OS標準の保存先（LinuxのXDG state、macOSのApplication Support、WindowsのLOCALAPPDATA）を上書きできます。このhomeには`state.db`、管理対象worktree、正規化したruntime設定、リースの成果物、診断用の`leases/<id>/environment.json`記述子が入ります。リース状態の判断では、診断用記述子よりSQLiteの記録を優先します。既定のTTLは4時間、最大TTLは24時間、有効な予約数の上限は8です。quarantinedのリースは予約を保持します。ホストポリシー設定ファイルはまだ公開していません。
 
 Flutter、browser/CDP、リモートGitキャッシュ、registry promotion、書き込み可能な修正リースは[ロードマップ項目](docs/roadmap.ja.md)です。
 

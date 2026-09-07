@@ -6,7 +6,7 @@ translation_of: docs/design-docs/compose-runtime.md
 source_sha256: bd2af518c3e30976eca3d78e2262f6911c3a8eb00a2a688ebca25480479b9bbc
 ---
 
-[English（正本）](compose-runtime.md)
+[English（翻訳元）](compose-runtime.md)
 
 # Compose ランタイム
 

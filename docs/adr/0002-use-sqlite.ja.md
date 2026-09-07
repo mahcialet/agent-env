@@ -6,7 +6,7 @@ translation_of: docs/adr/0002-use-sqlite.md
 source_sha256: 8d6f32fd8509f82fceb28d0020b5ceaf6481c920b5a232fb33cc332df7bc66a4
 ---
 
-[English（正本）](0002-use-sqlite.md)
+[英語版（翻訳元）](0002-use-sqlite.md)
 
 # SQLiteを使用する
 

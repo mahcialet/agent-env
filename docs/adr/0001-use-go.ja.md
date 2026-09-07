@@ -6,7 +6,7 @@ translation_of: docs/adr/0001-use-go.md
 source_sha256: 7e0bd50093ae31e6c17f5ea1037627f0f505bc56a233107ac3a03aa9974e486a
 ---
 
-[English（正本）](0001-use-go.md)
+[英語版（翻訳元）](0001-use-go.md)
 
 # Goを使用する
 

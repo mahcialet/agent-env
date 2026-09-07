@@ -8,7 +8,7 @@ source_sha256: 43b9de8da760bd1b4ed74c1abe323832af1a4f63c24bad9b551af1b280c6e863
 
 # リポジトリの知識
 
-[正本の英語版](index.md)
+[英語版（翻訳元）](index.md)
 
 [アーキテクチャ](../ARCHITECTURE.ja.md)、[MVP仕様](product-specs/agent-env-mvp.ja.md)、[完了済みExecPlan](exec-plans/completed/agent-env-mvp.md)から読む。
 
@@ -25,8 +25,8 @@ source_sha256: 43b9de8da760bd1b4ed74c1abe323832af1a4f63c24bad9b551af1b280c6e863
 - [ロードマップ](roadmap.ja.md)：延期した機能と未解決の判断。
 - [参考資料](references/index.ja.md)：歴史的な出所。
 
-設計・製品・ADR・計画文書にはstatus、owner、last_verifiedメタデータを付ける。永続文書はローカル索引から見つけられるようにする。アーカイブ資料は参考資料索引に従い、生成する正本は実装後にmigrationから作る。鮮度の日付は文書を見直した日であり、計画した機能の実装を証明するものではない。
+設計・製品・ADR・計画文書にはstatus、owner、last_verifiedメタデータを付ける。永続文書はローカル索引から見つけられるようにする。アーカイブ資料は参考資料索引に従い、生成文書は、生成処理の実装後にmigrationから作る。鮮度の日付は文書を見直した日であり、計画した機能の実装を証明するものではない。
 
 - [生成されたデータベースschema](generated/db-schema.md)：埋め込まれたmigrationから機械的に導出する。
 
-- [言語の方針](design-docs/bilingual-documentation.ja.md)：英語の正本、日本語訳の保守、明示的な例外。
+- [言語の方針](design-docs/bilingual-documentation.ja.md)：英語版を内容の基準にする方針、日本語訳の保守、明示的な例外。

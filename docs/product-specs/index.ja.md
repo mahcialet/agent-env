@@ -6,7 +6,7 @@ translation_of: docs/product-specs/index.md
 source_sha256: 61c4daa905e868e2fb8d447a545a92858f79584e43f91eb96440e365bcdb1c56
 ---
 
-[English（正本）](index.md)
+[English（翻訳元）](index.md)
 
 # 製品仕様
 

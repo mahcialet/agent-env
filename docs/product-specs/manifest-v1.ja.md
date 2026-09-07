@@ -6,7 +6,7 @@ translation_of: docs/product-specs/manifest-v1.md
 source_sha256: 80245a44a8e03208eee344b1457ecb70b2a24ab76db5193e6d2bf46f3145a80d
 ---
 
-[English（正本）](manifest-v1.md)
+[English（翻訳元）](manifest-v1.md)
 
 # Manifest v1
 
@@ -92,7 +92,13 @@ tests:
 
 alias と名前は英数字で始まり、英数字、dot、underscore、hyphen のみを含みます。source repository path はローカルです。リモート URL、provider 固有 PR 省略記法、自動 fetch、資格情報管理は未対応です。
 
-相対 source repository は control repository を基準に解決します。runtime file と project directory は、ランタイムに割り当てた source root を基準に解決します。file は `project_directory` 相対ではありません。test/probe の working directory と artifact path は、宣言した source root を基準に解決します。移植可能な manifest path は forward slash を使い、シンボリックリンク経由も含め root 外に出てはいけません。ローカル source repository の絶対パスは、一致するホストプラットフォーム上で許可します。
+相対 source repository は control repository を基準に解決します。
+
+runtime file と project directory は、ランタイムに割り当てた source root を基準に解決します。file は `project_directory` 相対ではありません。
+
+test/probe の working directory と artifact path は、宣言した source root を基準に解決します。
+
+移植可能な manifest path は forward slash を使い、シンボリックリンク経由も含め root 外に出てはいけません。ローカル source repository の絶対パスは、一致するホストプラットフォーム上で許可します。
 
 `--source alias=ref` は 1 つの source の default ref を上書きします。`--ref` は単一 source の manifest でのみ有効です。起動前に全 source を不変の commit に解決します。ソートした alias/repository/commit の組が source-set digest を決めます。canonical manifest とその SHA-256 digest は source 識別情報とは別に保持します。
 
@@ -120,7 +126,13 @@ HTTP URL は明示設定した literal URL です。動的 endpoint の probe UR
 
 コマンドは引数配列で、shell command string にはしません。named test の argv と環境値では、明示的な `${env:NAME}` と `${lease_id}` の置換だけに対応します。ホスト変数の欠如、未知の式、不正な置換はコマンド実行前に失敗します。shell 展開、pipeline、一般的な template 評価は提供しません。
 
-資格情報らしい環境名（token、password、secret、key）は、機密値の literal ではなく、正確な `${env:NAME}` 参照を使わなければなりません。展開した設定資格情報と認識した継承資格情報は、保存出力、argv 記録、コピーした artifact から伏せ字にします。完全な環境は証拠に書きません。認識した継承資格情報が、argv や資格情報でない環境 key を含め canonical manifest のどこかに literal として現れた場合は、予約前に拒否します。Compose の資格情報は、永続化する実行 snapshot の資格情報入り解決済み環境値ではなく、secret file で設定してください。コンテナ絶対パスの `*_FILE` 参照に対応します。
+資格情報らしい環境名（token、password、secret、key）は、機密値の literal ではなく、正確な `${env:NAME}` 参照を使わなければなりません。
+
+展開した設定資格情報と認識した継承資格情報は、保存出力、argv 記録、コピーした artifact から伏せ字にします。完全な環境は証拠に書きません。
+
+認識した継承資格情報が、argv や資格情報でない環境 key を含め canonical manifest のどこかに literal として現れた場合は、予約前に拒否します。
+
+Compose の資格情報は、永続化する実行 snapshot の資格情報入り解決済み環境値ではなく、secret file で設定してください。コンテナ絶対パスの `*_FILE` 参照に対応します。
 
 artifact 項目は明示的な source 相対の file/directory path で、glob pattern ではありません。範囲外に出るシンボリックリンクと通常 file 以外を拒否します。収集 artifact は環境削除後も残ります。元の source 出力は管理対象 worktree の削除時に消えることがあります。
 

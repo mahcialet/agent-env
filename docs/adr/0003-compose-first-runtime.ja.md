@@ -6,7 +6,7 @@ translation_of: docs/adr/0003-compose-first-runtime.md
 source_sha256: 9ae3652e1b214d66a92c55d38a196d8d9edbc97af4e8f172b0b2312d41987163
 ---
 
-[English（正本）](0003-compose-first-runtime.md)
+[英語版（翻訳元）](0003-compose-first-runtime.md)
 
 # 最初のruntimeにComposeを採用する
 

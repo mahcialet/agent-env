@@ -6,7 +6,7 @@ translation_of: docs/adr/0004-repository-native-harness.md
 source_sha256: 2446df343a7f8eed77452400166f1f15ce0a6e57d47e59cd720e0637d2f22e28
 ---
 
-[English（正本）](0004-repository-native-harness.md)
+[英語版（翻訳元）](0004-repository-native-harness.md)
 
 # リポジトリ内のharness
 

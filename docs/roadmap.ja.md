@@ -6,7 +6,7 @@ translation_of: docs/roadmap.md
 source_sha256: 68635208b6ccb87819f5960a5c15b0c722b5899441697fd1eca5f760739b9281
 ---
 
-[English（正本）](roadmap.md)
+[英語版（翻訳元）](roadmap.md)
 
 # ロードマップと未解決の決定事項
 

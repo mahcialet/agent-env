@@ -6,7 +6,7 @@ translation_of: ARCHITECTURE.md
 source_sha256: a237aa4ced0b7de068cdb6bc9fdd83993c417a0119d52a3f7289ddd761ca50e5
 ---
 
-[English（正本）](ARCHITECTURE.md)
+[英語版（翻訳元）](ARCHITECTURE.md)
 
 # アーキテクチャ
 
@@ -30,8 +30,8 @@ SQLiteは期待状態、予約、所有権、ソースの識別情報、イベ�
 
 引数配列とプラットフォーム固有のパスを使い、Windowsラッパーの処理はexecxに隔離します。リリースビルドはCGOもshellも必要としません。状態は対象リポジトリの外にあるOS標準の状態パスに保存し、AGENT_ENV_HOMEで上書きできます。SQLiteはローカルで使用し、外部キー、busy timeout、検証済みのWALを備えます。
 
-割り当ては、権限を持つ別々の管理主体にまたがるsagaです。外部作用の前に意図を保存し、結果を記録し、逆順で補償します。追跡対象のソースが変更されている場合、識別情報が曖昧な場合、cleanupが不完全な場合は、イベントと成果物を伴うquarantined状態を維持します。リースの隔離は偶発的な衝突を防ぐものであり、悪意あるコードを封じ込めるsandboxではありません。
+割り当ては、SQLite、Git、runtimeのそれぞれが管理する状態にまたがるsagaです。外部作用の前に意図を保存し、結果を記録し、逆順で補償します。追跡対象のソースが変更されている場合、識別情報が曖昧な場合、cleanupが不完全な場合は、イベントと成果物を伴うquarantined状態を維持します。リースの隔離は偶発的な衝突を防ぐものであり、悪意あるコードを封じ込めるsandboxではありません。
 
 開発harnessと対象マニフェストは別物です。[エージェント向け指示](AGENTS.md)、索引付き文書、計画、repoctl、CIはこのリポジトリを説明し、`.agent-env.yaml`は対象リポジトリの起動方法を説明します。
 
-Android Emulatorリソースは、独立した`app.AndroidProvider`と`internal/runtime/android`アダプターを通じてComposeに加わります。このアダプターはdomainの識別情報、appの観測結果、`execx`のネイティブプロセス境界を使い、Composeをimportしません。SQLiteはAVDとポートの排他的予約を担い、appは補償と準備完了判定を担います。detached processと実行時間を制限したコマンドのプロセスツリーは別の仕組みです。[Android設計](docs/design-docs/android-emulator.ja.md)と[完了済みの実行証拠](docs/exec-plans/completed/android-emulator-lease.md)を参照してください。ブラウザーとFlutterの統合は別の作業です。
+Android Emulatorリソースは、独立した`app.AndroidProvider`と`internal/runtime/android`アダプターを通じて、Composeに加えて利用できます。このアダプターはdomainの識別情報、appの観測結果、`execx`のネイティブプロセス境界を使い、Composeをimportしません。SQLiteはAVDとポートの排他的予約を担い、appは補償と準備完了判定を担います。detached processと実行時間を制限したコマンドのプロセスツリーは別の仕組みです。[Android設計](docs/design-docs/android-emulator.ja.md)と[完了済みの実行証拠](docs/exec-plans/completed/android-emulator-lease.md)を参照してください。ブラウザーとFlutterの統合は別の作業です。

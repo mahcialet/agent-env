@@ -6,7 +6,7 @@ translation_of: docs/product-specs/cli-contract.md
 source_sha256: 9d691e1344d7746ed5e0ae3a5d3f511a88cff4ea39903934b44c6d8758221700
 ---
 
-[English（正本）](cli-contract.md)
+[English（翻訳元）](cli-contract.md)
 
 # CLI 契約
 
@@ -30,7 +30,11 @@ agent-env gc [--apply]
 agent-env doctor [repository|lease-id] [--runtime compose|android-emulator]
 ```
 
-リポジトリ省略時は現在のディレクトリを使います。`init` は認識可能なルート Compose file が 1 つあることを要求し、`.agent-env.yaml` を排他的に新規作成して review が必要と報告します。何も起動しません。`validate` は Docker なしで schema と参照を確認します。`plan` はさらにローカル Git commit と決定的なコンポーネント閉包を解決し、状態や worktree は作成しません。`--ref` は source が 1 つの場合に限ります。複数 source には alias ごとの `--source` override を使います。どちらもリモート ref を fetch しません。
+リポジトリ省略時は現在のディレクトリを使います。`init` は認識可能なルート Compose file が 1 つあることを要求し、`.agent-env.yaml` を排他的に新規作成して review が必要と報告します。何も起動しません。
+
+`validate` は Docker なしで schema と参照を確認します。`plan` はさらにローカル Git commit と決定的なコンポーネント閉包を解決し、状態や worktree は作成しません。
+
+`--ref` は source が 1 つの場合に限ります。複数 source には alias ごとの `--source` override を使います。どちらもリモート ref を fetch しません。
 
 manifest は既定で指定した control checkout から取得します。plan/create の `--manifest` は別の信頼済み manifest を明示的に選び、その digest と canonical snapshot を保持します。review mode は契約上書き込み不可の detached source worktree を作成します。書き込み可能な fix mode はありません。
 
@@ -38,7 +42,11 @@ manifest は既定で指定した control checkout から取得します。plan/
 
 `--owner <text>` はグローバルな参考所有者 selector です。`AGENT_ENV_OWNER` が明示的な既定値を与えます。指定しない場合はローカル user/host の識別情報と一意の接尾辞で割り当てを識別し、`list --mine` は別の呼び出しでもそのローカル識別情報に一致させます。owner label は filter であり、認可境界ではありません。
 
-`list` と `show` は記録した source と Docker project を検査します。`--cached` はレジストリのみを読む明示的な list です。`show` は lease、event、command run、artifact、endpoint の観測を含みます。`capabilities` は選択コンポーネントが宣言する capability、観測状態、endpoint のアドレス map を報告します。宣言された endpoint は、保存したランタイム設定に動的 loopback 公開を生成します。`reconcile <lease-id>` は観測した lease を返します。全体の `reconcile` は `leases` と `inventory` を含む object を返し、一致する所有者記録のないリソースも含めます。削除はしません。
+`list` と `show` は記録した source と Docker project を検査します。`--cached` はレジストリのみを読む明示的な list です。`show` は lease、event、command run、artifact、endpoint の観測を含みます。
+
+`capabilities` は選択コンポーネントが宣言する capability、観測状態、endpoint のアドレス map を報告します。宣言された endpoint は、保存したランタイム設定に動的 loopback 公開を生成します。
+
+`reconcile <lease-id>` は観測した lease を返します。全体の `reconcile` は `leases` と `inventory` を含む object を返し、一致する所有者記録のないリソースも含めます。削除はしません。
 
 desired state は `active` または `released` です。observed state は `requested`、`allocating`、`starting`、`ready`、`degraded`、`failed`、`releasing`、`released`、`quarantined`、`unknown` です。保存済みの ready 行は実際の健全性の証明ではありません。Docker リソースの不在は active lease を degraded にし、検査失敗は不確定として見える状態を保ちます。期限切れまたは隔離中の lease を、留保のない ready 結果にはできません。
 
@@ -54,7 +62,7 @@ desired state は `active` または `released` です。observed state は `req
 {"schema_version":1,"data":{}}
 ```
 
-各 lease は、永続化される lifecycle 変更時に更新する version 付きの診断 snapshot `leases/<id>/environment.json` も持ちます。これはレジストリに代わる正本ではありません。
+各 lease は、永続化される lifecycle 変更時に更新する version 付きの診断 snapshot `leases/<id>/environment.json` も持ちます。この snapshot は診断用であり、lease の記録を管理するレジストリの代わりにはなりません。
 
 data の形はコマンドごとに異なります。plan/create は object、list は lease 配列、show は lease と証拠 collection、GC は `apply` と `leases` を返します。JSON mode では named test のストリーム出力を stderr に送り、stdout を単一 JSON 文書に保ちます。create、削除、named test が失敗しても記録済み結果を出力することがあります。プロセス終了 status と結果の両方を確認してください。
 
@@ -78,7 +86,7 @@ data の形はコマンドごとに異なります。plan/create は object、li
 
 追跡対象ファイルに変更があると lease を隔離します。`destroy --force` は、binary Git diff を artifact として保持した後の削除を明示的に許可します。それでも固定された所有権の一致と証拠収集の成功が必要です。管理対象 review worktree 内の未追跡の test/build 出力は、通常の削除で除去されることがあります。管理対象 worktree に無関係な作業を置かないでください。
 
-`gc` は変更せず候補を preview します。既定 policy は期限切れから 5 分、最後の heartbeat から 1 分の経過を要求します。永続化された `running` コマンド行は、操作ロックが期限切れでも preview と apply を阻止します。`gc --apply` は各 lease ロックを再取得し、所有権/source の変更確認と削除の前に、これらの条件を再確認します。隔離中と処理中の lease は除外します。artifact の自動期限切れや、一般的なホストリソース prune はありません。
+`gc` は変更せず候補を preview します。既定 policy は期限切れから 5 分、最後の heartbeat から 1 分の経過を要求します。永続化された `running` コマンド行がある lease は、操作ロックが期限切れでも preview と apply の対象から除外します。`gc --apply` は各 lease ロックを再取得し、所有権/source の変更確認と削除の前に、これらの条件を再確認します。隔離中と処理中の lease は除外します。artifact の自動期限切れや、一般的なホストリソース prune はありません。
 
 ## Named test
 

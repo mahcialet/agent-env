@@ -6,7 +6,7 @@ translation_of: docs/PORTABILITY.md
 source_sha256: 53d10c89a2feb9efe5d7dbd7b1cfea407e6be97e4aa382340809215087a38eb4
 ---
 
-[English（正本）](PORTABILITY.md)
+[英語版（翻訳元）](PORTABILITY.md)
 
 # 移植性
 
@@ -48,8 +48,8 @@ c641286に対するCI 34124194139では、6件すべてのネイティブOS/Go j
 
 Androidは、ネイティブのファイル出力を持つ独立したdetached-process APIを使います。呼び出したCLIとその要求contextが終了してもプロセスは存続します。Linux/macOSはprocess-group識別情報を保持し、root終了後に残る子孫を系譜不確定として扱い、cleanupを禁止します。Windowsは中断状態のプロセスを名前付きJobに割り当ててから再開します。専用helperがJobが空になるまでhandleを保持し、その証拠を記録します。helperの証拠が欠けている、またはlogon sessionが異なる場合はcleanupを禁止します。生成時識別情報により再利用されたプロセスを拒否し、観測が不確定なら書き込み可能状態を削除しません。永続起動にはネイティブ実行ファイルを使い、batch wrapperやshellには依存しません。
 
-SDK探索は`ANDROID_HOME`、次に`ANDROID_SDK_ROOT`（値が競合すれば失敗）、最後にプラットフォーム既定値を使います。テンプレートは`ANDROID_AVD_HOME`、`ANDROID_USER_HOME/avd`、またはユーザーの`.android/avd`を使います。Emulatorのarchitectureと利用可能なホストアクセラレーションは前提条件です。
+SDK探索は`ANDROID_HOME`、次に`ANDROID_SDK_ROOT`、最後にプラットフォーム既定値を使います。両方の変数が設定され、その値が競合する場合は失敗します。テンプレートは`ANDROID_AVD_HOME`、`ANDROID_USER_HOME/avd`、またはユーザーの`.android/avd`を使います。Emulatorのarchitectureと利用可能なホストアクセラレーションは前提条件です。
 
-`127.0.0.1:5037`の互換ローカルADBサーバーは共有前提条件です。アダプターは起動またはboot検査の前に、直接の読み取り専用`host:version`応答をSDKクライアントのプロトコルバージョンと比較します。互換性がない、または不正な応答のサーバーは拒否します。サーバーがなければ、Emulatorより先にSDKの`adb -L tcp:localhost:5037 start-server`を別個のdetached起動で実行し、起動診断を保持します。時間制限付きboot検査は`-H 127.0.0.1 -P 5037 -s <reserved-serial>`を使い、継承したserver-routing変数を解除します。欠けたサーバーを起動しません。互換性probeは、通常のSDKクライアントのversion不一致による置換経路を防ぎます。共有ADBはリースcleanupの対象外です。
+`127.0.0.1:5037`の互換ローカルADBサーバーは共有前提条件です。アダプターは起動またはboot検査の前に、直接の読み取り専用`host:version`応答をSDKクライアントのプロトコルバージョンと比較します。互換性がない、または不正な応答のサーバーは拒否します。サーバーがなければ、Emulatorより先にSDKの`adb -L tcp:localhost:5037 start-server`を別個のdetached起動で実行し、起動診断を保持します。時間制限付きboot検査は`-H 127.0.0.1 -P 5037 -s <reserved-serial>`を使い、継承したserver-routing変数を解除します。このboot検査では、欠けたサーバーを起動しません。互換性probeは、通常のSDKクライアントのversion不一致による置換経路を防ぎます。共有ADBはリースcleanupの対象外です。
 
 ネイティブ単体CIと実Emulator統合は別です。実SDK統合はLinuxで実施しています。Windows/macOSでの実SDK起動、アクセラレーション、共有サーバーの寿命は未検証です。Android ExecPlanにテストしたrevisionと残るプラットフォーム上の不足を記録しています。

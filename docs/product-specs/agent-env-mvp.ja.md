@@ -6,13 +6,13 @@ translation_of: docs/product-specs/agent-env-mvp.md
 source_sha256: 001a2af935f484f5e04adfcc15ad46c99e566ca5586fc629bbacb12e38b11b77
 ---
 
-[English（正本）](agent-env-mvp.md)
+[English（翻訳元）](agent-env-mvp.md)
 
 # MVP 仕様
 
 Compose を使う CLI とリポジトリ harness は実装済みです。この文書は当初の必須範囲と受け入れ基準を保持します。各プラットフォームと review gate の完了は、[実装計画](../exec-plans/completed/agent-env-mvp.md)の証拠で追跡します。現在のコマンド、field、制約、復旧動作は [CLI 契約](cli-contract.ja.md)と [manifest リファレンス](manifest-v1.ja.md)で説明します。
 
-1 つ以上の Git リポジトリを固定 commit から、分離され、破棄可能で、検査可能な environment lease に materialize する再利用可能な CLI `agent-env` を実装します。
+再利用可能な CLI `agent-env` を実装します。1 つ以上の Git リポジトリを固定 commit から、分離され、破棄可能で、検査可能な environment lease に materialize します。
 
 リポジトリまたは workspace は、起動方法を `.agent-env.yaml` に記述します。`agent-env` は共通のコントロールプレーン責務を扱います。
 

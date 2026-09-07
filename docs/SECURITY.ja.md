@@ -6,7 +6,7 @@ translation_of: docs/SECURITY.md
 source_sha256: 386cdd02c4af0c4f6655b1e2c4e72aa0ea97fecd4aae9880bb7211eab2916874
 ---
 
-[English（正本）](SECURITY.md)
+[英語版（翻訳元）](SECURITY.md)
 
 # セキュリティと信頼
 
@@ -20,7 +20,7 @@ ownerラベルと`--mine`は助言的なフィルターです。ローカル状�
 
 ## 組み込みホストポリシー
 
-現在のCLIは、TTL 4時間、最大TTL 24時間、有効な予約8件という組み込みの既定値を使います。quarantinedのリースとcleanupが不完全なリースは予約を保持します。設定可能なホストポリシーファイルと、別個の最大並列create設定は未実装です。
+現在のCLIは、TTL 4時間、最大TTL 24時間、有効な予約数の上限8件という組み込みの既定値を使います。quarantinedのリースとcleanupが不完全なリースは予約を保持します。設定可能なホストポリシーファイルと、別個の最大並列create設定は未実装です。
 
 起動前に正規化Compose設定を検査し、privileged container、host networking、固定コンテナー名、固定公開ホストポート、Docker socketへのアクセス、device passthrough、安全でないmountを確認します。bindパスはsymlink解決後も含め、割り当てたソースroot内に収まる必要があります。外部network/volume、選択したリソースのグローバル共有名、安全でない・カスタムのvolume driverやdriver optionは拒否します。これらの検査は偶発的なホストアクセスと衝突を減らしますが、Docker buildやリポジトリコマンドを信頼できるものにするわけではありません。
 

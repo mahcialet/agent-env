@@ -6,7 +6,7 @@ translation_of: docs/adr/index.md
 source_sha256: 7455888386a3c26a56b5bebb938f3922fdc5dc9a871984b6f45b4c31c3585422
 ---
 
-[English（正本）](index.md)
+[英語版（翻訳元）](index.md)
 
 # アーキテクチャの決定
 

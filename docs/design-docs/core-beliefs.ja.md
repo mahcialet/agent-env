@@ -6,7 +6,7 @@ translation_of: docs/design-docs/core-beliefs.md
 source_sha256: 16cf89f7fcabe1e8b208563cecced20aca8104ba4cf3691fd48a6eb6c1c7bcb8
 ---
 
-[English（正本）](core-beliefs.md)
+[English（翻訳元）](core-beliefs.md)
 
 # 基本原則
 
@@ -16,7 +16,7 @@ SQLite は desired state、予約、証拠を管理します。Git と Docker �
 
 失敗はデータです。失敗した割り当て、補償処理、隔離イベントを保持します。削除では、楽観的な削除よりも追跡対象ファイルの編集とリソース識別情報の保護を優先します。
 
-コンポーネントが依存関係を持ち、stack がルートを指定します。必要最小限の閉包を選び、高コストで無関係なサービスの起動を避けます。リポジトリの manifest が明示的な起動の正本です。
+コンポーネントが依存関係を持ち、stack がルートを指定します。必要最小限の閉包を選び、高コストで無関係なサービスの起動を避けます。リポジトリの manifest を、起動構成を明示的に定義する基準とします。
 
 Windows、macOS、Linux のネイティブ動作は製品要件です。引数配列、OS ネイティブのパス、CGo 不要のリリースを使い、暗黙の shell や必須 daemon を導入しません。
 

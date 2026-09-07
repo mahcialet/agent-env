@@ -6,7 +6,7 @@ translation_of: docs/design-docs/index.md
 source_sha256: aea303180e9e9deefeb0ec9b0e29c2fa754018c580da83018f3d1954d8d1a9fe
 ---
 
-[English（正本）](index.md)
+[English（翻訳元）](index.md)
 
 # 設計文書
 

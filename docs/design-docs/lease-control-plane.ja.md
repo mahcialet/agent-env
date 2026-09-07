@@ -6,7 +6,7 @@ translation_of: docs/design-docs/lease-control-plane.md
 source_sha256: 78bc38310cf020dc4fb068a857939111f793a5da312252a49f069a3087068b5a
 ---
 
-[English（正本）](lease-control-plane.md)
+[English（翻訳元）](lease-control-plane.md)
 
 # Lease コントロールプレーン
 
@@ -203,7 +203,11 @@ releasing に変更
 
 ## 状態パスと所有権
 
-AGENT_ENV_HOME は OS の既定値を上書きします。Linux は XDG_STATE_HOME/agent-env または ~/.local/state/agent-env、macOS は ~/Library/Application Support/agent-env、Windows は LOCALAPPDATA/agent-env を使います。state.db と worktrees、repositories、leases、artifacts、logs、generated、locks はこの状態ルート以下に置きます。独立して破棄できる cache は OS の cache 位置を使います。ローカル SQLite が必須で、NFS/SMB 上の状態 database は未対応です。
+AGENT_ENV_HOME は OS の既定値を上書きします。Linux は XDG_STATE_HOME/agent-env または ~/.local/state/agent-env、macOS は ~/Library/Application Support/agent-env、Windows は LOCALAPPDATA/agent-env を使います。
+
+state.db と worktrees、repositories、leases、artifacts、logs、generated、locks はこの状態ルート以下に置きます。
+
+独立して破棄できる cache は OS の cache 位置を使います。ローカル SQLite が必須で、NFS/SMB 上の状態 database は未対応です。
 
 desired state は active、stopped、released です。observed state は allocating、starting、ready、degraded、stopped、failed、releasing、released、quarantined、unknown を区別します。割り当て/起動失敗は failed、不在/不健全なリソースは degraded、危険/不完全な解放は quarantined になります。timestamp は UTC/RFC3339 で永続化し、要求 stack、解決済みコンポーネント、manifest と source-set の digest、所有権、作成、heartbeat、期限を保存します。
 
