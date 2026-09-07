@@ -217,14 +217,41 @@ func TestOperationLockAcrossConnectionsAndExpiry(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer other.Close()
-	release, err := s.Acquire(ctx, "one", "owner-one", time.Second)
+	// This success-path fixture observes the durable renewal itself. A one-second
+	// TTL plus a fixed sleep also tested scheduler latency on loaded CI workers.
+	const ttl = 6 * time.Second
+	op, release, err := s.AcquireContext(ctx, "one", "owner-one", ttl)
 	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = release() })
+	var initialExpiry int64
+	if err := other.db.QueryRow("SELECT expires_at FROM operation_locks WHERE lease_id=? AND token=?", "one", "owner-one").Scan(&initialExpiry); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := other.Acquire(ctx, "one", "owner-two", time.Second); !errors.Is(err, ErrBusy) {
 		t.Fatalf("concurrent lock %v", err)
 	}
-	time.Sleep(1200 * time.Millisecond)
+	renewalCtx, stopWaiting := context.WithTimeout(ctx, 2*ttl)
+	defer stopWaiting()
+	poll := time.NewTicker(25 * time.Millisecond)
+	defer poll.Stop()
+	for {
+		var renewedExpiry int64
+		if err := other.db.QueryRowContext(renewalCtx, "SELECT expires_at FROM operation_locks WHERE lease_id=? AND token=?", "one", "owner-one").Scan(&renewedExpiry); err != nil {
+			t.Fatal(err)
+		}
+		if renewedExpiry > initialExpiry {
+			break
+		}
+		select {
+		case <-poll.C:
+		case <-op.Done():
+			t.Fatalf("lock lost before durable renewal: %v", context.Cause(op))
+		case <-renewalCtx.Done():
+			t.Fatal("lock expiration was never durably extended")
+		}
+	}
 	if _, err := other.Acquire(ctx, "one", "owner-two", time.Second); !errors.Is(err, ErrBusy) {
 		t.Fatalf("renewal lost lock %v", err)
 	}
