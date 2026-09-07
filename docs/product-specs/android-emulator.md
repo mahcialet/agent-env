@@ -29,7 +29,7 @@ one Android runtime share that lease's Emulator; different leases always receive
 distinct writable state, AVD identities, console/ADB ports and serials.
 
 `plan . --stack android-runtime --output json` describes the requirement without
-SDK discovery, reservations or runtime effects. `create` validates SDK and AVD
+SDK discovery, reservations or runtime effects. `create` validates runnable SDK tools, host acceleration, and AVD
 before reservation; Android-only stacks do not require Docker. Missing tools or
 templates are prerequisite failures (exit status 3). Default boot budget is two
 minutes. Ready requires the owned device's Android boot-completed property. The local ADB

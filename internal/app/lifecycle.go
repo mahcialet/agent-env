@@ -444,15 +444,20 @@ func (s *Service) waitReady(ctx context.Context, l *domain.Lease) error {
 	if err := json.Unmarshal(l.Manifest, &manifest); err != nil {
 		return err
 	}
+	timeouts := make(map[string]time.Duration, len(l.Runtimes))
+	for _, runtime := range l.Runtimes {
+		timeouts[runtime.Name] = timeout
+	}
 	for _, component := range l.Components {
-		for _, probe := range manifest.Components[component.Name].Readiness {
+		c := manifest.Components[component.Name]
+		for _, probe := range c.Readiness {
 			if probe.Type != "compose" {
 				continue
 			}
 			if probe.Timeout != "" {
 				value, _ := time.ParseDuration(probe.Timeout)
-				if value < timeout {
-					timeout = value
+				if value < timeouts[c.Runtime] {
+					timeouts[c.Runtime] = value
 				}
 			}
 			if probe.Interval != "" {
@@ -465,14 +470,34 @@ func (s *Service) waitReady(ctx context.Context, l *domain.Lease) error {
 	}
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
+	started := time.Now()
+	ready := make(map[string]bool, len(l.Runtimes))
 	for {
 		allReady := true
 		resources := []domain.Resource{}
 		diagnostics := []string{}
 		for i := range l.Runtimes {
 			r := &l.Runtimes[i]
-			o, err := s.inspectRuntime(ctx, *r)
+			// A satisfied Compose probe must not shorten another runtime's
+			// boot budget. Continue observing it for ownership and health,
+			// but only pending readiness is bounded by its probe deadline.
+			deadline := started.Add(timeouts[r.Name])
+			inspectionDeadline, _ := ctx.Deadline()
+			pendingName := r.Name
+			for _, pending := range l.Runtimes {
+				if pendingDeadline := started.Add(timeouts[pending.Name]); !ready[pending.Name] && pendingDeadline.Before(inspectionDeadline) {
+					inspectionDeadline = pendingDeadline
+					pendingName = pending.Name
+				}
+			}
+			inspectCtx, cancelInspect := context.WithDeadline(ctx, inspectionDeadline)
+			o, err := s.inspectRuntime(inspectCtx, *r)
+			inspectErr := inspectCtx.Err()
+			cancelInspect()
 			observeAndroid(r, o, err)
+			if inspectErr != nil {
+				return fmt.Errorf("readiness deadline for runtime %s: %w", pendingName, inspectErr)
+			}
 			if err != nil {
 				return fmt.Errorf("inspect runtime %s: %w", r.Name, err)
 			}
@@ -485,7 +510,11 @@ func (s *Service) waitReady(ctx context.Context, l *domain.Lease) error {
 			}
 			resources = append(resources, o.Resources...)
 			diagnostics = append(diagnostics, o.Diagnostics...)
-			allReady = allReady && o.Ready && o.Exists
+			ready[r.Name] = o.Ready && o.Exists
+			if !ready[r.Name] && !time.Now().Before(deadline) {
+				return fmt.Errorf("readiness deadline for runtime %s: %w: %s", r.Name, context.DeadlineExceeded, strings.Join(o.Diagnostics, "; "))
+			}
+			allReady = allReady && ready[r.Name]
 		}
 		l.Resources = resources
 		l.Diagnostics = diagnostics
@@ -495,10 +524,18 @@ func (s *Service) waitReady(ctx context.Context, l *domain.Lease) error {
 		if allReady {
 			return nil
 		}
+		wait := interval
+		for _, r := range l.Runtimes {
+			if !ready[r.Name] {
+				if remaining := time.Until(started.Add(timeouts[r.Name])); remaining < wait {
+					wait = remaining
+				}
+			}
+		}
 		select {
 		case <-ctx.Done():
 			return fmt.Errorf("readiness deadline: %w: %s", ctx.Err(), strings.Join(diagnostics, "; "))
-		case <-time.After(interval):
+		case <-time.After(wait):
 		}
 	}
 }
