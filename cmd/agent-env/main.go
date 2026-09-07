@@ -3,13 +3,13 @@ package main
 import (
 	"fmt"
 	"os"
+
+	"github.com/mahcialet/agent-env/internal/cli"
 )
 
 func main() {
-	if len(os.Args) == 2 && os.Args[1] == "version" {
-		fmt.Println("agent-env 0.1.0-dev")
-		return
+	if err := cli.New(os.Stdout, os.Stderr).Execute(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(2)
 	}
-	fmt.Fprintln(os.Stderr, "usage: agent-env version (MVP implementation in progress)")
-	os.Exit(2)
 }

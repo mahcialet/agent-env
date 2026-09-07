@@ -159,3 +159,7 @@ stacks:
 - Save the exact manifest bytes or canonicalized manifest plus SHA-256 digest for each lease.
 
 ---
+
+## Readiness and endpoint fields
+
+Components may declare `readiness` as a list of probes. A probe has `type: compose`, `type: http` with `url`, or `type: command` with `source`, `working_directory`, and argv-array `command`. Optional `timeout` and `interval` are positive Go duration strings. Components may declare `endpoints` as a map of endpoint name to `service`, integer `target` port, and optional `protocol` (`tcp` or `udp`). Runtime execution of these fields must be verified before lifecycle completion. Tests accept argv-array `command`, optional string-map `env`, positive `timeout`, and source-relative `artifacts` paths. Unknown YAML keys and duplicate aliases are errors.

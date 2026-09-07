@@ -1,0 +1,343 @@
+// Package sqlite persists registry intent and evidence in an embedded SQLite database.
+package sqlite
+
+import (
+	"context"
+	"database/sql"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"net/url"
+	"os"
+	"path/filepath"
+	"sort"
+	"strings"
+	"sync"
+	"time"
+
+	"github.com/mahcialet/agent-env/internal/domain"
+	"github.com/mahcialet/agent-env/migrations"
+	_ "modernc.org/sqlite"
+)
+
+var ErrNotFound = sql.ErrNoRows
+var ErrBusy = errors.New("lease operation is already in progress")
+var ErrCapacity = errors.New("maximum active lease count reached")
+
+type Store struct{ db *sql.DB }
+
+func Open(path string) (*Store, error) {
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return nil, err
+	}
+	if err := os.MkdirAll(filepath.Dir(abs), 0700); err != nil {
+		return nil, err
+	}
+	u := url.URL{Scheme: "file", Path: uriPath(filepath.ToSlash(abs))}
+	q := url.Values{"_pragma": {"foreign_keys(1)", "busy_timeout(10000)", "journal_mode(WAL)"}, "_txlock": {"immediate"}}
+	u.RawQuery = q.Encode()
+	db, err := sql.Open("sqlite", u.String())
+	if err != nil {
+		return nil, err
+	}
+	db.SetMaxOpenConns(1)
+	db.SetMaxIdleConns(1)
+	s := &Store{db: db}
+	if err = s.initialize(); err != nil {
+		db.Close()
+		return nil, err
+	}
+	return s, nil
+}
+
+// A drive letter belongs in the URI path, never the URI authority.
+func uriPath(path string) string {
+	if len(path) >= 3 && path[1] == ':' && path[2] == '/' && !strings.HasPrefix(path, "/") {
+		return "/" + path
+	}
+	return path
+}
+
+func (s *Store) initialize() error {
+	var foreign, busy int
+	var journal string
+	if err := s.db.QueryRow("PRAGMA foreign_keys").Scan(&foreign); err != nil {
+		return err
+	}
+	if err := s.db.QueryRow("PRAGMA busy_timeout").Scan(&busy); err != nil {
+		return err
+	}
+	if err := s.db.QueryRow("PRAGMA journal_mode").Scan(&journal); err != nil {
+		return err
+	}
+	if foreign != 1 || busy < 1000 || journal != "wal" {
+		return fmt.Errorf("SQLite invariants unavailable: foreign_keys=%d busy_timeout=%d journal_mode=%s", foreign, busy, journal)
+	}
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if _, err = tx.Exec("CREATE TABLE IF NOT EXISTS schema_migrations (name TEXT PRIMARY KEY, applied_at TEXT NOT NULL)"); err != nil {
+		return err
+	}
+	entries, err := migrations.Files.ReadDir(".")
+	if err != nil {
+		return err
+	}
+	sort.Slice(entries, func(i, j int) bool { return entries[i].Name() < entries[j].Name() })
+	for _, entry := range entries {
+		if filepath.Ext(entry.Name()) != ".sql" {
+			continue
+		}
+		var count int
+		if err := tx.QueryRow("SELECT count(*) FROM schema_migrations WHERE name=?", entry.Name()).Scan(&count); err != nil {
+			return err
+		}
+		if count > 0 {
+			continue
+		}
+		data, err := migrations.Files.ReadFile(entry.Name())
+		if err != nil {
+			return err
+		}
+		if _, err = tx.Exec(string(data)); err != nil {
+			return fmt.Errorf("migration %s: %w", entry.Name(), err)
+		}
+		if _, err = tx.Exec("INSERT INTO schema_migrations(name,applied_at) VALUES(?,?)", entry.Name(), stamp(time.Now())); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
+func (s *Store) Close() error  { return s.db.Close() }
+func stamp(t time.Time) string { return t.UTC().Format(time.RFC3339Nano) }
+func encoded(v any) string     { b, _ := json.Marshal(v); return string(b) }
+
+func (s *Store) Reserve(ctx context.Context, lease domain.Lease, maxActive int) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if maxActive > 0 {
+		var count int
+		if err = tx.QueryRowContext(ctx, "SELECT count(*) FROM leases WHERE observed_state <> 'released'").Scan(&count); err != nil {
+			return err
+		}
+		if count >= maxActive {
+			return ErrCapacity
+		}
+	}
+	if err = writeLease(ctx, tx, lease, true); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func (s *Store) Save(ctx context.Context, lease domain.Lease) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if err = writeLease(ctx, tx, lease, false); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func writeLease(ctx context.Context, tx *sql.Tx, l domain.Lease, insert bool) error {
+	if l.ID == "" {
+		return errors.New("lease id is required")
+	}
+	payload, err := json.Marshal(l)
+	if err != nil {
+		return err
+	}
+	args := []any{l.Owner, l.Purpose, l.Mode, l.Repository, l.Stack, l.Desired, l.Observed, stamp(l.CreatedAt), stamp(l.HeartbeatAt), stamp(l.ExpiresAt), l.ManifestDigest, l.SourceSetDigest, string(payload), l.ID}
+	query := "UPDATE leases SET owner=?,purpose=?,mode=?,repository=?,stack=?,desired_state=?,observed_state=?,created_at=?,heartbeat_at=?,expires_at=?,manifest_digest=?,source_set_digest=?,payload=? WHERE id=?"
+	if insert {
+		query = "INSERT INTO leases(owner,purpose,mode,repository,stack,desired_state,observed_state,created_at,heartbeat_at,expires_at,manifest_digest,source_set_digest,payload,id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+	}
+	res, err := tx.ExecContext(ctx, query, args...)
+	if err != nil {
+		return err
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n != 1 {
+		return ErrNotFound
+	}
+	for _, table := range []string{"lease_sources", "lease_components", "lease_runtimes", "runtime_resources"} {
+		if _, err := tx.ExecContext(ctx, "DELETE FROM "+table+" WHERE lease_id=?", l.ID); err != nil {
+			return err
+		}
+	}
+	for _, v := range l.Sources {
+		if v.RepositoryID == "" || v.Alias == "" {
+			return errors.New("source repository id and alias are required")
+		}
+		if _, err := tx.ExecContext(ctx, "INSERT INTO repositories(id,canonical_path) VALUES(?,?) ON CONFLICT(id) DO UPDATE SET canonical_path=excluded.canonical_path", v.RepositoryID, v.RepositoryPath); err != nil {
+			return err
+		}
+		if _, err := tx.ExecContext(ctx, "INSERT INTO lease_sources(lease_id,alias,repository_id,requested_ref,resolved_commit,worktree_path,checkout_mode,writable,resolved_at) VALUES(?,?,?,?,?,?,?,?,?)", l.ID, v.Alias, v.RepositoryID, v.RequestedRef, v.Commit, v.WorktreePath, v.CheckoutMode, v.Writable, stamp(v.ResolvedAt)); err != nil {
+			return err
+		}
+	}
+	for order, v := range l.Components {
+		if _, err := tx.ExecContext(ctx, "INSERT INTO lease_components(lease_id,name,runtime,services,capabilities,resolution_order) VALUES(?,?,?,?,?,?)", l.ID, v.Name, v.Runtime, encoded(v.Services), encoded(v.Capabilities), order); err != nil {
+			return err
+		}
+	}
+	for _, v := range l.Runtimes {
+		if _, err := tx.ExecContext(ctx, "INSERT INTO lease_runtimes(lease_id,name,type,project,context,active,payload) VALUES(?,?,?,?,?,?,?)", l.ID, v.Name, v.Type, v.Project, v.Context, l.Observed != "released", encoded(v)); err != nil {
+			return err
+		}
+	}
+	for _, v := range l.Resources {
+		if v.LeaseID != "" && v.LeaseID != l.ID {
+			return errors.New("resource belongs to another lease")
+		}
+		if v.ID == "" {
+			return errors.New("resource id is required")
+		}
+		if _, err := tx.ExecContext(ctx, "INSERT INTO runtime_resources(id,lease_id,runtime,kind,external_id,metadata) VALUES(?,?,?,?,?,?)", v.ID, l.ID, v.Runtime, v.Kind, v.ExternalID, encoded(v.Metadata)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *Store) Get(ctx context.Context, id string) (domain.Lease, error) {
+	var l domain.Lease
+	var b string
+	err := s.db.QueryRowContext(ctx, "SELECT payload FROM leases WHERE id=?", id).Scan(&b)
+	if err == nil {
+		err = json.Unmarshal([]byte(b), &l)
+	}
+	return l, err
+}
+func (s *Store) List(ctx context.Context) ([]domain.Lease, error) {
+	return readRows[domain.Lease](ctx, s.db, "SELECT payload FROM leases ORDER BY created_at,id")
+}
+
+func readRows[T any](ctx context.Context, db *sql.DB, query string, args ...any) ([]T, error) {
+	rows, err := db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	result := make([]T, 0)
+	for rows.Next() {
+		var b string
+		if err := rows.Scan(&b); err != nil {
+			return nil, err
+		}
+		var v T
+		if err := json.Unmarshal([]byte(b), &v); err != nil {
+			return nil, err
+		}
+		result = append(result, v)
+	}
+	return result, rows.Err()
+}
+
+func (s *Store) Event(ctx context.Context, v domain.Event) error {
+	_, err := s.db.ExecContext(ctx, "INSERT INTO events(id,lease_id,time,type,message,payload) VALUES(?,?,?,?,?,?)", v.ID, v.LeaseID, stamp(v.Time), v.Type, v.Message, encoded(v))
+	return err
+}
+func (s *Store) Events(ctx context.Context, id string) ([]domain.Event, error) {
+	return readRows[domain.Event](ctx, s.db, "SELECT payload FROM events WHERE lease_id=? ORDER BY time,id", id)
+}
+func (s *Store) SaveRun(ctx context.Context, v domain.CommandRun) error {
+	res, err := s.db.ExecContext(ctx, "INSERT INTO command_runs(id,lease_id,name,source_alias,working_directory,argv_json,started_at,finished_at,exit_code,stdout_path,stderr_path,status,payload) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,source_alias=excluded.source_alias,working_directory=excluded.working_directory,argv_json=excluded.argv_json,started_at=excluded.started_at,finished_at=excluded.finished_at,exit_code=excluded.exit_code,stdout_path=excluded.stdout_path,stderr_path=excluded.stderr_path,status=excluded.status,payload=excluded.payload WHERE command_runs.lease_id=excluded.lease_id", v.ID, v.LeaseID, v.Name, v.Source, v.Directory, encoded(v.Argv), stamp(v.StartedAt), stamp(v.FinishedAt), v.ExitCode, v.StdoutPath, v.StderrPath, v.Status, encoded(v))
+	if err != nil {
+		return err
+	}
+	n, err := res.RowsAffected()
+	if err == nil && n != 1 {
+		return errors.New("command run belongs to another lease")
+	}
+	return err
+}
+func (s *Store) Runs(ctx context.Context, id string) ([]domain.CommandRun, error) {
+	return readRows[domain.CommandRun](ctx, s.db, "SELECT payload FROM command_runs WHERE lease_id=? ORDER BY started_at,id", id)
+}
+func (s *Store) SaveArtifact(ctx context.Context, v domain.Artifact) error {
+	var run any
+	if v.RunID != "" {
+		run = v.RunID
+	}
+	_, err := s.db.ExecContext(ctx, "INSERT INTO artifacts(id,lease_id,run_id,kind,path,digest,created_at,payload) VALUES(?,?,?,?,?,?,?,?)", v.ID, v.LeaseID, run, v.Kind, v.Path, v.Digest, stamp(v.CreatedAt), encoded(v))
+	return err
+}
+func (s *Store) Artifacts(ctx context.Context, id string) ([]domain.Artifact, error) {
+	return readRows[domain.Artifact](ctx, s.db, "SELECT payload FROM artifacts WHERE lease_id=? ORDER BY created_at,id", id)
+}
+
+// Acquire returns an exclusive, durable, automatically renewed lease-operation lock.
+// A crashed process leaves a finite expiration; release removes only its own token.
+func (s *Store) Acquire(ctx context.Context, id, token string, ttl time.Duration) (func() error, error) {
+	if token == "" || ttl < time.Second {
+		return nil, errors.New("lock requires a token and ttl of at least one second")
+	}
+	now := time.Now()
+	res, err := s.db.ExecContext(ctx, "INSERT INTO operation_locks(lease_id,token,expires_at) VALUES(?,?,?) ON CONFLICT(lease_id) DO UPDATE SET token=excluded.token,expires_at=excluded.expires_at WHERE operation_locks.expires_at<=?", id, token, now.Add(ttl).UnixNano(), now.UnixNano())
+	if err != nil {
+		return nil, err
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return nil, err
+	}
+	if n != 1 {
+		return nil, ErrBusy
+	}
+	stop := make(chan struct{})
+	done := make(chan struct{})
+	var renewalErr error
+	go func() {
+		defer close(done)
+		ticker := time.NewTicker(ttl / 3)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-stop:
+				return
+			case <-ticker.C:
+				refreshCtx, cancel := context.WithTimeout(context.Background(), ttl/3)
+				result, err := s.db.ExecContext(refreshCtx, "UPDATE operation_locks SET expires_at=? WHERE lease_id=? AND token=?", time.Now().Add(ttl).UnixNano(), id, token)
+				cancel()
+				if err == nil {
+					var affected int64
+					affected, err = result.RowsAffected()
+					if err == nil && affected != 1 {
+						err = ErrBusy
+					}
+				}
+				if err != nil {
+					renewalErr = fmt.Errorf("operation lock renewal: %w", err)
+					return
+				}
+			}
+		}
+	}()
+	var once sync.Once
+	var releaseErr error
+	return func() error {
+		once.Do(func() {
+			close(stop)
+			<-done
+			releaseCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			_, releaseErr = s.db.ExecContext(releaseCtx, "DELETE FROM operation_locks WHERE lease_id=? AND token=?", id, token)
+			releaseErr = errors.Join(renewalErr, releaseErr)
+		})
+		return releaseErr
+	}, nil
+}

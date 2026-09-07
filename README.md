@@ -39,3 +39,5 @@ State is outside target repositories. AGENT_ENV_HOME overrides Linux XDG state, 
 Android Emulator/Flutter, browser/CDP, remote Git caching, and local registry promotion are [roadmap items](docs/roadmap.md), not implemented MVP features.
 
 Contributors start at [AGENTS.md](AGENTS.md) and [documentation index](docs/index.md). Licensed under the existing [MIT license](LICENSE).
+
+Implemented foundation commands are `version`, `validate [repository]`, and `plan [repository] --stack <name>`, with `--output json` returning `{ "schema_version": 1, "data": ... }`. Planning resolves local Git commits without allocating a lease. Lifecycle integration remains in progress in the active plan.

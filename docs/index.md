@@ -20,3 +20,5 @@ Start with [architecture](../ARCHITECTURE.md), [MVP specification](product-specs
 - [References](references/index.md): historical provenance.
 
 Design, product, ADR and plan documents carry status, owner and last_verified metadata. Their local indexes make all durable documents discoverable. Archive material is governed by the references index; generated truth is produced from migrations when implemented. Freshness dates describe document review, not proof that planned features are implemented.
+
+- [Generated database schema](generated/db-schema.md): mechanically derived from embedded migrations.

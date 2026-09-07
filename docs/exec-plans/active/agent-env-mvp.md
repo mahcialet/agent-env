@@ -17,7 +17,7 @@ Deliver a usable native Windows/macOS/Linux CLI that reads an explicit target ma
 - [x] 2026-09-07: established architecture, indexed durable docs, initial ADRs, and this self-contained plan.
 - [x] 2026-09-07: initial `go run ./tools/repoctl docs-check` passed with Go 1.27.1 (exit 0); negative checker tests and complete harness verification remain pending.
 - [x] 2026-09-07: Milestone 0 local bootstrap verified: repoctl check passes (format, unit including negative fixtures, vet, docs, generated, architecture); CLI version executes; CGO_ENABLED=0 builds pass for windows/amd64, darwin/amd64, darwin/arm64, linux/amd64, linux/arm64. Native CI is configured and its results remain pending.
-- [ ] Milestones 1–3: domain/paths/SQLite, strict manifest/stack planner, native command runner and pinned multi-repository Git sources.
+- [x] 2026-09-07: Milestones 1–3 foundational packages and read-only validate/plan CLI implemented and targeted Linux tests pass; native Windows/macOS execution of this slice remains pending CI.
 - [ ] Milestones 4–7: Compose adapter, create/destroy saga, reconciliation/TTL/GC, named tests and evidence.
 - [ ] Milestone 8: concurrency, rollback, dirty-source and multi-repository integration tests; actual native CI evidence; completion audit and plan relocation.
 
@@ -302,3 +302,5 @@ Go baseline 1.26.0, supported 1.26.x/1.27.x CI, CGo-free releases. Preferred lib
 Source provider responsibilities are resolve/materialize/inspect/remove. Runtime responsibilities are validate/plan/create/inspect/collect/destroy, using stable external IDs rather than PID assumptions. SQLite repositories store leases, normalized sources/components/resources, events, command runs and artifacts. Reconciliation consumes observed adapters plus desired registry state. Domain/app interfaces prevent CLI formatting or concrete persistence from entering pure domain behavior.
 
 Local bootstrap evidence (2026-09-07): Go 1.27.1 `repoctl check` exit 0, Go 1.26.8 initial `go test ./...` exit 0, official module verification successful. Five CGO-free CLI cross-builds exit 0. This verifies the bootstrap only; native CI and product acceptance remain pending.
+
+Foundation evidence (2026-09-07): targeted Go 1.27.1 tests for domain, paths, policy, config, stack, execx, source/gitcli, store/sqlite, app, cli, repoctl all pass. Domain digest/state/GC guards, path symlink/traversal cases, strict manifest negatives, deterministic API/dashboard closure, JSON envelope, concurrent SQLite capacity/locking/rollback and actual Git worktree cleanup are covered. Commands create/destroy/reconcile/test are not yet connected; no full lifecycle acceptance claimed.
