@@ -1,9 +1,9 @@
 ---
-status: active
+status: completed
 owner: maintainers
 last_verified: 2026-09-08
-translation_of: docs/exec-plans/active/flutter-android-runtime.md
-source_sha256: a7eb43a8589da238fc305dac430b5b466e148e983da7bc01d7a0a641003056cc
+translation_of: docs/exec-plans/completed/flutter-android-runtime.md
+source_sha256: f0e9902a892356adcfe9566f1b89115c2a1064d51b8b4b4ca325a65c55841e1c
 ---
 
 # 環境リース内にFlutter Androidアプリケーションを実体化する
@@ -198,8 +198,8 @@ tests:
 - [x] 2026-09-08: 最終実装のGo 1.26.8全harnessが全工程成功、Go 1.27.1の `go test -race ./...` も成功。最新ソースCIは `81102f1`、検証済み文書CIは `d4d4289` で成功。
 - [x] 2026-09-08: ネイティブCI `34166963420` は `8975096` で全OS・Go版ジョブ成功。実SDK証拠は別扱いでLinuxのみ。
 - [x] 2026-09-08: Linuxで実Flutter + Emulator結合 `TestRealFlutterAndroidBackendLease` が248.46秒で成功。二つの実リースへの拡張もその後88.99秒で成功。Windows/macOSの実SDK実行は未検証。
-- [ ] 遅れて判明した完了計画CI失敗への対応後に受け入れを再検証する。前回は証拠・振り返りを完成し独立レビューで具体的指摘なし。
-- [ ] 遅れて判明したCI問題の解決後に再度completedへ移動する。前回の移動・索引更新の履歴は保持。
+- [x] 2026-09-08: 遅れて判明したCI失敗後の受け入れを再検証。テスト限定修正 `bb55393` は両方の全CIで成功。前回の証拠・振り返り・独立レビューも保持。
+- [x] 2026-09-08: 修正CI成功後に両言語を再度completedへ移動。前回の移動・索引更新履歴も保持。
 
 チェックは予定でなく観測済みの完了を示します。UTC日付、コマンド・テスト・実行識別子、結果を添えます。
 
@@ -264,9 +264,9 @@ Flutter結合テストによるAPK置換、高速化不足、既存Android所有
   エラーは即座に `t.Errorf` で報告し、影響行数が正確に1であることを要求する。
   production fencingと元の後続作用がないことの厳密assertionは不変。
   実writer回帰と既存cleanupロック喪失テストは `-race -count=30` で成功（33.834秒）。
-  Go 1.27全harnessも成功（app 21.369秒）、全 `go test -race ./...` も成功（app 25.304秒）。
+  Go 1.27全harnessも成功（app 5.794秒）、全 `go test -race ./...` も成功（app 25.304秒）。
   回帰の50ms待ちは保持writerの解放を有限時間後に行うためで、短い成功期限ではない。
-  修正ソースのCIと再移動が未完了。
+  修正ソースのCIはその後 `bb55393` で成功し、両計画を再移動した。
 
 ## 判断の記録
 
@@ -330,8 +330,10 @@ Flutter結合テストによるAPK置換、高速化不足、既存Android所有
 
 ## 成果と振り返り
 
-`233192d` の完了計画CIで遅れて失敗が判明したため再開。下記の完了記録は過去のチェックポイントであり、
-現在の完了を意味しない。調査、必要な修正、最終検証、再度のcompleted移動は未完了。
+`233192d` の完了計画CI失敗を受けた再開から、再度完了した。テスト限定のロック喪失注入器修正
+`bb55393` はローカル全harness/raceと両方の全CIで成功し、2026-09-08に再移動した。
+fixture欠陥は再現したが、過去CIの厳密なSQLiteエラーはログがなく未証明のまま。
+production fencingと後続作用がないことの厳密assertionは保持した。
 
 
 提供成果: `applications` により厳密な固定ソースFlutterビルドを独立所有のAndroidランタイムに結び付ける。
@@ -532,6 +534,15 @@ planと前提検査は読み取り専用です。ビルド失敗で使い捨て�
 
 ## 成果物と注記
 
+再完了の証拠（2026-09-08）:
+
+- テスト限定修正 `bb55393` の[push CI 34169765493](https://github.com/mahcialet/agent-env/actions/runs/34169765493)と
+  [PR CI 34169767777](https://github.com/mahcialet/agent-env/actions/runs/34169767777)は両方とも全12ジョブ成功。
+  下記のローカル全harness/raceと独立レビューと合わせ、`233192d` を契機とする再開を完了した。
+- appのharness所要時間を5.794秒に訂正し、過去失敗とその厳密なSQLiteエラーに関する未確定事項を保持して、両計画を再度完了した。
+  production fencingや元の厳密な作用assertionは変更していない。全受け入れ要件を満たしている。
+
+
 - 最終自己点検で、writer保持テストの接続にもBegin前の `SetMaxOpenConns(1)` と `PRAGMA busy_timeout=10000` を設定し、競合準備自体がレジストリ更新と競わないようにした。
   productionと正確なassertionは不変。先行の全harness/raceは注入器修正を検証し、この小さな準備変更は重点race30反復で成功（33.561秒）。
 
@@ -539,13 +550,13 @@ planと前提検査は読み取り専用です。ビルド失敗で使い捨て�
 再開後の修正チェックポイント（2026-09-08）:
 
 - 完了計画commit `233192d` ではpush CI `34169148759` が成功し、PR CI `34169150614` はロック喪失テストで失敗。両結果を保持する。
-- 再現したfixture修正は重点 `-race -count=30`（33.834秒）、Go 1.27全harness（app 21.369秒）、
+- 再現したfixture修正は重点 `-race -count=30`（33.834秒）、Go 1.27全harness（app 5.794秒）、
   Go 1.27全 `go test -race ./...`（app 25.304秒）で成功。
 - 別の読み取り専用レビュアーが実際のテスト限定差分を確認し、具体的問題なし。
   production fencingと正確なassertionは不変で、回帰のgoroutine合流・リソースcleanupは安全。
   50ms遅延は保持writerを解放するためであり、短い成功期限を設けるものではない。
 - 過去CIにSQLite失敗そのもののログはない。writer保持テストはfixture欠陥を再現し、過去のエラーメッセージを再現したとはしない。
-  修正ソースCIと再移動だけが未完了。
+  その後、検証済み `bb55393` で修正ソースCIと再移動を完了した。
 
 
 最終完了証拠（2026-09-08）:

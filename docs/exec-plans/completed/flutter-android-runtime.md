@@ -1,5 +1,5 @@
 ---
-status: active
+status: completed
 owner: maintainers
 last_verified: 2026-09-08
 ---
@@ -247,9 +247,10 @@ validation. Any final syntax must be documented and covered by negative fixtures
 - [x] 2026-09-08: Run real Flutter + Emulator integration on Linux;
       `TestRealFlutterAndroidBackendLease` passed in 248.46s. Two-real-lease
       extension subsequently passed in 88.99s; native Windows/macOS SDK runs remain unverified.
-- [ ] Revalidate final acceptance after the late archival CI failure. Previous checkpoint: completed evidence and retrospective;
+- [x] 2026-09-08: Revalidated final acceptance after late CI failure;
+      test-only correction `bb55393` passed both complete CI runs. Previous checkpoint: completed evidence and retrospective;
       independent read-only final review reported no concrete findings.
-- [ ] Re-archive both languages after the late CI issue is resolved. Previously moved according to
+- [x] 2026-09-08: Re-archived both languages after correction CI passed. Previously moved according to
       `docs/PLANS.md`.
 
 A checked item means observed completion, not intention. Add the UTC date,
@@ -360,9 +361,9 @@ ownership assertion.
   is required. Production fencing and the original exact no-later-effects
   assertion are unchanged. The real-writer regression and existing cleanup
   lock-loss test passed `-race -count=30` (33.834s). The full Go 1.27 harness
-  passed (app 21.369s), as did full `go test -race ./...` (app 25.304s).
+  passed (app 5.794s), as did full `go test -race ./...` (app 25.304s).
   The regression's 50ms wait schedules a bounded writer release, not a short
-  success deadline. Fixed-source CI and re-archival remain pending.
+  success deadline. Fixed-source CI subsequently passed at `bb55393`, and both plans were re-archived.
 
 ## Decision Log
 
@@ -475,9 +476,11 @@ ownership assertion.
 
 ## Outcomes & Retrospective
 
-Reopened after late archival CI failure at `233192d`. Earlier completion below
-records the prior checkpoint, not current completion. Investigation, any necessary
-correction, final validation and re-archival remain outstanding.
+Re-completed after the late archival CI failure at `233192d`. The test-only
+lock-loss injector correction `bb55393` passed full local harness/race and both
+complete CI runs. Re-archived on 2026-09-08. The fixture defect was reproduced;
+the exact historical CI SQLite error was not logged and remains unproven.
+Production fencing and exact no-later-effects assertions were preserved.
 
 
 Delivered outcome: `applications` binds strict pinned Flutter builds to
@@ -894,6 +897,18 @@ On ambiguous Android identity, retain reservations/evidence and quarantine.
 
 ## Artifacts and Notes
 
+Re-completion evidence (2026-09-08):
+
+- Test-only correction `bb55393`: [push CI 34169765493](https://github.com/mahcialet/agent-env/actions/runs/34169765493)
+  and [PR CI 34169767777](https://github.com/mahcialet/agent-env/actions/runs/34169767777)
+  both succeeded in all 12 jobs. Together with the local full harness/race and
+  independent review below, this closes the reopening caused by `233192d`.
+- Both plans are completed again with corrected app harness duration 5.794s,
+  preserved failure history and explicit uncertainty about the historical CI's
+  exact SQLite error. No production fencing behavior or original exact effect
+  assertion was changed. All acceptance requirements remain satisfied.
+
+
 - Final self-review also applies `SetMaxOpenConns(1)` and
   `PRAGMA busy_timeout=10000` to the held-writer test connection before `Begin`,
   preventing contention setup itself from racing registry renewal. Production
@@ -907,7 +922,7 @@ Reopened-plan correction checkpoint (2026-09-08):
 - Archival commit `233192d` produced both outcomes: push CI `34169148759`
   succeeded; PR CI `34169150614` failed the lock-loss test. Preserve both results.
 - The reproduced fixture correction passed targeted `-race -count=30` (33.834s),
-  complete Go 1.27 harness (app 21.369s), and full Go 1.27
+  complete Go 1.27 harness (app 5.794s), and full Go 1.27
   `go test -race ./...` (app 25.304s).
 - A separate read-only reviewer inspected the actual test-only diff and found
   no concrete issue: production fencing and exact assertions were unchanged,
@@ -915,7 +930,7 @@ Reopened-plan correction checkpoint (2026-09-08):
   releases a held writer rather than imposing a short success deadline.
 - The historical CI did not log the exact SQLite failure; the held-writer test
   reproduces the fixture defect, not the historical error message. Only
-  fixed-source CI and re-archival remain outstanding.
+  fixed-source CI and re-archival were then completed at validated `bb55393`.
 
 
 Final completion evidence (2026-09-08):
