@@ -12,7 +12,7 @@ import (
 
 func detachedIdentity(pid int) (string, bool, error) {
 	data, err := os.ReadFile(fmt.Sprintf("/proc/%d/stat", pid))
-	if errors.Is(err, os.ErrNotExist) {
+	if detachedProcEntryGone(err) {
 		return "", false, nil
 	}
 	if err != nil {
@@ -41,6 +41,13 @@ func detachedIdentity(pid int) (string, bool, error) {
 		return "", false, errors.New("missing kernel boot identity")
 	}
 	return strings.TrimSpace(string(boot)) + ":" + fields[19], true, nil
+}
+
+// procfs can open a PID's stat entry successfully, then return ESRCH from its
+// read handler after the task exits. Both outcomes mean this entry vanished;
+// callers must still distinguish leader absence from an unstable group census.
+func detachedProcEntryGone(err error) bool {
+	return errors.Is(err, os.ErrNotExist) || errors.Is(err, syscall.ESRCH)
 }
 
 func detachedGroupAlive(pgid int) (bool, error) {
@@ -75,7 +82,7 @@ func detachedGroupCensus(pgid int) (bool, string, error) {
 			continue
 		}
 		data, err := os.ReadFile("/proc/" + entry.Name() + "/stat")
-		if errors.Is(err, os.ErrNotExist) {
+		if detachedProcEntryGone(err) {
 			unstable = true
 			continue
 		}

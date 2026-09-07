@@ -17,7 +17,7 @@ Resolve seven new PR #2 findings on dedicated branch `feat/android-emulator-leas
 - [x] 2026-09-08: Rejected incompatible image architectures and shared ADB prerequisites before reservation.
 - [x] 2026-09-08: Rejected overlap with immutable Android inputs and portable case-folding runtime collisions.
 - [x] 2026-09-08: Continued independent reverse runtime cleanup after a failure, retaining sources and quarantine.
-- [ ] Repair observed Linux process-exit observation race without weakening ownership checks.
+- [x] 2026-09-08: Repaired observed Linux process-exit observation race without weakening ownership checks.
 - [ ] Validate harness, regression/race tests and native CI; commit/push; reply and resolve threads.
 
 ## Surprises & Discoveries
@@ -75,3 +75,7 @@ Combined harness and real Docker integration passed. Actual repository-specific 
 Final CLI factory correction: CREATE defers opening SQLite/home until first Reserve; no duplicate preflight. Factory+app tests with real Git verify template/image inputs and absent homes remain untouched on rejection, and successful reserve/destroy/close work. Final combined harness and CLI race passed. Full race rerun and the earlier failing fixture repeated ten times passed with unchanged deadlines.
 
 CI finding on implementation `1dc0592`: Ubuntu Go 1.26 failed `TestDetachedSurvivesLaunchingCLI/root_exits_true` at detached_test.go:103 (`read /proc/2837/stat: no such process`), job101859998959/run34160140655. This is a concrete Linux process-exit observation race; investigating the native adapter rather than rerunning away the failure or weakening identity checks.
+
+Linux race fix: per-PID stat reads classify ESRCH alongside ENOENT; leader absence still requires whole-group observation, and disappeared census entries still make the census unstable (never proof of cleanup). Deterministic real-kernel test opens stat while child lives and reads after reaping to exercise ESRCH. Native focused tests repeated 100 times, race tests repeated 50 times and full execx package passed. Other read errors remain errors. Independent review confirmed conservative behavior.
+
+All seven new PR threads received commit/test-specific replies and were resolved. GitHub query confirms all 11 current threads resolved. Separate review verified CREATE's lazy store closes the input registry-write issue and independently passed its factory/store tests.
