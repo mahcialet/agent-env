@@ -37,7 +37,7 @@ logcat. Registry and environment descriptors retain reservation and observation.
 
 Stop checks the lease-derived AVD name on the same authenticated console
 connection used for `kill`, preventing a check/stop race on a recycled port.
-Native birth identity detects PID reuse. Process termination and absence must be
+Native birth identity detects PID reuse. Termination of the entire native process group or Windows Job and port absence must be
 confirmed before writable deletion. Confirmed manual termination degrades;
 uncertain ownership quarantines. Reconcile never adopts or restarts an Emulator.
 A released runtime's old ports convey no continuing ownership.

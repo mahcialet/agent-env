@@ -8,7 +8,7 @@ last_verified: 2026-09-07
 
 ## Allocation and cleanup
 
-Allocation is a saga across SQLite, Git, and Docker. The registry reserves the lease, immutable source identities, unique worktree paths, and runtime projects before materialization. Events precede external actions. A validated, ownership-labeled normalized Compose snapshot, generated dynamic loopback endpoint bindings, and digest are saved before startup, so even an unsuccessful `up` command has a recorded cleanup identity.
+Allocation is a saga across SQLite, Git, and selected runtime tools. The registry reserves the lease, immutable source identities, unique worktree paths, and runtime projects before materialization. Events precede external actions. A validated, ownership-labeled normalized Compose snapshot, generated dynamic loopback endpoint bindings, and digest are saved before startup, so even an unsuccessful `up` command has a recorded cleanup identity.
 
 A failure triggers bounded reverse compensation using a cleanup context that survives ordinary request cancellation. A completely cleaned failed allocation remains recorded as released with failure events and artifacts. Uncertain ownership or incomplete cleanup leaves a quarantined reservation visible for recovery. Cleanup never erases evidence to make a retry appear successful.
 
@@ -52,3 +52,9 @@ Do not infer that work stopped from a stale plan, lock record, or observation ti
 ## Pinned manifest provenance
 
 Plans and leases record the selected absolute, symlink-resolved `manifest_path`, the owning control checkout's HEAD as `manifest_commit`, and `manifest_modified`. The control commit is independent of runtime source `--ref` overrides. Dirty, untracked and ignored manifest files set modified true. A manifest outside a Git checkout has an empty commit, modified true, and a diagnostic; its stored canonical snapshot and digest are authoritative. Relative source repository paths remain relative to the supplied control repository even when the selected manifest is elsewhere.
+
+## Android recovery
+
+SQLite reserves private AVD identities and even/odd console/ADB port pairs before startup. An ownership marker records launch intent and native process birth identity outside disposable AVD state. Cleanup verifies AVD identity and sends kill on the same authenticated console connection, then requires process-tree and port absence before deleting private writable state. Logs and markers remain evidence. A missing launch identity, recycled resource, or uncertain descendant observation quarantines the lease and retains reservations; force cannot override it.
+
+Android-only registry reconciliation does not require Docker inventory. Compose orphan inventory runs when Compose leases are registered, or for an empty registry; Android inspection is scoped to recorded identities. Reconcile observes manual termination but never adopts or restarts an Emulator.

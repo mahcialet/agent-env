@@ -133,6 +133,20 @@ and evidence when checking an item.
   and safety assertions are unchanged. Real Compose harness passed, including
   concurrent leases, multi-repository dirty GC and readiness rollback (114.483s CLI).
 
+- 2026-09-07 15:10 UTC: Go 1.26 full harness passed again after modern image
+  and stopped-marker recovery fixes. Android app race x20 passed (23.845s).
+  Independent review accepted the stopped-marker fix: a restarted process or
+  occupied port prevents both absence reporting and deletion. The new image
+  fixture accepts a confined SDK `data/` seed without fabricating shared userdata.
+- 2026-09-07 UTC: Windows detached identity now records its logon session;
+  observing a Local Job from another session is uncertainty, never proof of exit.
+  Dedicated Windows regression cross-builds pass; pushed revision `6af15a3`
+  starts native CI. Resource reservation milestone is `1463334`.
+- 2026-09-07 UTC: User-owned Android Studio Emulator occupies 5554/5555.
+  No external process was stopped; user was asked to stop it temporarily for real
+  integration. Fake native app fixtures reserve unavailable leading slots through
+  real SQLite in an isolated registry; production allocation semantics are unchanged.
+
 Record unexpected emulator, AVD, path, locking, process, or platform
 behavior here. Include the failing command or test name and the resulting
 design consequence.

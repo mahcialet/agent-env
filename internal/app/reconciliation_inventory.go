@@ -33,9 +33,14 @@ func (s *Service) Inventory(ctx context.Context) ([]domain.Resource, error) {
 	projects := map[string]string{}
 	paths := map[string]domain.Source{}
 	contexts := map[string]bool{}
+	hasCompose := len(leases) == 0
 	for _, l := range leases {
 		byID[l.ID] = l
 		for _, r := range l.Runtimes {
+			if r.Type == "android-emulator" {
+				continue
+			}
+			hasCompose = true
 			projects[r.Context+"\x00"+r.Project] = l.ID
 			if r.Context != "" {
 				contexts[r.Context] = true
@@ -48,9 +53,9 @@ func (s *Service) Inventory(ctx context.Context) ([]domain.Resource, error) {
 		}
 	}
 	var failures []error
-	if s.Runtime == nil {
+	if s.Runtime == nil && hasCompose {
 		failures = append(failures, fmt.Errorf("runtime inventory provider is missing"))
-	} else {
+	} else if hasCompose {
 		inventory, ok := s.Runtime.(RuntimeInventory)
 		if !ok {
 			failures = append(failures, fmt.Errorf("runtime provider does not support global inventory"))

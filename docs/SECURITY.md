@@ -35,3 +35,7 @@ Resolved credential-bearing Compose environment entries and recognized inherited
 Cleanup validates pinned source and runtime ownership before deletion. Dirty tracked worktrees, resource identity mismatches, and uncertain cleanup quarantine the lease. `destroy --force` permits discarding tracked edits only after retaining a binary diff; it does not override ambiguous ownership. Untracked build/test output inside managed worktrees is disposable under ordinary cleanup.
 
 `gc` is dry-run by default; `gc --apply` is explicit and excludes quarantined/in-progress leases. Orphan observations never authorize blanket Docker or Git cleanup. Recorded operation locks prevent cooperating agent-env processes from racing lifecycle operations, but do not prevent a user or unrelated process from directly changing Git, Docker, or the filesystem.
+
+## Android host trust
+
+Installed SDK tools, immutable system images and AVD templates are trusted host inputs. Templates contribute hardware configuration; each lease starts with fresh private writable state, without sharing template userdata or snapshots. The adapter rejects unsafe writable paths, symlinks and template locks. Console authentication remains enabled; its token is read locally and never stored in registry metadata. ADB targets the local server explicitly. Direct host modification can invalidate ownership and cause quarantine; these leases do not isolate hostile SDK tools or users.

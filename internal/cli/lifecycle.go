@@ -19,6 +19,7 @@ import (
 	"github.com/mahcialet/agent-env/internal/execx"
 	"github.com/mahcialet/agent-env/internal/paths"
 	"github.com/mahcialet/agent-env/internal/policy"
+	androidruntime "github.com/mahcialet/agent-env/internal/runtime/android"
 	"github.com/mahcialet/agent-env/internal/runtime/compose"
 	"github.com/mahcialet/agent-env/internal/source/gitcli"
 	"github.com/mahcialet/agent-env/internal/store/sqlite"
@@ -133,7 +134,7 @@ func openService(out, errOut io.Writer) (*app.Service, func() error, error) {
 	}
 	runner := execx.OSRunner{}
 	p := policy.Defaults()
-	return &app.Service{Home: home, Store: store, Source: gitSource{gitcli.Client{Runner: runner}}, Runtime: runtimeAdapter{compose.Client{Runner: runner, Policy: p}}, Policy: p, Runner: runner, Stdout: out, Stderr: errOut}, store.Close, nil
+	return &app.Service{Home: home, Store: store, Source: gitSource{gitcli.Client{Runner: runner}}, Runtime: runtimeAdapter{compose.Client{Runner: runner, Policy: p}}, Android: androidruntime.Adapter{Runner: runner, Processes: execx.NativeDetached{}}, Policy: p, Runner: runner, Stdout: out, Stderr: errOut}, store.Close, nil
 }
 
 func addLifecycle(root *cobra.Command, output *string, emit func(any) error, out, errOut io.Writer) {
@@ -316,10 +317,35 @@ func addLifecycle(root *cobra.Command, output *string, emit func(any) error, out
 			return emit(map[string]any{"lease_id": l.ID, "capabilities": caps, "endpoints": endpoints, "observed_state": l.Observed})
 		})
 	}})
-	doctor := &cobra.Command{Use: "doctor [repository]", Args: cobra.MaximumNArgs(1), RunE: func(cmd *cobra.Command, args []string) error {
+	doctorRuntime := "compose"
+	doctor := &cobra.Command{Use: "doctor [repository|lease-id]", Args: cobra.MaximumNArgs(1), RunE: func(cmd *cobra.Command, args []string) error {
+		if doctorRuntime != "compose" && doctorRuntime != "android-emulator" {
+			return coded(2, errors.New("--runtime must be compose or android-emulator"))
+		}
+		if len(args) == 1 {
+			if _, e := ulid.ParseStrict(args[0]); e == nil {
+				return with(func(s *app.Service) error {
+					lease, err := s.Show(cmd.Context(), args[0])
+					if err != nil {
+						return coded(7, err)
+					}
+					if err := emit(map[string]any{"lease": lease, "ok": lease.Observed == "ready", "diagnostics": lease.Diagnostics}); err != nil {
+						return err
+					}
+					if lease.Observed != "ready" {
+						return coded(3, fmt.Errorf("lease is %s", lease.Observed))
+					}
+					return nil
+				})
+			}
+		}
 		checks := map[string]any{}
 		var issues []string
-		for _, name := range []string{"git", "docker"} {
+		tools := []string{"git"}
+		if doctorRuntime == "compose" {
+			tools = append(tools, "docker")
+		}
+		for _, name := range tools {
 			p, err := execx.LookPath(name)
 			if err != nil {
 				issues = append(issues, "missing "+name+": install it and add it to PATH")
@@ -328,7 +354,13 @@ func addLifecycle(root *cobra.Command, output *string, emit func(any) error, out
 			}
 		}
 		if len(issues) == 0 {
-			d, err := (compose.Client{Runner: execx.OSRunner{}, Policy: policy.Defaults()}).Doctor(cmd.Context())
+			var d map[string]string
+			var err error
+			if doctorRuntime == "android-emulator" {
+				d, err = (androidruntime.Adapter{Runner: execx.OSRunner{}, Processes: execx.NativeDetached{}}).Doctor(cmd.Context())
+			} else {
+				d, err = (compose.Client{Runner: execx.OSRunner{}, Policy: policy.Defaults()}).Doctor(cmd.Context())
+			}
 			checks["runtime"] = d
 			if err != nil {
 				issues = append(issues, err.Error())
@@ -352,6 +384,7 @@ func addLifecycle(root *cobra.Command, output *string, emit func(any) error, out
 		}
 		return nil
 	}}
+	doctor.Flags().StringVar(&doctorRuntime, "runtime", "compose", "prerequisites for compose or android-emulator")
 	root.AddCommand(doctor)
 	root.AddCommand(&cobra.Command{Use: "test <lease-id> <test-name>", Args: cobra.ExactArgs(2), RunE: func(cmd *cobra.Command, args []string) error {
 		return with(func(s *app.Service) error {
@@ -484,6 +517,9 @@ func runtimeLogEntries(ctx context.Context, s *app.Service, lease domain.Lease, 
 		return entries, nil
 	}
 	for _, runtime := range lease.Runtimes {
+		if runtime.Type == "android-emulator" {
+			continue
+		}
 		if component != "" {
 			if runtime.Name != selectedRuntime {
 				continue

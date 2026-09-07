@@ -6,7 +6,7 @@ last_verified: 2026-09-07
 
 # Architecture
 
-The system materializes pinned local Git sources and a selected component closure into a Compose environment lease. The [MVP specification](docs/product-specs/agent-env-mvp.md) defines behavior; the [completed plan](docs/exec-plans/completed/agent-env-mvp.md) records delivered boundaries and verification evidence.
+The system materializes pinned local Git sources and a selected component closure into an environment lease with Compose and/or Android Emulator resources. The [MVP specification](docs/product-specs/agent-env-mvp.md) defines behavior; the [completed plan](docs/exec-plans/completed/agent-env-mvp.md) records delivered boundaries and verification evidence.
 
 The CLI parses arguments and formats output, then delegates use cases to app. Domain types model leases, immutable source sets, components, resources and events without concrete adapters. Config strictly decodes the manifest; stack resolves deterministic dependency closure. App coordinates source and runtime interfaces, policy, readiness, evidence, and compensating cleanup.
 

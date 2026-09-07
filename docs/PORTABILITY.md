@@ -39,3 +39,9 @@ WSL is treated as Linux. Keep repositories, Git, Docker connectivity, and paths 
 CI defines native unit/harness jobs for Windows, macOS, and Linux on both supported Go minors. The release-build matrix sets `CGO_ENABLED=0` for windows/amd64, darwin/amd64, darwin/arm64, linux/amd64, and linux/arm64. Linux also runs race tests and explicit real Docker integration.
 
 CI 34124194139 on c641286 passed all six native OS/Go jobs and all five CGO-disabled builds. Linux race and actual Compose integration passed in the same run; local real fixtures also passed, including concurrent projects, Unicode worktrees, multi-repository pins, named evidence, rollback and dirty cleanup. The [completed implementation plan](exec-plans/completed/agent-env-mvp.md) records the full evidence and native regression fixes. Actual Docker integration on Windows/macOS was not run and remains dependent on suitable runners.
+
+## Android persistent processes
+
+Android uses a separate detached-process API with native file-backed output. It survives the invoking CLI and its request context. Linux/macOS retain process-group identity and observe surviving descendants after the root exits; Windows assigns the suspended process to a persistent named Job before resuming it. Birth identities reject reused processes, and uncertain observation prevents writable-state deletion. Persistent launch requires native executables, with no batch wrapper or shell dependency.
+
+SDK discovery uses `ANDROID_HOME`, then `ANDROID_SDK_ROOT` (conflicting values fail), then platform defaults. Templates use `ANDROID_AVD_HOME`, `ANDROID_USER_HOME/avd`, or the user's `.android/avd`. Emulator architecture and usable host acceleration are prerequisites. ADB inspection explicitly targets the local server at `127.0.0.1:5037`. Native unit CI and actual Emulator integration are distinct; the Android ExecPlan records their evidence and remaining platform gaps.

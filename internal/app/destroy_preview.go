@@ -22,7 +22,7 @@ func (s *Service) previewDestroy(ctx context.Context, l domain.Lease, force bool
 		}
 	}
 	for _, r := range l.Runtimes {
-		o, err := s.Runtime.Inspect(ctx, r)
+		o, err := s.inspectRuntime(ctx, r)
 		if err != nil {
 			l.Diagnostics = append(l.Diagnostics, "would quarantine runtime "+r.Name+": "+err.Error())
 			continue
