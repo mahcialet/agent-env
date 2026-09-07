@@ -4,6 +4,7 @@ package cli
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -15,6 +16,7 @@ import (
 	"time"
 
 	"github.com/mahcialet/agent-env/internal/app"
+	"github.com/mahcialet/agent-env/internal/domain"
 	"github.com/mahcialet/agent-env/internal/execx"
 	"github.com/mahcialet/agent-env/internal/policy"
 	androidruntime "github.com/mahcialet/agent-env/internal/runtime/android"
@@ -44,7 +46,8 @@ func TestRealFlutterAndroidBackendLease(t *testing.T) {
 		t.Fatal(err)
 	}
 	android := androidruntime.Adapter{}
-	if _, err := android.Validate(ctx, template); err != nil {
+	sdk, err := android.Validate(ctx, template)
+	if err != nil {
 		t.Fatalf("real Android prerequisite: %v", err)
 	}
 	if _, err := (compose.Client{Runner: execx.OSRunner{}, Policy: policy.Defaults()}).Doctor(ctx); err != nil {
@@ -86,13 +89,13 @@ void main() {
   unawaited(probeBackend());
 }
 Future<void> probeBackend() async {
-  for (var attempt = 0; attempt < 120; attempt++) {
+  final deadline = DateTime.now().add(const Duration(minutes: 10));
+  while (DateTime.now().isBefore(deadline)) {
     final client = HttpClient()..connectionTimeout = const Duration(seconds: 2);
     try {
       final request = await client.getUrl(Uri.parse('http://127.0.0.1:8080/?agent-env-flutter-verified'));
-      final response = await request.close();
-      await response.drain<void>();
-      if (response.statusCode == 200) return;
+      final response = await request.close().timeout(const Duration(seconds: 2));
+      await response.drain<void>().timeout(const Duration(seconds: 2));
     } catch (_) {} finally { client.close(force: true); }
     await Future<void>.delayed(const Duration(seconds: 1));
   }
@@ -115,6 +118,14 @@ Future<void> probeBackend() async {
         host_ip: 127.0.0.1
         protocol: tcp
 `)
+	adbName := "adb"
+	if runtime.GOOS == "windows" {
+		adbName += ".exe"
+	}
+	adbArg, err := json.Marshal(filepath.Join(sdk.SDKPath, "platform-tools", adbName))
+	if err != nil {
+		t.Fatal(err)
+	}
 	write(".agent-env.yaml", fmt.Sprintf(`version: 1
 sources:
   self: {repository: ., default_ref: HEAD}
@@ -143,7 +154,13 @@ components:
   mobile: {runtime: phone, application: mobile-app, depends_on: [api]}
 stacks:
   mobile: {roots: [mobile]}
-`, template))
+tests:
+  device-state:
+    stack: mobile
+    source: self
+    command: [%s, -H, 127.0.0.1, -P, '5037', -s, '${android:phone:serial}', get-state]
+    timeout: 30s
+`, template, adbArg))
 	run(repository, "flutter", "pub", "get")
 	run(repository, "git", "init")
 	run(repository, "git", "add", ".")
@@ -169,11 +186,23 @@ stacks:
 			safe = false
 			t.Errorf("cleanup list: %v", err)
 		}
+		var retry []string
 		for _, lease := range leases {
 			released, err := s.Destroy(cleanupCtx, lease.ID, false, false)
 			if err != nil || released.Observed != "released" {
 				safe = false
 				t.Errorf("cleanup lease %s requires recovery: %v state=%s", lease.ID, err, released.Observed)
+				retry = append(retry, lease.ID)
+			}
+		}
+		// Retain the failure above, but retry ordinary conservative cleanup after
+		// every sibling has stopped. Never force-delete an ambiguous live group.
+		for _, id := range retry {
+			released, err := s.Destroy(cleanupCtx, id, false, false)
+			if err != nil || released.Observed != "released" {
+				t.Errorf("final cleanup retry lease %s: %v state=%s", id, err, released.Observed)
+			} else {
+				t.Logf("final conservative cleanup released lease %s; failure evidence retained", id)
 			}
 		}
 		if err := db.Close(); err != nil {
@@ -186,44 +215,52 @@ stacks:
 			}
 		}
 	})
-	t.Log("creating pinned Flutter + Compose + Emulator lease")
-	lease, err := s.Create(ctx, app.PlanOptions{Repository: repository, Stack: "mobile"}, app.CreateOptions{Owner: "flutter-integration", TTL: time.Hour})
-	if err != nil {
-		t.Fatalf("real lease create %s: %v", lease.ID, err)
+	t.Log("creating two pinned Flutter + Compose + Emulator leases concurrently")
+	type created struct {
+		lease domain.Lease
+		err   error
 	}
-	if lease.Observed != "ready" || len(lease.Applications) != 1 {
-		t.Fatalf("application not ready: %+v", lease)
+	results := make(chan created, 2)
+	for range 2 {
+		go func() {
+			lease, err := s.Create(ctx, app.PlanOptions{Repository: repository, Stack: "mobile"}, app.CreateOptions{Owner: "flutter-integration", TTL: time.Hour})
+			results <- created{lease, err}
+		}()
 	}
-	a := lease.Applications[0]
-	if a.SourceCommit != commit || a.Build.Version != version || len(a.InstalledDigest) != 64 || a.InstalledDigest != a.Build.Digest || len(a.Reverse) != 1 {
-		t.Fatalf("build/install identity incomplete: %+v", a)
-	}
-	serial := ""
-	for _, r := range lease.Runtimes {
-		if r.Name == a.Runtime && r.Android != nil {
-			serial = r.Android.Serial
+	var leases []domain.Lease
+	var failures []created
+	for range 2 {
+		result := <-results
+		leases = append(leases, result.lease)
+		if result.err != nil {
+			failures = append(failures, result)
 		}
 	}
-	if serial == "" {
-		t.Fatal("application target serial missing")
+	if len(failures) > 0 {
+		for _, failure := range failures {
+			t.Errorf("real create lease=%s observed=%s: %v", failure.lease.ID, failure.lease.Observed, failure.err)
+		}
+		t.FailNow()
 	}
-	t.Logf("ready lease=%s source=%s APK=%s serial=%s reverse=%+v", lease.ID, commit, a.InstalledDigest, serial, a.Reverse)
-	endpoint := fmt.Sprintf("http://127.0.0.1:%d/", a.Reverse[0].HostPort)
-	request, err := http.NewRequestWithContext(ctx, "GET", endpoint, nil)
-	if err != nil {
-		t.Fatal(err)
+	backendHTTP := func(lease domain.Lease) {
+		t.Helper()
+		endpoint := fmt.Sprintf("http://127.0.0.1:%d/", lease.Applications[0].Reverse[0].HostPort)
+		request, err := http.NewRequestWithContext(ctx, "GET", endpoint, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		response, err := (&http.Client{Timeout: 10 * time.Second}).Do(request)
+		if err != nil {
+			t.Fatal(err)
+		}
+		response.Body.Close()
+		if response.StatusCode != 200 {
+			t.Fatalf("backend status %d", response.StatusCode)
+		}
 	}
-	response, err := (&http.Client{Timeout: 10 * time.Second}).Do(request)
-	if err != nil {
-		t.Fatal(err)
-	}
-	response.Body.Close()
-	if response.StatusCode != 200 {
-		t.Fatalf("backend status %d", response.StatusCode)
-	}
-	deadline := time.Now().Add(2 * time.Minute)
-	for {
-		seen := false
+	guestRequests := func(lease domain.Lease) int {
+		t.Helper()
+		count := 0
 		for _, r := range lease.Runtimes {
 			if r.Type != "compose" {
 				continue
@@ -232,24 +269,94 @@ stacks:
 			if err != nil {
 				t.Fatal(err)
 			}
-			if strings.Contains(logs, "GET /?agent-env-flutter-verified") {
-				seen = true
+			count += strings.Count(logs, `GET /?agent-env-flutter-verified HTTP/1.1" 200`)
+		}
+		return count
+	}
+	devices := make([]domain.AndroidEmulator, 2)
+	projects := make([]string, 2)
+	for i, lease := range leases {
+		if lease.Observed != "ready" || len(lease.Applications) != 1 {
+			t.Fatalf("application not ready: %+v", lease)
+		}
+		a := lease.Applications[0]
+		if a.SourceCommit != commit || a.Build.Version != version || len(a.InstalledDigest) != 64 || a.InstalledDigest != a.Build.Digest || len(a.Reverse) != 1 {
+			t.Fatalf("build/install identity incomplete: %+v", a)
+		}
+		for _, r := range lease.Runtimes {
+			if r.Type == "compose" {
+				projects[i] = r.Project
+			}
+			if r.Name == a.Runtime && r.Android != nil {
+				devices[i] = *r.Android
 			}
 		}
-		if seen {
-			break
+		if devices[i].Serial == "" {
+			t.Fatal("application target serial missing")
 		}
+		t.Logf("ready lease=%s source=%s APK=%s serial=%s reverse=%+v", lease.ID, commit, a.InstalledDigest, devices[i].Serial, a.Reverse)
+		backendHTTP(lease)
+		deadline := time.Now().Add(2 * time.Minute)
+		for {
+			if guestRequests(lease) > 0 {
+				break
+			}
+			if time.Now().After(deadline) {
+				t.Fatal("installed Flutter application did not reach its backend through adb reverse")
+			}
+			time.Sleep(time.Second)
+		}
+		shown, err := s.Show(ctx, lease.ID)
+		if err != nil || shown.Observed != "ready" {
+			t.Fatalf("real package/reverse reconcile: %v state=%s", err, shown.Observed)
+		}
+		command, err := s.Test(ctx, lease.ID, "device-state")
+		if err != nil || command.Status != "passed" {
+			t.Fatalf("named owned-device test: %+v %v", command, err)
+		}
+		if len(command.Notes) == 0 {
+			t.Fatal("named test lacks current-worktree build semantics warning")
+		}
+	}
+	if projects[0] == "" || projects[0] == projects[1] || leases[0].ID == leases[1].ID || leases[0].Sources[0].WorktreePath == leases[1].Sources[0].WorktreePath || leases[0].Applications[0].Build.ArtifactPath == leases[1].Applications[0].Build.ArtifactPath || devices[0].Serial == devices[1].Serial || devices[0].AVDName == devices[1].AVDName || devices[0].AVDPath == devices[1].AVDPath || devices[0].ConsolePort == devices[1].ConsolePort || devices[0].ADBPort == devices[1].ADBPort || leases[0].Applications[0].Reverse[0].HostPort == leases[1].Applications[0].Reverse[0].HostPort {
+		t.Fatal("two real Flutter leases share source, APK, device, port or reverse resources")
+	}
+	if released, err := s.Destroy(ctx, leases[0].ID, false, false); err != nil || released.Observed != "released" {
+		t.Fatalf("first lease cleanup: %v state=%s", err, released.Observed)
+	}
+	sibling, err := s.Show(ctx, leases[1].ID)
+	if err != nil || sibling.Observed != "ready" {
+		t.Fatalf("sibling changed after first cleanup: %v state=%s", err, sibling.Observed)
+	}
+	backendHTTP(sibling)
+	// Establish the baseline only after the first Destroy completes; requests
+	// received during shutdown do not prove the remaining guest still works.
+	baseline := guestRequests(sibling)
+	deadline := time.Now().Add(2 * time.Minute)
+	for guestRequests(sibling) <= baseline {
 		if time.Now().After(deadline) {
-			t.Fatal("installed Flutter application did not reach backend through adb reverse")
+			t.Fatal("remaining Flutter guest stopped reaching its backend after sibling destroy")
 		}
 		time.Sleep(time.Second)
 	}
-	shown, err := s.Show(ctx, lease.ID)
-	if err != nil || shown.Observed != "ready" {
-		t.Fatalf("real package/reverse reconcile: %v state=%s", err, shown.Observed)
+	if released, err := s.Destroy(ctx, leases[1].ID, false, false); err != nil || released.Observed != "released" {
+		t.Fatalf("second lease cleanup: %v state=%s", err, released.Observed)
 	}
-	if released, err := s.Destroy(ctx, lease.ID, false, false); err != nil || released.Observed != "released" {
-		t.Fatalf("real cleanup: %v state=%s", err, released.Observed)
+	for _, lease := range leases {
+		for _, r := range lease.Runtimes {
+			if r.Type != "android-emulator" {
+				continue
+			}
+			data, err := os.ReadFile(filepath.Join(r.Directory, "emulator.stdout.log"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, line := range strings.Split(string(data), "\n") {
+				if strings.Contains(line, "Netsim Wifi") {
+					t.Logf("lease=%s emulator network observation: %s", lease.ID, line)
+				}
+			}
+		}
 	}
-	t.Log("real APK install, package observation, reverse mapping, activity launch, Flutter HTTP backend request, show and cleanup passed")
+	t.Log("two concurrent real APK installs, package/reverse observations, activity launches, Flutter HTTP backend requests, named device tests, sibling isolation and cleanup passed")
 }
