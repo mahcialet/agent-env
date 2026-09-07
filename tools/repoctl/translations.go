@@ -315,7 +315,6 @@ func preMigrationCompletedPlan(p string) bool {
 	return false
 }
 
-var hiddenMarkdownComments = regexp.MustCompile(`(?s)<!--(?:.*?-->|.*\z)`)
 var escapedMarkdownPunctuation = regexp.MustCompile(`\\[[:punct:]]`)
 var markdownImages = regexp.MustCompile(`!\[[^\]]*\](?:\([^)]*\)|\[[^\]]*\])?`)
 var emptyMarkdownLinks = regexp.MustCompile(`\[\s*\](?:\([^)]*\)|\[[^\]]*\])`)
@@ -334,6 +333,8 @@ func documentProse(data string) string {
 	var prose strings.Builder
 	var fence byte
 	fenceLength := 0
+	inComment := false
+	inlineWidth := 0
 	for _, line := range strings.Split(data, "\n") {
 		trimmed := strings.TrimLeft(line, " ")
 		indent := len(line) - len(trimmed)
@@ -349,18 +350,17 @@ func documentProse(data string) string {
 			}
 			continue
 		}
-		if indent >= 4 || strings.HasPrefix(line, "\t") {
+		if !inComment && inlineWidth == 0 && (indent >= 4 || strings.HasPrefix(line, "\t")) {
 			continue
 		}
-		if run >= 3 {
+		if !inComment && inlineWidth == 0 && run >= 3 {
 			fence = trimmed[0]
 			fenceLength = run
 			continue
 		}
-		prose.WriteString(line + "\n")
+		prose.WriteString(withoutCommentLine(line, &inComment, &inlineWidth) + "\n")
 	}
 	data = stripMarkdownCodeSpans(prose.String())
-	data = hiddenMarkdownComments.ReplaceAllString(data, "")
 	data = escapedMarkdownPunctuation.ReplaceAllString(data, " ")
 	return markdownImages.ReplaceAllString(data, "")
 }
@@ -434,6 +434,46 @@ func stripMarkdownCodeSpans(s string) string {
 		if !found {
 			out.WriteString(s[start:i])
 		}
+	}
+	return out.String()
+}
+
+// Keep comment and inline-code state across lines. The caller handles fenced
+// code first, so delimiters inside one construct cannot open the other.
+func withoutCommentLine(line string, inComment *bool, inlineWidth *int) string {
+	var out strings.Builder
+	for i := 0; i < len(line); {
+		if *inComment {
+			end := strings.Index(line[i:], "-->")
+			if end < 0 {
+				break
+			}
+			i += end + 3
+			*inComment = false
+			continue
+		}
+		if line[i] == '`' {
+			end := i
+			for end < len(line) && line[end] == '`' {
+				end++
+			}
+			width := end - i
+			if *inlineWidth == 0 {
+				*inlineWidth = width
+			} else if *inlineWidth == width {
+				*inlineWidth = 0
+			}
+			out.WriteString(line[i:end])
+			i = end
+			continue
+		}
+		if *inlineWidth == 0 && strings.HasPrefix(line[i:], "<!--") {
+			*inComment = true
+			i += 4
+			continue
+		}
+		out.WriteByte(line[i])
+		i++
 	}
 	return out.String()
 }

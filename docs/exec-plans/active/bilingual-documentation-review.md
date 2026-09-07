@@ -27,6 +27,8 @@ Baseline evidence: the source-link, metadata and completed-plan tests failed bec
 
 Independent review found that textual link/heading extraction could accept code examples, escaped syntax, comments, unused reference definitions or a later duplicate reference definition. Added rendered-prose filtering shared by navigation and required-section checks, first-definition reference resolution, and regression cases. The prior implementation missed the policy gaps because positive fixtures and permissive tests shared its assumptions; future acceptance must map each requirement to an independently mutated negative fixture, not only to a passing repository snapshot.
 
+A follow-up review caught a parsing-order regression after the main fix: removing comments before code spans misread literal comment markers, while removing comments after fences misread fences inside comments. Replaced ordering-only fixes with explicit comment/code state and retained both regressions as positive fixtures. The initial fix commit is `b94a94d`; threads remain open until the follow-up is verified and pushed.
+
 ## Decision Log
 
 - 2026-09-08 / maintainers: Keep the PR branch for this review follow-up and use a new active bilingual plan; the delivered migration plan remains historical.

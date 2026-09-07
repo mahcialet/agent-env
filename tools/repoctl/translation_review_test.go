@@ -27,7 +27,7 @@ func TestTranslationRequiresVisibleSourceLink(t *testing.T) {
 			}
 		})
 	}
-	for _, body := range []string{"[English](./ARCHITECTURE.md)\n", "`<!--` denotes an HTML comment.\n\n[English](ARCHITECTURE.md)\n", "~~~md\n<!--\n~~~\n[English](ARCHITECTURE.md)\n", "[`English`](ARCHITECTURE.md)\n", "[English](ARCHITECTURE.md#architecture)\n", "[English][source]\n\n[source]: ARCHITECTURE.md\n", "[source][]\n\n[source]: ARCHITECTURE.md\n", "[source]\n\n[source]: ARCHITECTURE.md\n"} {
+	for _, body := range []string{"[English](./ARCHITECTURE.md)\n", "<!--\n```md\n-->\n\n[English](ARCHITECTURE.md)\n", "`<!--` denotes an HTML comment.\n\n[English](ARCHITECTURE.md)\n", "~~~md\n<!--\n~~~\n[English](ARCHITECTURE.md)\n", "[`English`](ARCHITECTURE.md)\n", "[English](ARCHITECTURE.md#architecture)\n", "[English][source]\n\n[source]: ARCHITECTURE.md\n", "[source][]\n\n[source]: ARCHITECTURE.md\n", "[source]\n\n[source]: ARCHITECTURE.md\n"} {
 		t.Run(body, func(t *testing.T) {
 			root := fixture(t)
 			p := "ARCHITECTURE.ja.md"
