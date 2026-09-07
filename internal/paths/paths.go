@@ -50,7 +50,7 @@ func Within(root, relative string) (string, error) {
 	if relative == "" {
 		relative = "."
 	}
-	if filepath.IsAbs(relative) || strings.Contains(relative, "\\") || strings.Contains(relative, ":") {
+	if filepath.IsAbs(relative) || strings.HasPrefix(relative, "/") || strings.Contains(relative, "\\") || strings.Contains(relative, ":") {
 		return "", fmt.Errorf("expected a portable relative path: %q", relative)
 	}
 	p := filepath.Join(root, filepath.FromSlash(relative))

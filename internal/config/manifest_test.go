@@ -17,7 +17,7 @@ func fixture(t *testing.T) []byte {
 }
 
 func TestStrictManifest(t *testing.T) {
-	base := string(fixture(t))
+	base := strings.ReplaceAll(string(fixture(t)), "\r\n", "\n")
 	for _, tc := range []struct{ name, body, want string }{
 		{"unknown", base + "typo: true\n", "field typo not found"},
 		{"nested unknown", strings.Replace(base, "default_ref: HEAD", "default_ref: HEAD\n    typo: bad", 1), "field typo not found"},
@@ -40,11 +40,29 @@ func TestStrictManifest(t *testing.T) {
 		{"invalid timeout", strings.Replace(base, "working_directory: .", "timeout: 0s\n    working_directory: .", 1), "positive duration"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			if tc.body == base {
+				t.Fatal("negative fixture did not modify the manifest")
+			}
 			_, e := Parse([]byte(tc.body))
 			if e == nil || !strings.Contains(e.Error(), tc.want) {
 				t.Fatalf("wanted %q, got %v", tc.want, e)
 			}
 		})
+	}
+}
+
+func TestCRLFManifest(t *testing.T) {
+	b := strings.ReplaceAll(string(fixture(t)), "\r\n", "\n")
+	m, err := Parse([]byte(strings.ReplaceAll(b, "\n", "\r\n")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	lf, err := Parse([]byte(b))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if Digest(m) != Digest(lf) {
+		t.Fatal("line endings changed manifest identity")
 	}
 }
 
