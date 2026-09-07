@@ -453,6 +453,11 @@ func archCheck(root string) error {
 				bad = local == "internal/cli" || strings.HasPrefix(local, "internal/cli/")
 			case strings.HasPrefix(rel, "internal/runtime/"):
 				bad = local == "internal/cli" || strings.HasPrefix(local, "internal/cli/")
+				if strings.HasPrefix(local, "internal/runtime/") {
+					own := strings.Split(rel, "/")[2]
+					other := strings.Split(local, "/")[2]
+					bad = bad || own != other
+				}
 			case strings.HasPrefix(rel, "internal/store/"):
 				bad = local == "internal/app" || strings.HasPrefix(local, "internal/app/") || local == "internal/cli" || strings.HasPrefix(local, "internal/cli/") || strings.HasPrefix(local, "internal/runtime/")
 			}

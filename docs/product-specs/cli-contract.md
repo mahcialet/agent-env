@@ -23,7 +23,7 @@ agent-env renew <lease-id> [--ttl <duration>]
 agent-env destroy <lease-id> [--dry-run] [--force]
 agent-env reconcile [lease-id]
 agent-env gc [--apply]
-agent-env doctor [repository]
+agent-env doctor [repository|lease-id] [--runtime compose|android-emulator]
 ```
 
 An omitted repository means the current directory. `init` requires one recognizable root Compose file, creates `.agent-env.yaml` exclusively, and reports that review is required; it does not start anything. `validate` checks schema and references without Docker. `plan` additionally resolves local Git commits and the deterministic component closure without creating state or worktrees. `--ref` requires a single source; use alias-specific `--source` overrides for multiple sources. Neither form fetches remote refs.
@@ -64,7 +64,7 @@ The data shape depends on the command: plan/create return an object, list return
 | 6 | Cleanup could not finish safely, including quarantine |
 | 7 | Internal, registry, or observation failure |
 
-These are CLI exit codes; a named command's own exit code is recorded separately in its run record. `doctor` checks executable availability, the active Docker context, daemon reachability, Compose plugin version, and optionally a manifest.
+These are CLI exit codes; a named command's own exit code is recorded separately in its run record. `doctor` defaults to executable availability, active Docker context, daemon reachability, Compose plugin version and an optional manifest. `--runtime android-emulator` checks local SDK tools and AVD templates instead of Docker. A lease ID selects live lease diagnostics; a non-ready lease returns exit 3. See the [Android contract](android-emulator.md).
 
 ## Cleanup and renewal
 
