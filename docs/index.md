@@ -6,7 +6,7 @@ last_verified: 2026-09-07
 
 # Repository knowledge
 
-Start with [architecture](../ARCHITECTURE.md), [MVP specification](product-specs/agent-env-mvp.md), and the [active ExecPlan](exec-plans/active/agent-env-mvp.md).
+Start with [architecture](../ARCHITECTURE.md), [MVP specification](product-specs/agent-env-mvp.md), and the [completed ExecPlan](exec-plans/completed/agent-env-mvp.md).
 
 - [Product specifications](product-specs/index.md): user-visible contracts.
 - [Design documents](design-docs/index.md): mechanisms and boundaries.

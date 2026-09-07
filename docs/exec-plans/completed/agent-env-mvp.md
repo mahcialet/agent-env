@@ -1,5 +1,5 @@
 ---
-status: active
+status: completed
 owner: maintainers
 last_verified: 2026-09-07
 ---
@@ -19,9 +19,9 @@ Deliver a usable native Windows/macOS/Linux CLI that reads an explicit target ma
 - [x] 2026-09-07: Milestone 0 local bootstrap verified: repoctl check passes (format, unit including negative fixtures, vet, docs, generated, architecture); CLI version executes; CGO_ENABLED=0 builds pass for windows/amd64, darwin/amd64, darwin/arm64, linux/amd64, linux/arm64. Native CI is configured and its results remain pending.
 - [x] 2026-09-07: Milestones 1–3 foundational packages and read-only validate/plan CLI implemented and targeted Linux tests pass; native Windows/macOS execution of this slice remains pending CI.
 - [x] 2026-09-07: Milestones 4–7 implemented: owned Compose snapshots, create/destroy compensation, reconciliation, TTL/GC grace and running-run protection, named tests/evidence, process-tree cancellation, source provenance and endpoint descriptors. Final integrated Go 1.26.8/1.27.1 repoctl check and Linux race pass.
-- [ ] Milestone 8: concurrency, rollback, dirty-source and multi-repository integration tests; actual native CI evidence; completion audit and plan relocation.
+- [x] 2026-09-07: Milestone 8 complete: concurrent real Docker isolation, rollback, dirty-source/multi-repository integration, independent cancellation review and full acceptance audit. CI 34124194139 on c641286 passes all 12 jobs. All 33 criteria are verified below; retrospective and completed-plan relocation are complete.
 
-Current next action: repair the observed lock-renewal success fixture timing on CI 34123843664, then confirm the current revision in native CI. Local Go 1.26.8/1.27.1 full repoctl check, Linux race, and actual Docker integration (109.950s CLI suite) pass. All local fixture resources were removed. Once native jobs pass, certify the acceptance table, complete the retrospective, move this plan to completed, repair links, and verify the documentation commit.
+Completion state: no MVP implementation or acceptance work remains. CI 34124194139 verifies c641286 across six native OS/Go jobs, five CGO-disabled target builds, Linux race and actual Docker integration. Completion documentation is checked with repoctl docs-check/generated-check. Earlier checkpoint statements below describe historical conditions; the acceptance table and this completion state supersede their pending items.
 
 ## Surprises & Discoveries
 
@@ -42,7 +42,7 @@ Current next action: repair the observed lock-renewal success fixture timing on 
 
 ## Outcomes & Retrospective
 
-Implementation and local verification are complete; final native CI remains the acceptance gate. The delivered MVP includes strict multi-repository manifests, deterministic closure, immutable pins and manifest origin, owned Compose lifecycle with compensation, reconciliation/GC, scoped logs and endpoints, and durable redacted named-command evidence. Independent review identified two cancellation finalization gaps; both were fixed and re-reviewed. Real native and concurrent runs additionally exposed path aliases, artifact separators, schema/credential collisions and SQLite cold-start contention, each repaired with regression evidence. Lessons: cross-compilation cannot replace native execution; successful command termination cannot substitute for completed evidence; schema text must not be confused with user secret data; concurrent initialization requires direct process tests. Actual Docker verification is Linux-only; native Windows/macOS validate the portable harness and process/file behavior. Android, browser pooling, remote providers and external registry remain outside this MVP.
+Completed on 2026-09-07. CI 34124194139 on c641286 passed all 12 jobs; local full checks passed Go 1.26.8/1.27.1, Linux race passed, and actual Docker CLI integration passed in 109.950 seconds with no fixture resource leftovers. The delivered MVP includes strict multi-repository manifests, deterministic closure, immutable pins and manifest origin, owned Compose lifecycle with compensation, reconciliation/GC, scoped logs and endpoints, and durable redacted named-command evidence. Independent review identified two cancellation finalization gaps; both were fixed and re-reviewed. Real native and concurrent runs additionally exposed path aliases, artifact separators, schema/credential collisions and SQLite cold-start contention, each repaired with regression evidence. Lessons: cross-compilation cannot replace native execution; successful command termination cannot substitute for completed evidence; schema text must not be confused with user secret data; concurrent initialization requires direct process tests. Actual Docker verification is Linux-only; native Windows/macOS validate the portable harness and process/file behavior. Android, browser pooling, remote providers and external registry remain outside this MVP.
 
 ## Context and Orientation
 
@@ -244,7 +244,7 @@ go test -race ./...
 
 ## Validation and Acceptance
 
-All items initially pending. Replace status with verified only after recording a concrete test/result, native CI job, inspected file or command output that proves the entire requirement. Product requirements beyond these numbered criteria remain mandatory in indexed specs.
+All 33 criteria are verified below against tests, inspected files and CI 34124194139 on c641286. The broader handoff requirements were also audited against the indexed product contracts, safety behavior, source provenance, GC grace and cancellation/evidence invariants.
 
 | ID | Required behavior | Status / evidence |
 | --- | --- | --- |
@@ -262,11 +262,11 @@ All items initially pending. Replace status with verified only after recording a
 | 12 | `gc` without `--apply` deletes nothing. | Passed locally: integration compares source/runtime state before and after default GC preview; expiry/heartbeat/running-run guards have unit coverage. |
 | 13 | A named test streams output, records exit code, and stores stdout/stderr evidence. | Passed locally: real named pass/fail test asserts streamed output, exit5, redacted logs/argv/artifacts; cancellation evidence-failure regression now preserves the running barrier and original report. |
 | 14 | Multiple local repository sources are resolved and their commit tuple is visible in `show` and JSON output. | Passed locally: TestIntegrationMultiRepositoryPinsAndDirtyGC checks each requested ref and resolved commit in show/JSON. |
-| 15 | The CLI compiles with `CGO_ENABLED=0` for at least:  windows/amd64 darwin/amd64 darwin/arm64 linux/amd64 linux/arm64  | Adapter revision b153331: all five CGO-disabled build jobs passed in CI 34122233326. Final lifecycle revision pending. |
-| 16 | Unit tests pass on Windows, macOS, and Linux CI runners. | Adapter revision b153331: six native OS/Go jobs passed in CI 34122233326. Final lifecycle revision pending. |
-| 17 | Paths containing spaces and Unicode are covered by tests. | Passed locally and adapter native CI: path, Git and execx tests use spaces/Unicode; real Linux integration uses spaced Unicode checkout/home. |
-| 18 | No test requires Bash on Windows. | Adapter native Windows jobs pass without Bash; helper commands use test executables and native wrappers. Final product native rerun pending. |
-| 19 | Command arguments containing spaces and quotes survive round-trip execution on each OS. | Passed on all native adapter jobs: TestNativeRoundTrip, Windows wrapper tests and repoctl TestCommandArgvRoundTrip. |
+| 15 | The CLI compiles with `CGO_ENABLED=0` for at least:  windows/amd64 darwin/amd64 darwin/arm64 linux/amd64 linux/arm64  | Verified: CI 34124194139 on c641286 passes all five CGO_ENABLED=0 target builds. |
+| 16 | Unit tests pass on Windows, macOS, and Linux CI runners. | Verified: CI 34124194139 passes all six native Windows/macOS/Linux × Go 1.26/1.27 unit/check jobs. |
+| 17 | Paths containing spaces and Unicode are covered by tests. | Verified: path/Git/argv and artifact tests pass on all six native jobs; actual Linux integration uses spaced Unicode checkout/home. |
+| 18 | No test requires Bash on Windows. | Verified: both native Windows jobs in CI 34124194139 pass with Go/native executable helpers and no Bash test dependency. |
+| 19 | Command arguments containing spaces and quotes survive round-trip execution on each OS. | Verified: TestNativeRoundTrip, Windows wrapper tests and repoctl TestCommandArgvRoundTrip pass in native CI 34124194139. |
 | 20 | `doctor` reports missing `git`, `docker`, or Compose v2 without a panic or misleading success. | Passed locally: structured CLI missing-prerequisite tests and Compose doctor missing docker/old plugin/daemon fixtures. |
 | 21 | README includes an explicit statement that environment isolation is not a malicious-code sandbox. | Verified README and security guide explicitly state isolation is not a malicious-code sandbox. |
 | 22 | `ARCHITECTURE.md` explains the lease/source/runtime/reconciliation boundaries without duplicating low-level implementation details. | Verified ARCHITECTURE.md maps lease/source/runtime/store/app observation boundaries; architecture checker passes. |
@@ -276,11 +276,11 @@ All items initially pending. Replace status with verified only after recording a
 | 26 | `AGENTS.md` is no more than 150 lines, acts as a map, and all repository paths it references exist. | Passed repoctl docs-check and negative length/path fixtures; root AGENTS.md is a concise indexed map. |
 | 27 | `docs/exec-plans/active/agent-env-mvp.md` contains the mandatory living-plan sections and accurately identifies current progress and next actions throughout implementation. | Verified living plan contains mandatory sections and records bootstrap, foundation, adapters, review findings and final gates. |
 | 28 | All design documents, product specifications, and ADRs are discoverable through their local indexes; a deliberately unindexed file causes `repoctl docs-check` to fail with an actionable diagnostic. | Passed repoctl docs-check and negative unindexed/link/metadata/plan fixtures. |
-| 29 | `go run ./tools/repoctl check` runs without Bash, Make, or PowerShell as a requirement on Windows, macOS, and Linux. | Adapter revision native repoctl check passed all six OS/Go jobs; final product native rerun pending. |
+| 29 | `go run ./tools/repoctl check` runs without Bash, Make, or PowerShell as a requirement on Windows, macOS, and Linux. | Verified: all six native jobs in CI 34124194139 run repoctl check successfully using Go directly. |
 | 30 | `repoctl generated-check` detects a deliberate drift in `docs/generated/db-schema.md` after migrations exist. | Passed TestGeneratedDrift and generated-check; migration 002 schema is regenerated from SQL. |
 | 31 | `repoctl arch-check` detects at least one fixture or synthetic forbidden dependency and explains the expected repair direction. | Passed TestArchitectureBoundaries negative forbidden imports with repair diagnostics and final arch-check. |
 | 32 | The checked-in active ExecPlan plus repository documents are sufficient for a fresh Codex run to identify the branch, current milestone, required commands, acceptance behavior, and recovery path without consulting this chat. | Verified plan and indexed docs contain branch, commands, current evidence, remaining gates and recovery without chat dependency. |
-| 33 | At completion, the ExecPlan is moved to `docs/exec-plans/completed/` with an outcomes/retrospective entry; historical handoff provenance remains under `docs/references/` if committed. | Pending: final native verification, retrospective and completed-plan relocation. |
+| 33 | At completion, the ExecPlan is moved to `docs/exec-plans/completed/` with an outcomes/retrospective entry; historical handoff provenance remains under `docs/references/` if committed. | Verified: completed plan at docs/exec-plans/completed/agent-env-mvp.md includes outcomes/retrospective, all acceptance evidence and preserved historical handoff provenance; index links updated. |
 
 
 Failure fixtures must prove docs-check detects broken links, missing plan sections and unindexed docs with repairs; generated-check detects schema drift; arch-check detects forbidden imports. Integration must prove isolated simultaneous leases and destruction, selected closure, pinning, rollback/quarantine, manual runtime removal, dirty tracked protection, evidence output, and paths with spaces. Native tests cover Windows wrappers and quote/Unicode/backslash round trips without Bash. doctor missing prerequisites must fail accurately. Record unsuccessful or unavailable checks explicitly.
@@ -335,3 +335,5 @@ Final local repair verification: d823096 passes repoctl check on Go 1.26.8 and 1
 Final native progress: d823096 passes both Windows jobs, both macOS jobs, Linux Go 1.26 and all five cross-builds. Linux Go 1.27 exposed a timing-sensitive one-second lock-renewal success fixture: its fixed 1.2-second sleep ended after the conservative renewal watchdog canceled ownership. This is being separated from strict failure tests by observing a durable renewal with a realistic test budget; production expiry/fencing must not be weakened. Final completion remains gated on the corrected current revision.
 
 Renewal fixture resolution: the success test now observes the same owner's durable expires_at extension from a second connection using a six-second TTL, then checks competing acquisition rejection, idempotent release and expired-row recovery. No product watchdog/fence changed. Success and strict injected failure tests pass ten repetitions in both native Go 1.27 and race; Go 1.26 SQLite suite passes. Root reviewed the test assertions; final repoctl check passes.
+
+Completion evidence: c641286 is pushed to origin/feat/agent-env-mvp and all 12 jobs in CI 34124194139 succeeded. Windows/macOS/Linux native tests cover both Go minors; the Linux integration job separately passes full race and actual Compose fixtures. Independent cancellation review cleared the two accepted P1 findings after regressions. All 33 acceptance rows and broader indexed contracts were audited; no unresolved MVP implementation gap remains. Actual Docker coverage is Linux-only, and trusted-code/process isolation limitations remain documented. No PR, merge, tag or release was performed.

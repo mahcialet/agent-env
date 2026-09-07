@@ -15,7 +15,7 @@ go build ./cmd/agent-env
 go run ./tools/repoctl test-integration
 ```
 
-The last command explicitly runs real Docker fixtures on Linux. Native Windows/macOS/Linux unit CI and five CGO-disabled build targets are separate from Docker integration coverage. Current verification and remaining gates are recorded in the [implementation plan](docs/exec-plans/active/agent-env-mvp.md), [quality guide](docs/QUALITY.md), and [portability notes](docs/PORTABILITY.md).
+The last command explicitly runs real Docker fixtures on Linux. Native Windows/macOS/Linux unit CI and five CGO-disabled build targets are separate from Docker integration coverage. Completed acceptance and verification evidence are recorded in the [implementation plan](docs/exec-plans/completed/agent-env-mvp.md), [quality guide](docs/QUALITY.md), and [portability notes](docs/PORTABILITY.md).
 
 ## Use a trusted repository
 

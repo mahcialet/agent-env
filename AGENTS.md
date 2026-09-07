@@ -5,7 +5,7 @@
 1. [Architecture](ARCHITECTURE.md): responsibilities and dependency directions.
 2. [Documentation index](docs/index.md): authoritative repository knowledge.
 3. [MVP specification](docs/product-specs/agent-env-mvp.md): required behavior.
-4. [Active ExecPlan](docs/exec-plans/active/agent-env-mvp.md): current work and evidence.
+4. [Completed ExecPlan](docs/exec-plans/completed/agent-env-mvp.md): delivered scope and evidence.
 5. [Plan policy](docs/PLANS.md): mandatory living-plan structure.
 
 ## Standard workflow

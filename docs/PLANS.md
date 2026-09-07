@@ -6,7 +6,7 @@ last_verified: 2026-09-07
 
 # ExecPlan policy
 
-Use a version-controlled ExecPlan for complex, multi-hour, or multi-milestone work. Keep the [MVP plan](exec-plans/active/agent-env-mvp.md) self-contained and update it at every meaningful checkpoint. Include exact paths, commands, results, remaining work, decisions, and safe recovery steps. Evidence distinguishes tests run locally, cross-builds, and actual native CI.
+Use a version-controlled ExecPlan for complex, multi-hour, or multi-milestone work. Keep the [MVP plan](exec-plans/completed/agent-env-mvp.md) self-contained and update it at every meaningful checkpoint. Include exact paths, commands, results, remaining work, decisions, and safe recovery steps. Evidence distinguishes tests run locally, cross-builds, and actual native CI.
 
 Mandatory sections are: Purpose / Big Picture; Progress; Surprises & Discoveries; Decision Log; Outcomes & Retrospective; Context and Orientation; Plan of Work; Concrete Steps; Validation and Acceptance; Idempotence and Recovery; Artifacts and Notes; Interfaces and Dependencies.
 

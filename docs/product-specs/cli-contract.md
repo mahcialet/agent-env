@@ -6,7 +6,7 @@ last_verified: 2026-09-07
 
 # CLI contract
 
-The following commands are implemented. Platform validation remains tracked separately in the [implementation plan](../exec-plans/active/agent-env-mvp.md).
+The following commands are implemented. Platform validation is recorded separately in the [implementation plan](../exec-plans/completed/agent-env-mvp.md).
 
 ```text
 agent-env version
