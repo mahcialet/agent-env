@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -124,6 +125,37 @@ func (c Client) Inspect(ctx context.Context, w Worktree) (Inspection, error) {
 	var result Inspection
 	info, err := os.Lstat(w.Path)
 	if errors.Is(err, os.ErrNotExist) {
+		listing, e := c.run(ctx, w.RepositoryID, "worktree", "list", "--porcelain", "-z")
+		if e != nil {
+			return result, e
+		}
+		for _, record := range strings.Split(listing, "\x00\x00") {
+			var path, head string
+			detached := false
+			for _, field := range strings.Split(record, "\x00") {
+				if strings.HasPrefix(field, "worktree ") {
+					path = strings.TrimPrefix(field, "worktree ")
+				}
+				if strings.HasPrefix(field, "HEAD ") {
+					head = strings.TrimPrefix(field, "HEAD ")
+				}
+				if field == "detached" {
+					detached = true
+				}
+			}
+			match := filepath.Clean(path) == filepath.Clean(w.Path)
+			if runtime.GOOS == "windows" {
+				match = strings.EqualFold(filepath.Clean(path), filepath.Clean(w.Path))
+			}
+			if path != "" && match {
+				result.Registered = true
+				result.Commit = head
+				if !detached || head != w.Commit {
+					return result, errors.New("missing worktree registration no longer matches pinned detached source")
+				}
+				break
+			}
+		}
 		return result, nil
 	}
 	if err != nil {
@@ -201,7 +233,7 @@ func (c Client) Remove(ctx context.Context, w Worktree, force bool) error {
 	if err != nil {
 		return err
 	}
-	if !state.Exists {
+	if !state.Exists && !state.Registered {
 		return nil
 	}
 	if state.TrackedDirty && !force {

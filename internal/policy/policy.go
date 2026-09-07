@@ -4,6 +4,7 @@ package policy
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -46,8 +47,10 @@ type Config struct {
 	Volumes  map[string]NamedResource `json:"volumes"`
 }
 type NamedResource struct {
-	External bool   `json:"external"`
-	Name     string `json:"name"`
+	External   bool           `json:"external"`
+	Name       string         `json:"name"`
+	Driver     string         `json:"driver"`
+	DriverOpts map[string]any `json:"driver_opts"`
 }
 type Service struct {
 	ContainerName string                     `json:"container_name"`
@@ -142,8 +145,13 @@ func (p Policy) Evaluate(c Config, selected []string, sourceRoots []string) ([]D
 				add("POLICY_EXTERNAL_BIND", "bind source outside allocated worktrees/allowed roots: "+v.Source)
 			}
 			if v.Type == "volume" {
-				if n, ok := c.Volumes[v.Source]; ok && n.External {
-					add("POLICY_EXTERNAL_VOLUME", "external volume "+v.Source+" is shared across leases")
+				if n, ok := c.Volumes[v.Source]; ok {
+					if n.External {
+						add("POLICY_EXTERNAL_VOLUME", "external volume "+v.Source+" is shared across leases")
+					}
+					if len(n.DriverOpts) > 0 || n.Driver != "" && n.Driver != "local" {
+						add("POLICY_VOLUME_DRIVER", "custom volume drivers/options can mount shared host resources; use a project-scoped local volume without driver_opts")
+					}
 				}
 			}
 		}
@@ -161,7 +169,31 @@ func underAny(path string, roots []string) bool {
 		return false
 	}
 	for _, root := range roots {
-		rel, err := filepath.Rel(root, path)
+		canonicalRoot, err := filepath.EvalSymlinks(root)
+		if err != nil {
+			continue
+		}
+		canonicalPath := path
+		for {
+			resolved, e := filepath.EvalSymlinks(canonicalPath)
+			if e == nil {
+				suffix, relErr := filepath.Rel(canonicalPath, path)
+				if relErr != nil {
+					return false
+				}
+				canonicalPath = filepath.Join(resolved, suffix)
+				break
+			}
+			if !os.IsNotExist(e) {
+				return false
+			}
+			parent := filepath.Dir(canonicalPath)
+			if parent == canonicalPath {
+				return false
+			}
+			canonicalPath = parent
+		}
+		rel, err := filepath.Rel(canonicalRoot, canonicalPath)
 		if err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) && !filepath.IsAbs(rel) {
 			return true
 		}

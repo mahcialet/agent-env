@@ -21,7 +21,7 @@ Deliver a usable native Windows/macOS/Linux CLI that reads an explicit target ma
 - [ ] Milestones 4–7: Compose adapter, create/destroy saga, reconciliation/TTL/GC, named tests and evidence.
 - [ ] Milestone 8: concurrency, rollback, dirty-source and multi-repository integration tests; actual native CI evidence; completion audit and plan relocation.
 
-Current next action: integrate Compose with create/destroy and evidence, then validate concurrent real-container lifecycle behavior. Domain, paths, SQLite, strict manifest/stack and Git adapter units pass locally; native tests for this new slice remain pending. Bootstrap documents describe required contracts; their presence is not proof of product behavior. Acceptance below remains pending until direct evidence is recorded.
+Current next action: finish review fixes, rerun full harness and Docker integration, push coherent adapter/lifecycle slices, and obtain native CI for the final implementation. Domain, paths, SQLite, strict manifest/stack and Git adapter units pass locally; native tests for this new slice remain pending. Bootstrap documents describe required contracts; their presence is not proof of product behavior. Acceptance below remains pending until direct evidence is recorded.
 
 ## Surprises & Discoveries
 
@@ -306,3 +306,12 @@ Local bootstrap evidence (2026-09-07): Go 1.27.1 `repoctl check` exit 0, Go 1.26
 Foundation evidence (2026-09-07): targeted Go 1.27.1 tests for domain, paths, policy, config, stack, execx, source/gitcli, store/sqlite, app, cli, repoctl all pass. Domain digest/state/GC guards, path symlink/traversal cases, strict manifest negatives, deterministic API/dashboard closure, JSON envelope, concurrent SQLite capacity/locking/rollback and actual Git worktree cleanup are covered. Commands create/destroy/reconcile/test are not yet connected; no full lifecycle acceptance claimed.
 
 Native CI evidence: bootstrap CRLF fix d755acf passed all jobs (run 34118678913). Foundation 75c0b65 run 34118745919 exposed two Windows issues: negative YAML fixture substitutions assumed LF; paths.Within accepted slash-rooted paths because filepath.IsAbs on Windows requires a volume. Tests now normalize fixture line endings and assert every negative case really changes input; CRLF manifest digest equivalence is verified; source-relative path guard explicitly rejects leading slash on all OSes. Git/execx (including .cmd/.bat roundtrip) and SQLite tests passed native Windows on both Go minors in that run.
+
+Implementation checkpoint (2026-09-07):
+
+- Foundation 33ac8be passed every native/cross-build job in CI run 34119012663 (Windows/macOS/Linux, both Go minors). Later lifecycle changes have not yet been pushed or certified by native CI.
+- Full actual Docker suite passed in 108.181 seconds: concurrent API/dashboard leases, HTTP, named pass/fail evidence, sibling and unrelated-volume preservation, multi-repository pinning, dirty GC preview/apply quarantine/forced diff, and readiness rollback. Tests live under internal/cli/integration_test.go and testdata/compose. They must rerun after current review changes.
+- Independent review identified and implementation addressed: CRLF fixtures; slash-rooted Windows paths; unselected Compose cleanup resources (snapshot pruned); indirect symlink/volume-driver host mounts; initial readiness not completed before reconcile promotion; missing Git registrations; secret literals in pinned manifest; CLI owner/exit/manifest behavior. Exact-service archived logs and strict labels are being finalized.
+- SQLite now supplies operation contexts, cancellation on renewal loss/watchdog, and transaction token fences. App preserves original ownership through ordinary-cancel compensation, avoids stale cleanup after loss, and preserves local command evidence without stale registry writes. Actual token-replacement tests passed on both Go minors and race.
+- Native runner now kills ordinary descendant trees before returning: Unix process groups; Windows suspended Job assignment before resume. Linux late-write regression failed before fix and passes afterward. Deliberate Unix detachment remains outside trusted-code containment; native Windows/macOS final CI pending.
+- Initial documentation and all 33 acceptance rows remain active. Final audit, native verification of current code, and completion-plan relocation are not yet done.

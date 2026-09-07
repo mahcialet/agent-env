@@ -4,8 +4,10 @@ package execx
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"runtime"
 	"sort"
@@ -79,13 +81,13 @@ func (OSRunner) Run(ctx context.Context, spec Command) (Result, error) {
 		if spec.Stderr != nil {
 			cmd.Stderr = io.MultiWriter(&stderr, spec.Stderr)
 		}
-		err = cmd.Run()
+		err = runCaptured(ctx, cmd)
 		result.Stdout, result.Stderr = stdout.String(), stderr.String()
 		if cmd.ProcessState != nil {
 			result.ExitCode = cmd.ProcessState.ExitCode()
 		}
 		if ctx.Err() != nil {
-			err = ctx.Err()
+			err = errors.Join(ctx.Err(), err)
 		}
 	}
 	result.FinishedAt = time.Now().UTC()
@@ -93,6 +95,50 @@ func (OSRunner) Run(ctx context.Context, spec Command) (Result, error) {
 		return result, &ExitError{Command: spec, Result: result, Err: err}
 	}
 	return result, nil
+}
+
+// Own the stream pumps so Cmd.Wait observes the root's exit immediately even
+// when a descendant inherits stdout/stderr. Tree cleanup precedes final draining.
+func runCaptured(ctx context.Context, cmd *exec.Cmd) error {
+	outRead, outWrite, err := os.Pipe()
+	if err != nil {
+		return err
+	}
+	defer outRead.Close()
+	defer outWrite.Close()
+	errRead, errWrite, err := os.Pipe()
+	if err != nil {
+		return err
+	}
+	defer errRead.Close()
+	defer errWrite.Close()
+	outDst, errDst := cmd.Stdout, cmd.Stderr
+	cmd.Stdout, cmd.Stderr = outWrite, errWrite
+	done := make(chan error, 2)
+	go func() { _, err := io.Copy(outDst, outRead); _ = outRead.Close(); done <- err }()
+	go func() { _, err := io.Copy(errDst, errRead); _ = errRead.Close(); done <- err }()
+	runErr := runProcessTree(ctx, cmd)
+	_ = outWrite.Close()
+	_ = errWrite.Close()
+	deadline := time.NewTimer(2 * time.Second)
+	defer deadline.Stop()
+	var drainErrors []error
+	for remaining := 2; remaining > 0; remaining-- {
+		select {
+		case err := <-done:
+			drainErrors = append(drainErrors, err)
+		case <-deadline.C:
+			_ = outRead.Close()
+			_ = errRead.Close()
+			drainErrors = append(drainErrors, exec.ErrWaitDelay)
+			// Closing the read descriptors releases pipe readers. A destination
+			// writer itself must obey its own bounded-write contract.
+			for ; remaining > 0; remaining-- {
+				drainErrors = append(drainErrors, <-done)
+			}
+		}
+	}
+	return errors.Join(append([]error{runErr}, drainErrors...)...)
 }
 
 func mergeEnv(base []string, overrides map[string]string) []string {

@@ -5,10 +5,13 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sort"
 	"time"
 )
+
+var ErrLockLost = errors.New("operation ownership lost; stop effects and reconcile recorded intent")
 
 type Source struct {
 	Alias          string    `json:"alias"`
@@ -39,6 +42,7 @@ type Resource struct {
 }
 
 type Runtime struct {
+	LeaseID      string   `json:"lease_id"`
 	Name         string   `json:"name"`
 	Type         string   `json:"type"`
 	Source       string   `json:"source"`

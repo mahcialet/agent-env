@@ -13,6 +13,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/mahcialet/agent-env/internal/domain"
@@ -143,7 +144,13 @@ func (s *Store) Save(ctx context.Context, lease domain.Lease) error {
 		return err
 	}
 	defer tx.Rollback()
+	if err = fence(ctx, tx, lease.ID); err != nil {
+		return err
+	}
 	if err = writeLease(ctx, tx, lease, false); err != nil {
+		return err
+	}
+	if err = fence(ctx, tx, lease.ID); err != nil {
 		return err
 	}
 	return tx.Commit()
@@ -248,14 +255,14 @@ func readRows[T any](ctx context.Context, db *sql.DB, query string, args ...any)
 }
 
 func (s *Store) Event(ctx context.Context, v domain.Event) error {
-	_, err := s.db.ExecContext(ctx, "INSERT INTO events(id,lease_id,time,type,message,payload) VALUES(?,?,?,?,?,?)", v.ID, v.LeaseID, stamp(v.Time), v.Type, v.Message, encoded(v))
+	_, err := s.execBound(ctx, v.LeaseID, "INSERT INTO events(id,lease_id,time,type,message,payload) VALUES(?,?,?,?,?,?)", v.ID, v.LeaseID, stamp(v.Time), v.Type, v.Message, encoded(v))
 	return err
 }
 func (s *Store) Events(ctx context.Context, id string) ([]domain.Event, error) {
 	return readRows[domain.Event](ctx, s.db, "SELECT payload FROM events WHERE lease_id=? ORDER BY time,id", id)
 }
 func (s *Store) SaveRun(ctx context.Context, v domain.CommandRun) error {
-	res, err := s.db.ExecContext(ctx, "INSERT INTO command_runs(id,lease_id,name,source_alias,working_directory,argv_json,started_at,finished_at,exit_code,stdout_path,stderr_path,status,payload) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,source_alias=excluded.source_alias,working_directory=excluded.working_directory,argv_json=excluded.argv_json,started_at=excluded.started_at,finished_at=excluded.finished_at,exit_code=excluded.exit_code,stdout_path=excluded.stdout_path,stderr_path=excluded.stderr_path,status=excluded.status,payload=excluded.payload WHERE command_runs.lease_id=excluded.lease_id", v.ID, v.LeaseID, v.Name, v.Source, v.Directory, encoded(v.Argv), stamp(v.StartedAt), stamp(v.FinishedAt), v.ExitCode, v.StdoutPath, v.StderrPath, v.Status, encoded(v))
+	res, err := s.execBound(ctx, v.LeaseID, "INSERT INTO command_runs(id,lease_id,name,source_alias,working_directory,argv_json,started_at,finished_at,exit_code,stdout_path,stderr_path,status,payload) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,source_alias=excluded.source_alias,working_directory=excluded.working_directory,argv_json=excluded.argv_json,started_at=excluded.started_at,finished_at=excluded.finished_at,exit_code=excluded.exit_code,stdout_path=excluded.stdout_path,stderr_path=excluded.stderr_path,status=excluded.status,payload=excluded.payload WHERE command_runs.lease_id=excluded.lease_id", v.ID, v.LeaseID, v.Name, v.Source, v.Directory, encoded(v.Argv), stamp(v.StartedAt), stamp(v.FinishedAt), v.ExitCode, v.StdoutPath, v.StderrPath, v.Status, encoded(v))
 	if err != nil {
 		return err
 	}
@@ -273,71 +280,214 @@ func (s *Store) SaveArtifact(ctx context.Context, v domain.Artifact) error {
 	if v.RunID != "" {
 		run = v.RunID
 	}
-	_, err := s.db.ExecContext(ctx, "INSERT INTO artifacts(id,lease_id,run_id,kind,path,digest,created_at,payload) VALUES(?,?,?,?,?,?,?,?)", v.ID, v.LeaseID, run, v.Kind, v.Path, v.Digest, stamp(v.CreatedAt), encoded(v))
+	_, err := s.execBound(ctx, v.LeaseID, "INSERT INTO artifacts(id,lease_id,run_id,kind,path,digest,created_at,payload) VALUES(?,?,?,?,?,?,?,?)", v.ID, v.LeaseID, run, v.Kind, v.Path, v.Digest, stamp(v.CreatedAt), encoded(v))
 	return err
 }
 func (s *Store) Artifacts(ctx context.Context, id string) ([]domain.Artifact, error) {
 	return readRows[domain.Artifact](ctx, s.db, "SELECT payload FROM artifacts WHERE lease_id=? ORDER BY created_at,id", id)
 }
 
-// Acquire returns an exclusive, durable, automatically renewed lease-operation lock.
-// A crashed process leaves a finite expiration; release removes only its own token.
-func (s *Store) Acquire(ctx context.Context, id, token string, ttl time.Duration) (func() error, error) {
+// Lock bindings are private capabilities. WithoutCancel retains them but cannot
+// bypass token/expiry checks or the independent lock-loss flag.
+type lockKey struct{}
+type lockBinding struct {
+	leaseID, token string
+	lost           atomic.Bool
+	lose           func(error)
+}
+type operationContext struct {
+	context.Context
+	binding *lockBinding
+}
+
+func (c *operationContext) LockLost() bool { return c.binding.lost.Load() }
+
+func fence(ctx context.Context, tx *sql.Tx, id string) error {
+	binding, _ := ctx.Value(lockKey{}).(*lockBinding)
+	if binding != nil && (binding.leaseID != id || binding.lost.Load()) {
+		return domain.ErrLockLost
+	}
+	var token string
+	var expires int64
+	err := tx.QueryRowContext(ctx, "SELECT token,expires_at FROM operation_locks WHERE lease_id=?", id).Scan(&token, &expires)
+	if errors.Is(err, sql.ErrNoRows) {
+		if binding != nil {
+			binding.lose(errors.New("operation lock row disappeared"))
+			return domain.ErrLockLost
+		}
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if binding == nil {
+		return ErrBusy
+	}
+	if binding.token != token || expires <= time.Now().UnixNano() {
+		binding.lose(errors.New("operation token or expiration no longer matches"))
+		return domain.ErrLockLost
+	}
+	return nil
+}
+
+func (s *Store) execBound(ctx context.Context, id, query string, args ...any) (sql.Result, error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+	if err := fence(ctx, tx, id); err != nil {
+		return nil, err
+	}
+	result, err := tx.ExecContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	if err := fence(ctx, tx, id); err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+// AcquireContext binds every lease mutation to a renewable operation capability.
+// The returned context cancels on lock loss. It additionally exposes LockLost()
+// so a prior caller cancellation cannot mask a later ownership failure.
+func (s *Store) AcquireContext(ctx context.Context, id, token string, ttl time.Duration) (context.Context, func() error, error) {
 	if token == "" || ttl < time.Second {
-		return nil, errors.New("lock requires a token and ttl of at least one second")
+		return nil, nil, errors.New("lock requires a token and ttl of at least one second")
 	}
 	now := time.Now()
-	res, err := s.db.ExecContext(ctx, "INSERT INTO operation_locks(lease_id,token,expires_at) VALUES(?,?,?) ON CONFLICT(lease_id) DO UPDATE SET token=excluded.token,expires_at=excluded.expires_at WHERE operation_locks.expires_at<=?", id, token, now.Add(ttl).UnixNano(), now.UnixNano())
+	result, err := s.db.ExecContext(ctx, "INSERT INTO operation_locks(lease_id,token,expires_at) VALUES(?,?,?) ON CONFLICT(lease_id) DO UPDATE SET token=excluded.token,expires_at=excluded.expires_at WHERE operation_locks.expires_at<=?", id, token, now.Add(ttl).UnixNano(), now.UnixNano())
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	n, err := res.RowsAffected()
+	affected, err := result.RowsAffected()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	if n != 1 {
-		return nil, ErrBusy
+	if affected != 1 {
+		return nil, nil, ErrBusy
 	}
+	binding := &lockBinding{leaseID: id, token: token}
+	base, cancel := context.WithCancelCause(ctx)
+	operation := &operationContext{Context: context.WithValue(base, lockKey{}, binding), binding: binding}
 	stop := make(chan struct{})
+	renewed := make(chan time.Time, 1)
 	done := make(chan struct{})
+	workerCtx, stopWorker := context.WithCancel(context.Background())
+	var workers sync.WaitGroup
+	workers.Add(2)
+	var failureMu sync.Mutex
 	var renewalErr error
+	lose := func(err error) {
+		binding.lost.Store(true)
+		failureMu.Lock()
+		if renewalErr == nil {
+			renewalErr = fmt.Errorf("%w: %v", domain.ErrLockLost, err)
+		}
+		cause := renewalErr
+		failureMu.Unlock()
+		cancel(cause)
+		stopWorker()
+	}
+	binding.lose = lose
+	// Independent watchdog fires even while a database renewal is blocked. The
+	// safety margin ensures cancellation starts before the old token may be stolen.
 	go func() {
-		defer close(done)
+		defer workers.Done()
+		timer := time.NewTimer(time.Until(now.Add(ttl - ttl/6)))
+		defer timer.Stop()
+		for {
+			select {
+			case <-stop:
+				return
+			case expires := <-renewed:
+				if !timer.Stop() {
+					select {
+					case <-timer.C:
+					default:
+					}
+				}
+				timer.Reset(time.Until(expires.Add(-ttl / 6)))
+			case <-timer.C:
+				lose(errors.New("operation renewal deadline exceeded"))
+				return
+			}
+		}
+	}()
+	go func() {
+		defer workers.Done()
 		ticker := time.NewTicker(ttl / 3)
 		defer ticker.Stop()
 		for {
 			select {
 			case <-stop:
 				return
+			case <-workerCtx.Done():
+				return
 			case <-ticker.C:
-				refreshCtx, cancel := context.WithTimeout(context.Background(), ttl/3)
-				result, err := s.db.ExecContext(refreshCtx, "UPDATE operation_locks SET expires_at=? WHERE lease_id=? AND token=?", time.Now().Add(ttl).UnixNano(), id, token)
-				cancel()
+				if binding.lost.Load() {
+					return
+				}
+				refreshCtx, refreshCancel := context.WithTimeout(workerCtx, ttl/3)
+				refreshed := time.Now()
+				expires := refreshed.Add(ttl)
+				result, err := s.db.ExecContext(refreshCtx, "UPDATE operation_locks SET expires_at=? WHERE lease_id=? AND token=? AND expires_at>?", expires.UnixNano(), id, token, refreshed.UnixNano())
+				refreshCancel()
 				if err == nil {
-					var affected int64
-					affected, err = result.RowsAffected()
-					if err == nil && affected != 1 {
+					var n int64
+					n, err = result.RowsAffected()
+					if err == nil && n != 1 {
 						err = ErrBusy
 					}
 				}
 				if err != nil {
-					renewalErr = fmt.Errorf("operation lock renewal: %w", err)
+					select {
+					case <-stop:
+						return
+					default:
+					}
+					lose(err)
+					return
+				}
+				if binding.lost.Load() {
+					return
+				}
+				select {
+				case renewed <- expires:
+				case <-stop:
 					return
 				}
 			}
 		}
 	}()
+	go func() { workers.Wait(); close(done) }()
 	var once sync.Once
 	var releaseErr error
-	return func() error {
+	release := func() error {
 		once.Do(func() {
 			close(stop)
+			stopWorker()
 			<-done
-			releaseCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-			defer cancel()
+			releaseCtx, releaseCancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer releaseCancel()
 			_, releaseErr = s.db.ExecContext(releaseCtx, "DELETE FROM operation_locks WHERE lease_id=? AND token=?", id, token)
+			failureMu.Lock()
 			releaseErr = errors.Join(renewalErr, releaseErr)
+			failureMu.Unlock()
+			cancel(context.Canceled)
 		})
 		return releaseErr
-	}, nil
+	}
+	return operation, release, nil
+}
+
+// Acquire is compatibility-only. New operation callers must propagate the
+// context returned by AcquireContext to both external commands and mutations.
+func (s *Store) Acquire(ctx context.Context, id, token string, ttl time.Duration) (func() error, error) {
+	_, release, err := s.AcquireContext(ctx, id, token, ttl)
+	return release, err
 }
