@@ -1,10 +1,12 @@
 ---
 status: accepted
 owner: maintainers
-last_verified: 2026-09-07
+last_verified: 2026-09-08
 ---
 
 # Use SQLite
+
+[日本語](0002-use-sqlite.ja.md)
 
 ## Decision
 

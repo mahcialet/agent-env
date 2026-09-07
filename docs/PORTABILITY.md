@@ -6,6 +6,8 @@ last_verified: 2026-09-08
 
 # Portability
 
+[日本語](PORTABILITY.ja.md)
+
 The module targets Go 1.26.x and 1.27.x, native Windows, macOS, and Linux, with no CGO requirement. Git and the Docker Compose plugin are external runtime prerequisites. Cross-compilation proves build compatibility; it does not prove native process, path, SQLite, or Docker behavior.
 
 ## State and paths

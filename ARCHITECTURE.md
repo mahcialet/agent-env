@@ -1,10 +1,12 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-07
+last_verified: 2026-09-08
 ---
 
 # Architecture
+
+[日本語](ARCHITECTURE.ja.md)
 
 The system materializes pinned local Git sources and a selected component closure into an environment lease with Compose and/or Android Emulator resources. The [MVP specification](docs/product-specs/agent-env-mvp.md) defines behavior; the [completed plan](docs/exec-plans/completed/agent-env-mvp.md) records delivered boundaries and verification evidence.
 

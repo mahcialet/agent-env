@@ -1,10 +1,12 @@
 ---
 status: accepted
 owner: maintainers
-last_verified: 2026-09-07
+last_verified: 2026-09-08
 ---
 
 # Compose first runtime
+
+[日本語](0003-compose-first-runtime.ja.md)
 
 ## Decision
 

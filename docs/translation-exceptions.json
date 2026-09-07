@@ -1,0 +1,28 @@
+{
+  "exceptions": [
+    {
+      "path": "docs/generated/db-schema.md",
+      "reason": "Generated from SQL migrations; verify using generated-check instead of maintaining a translation."
+    },
+    {
+      "path": "docs/references/handoffs/CHATGPT_HANDOFF_30.md",
+      "reason": "Original historical handoff preserved for provenance."
+    },
+    {
+      "path": "docs/exec-plans/completed/agent-env-mvp.md",
+      "reason": "Pre-migration completed execution record; preserve historical evidence, not current operational guidance."
+    },
+    {
+      "path": "docs/exec-plans/completed/android-emulator-lease.md",
+      "reason": "Pre-migration completed execution record; preserve historical evidence, not current operational guidance."
+    },
+    {
+      "path": "docs/exec-plans/completed/android-emulator-review-2.md",
+      "reason": "Pre-migration completed execution record; preserve historical evidence, not current operational guidance."
+    },
+    {
+      "path": "docs/exec-plans/completed/android-emulator-review.md",
+      "reason": "Pre-migration completed execution record; preserve historical evidence, not current operational guidance."
+    }
+  ]
+}

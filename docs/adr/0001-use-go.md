@@ -1,10 +1,12 @@
 ---
 status: accepted
 owner: maintainers
-last_verified: 2026-09-07
+last_verified: 2026-09-08
 ---
 
 # Use Go
+
+[日本語](0001-use-go.ja.md)
 
 ## Decision
 

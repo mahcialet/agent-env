@@ -1,10 +1,12 @@
 ---
 status: accepted
 owner: maintainers
-last_verified: 2026-09-07
+last_verified: 2026-09-08
 ---
 
 # Repository-native harness
+
+[日本語](0004-repository-native-harness.ja.md)
 
 ## Decision
 

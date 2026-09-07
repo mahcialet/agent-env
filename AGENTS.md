@@ -1,5 +1,7 @@
 # Agent entry point
 
+[日本語](AGENTS.ja.md)
+
 ## Read first
 
 1. [Architecture](ARCHITECTURE.md): responsibilities and dependency directions.
@@ -88,3 +90,13 @@ Avoid nested instruction files unless a subtree has materially different rules.
 The archived handoff is historical input, not the permanent project manual.
 Finish every acceptance requirement before moving the active plan to completed.
 Update links when moving a completed plan and retain its retrospective.
+
+Durable human-facing documentation is maintained in English and Japanese.
+English `*.md` files are canonical; Japanese translations use corresponding
+`*.ja.md` paths. Update both languages in the same coherent change whenever
+adding or changing a durable document. Review translation meaning before
+refreshing its source hash; a matching hash alone does not prove accuracy.
+Generated documentation and historical archives have explicit exceptions.
+Documentation checks must detect missing or stale translations; run docs-check
+before completion. See the [language policy](docs/design-docs/bilingual-documentation.md)
+for scope, metadata, indexes, and the exception registry.

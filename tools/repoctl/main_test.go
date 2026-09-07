@@ -32,6 +32,7 @@ func fixture(t *testing.T) string {
 		plan += "\n## " + section + "\nEvidence goes here.\n"
 	}
 	put(t, root, "docs/exec-plans/active/plan.md", plan)
+	pairFixtureDocuments(t, root)
 	return root
 }
 
@@ -80,6 +81,7 @@ func TestDocumentationLinks(t *testing.T) {
 	root := fixture(t)
 	put(t, root, "ARCHITECTURE.md", "# Architecture\n[space](<docs/a b 日本語.md#the-heading>)\n[external](https://example.org)\n```md\n[example](missing.md)\n```\n")
 	put(t, root, "docs/a b 日本語.md", "# The heading\n")
+	pairFixtureDocuments(t, root)
 	if err := docsCheck(root); err != nil {
 		t.Fatal(err)
 	}

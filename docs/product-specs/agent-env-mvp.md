@@ -1,10 +1,12 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-07
+last_verified: 2026-09-08
 ---
 
 # MVP specification
+
+[日本語](agent-env-mvp.ja.md)
 
 The Compose-backed CLI and repository harness are implemented. This document preserves the original required scope and acceptance criteria; completion of every platform and review gate is tracked from evidence in the [implementation plan](../exec-plans/completed/agent-env-mvp.md). The [CLI contract](cli-contract.md) and [manifest reference](manifest-v1.md) describe current commands, fields, limits, and recovery behavior.
 

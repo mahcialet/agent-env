@@ -1,10 +1,12 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-07
+last_verified: 2026-09-08
 ---
 
 # Reconciliation and garbage collection
+
+[日本語](reconciliation-and-gc.ja.md)
 
 ## Reconciliation rules
 

@@ -1,10 +1,12 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-07
+last_verified: 2026-09-08
 ---
 
 # Core beliefs
+
+[日本語](core-beliefs.ja.md)
 
 Immutable source sets make an environment reproducible. A lease records every requested ref and resolved commit before runtime startup; the lease is never reduced to one commit column.
 

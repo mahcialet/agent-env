@@ -6,6 +6,8 @@ last_verified: 2026-09-08
 
 # Android Emulator resource design
 
+[日本語](android-emulator.ja.md)
+
 The [product contract](../product-specs/android-emulator.md) adds a separate
 `app.AndroidProvider`, implemented by `runtime/android`. App owns saga ordering,
 locks, readiness and persistence. Domain holds pure identities, SQLite holds

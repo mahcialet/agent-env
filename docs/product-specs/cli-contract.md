@@ -1,10 +1,12 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-07
+last_verified: 2026-09-08
 ---
 
 # CLI contract
+
+[日本語](cli-contract.ja.md)
 
 The following commands are implemented. Platform validation is recorded separately in the [implementation plan](../exec-plans/completed/agent-env-mvp.md).
 
