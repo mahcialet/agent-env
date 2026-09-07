@@ -25,6 +25,8 @@ Current next action: finish review fixes, rerun full harness and Docker integrat
 
 ## Surprises & Discoveries
 
+- 2026-09-07: adapter commit f306bed passed Linux and five cross-builds in CI 34121460804, but native macOS/Windows exposed missing-worktree registration alias mismatch. Comparison now checks existing ancestor filesystem identity, with a passing Linux parent-symlink regression; native rerun pending. Lifecycle, GC grace, cancellation, provenance, and final integration changes are being integrated before the final acceptance audit.
+
 - 2026-09-07: bootstrap commit 327ca02 pushed to origin/feat/agent-env-mvp. CI run 34117876714 passed Linux/macOS on both Go minors and all five cross-builds; both Windows checks failed because CRLF checkout bytes differed from gofmt LF output. Format validation now normalizes CRLF only, with a regression proving actual formatting drift still fails. Native rerun pending.
 - 2026-09-07: Go 1.27.1 full repoctl check passed for domain/paths/policy/config/stack/Git/SQLite/read-only CLI foundation; SQLite targeted tests also passed Go 1.26.8 and race. Compose/lifecycle/evidence remain under implementation.
 

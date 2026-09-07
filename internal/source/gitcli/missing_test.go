@@ -4,12 +4,25 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/mahcialet/agent-env/internal/execx"
 )
 
 func TestMissingWorktreeRegistrationIsObservedAndRemoved(t *testing.T) {
+	testMissingWorktree(t, false)
+}
+
+func TestMissingWorktreeThroughParentAlias(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink regression; native temporary path spelling covered separately")
+	}
+	testMissingWorktree(t, true)
+}
+
+func testMissingWorktree(t *testing.T, alias bool) {
+	t.Helper()
 	root := t.TempDir()
 	runner := execx.OSRunner{}
 	for _, args := range [][]string{{"init"}, {"-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "--allow-empty", "-m", "fixture"}} {
@@ -22,7 +35,15 @@ func TestMissingWorktreeRegistrationIsObservedAndRemoved(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	w, err := client.Materialize(context.Background(), source, filepath.Join(t.TempDir(), "missing checkout 日本語"))
+	parent := t.TempDir()
+	if alias {
+		link := filepath.Join(t.TempDir(), "parent alias")
+		if err := os.Symlink(parent, link); err != nil {
+			t.Fatal(err)
+		}
+		parent = link
+	}
+	w, err := client.Materialize(context.Background(), source, filepath.Join(parent, "missing checkout 日本語"))
 	if err != nil {
 		t.Fatal(err)
 	}

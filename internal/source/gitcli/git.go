@@ -97,6 +97,32 @@ func samePath(a, b string) bool {
 	return ea == nil && eb == nil && os.SameFile(aa, bb)
 }
 
+// Missing worktrees still have registrations. Compare existing ancestors by
+// filesystem identity so native temporary-directory aliases remain equivalent.
+func sameMissingPath(a, b string) bool {
+	a, b = filepath.Clean(a), filepath.Clean(b)
+	for {
+		aa, ea := os.Stat(a)
+		bb, eb := os.Stat(b)
+		if ea == nil || eb == nil {
+			return ea == nil && eb == nil && os.SameFile(aa, bb)
+		}
+		if !errors.Is(ea, os.ErrNotExist) || !errors.Is(eb, os.ErrNotExist) {
+			return false
+		}
+		left, right := filepath.Base(a), filepath.Base(b)
+		match := left == right
+		if runtime.GOOS == "windows" {
+			match = strings.EqualFold(left, right)
+		}
+		pa, pb := filepath.Dir(a), filepath.Dir(b)
+		if !match || pa == a || pb == b {
+			return false
+		}
+		a, b = pa, pb
+	}
+}
+
 func (c Client) Materialize(ctx context.Context, source Resolved, dest string) (Worktree, error) {
 	w := Worktree{Resolved: source}
 	if !validCommit(source.Commit) {
@@ -143,11 +169,7 @@ func (c Client) Inspect(ctx context.Context, w Worktree) (Inspection, error) {
 					detached = true
 				}
 			}
-			match := filepath.Clean(path) == filepath.Clean(w.Path)
-			if runtime.GOOS == "windows" {
-				match = strings.EqualFold(filepath.Clean(path), filepath.Clean(w.Path))
-			}
-			if path != "" && match {
+			if path != "" && sameMissingPath(path, w.Path) {
 				result.Registered = true
 				result.Commit = head
 				if !detached || head != w.Commit {
