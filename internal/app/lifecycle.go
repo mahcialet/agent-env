@@ -189,6 +189,9 @@ func (s *Service) Create(ctx context.Context, o PlanOptions, options CreateOptio
 			r.Files[j] = filepath.Join(root, filepath.FromSlash(p))
 		}
 	}
+	if err = validateAndroidInputPaths(lease); err != nil {
+		return domain.Lease{}, err
+	}
 	if err = s.Store.Reserve(ctx, lease, p.MaxActive); err != nil {
 		return lease, err
 	}
@@ -670,72 +673,95 @@ func (s *Service) cleanup(ctx context.Context, l *domain.Lease, force bool) erro
 	if err := s.persist(ctx, *l); err != nil {
 		return err
 	}
-	for i := len(l.Runtimes) - 1; i >= 0; i-- {
-		r := &l.Runtimes[i]
+	// A failed runtime must retain its own evidence and reservation, but should
+	// not strand independently owned siblings. Durable-write failures still halt
+	// the saga immediately; no further effects are safe after fencing is lost.
+	cleanupRuntime := func(r *domain.Runtime) (halt bool, err error) {
 		if r.Type == "android-emulator" {
 			if s.Android == nil {
-				return s.quarantine(ctx, l, errors.New("Android provider unavailable"))
+				return false, errors.New("Android provider unavailable")
 			}
 			if err := s.event(ctx, l.ID, "runtime_down_requested", r.Name); err != nil {
-				return err
+				return true, err
 			}
 			if err := s.Android.Destroy(ctx, *r); err != nil {
-				return s.quarantine(ctx, l, fmt.Errorf("remove Android runtime %s: %w", r.Name, err))
+				return false, fmt.Errorf("remove Android runtime %s: %w", r.Name, err)
 			}
 			remaining, err := s.Android.Inspect(ctx, *r)
 			if err != nil || remaining.Exists {
 				if err == nil {
 					err = errors.New("Android resources remain after cleanup")
 				}
-				return s.quarantine(ctx, l, err)
+				return false, err
 			}
 			r.Started = false
 			r.Android.State = "released"
 			if err := s.persist(ctx, *l); err != nil {
-				return err
+				return true, err
 			}
-			continue
+			return false, nil
 		}
 		o, err := s.inspectRuntime(ctx, *r)
 		if err != nil {
-			return s.quarantine(ctx, l, err)
+			return false, err
 		}
 		if err := ownedResources(l.ID, o.Resources); err != nil {
-			return s.quarantine(ctx, l, err)
+			return false, err
 		}
 		if o.Exists {
 			if err := s.event(ctx, l.ID, "runtime_logs_requested", r.Name); err != nil {
-				return err
+				return true, err
 			}
 			for _, service := range r.Services {
 				scoped := *r
 				scoped.Services = []string{service}
 				logs, err := s.Runtime.Logs(ctx, scoped)
 				if err != nil {
-					return s.quarantine(ctx, l, fmt.Errorf("collect logs for %s/%s before cleanup: %w", r.Name, service, err))
+					return false, fmt.Errorf("collect logs for %s/%s before cleanup: %w", r.Name, service, err)
 				}
 				if err := s.saveTextArtifact(ctx, *l, "compose-log/"+r.Name+"/"+service, r.Project+"-"+service+".log", logs); err != nil {
-					return s.quarantine(ctx, l, err)
+					return true, err
 				}
 			}
 			if err := s.event(ctx, l.ID, "runtime_down_requested", r.Name); err != nil {
-				return err
+				return true, err
 			}
 			if err := s.Runtime.Down(ctx, *r); err != nil {
-				return s.quarantine(ctx, l, fmt.Errorf("remove runtime %s: %w", r.Name, err))
+				return false, fmt.Errorf("remove runtime %s: %w", r.Name, err)
 			}
 			remaining, err := s.Runtime.Inspect(ctx, *r)
 			if err != nil || remaining.Exists {
 				if err == nil {
 					err = errors.New("runtime resources remain after cleanup")
 				}
-				return s.quarantine(ctx, l, err)
+				return false, err
 			}
 		}
 		r.Started = false
 		if err := s.persist(ctx, *l); err != nil {
-			return err
+			return true, err
 		}
+		return false, nil
+	}
+	var runtimeErrors error
+	for i := len(l.Runtimes) - 1; i >= 0; i-- {
+		if err := context.Cause(ctx); err != nil {
+			return errors.Join(runtimeErrors, err)
+		}
+		halt, err := cleanupRuntime(&l.Runtimes[i])
+		if err != nil {
+			runtimeErrors = errors.Join(runtimeErrors, fmt.Errorf("cleanup runtime %s: %w", l.Runtimes[i].Name, err))
+		}
+		if halt {
+			return s.quarantine(ctx, l, runtimeErrors)
+		}
+		if context.Cause(ctx) != nil || errors.Is(err, domain.ErrLockLost) {
+			return s.quarantine(ctx, l, errors.Join(runtimeErrors, context.Cause(ctx)))
+		}
+	}
+	if runtimeErrors != nil {
+		// Keep every source and reservation until every runtime is confirmed gone.
+		return s.quarantine(ctx, l, runtimeErrors)
 	}
 	for i := len(l.Sources) - 1; i >= 0; i-- {
 		source := l.Sources[i]

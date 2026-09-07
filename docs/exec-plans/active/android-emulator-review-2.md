@@ -13,10 +13,10 @@ Resolve seven new PR #2 findings on dedicated branch `feat/android-emulator-leas
 ## Progress
 
 - [x] 2026-09-08: Inspected clean HEAD `6c92486` and seven unresolved threads.
-- [ ] Validate repository-selected AVDs in doctor and expose retained Android process logs.
+- [x] 2026-09-08: Validated repository-selected AVDs in doctor and exposed retained Android process logs.
 - [x] 2026-09-08: Rejected incompatible image architectures and shared ADB prerequisites before reservation.
 - [x] 2026-09-08: Rejected overlap with immutable Android inputs and portable case-folding runtime collisions.
-- [ ] Continue independent reverse runtime cleanup after a failure, retaining sources and quarantine.
+- [x] 2026-09-08: Continued independent reverse runtime cleanup after a failure, retaining sources and quarantine.
 - [ ] Validate harness, regression/race tests and native CI; commit/push; reply and resolve threads.
 
 ## Surprises & Discoveries
@@ -60,3 +60,13 @@ Comments: 3952452797, 3952452807, 3952452813, 3952452817, 3952452823, 3952452826
 Preserve CLI/app/adapter/store boundaries, native argument arrays and no shell/CGO core dependency. No Flutter behavior.
 
 Validation checkpoint: Android adapter full unit package, new architecture/prerequisite tests repeated ten times, and Go 1.27.1 Android race tests passed. Nine real app/SQLite rejection cases verify zero reservations/materialization/process starts; architecture matrix covers 24 combinations. Real supplied SDK metadata matches required x86_64 ABI (read-only check only). App/config path overlap and portable name regressions passed five repetitions. Name collision regression failed against original config validation. Path comparisons include other runtimes' inputs, existing symlink aliases and future paths without creating them.
+
+CLI evidence: full Go 1.26.8 CLI tests pass, with active/released logs, component selection, redaction, unsafe paths/files and missing files; selected-AVD doctor test checks JSON/exit 3 and zero allocation. Focused CLI race tests repeated three times passed. Initial synthetic log fixture lacked SQLite-required metadata; corrected the fixture, not production checks.
+
+Cleanup evidence: full app tests passed; focused cleanup race tests repeated ten times passed. Two runtime failures are aggregated while independently owned Android and Compose resources are removed; all sources and three reservations remain until successful retry. Separate tests verify lost SQLite fence and outer cancellation stop effects, but an adapter-local timeout does not. Root review caught the initial overbroad timeout halt and it was corrected before commit.
+
+Harness checkpoint: first check overlapped unfinished CLI test formatting and failed format-check; rerun after formatting passed. `repoctl doctor` passed. Full integration/race and independent reviews underway.
+
+Independent reviews found no blocker in SDK/cleanup, but identified CLI registry creation before app preflight as an additional input-mutation path. Accepted: delay CREATE's store initialization until reservation, rather than duplicate validation. Root's app path tests alone did not establish full CLI input immutability. CLI correction in progress.
+
+Combined harness and real Docker integration passed. Actual repository-specific Android doctor passed using the provided SDK and retained template (read-only probes, no Emulator startup). First full race run failed while creating a fixture in `TestLifecycleCleanupFailureAndDirtySourceQuarantine/down`, before its failure injection, with a context deadline. The shared fixture has a 50ms readiness budget; targeted repeat and full rerun will distinguish scheduling sensitivity. No test deadline or production check was weakened.

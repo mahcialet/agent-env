@@ -231,6 +231,7 @@ func Validate(m *Manifest) error {
 			return fmt.Errorf("manifest: source %s has an invalid default_ref", n)
 		}
 	}
+	androidNames := map[string]string{}
 	for _, n := range keys(m.Runtimes) {
 		r := m.Runtimes[n]
 		if r.Type != "compose" && r.Type != "android-emulator" {
@@ -240,6 +241,11 @@ func Validate(m *Manifest) error {
 			return fmt.Errorf("manifest: runtime %s references unknown source %q", n, r.Source)
 		}
 		if r.Type == "android-emulator" {
+			folded := strings.ToLower(n)
+			if previous, exists := androidNames[folded]; exists {
+				return fmt.Errorf("manifest: Android runtime names %q and %q collide under case folding", previous, n)
+			}
+			androidNames[folded] = n
 			if !namePattern.MatchString(r.AVD) {
 				return fmt.Errorf("manifest: Android runtime %s requires a valid avd template name", n)
 			}

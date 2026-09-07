@@ -74,3 +74,19 @@ func TestAndroidManifestSupportsMixedDependencyClosure(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestAndroidRuntimeNamesRejectPortableCaseCollisions(t *testing.T) {
+	m, err := Parse([]byte(androidManifest))
+	if err != nil {
+		t.Fatal(err)
+	}
+	m.Runtimes["DEVICE"] = m.Runtimes["device"]
+	if err := Validate(m); err == nil || !strings.Contains(err.Error(), "case") {
+		t.Fatalf("case-folding Android runtime collision accepted: %v", err)
+	}
+	delete(m.Runtimes, "DEVICE")
+	m.Runtimes["device2"] = m.Runtimes["device"]
+	if err := Validate(m); err != nil {
+		t.Fatal(err)
+	}
+}
