@@ -77,6 +77,7 @@ func (s *Service) buildApplications(ctx context.Context, l *domain.Lease) error 
 		}
 		a.State = "building"
 		a.BuildUnconfirmed = true
+		a.BuildEvidenceIncomplete = true
 		if err = s.persist(ctx, *l); err != nil {
 			return err
 		}
@@ -103,7 +104,15 @@ func (s *Service) buildApplications(ctx context.Context, l *domain.Lease) error 
 			return errors.Join(buildErr, domain.ErrLockLost)
 		}
 		finish, cancel := context.WithTimeout(context.WithoutCancel(ctx), time.Minute)
-		e := errors.Join(s.saveTextArtifact(finish, *l, "application-build/"+a.Name, a.Name+"-build.stdout.log", result.Stdout), s.saveTextArtifact(finish, *l, "application-build/"+a.Name, a.Name+"-build.stderr.log", result.Stderr), s.persist(finish, *l))
+		e := errors.Join(s.saveTextArtifact(finish, *l, "application-build/"+a.Name, a.Name+"-build.stdout.log", result.Stdout), s.saveTextArtifact(finish, *l, "application-build/"+a.Name, a.Name+"-build.stderr.log", result.Stderr))
+		if e == nil {
+			a.BuildEvidenceIncomplete = false
+		}
+		persistErr := s.persist(finish, *l)
+		if persistErr != nil {
+			a.BuildEvidenceIncomplete = true
+		}
+		e = errors.Join(e, persistErr)
 		if buildErr == nil {
 			e = errors.Join(e, s.inspectTestSources(finish, l, evidence.InheritedSecrets()))
 		}
@@ -242,6 +251,7 @@ func (s *Service) startApplications(ctx context.Context, l *domain.Lease) error 
 		if e = s.AndroidApplications.LaunchActivity(ctx, r, a.Package, a.Activity); e != nil {
 			return e
 		}
+		a.LaunchConfirmed = true
 		a.State = "ready"
 		if e = s.persist(ctx, *l); e != nil {
 			return e
@@ -254,6 +264,9 @@ func (s *Service) startApplications(ctx context.Context, l *domain.Lease) error 
 }
 
 func applicationConsistent(l domain.Lease, a domain.Application) error {
+	if a.BuildUnconfirmed || a.BuildEvidenceIncomplete || !a.LaunchConfirmed {
+		return errors.New("application build termination, evidence finalization or activity launch is unconfirmed")
+	}
 	var m config.Manifest
 	if err := json.Unmarshal(l.Manifest, &m); err != nil {
 		return err
@@ -270,7 +283,7 @@ func applicationConsistent(l domain.Lease, a domain.Application) error {
 		return err
 	}
 	expected := filepath.Join(src.WorktreePath, filepath.FromSlash(a.ProjectDirectory), filepath.FromSlash(a.Artifact))
-	if a.Build.ArtifactPath != expected || !validApplicationDigest(a.Build.Digest) || a.InstalledDigest != a.Build.Digest || a.Build.Version == "" {
+	if a.Build.Directory != filepath.Join(src.WorktreePath, filepath.FromSlash(a.ProjectDirectory)) || a.Build.Executable != a.Command[0] || a.Build.ArtifactPath != expected || !validApplicationDigest(a.Build.Digest) || a.InstalledDigest != a.Build.Digest || a.Build.Version == "" {
 		return errors.New("application build/install identity is incomplete or inconsistent")
 	}
 	if len(a.Reverse) != len(spec.Reverse) {

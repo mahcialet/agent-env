@@ -3,22 +3,24 @@ package domain
 // Application is the immutable declaration plus observed lifecycle evidence.
 // An APK digest records the creation artifact, not a reproducible build claim.
 type Application struct {
-	BuildUnconfirmed bool                   `json:"build_unconfirmed,omitempty"`
-	Name             string                 `json:"name"`
-	Type             string                 `json:"type"`
-	Source           string                 `json:"source"`
-	SourceCommit     string                 `json:"source_commit"`
-	Runtime          string                 `json:"runtime"`
-	ProjectDirectory string                 `json:"project_directory"`
-	Command          []string               `json:"command"`
-	Timeout          string                 `json:"timeout,omitempty"`
-	Artifact         string                 `json:"artifact"`
-	Package          string                 `json:"package"`
-	Activity         string                 `json:"activity"`
-	State            string                 `json:"state"`
-	Build            ApplicationBuildResult `json:"build"`
-	InstalledDigest  string                 `json:"installed_digest,omitempty"`
-	Reverse          []ReverseBinding       `json:"reverse,omitempty"`
+	BuildEvidenceIncomplete bool                   `json:"build_evidence_incomplete,omitempty"`
+	LaunchConfirmed         bool                   `json:"launch_confirmed,omitempty"`
+	BuildUnconfirmed        bool                   `json:"build_unconfirmed,omitempty"`
+	Name                    string                 `json:"name"`
+	Type                    string                 `json:"type"`
+	Source                  string                 `json:"source"`
+	SourceCommit            string                 `json:"source_commit"`
+	Runtime                 string                 `json:"runtime"`
+	ProjectDirectory        string                 `json:"project_directory"`
+	Command                 []string               `json:"command"`
+	Timeout                 string                 `json:"timeout,omitempty"`
+	Artifact                string                 `json:"artifact"`
+	Package                 string                 `json:"package"`
+	Activity                string                 `json:"activity"`
+	State                   string                 `json:"state"`
+	Build                   ApplicationBuildResult `json:"build"`
+	InstalledDigest         string                 `json:"installed_digest,omitempty"`
+	Reverse                 []ReverseBinding       `json:"reverse,omitempty"`
 }
 
 type ReverseBinding struct {

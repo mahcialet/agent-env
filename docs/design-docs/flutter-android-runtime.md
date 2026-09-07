@@ -34,11 +34,21 @@ local server host and cannot silently substitute a remote Docker host.
 Persist each effect's intended identity before dependent effects. A mapping records
 application, runtime, serial, endpoint, device TCP port and resolved host port.
 The same device port is safe across separate Emulator loopback namespaces.
+Application identity includes `launch_confirmed`, persisted only after a successful
+activity launch. Launch intent alone cannot establish READY after a crash.
+Observation requires confirmed build termination and launch, plus executable and
+project working-directory consistency with the recorded build identity.
 
 A build intention persists `build_unconfirmed` before starting the process.
 A crash or unconfirmed process/output termination keeps this guard set across
 restart and blocks source cleanup even with force. Durable-write errors stop
 cleanup; an initial quarantine alone is insufficient to protect a still-live build.
+The same pre-build intent also sets `build_evidence_incomplete`. Clear this second
+guard only after both required log artifacts and final lease state persist.
+Confirmed process exit is not proof that required evidence was saved. A failed
+artifact write keeps this durable guard across store recovery; reconciliation
+quarantines and normal/forced cleanup retains source and APK until evidence is
+investigated and recovered.
 
 On failure, remove proven owned mappings before existing runtime compensation.
 A requested but never-confirmed reverse mapping cannot be removed when present;

@@ -67,6 +67,11 @@ A durable `build_unconfirmed` guard is set before the build and remains after a
 crash or unconfirmed process/output termination. It blocks subsequent source
 cleanup, including forced destroy after restart. Investigate termination evidence;
 the CLI does not silently clear this guard.
+A separate durable `build_evidence_incomplete` guard is set before the build and
+cleared only after both required build-log artifacts and final lease state are
+saved successfully. Failed evidence persistence keeps the lease quarantined and
+retains the source/APK during normal or forced cleanup, even after the store
+recovers. Investigate and recover the missing evidence before releasing this guard.
 
 Named tests may use `${android:<runtime>:serial}` only for a selected, confirmed
 lease-owned Android runtime. Existing `${lease_id}` and `${env:NAME}` remain
@@ -74,3 +79,28 @@ supported. Flutter integration tests may rebuild/reinstall a different APK;
 their results do not prove execution of the lifecycle-installed APK. Named-test
 output and persisted run `notes` state this distinction. UI automation and
 historical artifact promotion remain separate follow-up work.
+
+## Real integration validation
+
+With Git, Flutter and Docker Compose available on PATH, a running Docker engine,
+an Android SDK configured through `ANDROID_HOME` or `ANDROID_SDK_ROOT`, a stopped
+installed AVD selected by `AGENT_ENV_ANDROID_TEMPLATE`, working Emulator
+acceleration, and a Flutter-compatible Java/Gradle/Android build toolchain, run:
+
+Provide enough on-disk temporary storage for concurrent private AVD copies and
+the template's userdata partitions. A memory-backed temporary directory may be
+too small even when the host has ample disk space. Configure the test process's
+native temporary-directory location when necessary; do not shrink templates or
+weaken ownership checks to fit.
+
+```text
+go test -tags=flutterintegration -run TestRealFlutterAndroidBackendLease -v ./internal/cli -timeout=40m
+```
+
+This opt-in test creates a disposable Flutter project, builds and installs its
+APK, launches it against a real Compose backend through reverse, observes its
+HTTP request, and destroys the lease without force. Explicit selection fails
+when prerequisites are absent. Normal Flutter/Gradle builds may download declared
+dependencies under already accepted licenses; the fixture does not accept licenses.
+Run it separately from tests that reserve real Emulator ports. Failed cleanup
+retains evidence and resources for explicit investigation.

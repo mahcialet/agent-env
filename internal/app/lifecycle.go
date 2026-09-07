@@ -656,6 +656,9 @@ func (s *Service) quarantine(ctx context.Context, l *domain.Lease, cause error) 
 
 func (s *Service) cleanup(ctx context.Context, l *domain.Lease, force bool) error {
 	for _, a := range l.Applications {
+		if a.BuildEvidenceIncomplete {
+			return s.quarantine(ctx, l, fmt.Errorf("application %s build evidence is incomplete; retain sources and investigate artifact persistence", a.Name))
+		}
 		if a.BuildUnconfirmed {
 			return s.quarantine(ctx, l, fmt.Errorf("application %s build termination is unconfirmed; retain sources and investigate build process evidence", a.Name))
 		}
@@ -887,6 +890,16 @@ func (s *Service) Reconcile(ctx context.Context, id string) (lease domain.Lease,
 		}
 		resources = append(resources, o.Resources...)
 		diagnostics = append(diagnostics, o.Diagnostics...)
+	}
+	for _, a := range lease.Applications {
+		if a.BuildEvidenceIncomplete {
+			dirty = true
+			diagnostics = append(diagnostics, "application "+a.Name+" build evidence is incomplete")
+		}
+		if a.BuildUnconfirmed {
+			dirty = true
+			diagnostics = append(diagnostics, "application "+a.Name+" build termination remains unconfirmed")
+		}
 	}
 	if lease.Desired == "active" {
 		if e := applicationSetConsistent(lease); e != nil {

@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/exec-plans/active/flutter-android-runtime.md
-source_sha256: 052346a49c34f2f6f77a4397c6b44ae5c2da0d865005eed056edd53a366a347f
+source_sha256: 9d01e189952416afb333bc681b1ec2332d378d2cfffdea518fb609cb32a16fbc
 ---
 
 # 環境リース内にFlutter Androidアプリケーションを実体化する
@@ -196,8 +196,8 @@ tests:
 - [x] 2026-09-08: 同時mobileリース二つの非衝突を証明する。
 - [x] 2026-09-08: 失敗・復旧・隔離の検証を追加する。
 - [ ] 全harnessとGo race検査を実行する。
-- [ ] ネイティブWindows/macOS/Linux証拠と実SDK検証を分けて記録する。
-- [ ] 前提条件が利用可能なら実Flutter + Emulator結合を実行する。
+- [x] 2026-09-08: ネイティブCI `34166963420` は `8975096` で全OS・Go版ジョブ成功。実SDK証拠は別扱いでLinuxのみ。
+- [x] 2026-09-08: Linuxで実Flutter + Emulator結合 `TestRealFlutterAndroidBackendLease` が248.46秒で成功。二つの実リースへの拡張は進行中。Windows/macOSの実SDK実行は未検証。
 - [ ] 受け入れ証拠と振り返りを完成する。
 - [ ] PLANS方針に従いcompletedへ移動する。
 
@@ -217,6 +217,22 @@ Flutter結合テストによるAPK置換、高速化不足、既存Android所有
 - 2026-09-08: 単体・raceテストで、同時mobileリースのソース/APKパス、ダイジェスト証拠、Composeプロジェクト、Android識別、reverseホストポートの分離を検証。失敗fixtureはbuild/install/launch、未確認マッピング所有、パッケージ・reverse欠落、強制cleanupを扱う。
 - 2026-09-08: 独立レビューで初回ビルド隔離だけでは後の強制destroyが生存中かもしれないビルドのソースを削除できると判明。実行前の `build_unconfirmed` 永続化で、再起動後もcleanupを阻止する。復旧には終了証拠の調査が必要で、CLIはガードを黙って解除しない。
 - 2026-09-08: reverse要求は所有の証明ではない。設定を確認できずマッピングが存在する場合は、cleanupで保持・隔離する。不在になれば続行できる。永続書き込みエラーではcleanupを停止する。
+
+- 2026-09-08: 最終snapshotレビューで、起動前のクラッシュ後でも起動意図だけを根拠にreconcileがREADYにできる問題を発見。
+  `launch_confirmed` は起動成功後だけ保存する。観測ではビルド終了確認と実行ファイル・プロジェクトディレクトリ一致も要求する。
+  `TestMobileReconcileRejectsIncompleteApplicationSnapshot` が起動・実行ファイル・ディレクトリの不整合を検証する。
+  この最新変更は未commitで、先行ネイティブCIの検証対象には含まれない。
+
+- 2026-09-08: 二つの実リースのfixtureで両APKのビルドは成功したが、両Emulatorがuserdataパーティションの空き容量不足を報告。
+  既定の一時ディレクトリはメモリー上にあり、テンプレートは12 GiBの空きを必要とする。
+  通常の準備完了待ち失敗と補償の終了を待ち、十分な容量があるディスクをプロセス内だけの `TMPDIR` に指定して再実行する。
+  テンプレートの縮小や検査の弱体化は行わない。再実行の結果は未確定。
+
+- 2026-09-08: 最終安全性レビューで、ビルド終了後にプロセス未確認ガードを解除すると、必須証拠の保存に失敗していてもストア復旧後のcleanupがソース/APKを削除できる問題を発見。
+  この方式では不十分だった。実行終了と証拠保存は独立して扱う必要がある。
+  永続的な `build_evidence_incomplete` をビルド前に設定し、必須の両ログ成果物と最終リース状態の保存後だけ解除する。
+  `TestMobileIncompleteBuildEvidenceBlocksCleanup` は `SaveArtifact` 失敗を注入してAPK保持を検証する。
+  この最新変更の最終検証は未実施。
 
 ## 判断の記録
 
@@ -251,9 +267,23 @@ Flutter結合テストによるAPK置換、高速化不足、既存Android所有
 - 決定: リポジトリのFlutter doctorは現在の宣言ソースcheckoutと全アプリを検査し、ワークツリー確保やDockerを必要としない。createは固定プロジェクトと選択依存先を別途検査する。
   日付・担当: 2026-09-08 / implementation。
 
+- 決定: 起動成功と起動意図を別に保存し、アプリ観測で実行識別を記録ビルドに照合する。
+  理由: パッケージ存在と起動意図だけでは、クラッシュ後に初回ライフサイクルが完了した証拠にならない。
+  前面状態は引き続き意図的に要求しない。
+  日付・担当: 2026-09-08 / snapshotレビューを受けたimplementation。
+
+- 決定: 証拠保存の未完了状態をプロセス未確認状態とは独立して永続化する。
+  理由: 必須ビルドログやリース最終状態を保存できなかった場合、プロセス終了成功だけで削除を許可できない。
+  ストア復旧後も、証拠の失敗を調査・復旧するまで、reconcileは隔離し、通常・強制cleanupはソース/APKを保持する。
+  日付・担当: 2026-09-08 / 最終安全性レビューを受けたimplementation。
+
 ## 成果と振り返り
 
-未完了。完了時に、最終契約、順序、実際のインストールAPKの出自、reverse所有モデル、
+未完了。契約（`4457dfd`）とライフサイクル（`8975096`）をpushし、draft PR #4を作成済み。
+Linuxの実Flutter/Emulator/backend実行は1回成功。二つの実リースによる結合、最終の逐次harness、
+ネイティブCI全体の証拠、最終振り返りは未完了。
+
+完了時に、最終契約、順序、実際のインストールAPKの出自、reverse所有モデル、
 テスト意味、ネイティブ証拠、実Flutter/Emulator証拠、OS・Flutter版の未検証点、
 Android UI観測・成果物昇格の後続作業をまとめます。
 
@@ -396,27 +426,27 @@ Flutterビルド、Emulatorリース、APKインストール、reverse、起動�
 
 | ID | 必須の挙動 | 証拠 |
 | --- | --- | --- |
-| F1 | 旧Composeのみ・Androidのみのマニフェストは有効で挙動不変。 | 未検証 |
-| F2 | 不正なアプリ設定を外部作用前の厳密検証で拒否。 | 未検証 |
-| F3 | mobile planがビルド・ランタイム操作なしで要件を表示。 | 未検証 |
-| F4 | Flutter実行ファイル・プロジェクト不足を前提失敗としリソースを漏らさない。 | 未検証 |
-| F5 | 固定ソースでargvビルドしコミット・Flutter版・ログ・APK SHA-256を記録。 | 未検証 |
-| F6 | 記録APKだけを選択した所有Emulatorシリアルへインストール。 | 未検証 |
-| F7 | package/activity起動成功、または安全なcreate補償。 | 未検証 |
-| F8 | 宣言デバイスTCPを実選択Compose先へreverseし記録。 | 未検証 |
-| F9 | 二つのmobileは同じデバイスポートを使いホストとEmulatorを隔離。 | 未検証 |
-| F10 | reverse/install/launch失敗後に非所有操作を残さず証拠保持。 | 未検証 |
-| F11 | 手動パッケージ除去・reverse欠落をDEGRADEDとして観測。 | 未検証 |
-| F12 | reconcileが未証明の外部デバイスに接続・killしない。 | 未検証 |
-| F13 | 一方破棄後も他方がREADYで利用可能。 | 未検証 |
-| F14 | Androidシリアル補間は所有する選択Androidだけを解決し暗黙選択しない。 | 未検証 |
-| F15 | テスト証拠が再ビルド・再インストールとcreate APKを区別。 | 未検証 |
-| F16 | 4スタックが文書化した最小のコンポーネント集合へ解決。 | 未検証 |
-| F17 | 新規製品・設計文書に英日版と索引がある。 | 未検証 |
-| F18 | 新しい責務境界追加後のarchitecture/docs検査が成功。 | 未検証 |
-| F19 | 最終実装の全harnessとraceが成功。 | 未検証 |
-| F20 | 3 OSネイティブ証拠を実Flutter + Emulatorと区別して正確に記録。 | 未検証 |
-| F21 | 利用可能なら少なくとも1回の実Flutter + Emulator + backend結合が成功、または不足基盤を偽証拠で代用せず明記。 | 未検証 |
+| F1 | 旧Composeのみ・Androidのみのマニフェストは有効で挙動不変。 | `8975096` のGo 1.26.8全検査で成功: `TestStrictManifest`、`TestLifecycleCreatePersistedIntentAndUniqueIsolation`、`TestAndroidConcurrentLeasesAndSiblingCleanup`。 |
+| F2 | 不正なアプリ設定を外部作用前の厳密検証で拒否。 | 同全検査で成功: `TestFlutterManifestContract`、`TestFlutterApplicationCollisionsAndDependencyClosure`、`TestApplicationEndpointReferenceWithDots`。 |
+| F3 | mobile planがビルド・ランタイム操作なしで要件を表示。 | 同全検査で成功: `TestFlutterPlanJSONIsPureAndIncludesApplication`、`TestMobilePlanStackClosure`。 |
+| F4 | Flutter実行ファイル・プロジェクト不足を前提失敗としリソースを漏らさない。 | 同全検査で成功: `TestMobilePrerequisiteNoReservation`、`TestFlutterDoctorMissingExecutableDoesNotRequireDockerOrAllocateState`、`TestInvalidPrerequisitesDoNotRunCommands`。 |
+| F5 | 固定ソースでargvビルドしコミット・Flutter版・ログ・APK SHA-256を記録。 | 同全検査で成功: `TestBuildArgvDirectoryAndEvidence`、`TestMobileEvidenceDoesNotKeepRawBuildOutputInLease`、`TestNativeBuildPreservesArgvAndProjectDirectory`。下記の実Linux実行も成功。 |
+| F6 | 記録APKだけを選択した所有Emulatorシリアルへインストール。 | 同全検査で成功: `TestApplicationOperationsUseOwnedSerialAndLocalServer`、`TestAPKInstallRequiresExplicitSuccess`、`TestMobileConcurrentLeasesAndObservation`。実Linuxインストールも成功。 |
+| F7 | package/activity起動成功、または安全なcreate補償。 | 同全検査で成功: `TestActivityLaunchReportsExitZeroFailures`、`TestMobileFailureCompensation`。実Linux起動も成功。 |
+| F8 | 宣言デバイスTCPを実選択Compose先へreverseし記録。 | 同全検査で成功: `TestApplicationOperationsUseOwnedSerialAndLocalServer`、`TestReverseEndpointRejectsRemoteAndMalformed`。実Dart HTTPがComposeバックエンドに到達。 |
+| F9 | 二つのmobileは同じデバイスポートを使いホストとEmulatorを隔離。 | 注入アダプターの並行実行・raceで `TestMobileConcurrentLeasesAndObservation` が成功。二つの実リースへの拡張は未検証。 |
+| F10 | reverse/install/launch失敗後に非所有操作を残さず証拠保持。 | 同全検査で成功: `TestMobileFailureCompensation`、`TestMobileUnconfirmedReversePreservesMapping`、`TestMobileUnconfirmedBuildBlocksLaterForcedCleanup`、`TestReverseCleanupRequiresExactMapping`。 |
+| F11 | 手動パッケージ除去・reverse欠落をDEGRADEDとして観測。 | 同全検査の `TestMobileConcurrentLeasesAndObservation` がパッケージとマッピングを明示除去し、それぞれDEGRADEDとなることを確認。 |
+| F12 | reconcileが未証明の外部デバイスに接続・killしない。 | 同全検査で成功: `TestMobileUnknownIdentityAndCleanupPreservation`、`TestApplicationOperationsRefuseOwnershipOrServerMismatch`、`TestApplicationChecksServerAgainAfterObservation`。 |
+| F13 | 一方破棄後も他方がREADYで利用可能。 | 注入アダプターの並行実行・raceで `TestMobileConcurrentLeasesAndObservation` が成功。二つの実リースでの他方存続は未検証。 |
+| F14 | Androidシリアル補間は所有する選択Androidだけを解決し暗黙選択しない。 | 同全検査と反復重点実行で成功: `TestAndroidSerialInterpolation`、`TestMobileConcurrentNamedTestsUseOwnedSerialAndPersistWarning`。 |
+| F15 | テスト証拠が再ビルド・再インストールとcreate APKを区別。 | 同全検査と反復重点実行で成功: `TestMobileConcurrentNamedTestsUseOwnedSerialAndPersistWarning`、`TestMobileFailedNamedTestRetainsEvidenceAndReadyLease`。 |
+| F16 | 4スタックが文書化した最小のコンポーネント集合へ解決。 | 同全検査の `TestMobilePlanStackClosure` が4スタックを検証し成功。 |
+| F17 | 新規製品・設計文書に英日版と索引がある。 | `8975096` のGo 1.26.8全検査内のdocs-checkで成功。英日製品・設計文書と両索引あり。 |
+| F18 | 新しい責務境界追加後のarchitecture/docs検査が成功。 | 同全検査のarch-checkとdocs-checkが成功。`TestArchitectureBoundaries` にFlutterのアダプター間依存の明示負例を追加。 |
+| F19 | 最終実装の全harnessとraceが成功。 | チェックポイント成功: `8975096` のGo 1.26.8全検査と先行Go 1.27.1全race。進行中のfixture変更後の最終逐次harnessは未実施。並行ポート衝突の失敗は下記。 |
+| F20 | 3 OSネイティブ証拠を実Flutter + Emulatorと区別して正確に記録。 | Linuxネイティブ単体・raceと実SDK証拠は下記で区別。ネイティブCI `34166963420` は `8975096` で全ジョブ成功。後続ソース変更は最終CI待ち。Windows/macOSの実SDKは未検証。 |
+| F21 | 利用可能なら少なくとも1回の実Flutter + Emulator + backend結合が成功、または不足基盤を偽証拠で代用せず明記。 | 実Linux実行1回成功: `TestRealFlutterAndroidBackendLease`、248.46秒。ツール・ソース・APK・HTTP・cleanup証拠は下記。二つの実リースへの拡張は未検証。 |
 
 すべてに直接証拠が必要です。成功した実行を記録しないテスト名だけでは証拠になりません。
 
@@ -434,6 +464,31 @@ planと前提検査は読み取り専用です。ビルド失敗で使い捨て�
 元リースの所有物と誤認しません。曖昧なら予約と証拠を保持して隔離し、forceでも所有証明を省略しません。
 
 ## 成果物と注記
+
+証拠チェックポイント（2026-09-08、`8975096` 後）:
+
+- Go 1.26.8の `go run ./tools/repoctl check` は `8975096` で成功。
+  Go 1.27.1の `go test -race ./...` は先行実行で成功し、その後の重点race・復旧検査も成功。
+  これは実装チェックポイントの証拠であり、その後のfixture拡張の検証完了を意味しない。
+- 後のGo 1.27.1全検査は実Emulator結合と重なり、既存の
+  `TestRealAdapterThroughAppPersistsOwnedResource` が予約する5554ポートを実結合が使っていたため失敗。
+  テストは弱めていない。実リソースcleanup後の逐次再実行は未実施。
+- [ネイティブCI `34166963420`](https://github.com/mahcialet/agent-env/actions/runs/34166963420)
+  は `8975096` で全体成功。3 OS × Go 1.26/1.27の全6ネイティブジョブ、5 OS/アーキテクチャの
+  クロスビルド、結合（raceと実Compose）が成功。Windows/macOSの実Flutter/Emulatorは未検証。
+- ローカルGo 1.27.1の `go run ./tools/repoctl test-integration` はその後終了コード0で成功。
+  後続の未commit変更で、Reconcileは期待状態にかかわらずビルド未確認の隔離を保持する。
+  重点回帰 `TestMobileUnconfirmedBuildRemainsQuarantinedOnObservation` は成功。
+  `8975096` のネイティブCIは、この後続変更の検証を意味しない。
+- `go test -tags=flutterintegration -run TestRealFlutterAndroidBackendLease -v ./internal/cli -timeout=40m`
+  はLinux amd64で248.46秒で成功。Go 1.26.8、Flutter 3.47.2、Dart 3.13.2、
+  JBR Java 25、Gradle 9.3.1、NDK 28.2.13676358を使用。生成fixtureのソースコミットは
+  `329768ca35b018608a31bb77b04655448f16d289`、インストールAPKのSHA-256は
+  `285597924dfe685f75573f0c6abfefe0bfabe1e4eb0e465dd497362b29d6cb88`。
+  build/install/パッケージ確認/reverse/launchが成功し、DartアプリのHTTPリクエストが
+  nginxバックエンドに到達した。ShowはREADY、forceなしのDestroyも成功。
+  同時に存在する二つの実リースへのfixture拡張は進行中で、まだ受け入れ証拠ではない。
+
 
 実装マイルストーンの検証（2026-09-08）:
 

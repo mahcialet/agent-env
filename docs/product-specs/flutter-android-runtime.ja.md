@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/product-specs/flutter-android-runtime.md
-source_sha256: 350d3922abaffc8c640655cbd4bc119f0a70aa00825eaad5aab0f3b8f6e89d99
+source_sha256: 9b60d3f10c42de2badff738435e7acff0d8645dc4654d04de809e0ffd9f19d5e
 ---
 
 # Flutter Androidアプリケーション
@@ -63,9 +63,36 @@ createは宣言パッケージが既に存在すればインストール前に�
 ビルド前に永続的な `build_unconfirmed` ガードを設定し、クラッシュやプロセス・出力終了の
 未確認時には保持します。再起動後の強制destroyを含め、以後のソースcleanupを阻止します。
 終了証拠の調査が必要であり、CLIがこのガードを黙って解除することはありません。
+別の永続ガード `build_evidence_incomplete` もビルド前に設定し、必須の両ビルドログ成果物と
+最終リース状態の保存がすべて成功した後だけ解除します。証拠保存の失敗時は隔離を維持し、
+ストア復旧後の通常・強制cleanupでもソースとAPKを保持します。
+このガードを解除する前に、欠けた証拠を調査・復旧する必要があります。
 
 名前付きテストの `${android:<runtime>:serial}` は、選択済みで所有を確認した
 Androidランタイムだけを参照します。既存の `${lease_id}` と `${env:NAME}` も使えます。
 Flutter結合テストは別APKを再ビルド・再インストールする場合があるため、その結果だけで
 create時のAPKを実行したとはいえません。この区別は名前付きテストの出力と保存する実行の
 `notes` に記録します。UI操作と過去APKの保管・昇格は別の後続作業です。
+
+## 実結合の検証
+
+PATH上のGit・Flutter・Docker Compose、稼働中のDockerエンジン、`ANDROID_HOME` または
+`ANDROID_SDK_ROOT` で設定したAndroid SDK、`AGENT_ENV_ANDROID_TEMPLATE` で選択する
+インストール済み・停止中のAVD、Emulator高速化、Flutter互換のJava/Gradle/Android
+ビルドツールを用意し、次を実行します。
+
+同時に作成する専用AVDコピーとテンプレートのuserdataパーティションを格納できる、一時領域の
+ディスク容量を確保してください。ホストのディスクに空きがあっても、メモリー上の一時領域は
+不足する場合があります。必要ならテストプロセスのOS標準一時ディレクトリを変更します。
+容量に合わせるためにテンプレートを縮小したり所有検査を弱めたりしません。
+
+```text
+go test -tags=flutterintegration -run TestRealFlutterAndroidBackendLease -v ./internal/cli -timeout=40m
+```
+
+明示選択するこのテストは、使い捨てFlutterプロジェクトを作成してAPKをビルド・インストールし、
+reverse経由で実Composeバックエンドにつないで起動し、HTTPリクエストを観測した後、forceなしで
+リースを破棄します。前提条件不足は失敗にします。通常のFlutter/Gradleビルドは承諾済み
+ライセンスの下で宣言された依存を取得する場合がありますが、fixtureはライセンスを承諾しません。
+実Emulatorポートを予約する他のテストとは分けて実行してください。
+cleanup失敗時は証拠とリソースを保持し、明示的な調査を必要とします。

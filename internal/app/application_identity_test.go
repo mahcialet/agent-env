@@ -3,13 +3,16 @@ package app
 import (
 	"context"
 	"errors"
+	"os"
+	"strings"
 	"testing"
 
 	"github.com/mahcialet/agent-env/internal/domain"
+	"github.com/mahcialet/agent-env/internal/execx"
 )
 
 func TestMobileReconcileRejectsIncompleteApplicationSnapshot(t *testing.T) {
-	for _, scenario := range []string{"missing", "duplicate", "digest", "source", "reverse", "argv"} {
+	for _, scenario := range []string{"missing", "duplicate", "digest", "source", "reverse", "argv", "launch", "executable", "directory"} {
 		t.Run(scenario, func(t *testing.T) {
 			s, o, _, _, _ := mobileFixture(t)
 			ctx := context.Background()
@@ -32,6 +35,13 @@ func TestMobileReconcileRejectsIncompleteApplicationSnapshot(t *testing.T) {
 				l.Applications[0].SourceCommit = "wrong"
 			case "reverse":
 				l.Applications[0].Reverse[0].Endpoint = "other.http"
+			case "launch":
+				l.Applications[0].LaunchConfirmed = false
+				l.Applications[0].State = "launching"
+			case "executable":
+				l.Applications[0].Build.Executable = "other"
+			case "directory":
+				l.Applications[0].Build.Directory = "other"
 			case "argv":
 				l.Applications[0].Command = []string{"other", "build"}
 			}
@@ -87,6 +97,56 @@ func TestMobileMappingAmbiguityCleansIndependentCompose(t *testing.T) {
 			if e != nil || obs.Exists {
 				t.Fatalf("independent Compose retained: %v %+v", e, obs)
 			}
+		}
+	}
+}
+
+func TestMobileUnconfirmedBuildRemainsQuarantinedOnObservation(t *testing.T) {
+	s, o, f, _, _ := mobileFixture(t)
+	f.buildErr = execx.ErrProcessTreeUnconfirmed
+	l, e := s.Create(context.Background(), o, CreateOptions{Owner: "test"})
+	if !errors.Is(e, execx.ErrProcessTreeUnconfirmed) {
+		t.Fatal(e)
+	}
+	observed, e := s.Reconcile(context.Background(), l.ID)
+	if e != nil || observed.Observed != "quarantined" || !observed.Applications[0].BuildUnconfirmed {
+		t.Fatalf("%v %+v", e, observed)
+	}
+}
+
+type failedBuildArtifactStore struct{ Store }
+
+func (s failedBuildArtifactStore) SaveArtifact(ctx context.Context, a domain.Artifact) error {
+	if strings.HasPrefix(a.Kind, "application-build/") {
+		return errors.New("injected build artifact persistence failure")
+	}
+	return s.Store.SaveArtifact(ctx, a)
+}
+func TestMobileIncompleteBuildEvidenceBlocksCleanup(t *testing.T) {
+	s, o, _, _, android := mobileFixture(t)
+	base := s.Store
+	s.Store = failedBuildArtifactStore{base}
+	l, e := s.Create(context.Background(), o, CreateOptions{Owner: "test"})
+	if e == nil || l.Observed != "quarantined" || android.creates != 0 {
+		t.Fatalf("%v %+v", e, l)
+	}
+	saved, e := base.Get(context.Background(), l.ID)
+	if e != nil || !saved.Applications[0].BuildEvidenceIncomplete || saved.Applications[0].BuildUnconfirmed {
+		t.Fatalf("%v %+v", e, saved)
+	}
+	// Storage recovers, but no command or observation may silently claim that
+	// missing evidence was finalized or remove its remaining source/APK.
+	s.Store = base
+	observed, e := s.Reconcile(context.Background(), l.ID)
+	if e != nil || observed.Observed != "quarantined" {
+		t.Fatalf("%v %+v", e, observed)
+	}
+	for _, force := range []bool{false, true} {
+		if _, e = s.Destroy(context.Background(), l.ID, force, false); e == nil {
+			t.Fatalf("force=%v removed incomplete evidence", force)
+		}
+		if _, e = os.Stat(saved.Applications[0].Build.ArtifactPath); e != nil {
+			t.Fatalf("lost APK: %v", e)
 		}
 	}
 }
