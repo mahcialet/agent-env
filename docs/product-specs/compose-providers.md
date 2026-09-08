@@ -65,10 +65,17 @@ Both providers apply the existing host policy before creating resources. Only th
 selected service closure starts. Fixed host ports remain rejected; dynamic
 endpoints require observed mappings. The common snapshot retains published port
 `0`; Podman receives a private copy with that field omitted and `host_ip` preserved,
-requesting an engine-assigned port without widening the loopback binding. Podman Machine host-loopback mappings must
-not be advertised as usable without evidence of reachability from the agent-env
-host. Unsupported or unproven mappings fail closed. Native fake tests and
-cross-builds do not establish real Machine support.
+requesting an engine-assigned port without widening the loopback binding. For a
+recorded remote URL, TCP mappings additionally require a successful connection
+from the agent-env host; failed TCP mappings are withheld and readiness is false.
+UDP mappings remain engine observations: no TCP probe or UDP application exchange
+is inferred. Applications needing UDP response validation must supply their own
+readiness check. Native fake tests and cross-builds do not establish real Machine
+forwarding support.
+
+Podman inventory uses the recorded native engine to enumerate labelled containers,
+networks and volumes. It does not execute or require podman-compose, including
+when the recorded Compose executable has been removed or moved.
 
 Live container, network and volume observations must prove ownership using
 provider-native identities together with agent-env ownership evidence. A matching

@@ -273,6 +273,9 @@ func (c podmanClient) Inspect(ctx context.Context, r domain.Runtime) (Observatio
 		p, _ := decodePodmanIdentity(r.Context)
 		if p.URL != "" {
 			for service, endpoint := range observation.Endpoints {
+				if !strings.HasSuffix(service, "/tcp") {
+					continue
+				}
 				probeCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
 				connection, probeErr := (&net.Dialer{}).DialContext(probeCtx, "tcp", endpoint)
 				cancel()
@@ -293,7 +296,7 @@ func (c podmanClient) Inventory(ctx context.Context, identity string) ([]domain.
 	if err != nil {
 		return nil, err
 	}
-	resources, err := d.Inventory(ctx, identity)
+	resources, err := d.inventoryResources(ctx, identity, nil)
 	for i := range resources {
 		resources[i].Metadata["provider"] = "podman-compose"
 	}
@@ -318,7 +321,11 @@ func (a podmanAdapter) Run(ctx context.Context, q execx.Command) (execx.Result, 
 		return a.compose(ctx, q, args[1:])
 	}
 	for i, arg := range args {
-		args[i] = strings.ReplaceAll(arg, "com.docker.compose.project=", "io.podman.compose.project=")
+		if arg == "label="+projectLabel {
+			args[i] = "label=io.podman.compose.project"
+		} else {
+			args[i] = strings.ReplaceAll(arg, "com.docker.compose.project=", "io.podman.compose.project=")
+		}
 	}
 	q.Name = a.identity.Executable
 	q.Args = append(a.identity.flags(), args...)

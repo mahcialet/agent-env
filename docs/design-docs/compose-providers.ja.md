@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/design-docs/compose-providers.md
-source_sha256: 075b95f5b78c92c1dd0c6f3503cbff369ada32ffcb555ccebe24ae3fc1b81423
+source_sha256: ad815fb9c913700914e0fbbc9ed3979ebaae5478e946b0abe774f7a2217d25a6
 ---
 
 [English（翻訳元）](compose-providers.md)
@@ -84,9 +84,17 @@ appが観測に基づいて時間制限つきのreadiness確認を行う。
 証明を維持する。リスト順、`latest`、生成名だけでresourceを選択しない。
 
 Docker専用のCompose flagに依存しない方法として、timestampつきのPodman直接logsで
-container/serviceへの安定した帰属を得てもよい。動的mappingをendpointとして提供するのは、
-必要なhost到達性の契約を確認してからとする。Podman Machineのmappingは、host到達性が
-未確認なら利用不可のままとする。fakeのinspectionデータではMachineの転送動作は証明できない。
+container/serviceへの安定した帰属を得てもよい。remote endpoint keyは
+service/port/protocol形式でprotocolを含む。追加のホストからのTCP接続検査はTCP
+mappingだけに適用し、失敗したTCP mappingは削除してreadinessをfalseにする。
+UDPではengineが観測したmappingと既存service/readiness検査を維持し、applicationからの
+応答は主張しない。fakeのinspectionデータでは実機Machineの転送動作は証明できない。
+
+共通inventory走査では、nativeなlabel付きresourceの列挙とDocker Composeのproject一覧を
+分離する。Dockerは両段階を維持する。Podmanは固定済みadapterからnativeの段階を直接
+呼び出すため、engineのみのidentityや存在しないCompose実行ファイルでも動作する。
+inspectionは引き続きnativeの所有labelを正規化し、エラーやlabelの矛盾を報告して
+resourceを自分の所有物として扱わない。
 
 ## Cleanupと証拠
 

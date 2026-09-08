@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/product-specs/compose-providers.md
-source_sha256: 3e5cd0b748245a25cd7a0e1928fb6c2d9403d596cd0a71189aa70d67e273a29b
+source_sha256: 9e495342a6459ab091c8d688abc6b644eec4b5651d071f73e099129eab6ed694
 ---
 
 [English（翻訳元）](compose-providers.md)
@@ -65,10 +65,16 @@ resourceの所有確認は引き続き必要となる。
 依存関係閉包だけを起動する。固定host portは引き続き拒否し、動的endpointには
 観測したmappingを使う。共通snapshotには公開portの`0`を保持し、Podmanへ渡すprivate copy
 ではそのfieldだけを省略して`host_ip`を保持する。これによりloopback bindingを広げずに
-engineによるport割り当てを要求する。Podman Machineのhost-loopback mappingは、agent-envホスト
-からの到達性を示す証拠なしに利用可能と表示してはならない。非対応または未確認の
-mappingは安全側で拒否する。nativeのfake testやcross-buildは、実機のMachine対応を
-証明しない。
+engineによるport割り当てを要求する。記録済みremote URLを使う場合、TCP mappingには
+agent-envホストからの接続成功も必要となる。TCP接続に失敗したmappingは返さず、
+readinessをfalseにする。UDP mappingはengineの観測情報として保持し、TCPによる検査や
+UDP applicationとの通信成功は推定しない。UDP応答の検証が必要なapplicationは
+自身のreadiness検査を定義する。nativeのfake testやcross-buildは、実機のMachineの
+転送動作を証明しない。
+
+Podman inventoryは記録済みnative engineからlabel付きcontainer、network、volumeを
+列挙する。記録済みCompose実行ファイルが削除・移動された場合も含め、
+podman-composeの存在や実行を必要としない。
 
 container、network、volumeの実観測では、provider固有の識別情報とagent-envの所有
 証拠を併用して所有を確認する。生成名の一致だけでは不十分である。logsはtimestampと

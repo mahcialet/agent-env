@@ -32,6 +32,12 @@ func (c dockerClient) Inventory(ctx context.Context, contextName string) ([]doma
 		}
 		result = append(result, domain.Resource{ID: contextName + ":project:" + p.Name, Kind: "compose-project", ExternalID: p.Name, Metadata: map[string]string{"context": contextName, "project": p.Name, "observed_status": p.Status, "config_files": p.ConfigFiles, "ownership": "unknown"}})
 	}
+	return c.inventoryResources(ctx, contextName, result)
+}
+
+// inventoryResources observes labelled native resources independently of Compose.
+func (c dockerClient) inventoryResources(ctx context.Context, contextName string, result []domain.Resource) ([]domain.Resource, error) {
+	base := []string{"--context", contextName}
 	for _, kind := range []string{"container", "network", "volume"} {
 		set := map[string]bool{}
 		for _, label := range []string{leaseLabel, projectLabel} {
@@ -42,7 +48,7 @@ func (c dockerClient) Inventory(ctx context.Context, contextName string) ([]doma
 				args = append(args, kind, "ls", "--quiet")
 			}
 			args = append(args, "--filter", "label="+label)
-			out, err = c.run(ctx, "", args...)
+			out, err := c.run(ctx, "", args...)
 			if err != nil {
 				return result, err
 			}
@@ -65,7 +71,7 @@ func (c dockerClient) Inventory(ctx context.Context, contextName string) ([]doma
 			args = append(args, kind, "inspect")
 		}
 		args = append(args, all...)
-		out, err = c.run(ctx, "", args...)
+		out, err := c.run(ctx, "", args...)
 		if err != nil {
 			return result, err
 		}

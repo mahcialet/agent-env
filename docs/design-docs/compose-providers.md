@@ -91,10 +91,18 @@ provider project-label plus recorded-ID proof rather than claiming stronger labe
 Never select resources by list order, `latest`, or generated name alone.
 
 Direct Podman logs with timestamps may provide stable container/service attribution
-without depending on Docker-only Compose flags. Dynamic mappings become endpoints
-only after the appropriate host reachability contract is established. Podman
-Machine mappings remain unavailable when host reachability is unproven; fake
-inspection data cannot establish Machine forwarding behavior.
+without depending on Docker-only Compose flags. Remote endpoint keys encode the
+protocol as service/port/protocol. Only TCP mappings receive the additional host
+TCP connection check; failed TCP mappings are removed and readiness becomes false.
+UDP retains the engine-observed mapping and existing service/readiness checks,
+without claiming an application response. Fake inspection data cannot establish
+real Machine forwarding behavior.
+
+The shared inventory traversal separates native labelled-resource enumeration
+from Docker Compose project listing. Docker keeps both stages; Podman enters the
+native stage directly through its pinned adapter, even for an engine-only identity
+or a stale Compose executable. Inspection still normalizes native ownership labels
+and reports errors or conflicting labels without adopting resources.
 
 ## Cleanup and evidence
 
