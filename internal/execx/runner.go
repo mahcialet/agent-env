@@ -29,6 +29,8 @@ type Command struct {
 	UnsetEnv       []string
 	Timeout        time.Duration
 	Stdout, Stderr io.Writer
+	// CaptureLimit bounds each captured stream; zero retains the existing default.
+	CaptureLimit int
 }
 
 type Result struct {
@@ -78,7 +80,8 @@ func (OSRunner) Run(ctx context.Context, spec Command) (Result, error) {
 		cmd.Env = mergeEnv(base, spec.Env)
 		// A killed child can leave inherited pipes open. Bound the drain wait too.
 		cmd.WaitDelay = 2 * time.Second
-		var stdout, stderr bytes.Buffer
+		stdout := captureBuffer{limit: spec.CaptureLimit}
+		stderr := captureBuffer{limit: spec.CaptureLimit}
 		cmd.Stdout = &stdout
 		cmd.Stderr = &stderr
 		if spec.Stdout != nil {
@@ -180,3 +183,21 @@ func mergeEnv(base []string, overrides map[string]string) []string {
 
 // LookPath is exposed for prerequisite diagnostics, not command-string execution.
 func LookPath(name string) (string, error) { return exec.LookPath(name) }
+
+// captureBuffer also fails the output pump so callers cannot mistake truncation
+// for complete evidence. The reader is closed by runCaptured on write failure.
+type captureBuffer struct {
+	buffer bytes.Buffer
+	limit  int
+}
+
+func (b *captureBuffer) Write(p []byte) (int, error) {
+	if b.limit > 0 && len(p) > b.limit-b.Len() {
+		n, _ := b.buffer.Write(p[:b.limit-b.Len()])
+		return n, ErrOutputIncomplete
+	}
+	return b.buffer.Write(p)
+}
+
+func (b *captureBuffer) Len() int       { return b.buffer.Len() }
+func (b *captureBuffer) String() string { return b.buffer.String() }

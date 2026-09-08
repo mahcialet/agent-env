@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/product-specs/cli-contract.md
-source_sha256: f33455b80c4fed57fc07f3f8aad1d6eab2aee5b27b2e4992b174f9322eaef500
+source_sha256: b5feab71c9b9defcd3d55617869cf30137435f653aec8d7f7f3ca9b115caaed2
 ---
 
 [English（翻訳元）](cli-contract.md)
@@ -126,6 +126,12 @@ PNG のピクセルは text のように秘密値を伏せられません。UI �
 remote 完了を確認できない場合は実行中コマンドの barrier を保持します。
 `ui recover` は登録済みの中断された helper 操作だけを扱い、その同一性と不在を確認し、
 復旧を記録してからその run の barrier を解除します。入力を再試行せず、中断された操作を成功とも扱いません。
+復旧には、明示的に永続化された `termination-unconfirmed` の分類と、検証済みの元の結果証拠が必要です。
+分類がない crash は引き続き拒否します。
+
+UI error は共通の終了コード仕様に従います。前提条件の不足は 3、無効な option・対象選択・
+存在しない lease・stale/ambiguous な参照は 2、registry と観測の障害は 7 を返します。
+秘密値を伏せた後も error の型による分類を保ち、これらを区別できるようにします。
 
 意味情報を使うコマンドでは、`AGENT_ENV_UI_HELPER` に検証済み companion build directory を指定します。
 インストール済み tool を使い、`go run ./tools/uihelper --sdk <sdk> --jdk <jdk>

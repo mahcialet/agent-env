@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/product-specs/android-ui-observer.md
-source_sha256: f251c2d930b05e6bc86417f70c220d6796d0addf9e71651e5f28fde4fff278bb
+source_sha256: acd02b10328884c7491bdd69fdea38a5058f5f0637550b38552d9ac92a9fbb56
 ---
 
 # Android UI observer
@@ -61,12 +61,14 @@ version 1 の snapshot は、リース、runtime、serial、対象 package、bac
 label、text、bounds、関連する状態と action、親の文脈を保持します。node 参照は snapshot 内でのみ有効です。
 bounds はデバイスのピクセル単位です。一定の走査順序から番号付きの簡潔なテキストを生成します。
 上限は node 数 1000、深さ 64、各フィールド 4096 文字、応答データ 1 MiB です。
-切り詰めた場合は明示します。不完全な snapshot は診断専用です。
+切り詰めた場合は明示します。Android window ID は観測情報としてのみ保持し、継続的な action の識別情報には使いません。
+不完全な snapshot は診断専用です。
 
 意味情報に基づく action は、登録済み snapshot の path と digest を検証して読み込み、
-リースと runtime の識別情報を確認したうえで、同じ operation fence の保持中に再観測します。
+リースと runtime の識別情報および記録済み backend の provenance を確認したうえで、同じ operation fence の保持中に再観測します。
+異なる helper build で取得した snapshot は、入力を許可する根拠にできません。
 記録した意味情報の fingerprint 全体を現在の node と照合し、一致がちょうど一つであることを要求して、
-その現在の accessibility node 経由で操作します。fingerprint には window、祖先の文脈、class、
+その現在の accessibility node 経由で操作します。fingerprint には window の意味情報による識別要素（type/title/bounds/root package/class）、祖先の文脈、class、
 package、resource ID、編集可能でない label と text、bounds、action と状態の flag を含めます。
 走査順の参照番号と、編集可能な値・password 値は含めません。一致なし、または複数一致の場合は、
 それぞれ安定した診断コード `AGENTENV-UI-STALE` / `AGENTENV-UI-AMBIGUOUS` を返し、入力を実行しません。
@@ -94,7 +96,9 @@ atomic に永続化して digest を登録します。
 logcat には application の指定が必要です。現在観測した PID に対象を絞り、その PID と
 デバイス時刻による取得範囲の下限を報告します。process 再起動をまたぐ履歴や subprocess の網羅は保証しません。
 global log を消去せず、対象を絞れない収集へ暗黙に切り替えることもありません。
-出力の秘密値を伏せ、256 KiB / 2000 行を上限とします。
+出力の秘密値を伏せ、256 KiB / 2000 行を上限とします。登録済み artifact に加え、text/JSON 出力内でも内容を返します。
+PID が再利用されると、以前の process の履歴行が含まれる場合があります。帰属を示すのは現在の数値 PID であり、
+その package の履歴であることまで証明するものではありません。
 
 ## companion と移植性
 
@@ -112,8 +116,11 @@ AndroidX や対象アプリへの依存はありません。source、protocol ve
 中断された操作や完了を確認できないデバイス操作では、既存の実行中コマンドに対する cleanup barrier を保持します。
 Destroy が入力操作と競合して先に進むことはありません。期限付き observer 操作が fence を保持している間は、
 busy を返す場合があります。入力結果が不確実な場合は調査が必要であり、暗黙に再試行してはいけません。
-crash 後は `ui recover LEASE --run RUN` により、新しい fence の下で登録済みの実行中 UI helper 操作を
-終了できます。helper の同一性と process の不在を証明し、復旧の証拠を保持してから、元の操作を
+中断後は、registry に復旧可能な `termination-unconfirmed` という分類が明示的に保存され、
+元の結果 artifact が登録済みで検証可能な場合に限り、`ui recover LEASE --run RUN` で
+登録済みの実行中 UI helper 操作を終了できます。分類を保存する前の crash を含め、分類がない場合は拒否します。
+分類の書き込み失敗によって、host process や証拠が不確実な操作を helper 復旧の対象にしてはいけません。
+このコマンドは新しい fence を使い、helper の同一性と process の不在を証明し、復旧の証拠を保持してから、元の操作を
 失敗または結果不確実として記録します。native input や任意の test process の復旧、別 run の barrier 解除、
 失われた screenshot の再構築、中断された操作の成功扱いは行いません。
 証拠の記録が失敗した場合も、cleanup を進める前に、保持された完了または復旧の証拠が必要です。

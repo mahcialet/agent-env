@@ -117,6 +117,13 @@ fence with cleanup; uncertain remote completion retains the running-command barr
 `ui recover` only handles a registered interrupted helper operation, verifies its
 identity and absence, and records recovery before clearing that run's barrier.
 It neither retries input nor declares the interrupted operation successful.
+Recovery requires positively persisted `termination-unconfirmed` eligibility and
+verified original result evidence; unclassified crashes remain blocked.
+
+UI errors follow the shared exit contract: missing prerequisites return 3; invalid
+options, target selection, missing leases and stale/ambiguous references return 2;
+registry and observation failures return 7. Typed error categories survive redaction
+so secret-safe diagnostics do not collapse these distinctions.
 
 Set `AGENT_ENV_UI_HELPER` to a verified companion build directory for semantic
 commands. Build it explicitly with `go run ./tools/uihelper --sdk <sdk> --jdk <jdk>

@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/design-docs/android-ui-observer.md
-source_sha256: 79d0da41eb5a64720cdcc16b0b6abc064ff53ee05c728537067dbf97431674f7
+source_sha256: 1aeb2a9a24e22a43edc5e452090b83df06ed137782bd699fa9da62c3914f53d5
 ---
 
 # Android UI observer の設計
@@ -58,6 +58,15 @@ PNG 証拠、別リースとの分離を独立に検証します。cross-build �
 fence の下で新たに操作意図を書き込み、期限付きの停止・静止確認を行う場合があります。
 呼び出し元によるキャンセルや lock 喪失では、実行中 barrier を保持します。
 明示的な `ui recover --run` は、新しい fence の下で、登録済みの中断された helper run を扱います。
+復旧可能な `termination-unconfirmed` という分類が明示的に保存され、元の結果が登録済みで
+digest を検証できることが必要です。禁止する分類がないことだけでは不十分です。
+最終分類の保存が失敗すると、registry に古い操作意図だけが残る場合があるためです。
+crash により分類が記録されなかった中断は、引き続き拒否します。
 保存された runtime と serial を検証し、インストール済み companion の digest を確認して、その package だけを停止します。
 PID の不在を確認し、失敗または結果不確実という outcome と復旧 artifact を記録してから、cleanup barrier を解除します。
 入力の再試行や、任意の native command の復旧は行いません。
+
+Android window ID は instrumentation の接続をまたぐと変わる一時的な値です。
+生の観測には保持しますが、node の照合には含めず、window の意味情報を示す metadata を使います。
+変化していない Flutter tree は再接続後も操作できる必要があります。
+意味情報が同じ window が複数ある場合も、node の照合結果が一意であることを要求します。

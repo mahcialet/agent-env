@@ -29,6 +29,14 @@ import (
 // missing Flutter, Docker, SDK, AVD or acceleration. Normal Flutter/Gradle
 // builds may download declared dependencies under already accepted licenses.
 func TestRealFlutterAndroidBackendLease(t *testing.T) {
+	realFlutterAndroidBackendLease(t, false)
+}
+
+func realFlutterAndroidBackendLease(t *testing.T, observe bool) {
+	t.Helper()
+	if observe && os.Getenv("AGENT_ENV_UI_HELPER") == "" {
+		t.Fatal("set AGENT_ENV_UI_HELPER to a verified observer companion build")
+	}
 	template := os.Getenv("AGENT_ENV_ANDROID_TEMPLATE")
 	if template == "" || strings.ContainsAny(template, "\r\n'\"\\/") {
 		t.Fatal("set AGENT_ENV_ANDROID_TEMPLATE to an installed, stopped AVD")
@@ -101,6 +109,13 @@ Future<void> probeBackend() async {
   }
 }
 `)
+	if observe {
+		main, err := os.ReadFile(filepath.Join(repository, "lib", "main.dart"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		write("lib/main.dart", strings.Replace(string(main), "runApp(const MaterialApp(home: Scaffold(body: Text('agent-env fixture'))));", "runApp(const MaterialApp(home: ObserverFixture()));", 1)+observerFlutterWidgets)
+	}
 	manifestPath := filepath.Join(repository, "android", "app", "src", "main", "AndroidManifest.xml")
 	manifest, err := os.ReadFile(manifestPath)
 	if err != nil {
@@ -161,6 +176,18 @@ tests:
     command: [%s, -H, 127.0.0.1, -P, '5037', -s, '${android:phone:serial}', get-state]
     timeout: 30s
 `, template, adbArg))
+	if observe {
+		manifest, err := os.ReadFile(filepath.Join(repository, ".agent-env.yaml"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		write(".agent-env.yaml", string(manifest)+fmt.Sprintf(`  resume-app:
+    stack: mobile
+    source: self
+    command: [%s, -H, 127.0.0.1, -P, '5037', -s, '${android:phone:serial}', shell, am, start, -W, -n, dev.agentenv.lease_fixture/.MainActivity]
+    timeout: 30s
+`, adbArg))
+	}
 	run(repository, "flutter", "pub", "get")
 	run(repository, "git", "init")
 	run(repository, "git", "add", ".")
@@ -321,6 +348,10 @@ tests:
 	if projects[0] == "" || projects[0] == projects[1] || leases[0].ID == leases[1].ID || leases[0].Sources[0].WorktreePath == leases[1].Sources[0].WorktreePath || leases[0].Applications[0].Build.ArtifactPath == leases[1].Applications[0].Build.ArtifactPath || devices[0].Serial == devices[1].Serial || devices[0].AVDName == devices[1].AVDName || devices[0].AVDPath == devices[1].AVDPath || devices[0].ConsolePort == devices[1].ConsolePort || devices[0].ADBPort == devices[1].ADBPort || leases[0].Applications[0].Reverse[0].HostPort == leases[1].Applications[0].Reverse[0].HostPort {
 		t.Fatal("two real Flutter leases share source, APK, device, port or reverse resources")
 	}
+	if observe {
+		t.Setenv("AGENT_ENV_HOME", home)
+		exerciseRealAndroidUI(t, ctx, s, leases)
+	}
 	if released, err := s.Destroy(ctx, leases[0].ID, false, false); err != nil || released.Observed != "released" {
 		t.Fatalf("first lease cleanup: %v state=%s", err, released.Observed)
 	}
@@ -329,6 +360,13 @@ tests:
 		t.Fatalf("sibling changed after first cleanup: %v state=%s", err, sibling.Observed)
 	}
 	backendHTTP(sibling)
+	if observe {
+		shot := realUICommand(t, ctx, "snapshot", sibling.ID, "--application", "mobile-app")
+		if shot.Snapshot == nil || shot.Snapshot.Serial != devices[1].Serial {
+			t.Fatal("sibling UI identity changed after first destroy")
+		}
+		realUINode(t, shot, func(n domain.UINode) bool { return strings.Contains(n.Text+" "+n.Description, "Count0") }, "unmodified sibling counter")
+	}
 	// Establish the baseline only after the first Destroy completes; requests
 	// received during shutdown do not prove the remaining guest still works.
 	baseline := guestRequests(sibling)

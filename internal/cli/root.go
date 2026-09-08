@@ -111,6 +111,7 @@ func New(out, errOut io.Writer) *cobra.Command {
 	plan.Flags().StringToStringVar(&options.SourceRefs, "source", nil, "source alias=ref overrides")
 	root.AddCommand(plan)
 	addLifecycle(root, &output, emit, out, errOut)
+	root.AddCommand(uiCommand(&output, emit, out, errOut))
 	return root
 }
 

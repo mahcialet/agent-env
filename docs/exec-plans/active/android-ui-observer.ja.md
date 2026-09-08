@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/exec-plans/active/android-ui-observer.md
-source_sha256: c07700f00b952b7a0586bf9f130b718e067472bb40e5ba028bb3ce4d517e20f9
+source_sha256: d6707f35372f52faee596599698519edf851ff13863849934d5fb46b7eff7ba2
 ---
 
 # Lease が所有する Android UI の観測と操作
@@ -108,6 +108,13 @@ checkbox は意図ではなく観測済みの完了を表す。チェック時�
 
 ## 想定外の発見
 
+- 2026-09-08、二回目の実二台 Emulator 試験: `TestRealAndroidUIObserver` は 276.86 秒実行され、両アプリの起動に成功した後、新しい snapshot を使った意味情報 tap を stale として拒否した。保持した前後の証拠は、Android window ID が 8 から 11 に変わったことと、それに由来する fingerprint 以外は一致していた。window ID は UiAutomation の再接続をまたぐと変わるため、継続的な意味情報の識別要素にはできない。helper を window の意味情報に基づく metadata を使うよう修正し、三回目の実装版 build を生成した。実際の回帰再試行は未完了。
+- 2026-09-08、追加検査: 全単体テストと vet が再び成功した。CLI の検証には log 内容の直接出力、明示的な duration 0 の拒否、存在しない lease の終了コード 2、壊れた registry の終了コード 7 を含めた。今回の翻訳同期後、単独の `go run ./tools/repoctl docs-check` が成功した。Go race 検証は実行中である。native または実 observer の最終受け入れ済みとはしない。
+
+- 2026-09-08、実統合試験: `TestRealAndroidUIObserver` は Android activity の起動中、`am start -W` の `Status: timeout` により 222.41 秒で失敗し、observer の assertion には到達しなかった。registry の確認と通常の保守的 cleanup により、両 lease の released を確認した。readiness、所有権、timeout の検査は緩めていない。独立した再試行は別項に記録し、この失敗を observer の受け入れ証拠とはしない。
+- 2026-09-08、app/復旧の独立レビュー: 元の結果を登録した後に最終分類の `SaveRun` が失敗すると、分類のない run が残る場合があった。従来の復旧は明示的な禁止分類だけを拒否していたため、分類の欠落によって host-process/evidence barrier を回避できた。現在は明示的に永続化された `termination-unconfirmed` の分類と、検証済みの元の結果証拠を要求する。`TestUIRecoverRefusesUnpersistedFailureClassification` で分類の書き込み失敗を検証する。復旧・fence・backend 診断の focused test は Linux / Go 1.27.1 で成功し、最終受け入れは引き続き未完了。
+- 2026-09-08、CLI の独立レビュー: 以前の UI error は分類されず、tool の不足や registry 障害も既定の終了コード 2 になっていた。型による error 分類の伝播と CLI の対応付けにより、前提条件不足は 3、無効な option・対象選択・存在しない lease・stale/ambiguous は 2、registry/観測障害は 7 と区別する。診断 error に秘密情報を露出させない。
+
 - 2026-09-08: 所有確認済み API 35 Emulator と一時 Flutter アプリで、`uiautomator dump` と自己対象の UiAutomation APK が Flutter の accessibility を取得できた。意味的クリックで Count 0 から Count 1 に変化。フォーカスした欄への `日本語 🙂 café` の入力後、新しいノード参照で `置換済み 🚀` への置換を行い、取得した accessibility text で確認した。対象アプリに instrumentation 依存は追加していない。
 - 2026-09-08、失敗した方法: 未フォーカスの Flutter ノードは ACTION_SET_TEXT に true を返しても値を変更しなかった。フォーカスによるキーボード表示で window とノード番号が変化し、古い番号は別の対象で成功を返す場合もあった。実装では対応 action・focus の確認、意味情報の fingerprint 照合、入力後の値の一致確認を必須にする。dispatch の成功だけでは検証済みとしない。
 
@@ -133,6 +140,11 @@ checkbox は意図ではなく観測済みの完了を表す。チェック時�
 設計に影響した失敗した試行は削除せず保持する。
 
 ## 判断の記録
+
+- 2026-09-08、実装担当: window の識別には type、title、bounds、root package/class、active 状態を使い、一時的な Android window ID、走査順番号、layer を除外する。生の ID は観測証拠として保持し、曖昧な一致は引き続き拒否する。理由: UiAutomation の再接続後も変化していない Flutter UI を操作できるようにしつつ、意味情報が重複する window を一意とは扱わないため。
+- 2026-09-08、実装担当: 意味情報に基づく action は登録済み snapshot の `ExpectedBackend` を引き継ぐ。backend の provenance が一致しない場合は意味情報 action の dispatch 前に拒否し、別の helper build で得た snapshot で現在の backend を操作できないようにする。理由: fingerprint の規則は特定の検証済み helper 実装に属し、既存の参照が使う規則を暗黙に変更してはいけないため。
+
+- 2026-09-08、実装担当: 復旧の許可は、禁止分類がないことではなく、永続化された明示的な適格性に基づく。helper 復旧の dispatch 前に `termination-unconfirmed` の分類と、登録済みの元の結果証拠を要求する。理由: 最終分類の保存失敗や crash によって、host process や証拠の不確実性が barrier 解除の許可へ変わることを防ぐため。分類のない中断は、明示的に調査するまで引き続き拒否する。
 
 - 2026-09-08、実装担当: helper の内部期限切れでは、元の fence が有効な間、検証済み companion だけの停止・静止確認に追加で最大 10 秒を使える。呼び出し元のキャンセルや lock 喪失では自動復旧しない。`ui recover LEASE --run RUN` は新しい fence を取得し、元の登録済み runtime/serial と helper の同一性を検証して process の不在を証明する。失敗または結果不確実という復旧証拠を保持してから、その run の barrier だけを解除する。理由: 所有権を弱めず、不確実性を隠さず、入力を再実行せず、native/test process に触れずに、不完全な remote 操作を復旧可能にするため。
 - 2026-09-08、実装担当: 安定した platform UiAutomation（API 26 以降）を使う agent-env 所有の自己対象 APK を採用し、AndroidX には依存しない。shell の text input では Unicode 置換を満たせない。native Go の明示 build で local 配布用 APK と version/source/APK digest を生成し、通常の Go build は SDK/JDK から独立させる。template に競合する helper があれば拒否し、上書きしない。

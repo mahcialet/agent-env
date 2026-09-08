@@ -56,13 +56,15 @@ capture time and snapshot ID. Windows and nodes retain class, package, resource 
 label, text, bounds, relevant state/actions and parent context. Node references are
 local to a snapshot. Bounds are device pixels. Stable traversal supplies compact
 numbered text. Limits are 1000 nodes, depth 64, 4096 characters per field and 1 MiB
-of response data; truncation is explicit. Partial snapshots are diagnostic only.
+of response data; truncation is explicit. Android window IDs are observation-only
+and do not form persistent action identity. Partial snapshots are diagnostic only.
 
 A semantic action loads a registered snapshot with verified path and digest,
-checks lease/runtime identity, and reobserves under the same operation fence.
+checks lease/runtime and recorded backend provenance, and reobserves under the same
+operation fence. A snapshot from a different helper build cannot authorize input.
 It matches the complete recorded semantic fingerprint against current nodes,
 requires exactly one match, and dispatches through that current accessibility node.
-The fingerprint includes window, ancestor context, class, package, resource ID,
+The fingerprint includes semantic window identity (type/title/bounds/root package/class), ancestor context, class, package, resource ID,
 noneditable label/text, bounds and action/state flags; it excludes ordinal refs and
 editable/password values. Missing and duplicate matches produce stable
 `AGENTENV-UI-STALE` / `AGENTENV-UI-AMBIGUOUS` diagnostics without input.
@@ -92,7 +94,10 @@ bounded to 16 MiB / 16 megapixels before atomic persistence and digest registrat
 Logcat requires an application, scopes to its currently observed PID and reports
 that PID and device-time lower bound. It does not claim historical coverage across
 process restarts or subprocesses, never clears global logs, and never silently
-falls back to unscoped capture. Output is redacted and capped at 256 KiB / 2000 lines.
+falls back to unscoped capture. Output is redacted and capped at 256 KiB / 2000 lines, available inline in text/JSON
+as well as a registered artifact. PID reuse can include historical lines from a
+previous process; attribution is to the current numeric PID, not proven package
+history.
 
 ## Companion and portability
 
@@ -111,9 +116,14 @@ remains valid. Input is never retried. If the caller cancels or the fence is los
 automatic recovery does not run. Interrupted/unconfirmed device operations retain
 the existing running-command cleanup barrier. Destroy cannot race input; it may return busy while a bounded
 observer operation owns the fence. Uncertain input must be investigated, never
-silently retried. After a crash, `ui recover LEASE --run RUN` can terminate a registered running UI
-helper operation under a fresh fence, prove helper identity and process absence,
-and retain recovery evidence before marking the original operation failed/uncertain.
+silently retried. After an interruption, `ui recover LEASE --run RUN` can terminate a registered running
+UI helper operation only when the registry already records positive
+`termination-unconfirmed` recovery eligibility and the original result artifact is
+registered and verifiable. Missing classification, including a crash before that
+classification was saved, remains blocked. A failed classification write must never
+make host-process or evidence uncertainty eligible for helper recovery. The command
+uses a fresh fence, proves helper identity and process absence,
+and retains recovery evidence before marking the original operation failed/uncertain.
 It never recovers native input or arbitrary test processes, removes another run's
 barrier, reconstructs lost screenshots, or reports the interrupted operation as
 successful. Evidence failures still require retained completion/recovery evidence

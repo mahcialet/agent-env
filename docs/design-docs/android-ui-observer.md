@@ -58,7 +58,16 @@ Recovery preserves the lease fence. Internal helper deadlines may trigger bounde
 quiescence under the original still-active operation context, following a fresh
 fenced intent write. Caller cancellation or lock loss retains the running barrier.
 Explicit `ui recover --run` handles a registered interrupted helper run under a new
-fence; it validates stored runtime/serial, verifies the installed companion digest,
+fence. Eligibility must be positively recorded as `termination-unconfirmed`, with
+a registered, digest-verified original result. The absence of a forbidden
+classification is insufficient: a failure while saving the final classification
+can leave the earlier run intent in the registry. Unclassified crash interruptions
+therefore remain blocked. Recovery validates stored runtime/serial, verifies the installed companion digest,
 stops only that package, confirms PID absence and records the failed/uncertain
 outcome plus recovery artifacts before releasing its cleanup barrier. It never
 retries input or recovers arbitrary native commands.
+
+Android window IDs are ephemeral across instrumentation connections. Retain them
+in raw observations, but exclude them from node matching; use semantic window
+metadata instead. An unchanged Flutter tree must remain actionable after reconnect.
+Duplicate semantic window identities still require unique node matching.
