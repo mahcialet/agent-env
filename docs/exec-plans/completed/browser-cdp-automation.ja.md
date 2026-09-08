@@ -1,5 +1,5 @@
 ---
-source_sha256: 7e25c8c4649db8a5356c854a33385f6ae1c8b45dd31e976c0ec6410b3424752c
+source_sha256: cd6d5b4f0b068c9072f9a1037e99909b9f75d235a37670ed2a6ded245655b7e0
 translation_of: docs/exec-plans/completed/browser-cdp-automation.md
 status: completed
 owner: maintainers
@@ -654,10 +654,10 @@ bundleしない。
 | B21 | process death後CDP拒否 | native fixtureで2つ目のbrowser rootをkillし、後続browser pages拒否、showがnon-readyで履歴PID不変を確認。 |
 | B22 | process absence前profile削除無し | native fixtureで両lease destroy後のstate/profile directory不在を確認。generic `TestMissingLaunchingReceiptIsUncertain`とbrowser結果不明/証拠barrierで保守的cleanupを維持。 |
 | B23 | process lifecycle重複実装無し | `TestArchitectureBoundaries`のbrowser依存負例とarch-check成功。native fixtureはCDP Browser.closeではなく通常destroyでcleanup。 |
-| B24 | Native Linux | 成功：local sandbox有効Chrome 152.0.7977.64 / CDP 1.3、最終race native package 8.834秒。`391288c`のPR native 34247636411、Chrome 152.0.7977.82 / CDP 1.3、linux/amd64 test 8.86秒。 |
+| B24 | auto restart無し | `TestBrowserLifecycleGuards`で起動回数不変。native手動終了fixtureで履歴PID不変・readyに戻らないことを確認。 |
 | B25 | Native Windows | 成功：`391288c`、PR Browser native 34247636411、windows/amd64、Chrome 152.0.7977.82 / CDP 1.3、実CLI fixture 26.76秒。sandboxアクセスguardと通常cleanupも成功。 |
 | B26 | Native macOS | 成功：`391288c`、PR Browser native 34247636411、darwin/arm64、Chrome 152.0.7977.82 / CDP 1.3、実CLI fixture 9.60秒。 |
-| B27 | Linux real headless pass | Linux amd64 `TestBrowserNativeCLI`、sandbox有効、Chrome 152.0.7977.64 / CDP 1.3。初回・3反復・最新race成功（package 8.489秒 / test 7.47秒）。 |
+| B27 | Linux real headless pass | 成功：local sandbox有効Chrome 152.0.7977.64 / CDP 1.3、最終race native package 8.834秒。`391288c`のPR native 34247636411、Chrome 152.0.7977.82 / CDP 1.3、linux/amd64 test 8.86秒。 |
 | B28 | 実機fixture機能 | `391288c`の3 OS native fixtureですべて成功（PR Browser native 34247636411）。継承blank/srcdoc/blob観測とopaque/OOPIF拒否を含む。iframe入力とcross-origin観測は引き続き非対応。 |
 | B29 | provider非依存lease backend E2E | native fixtureでrepository所有HTTP backendを別process runtimeとしてbuild。Unicode request/count/log相関と別lease backendの不変を確認。Compose provider不使用。 |
 | B30 | Browser未使用時coreにbrowser不要 | browser integration tagなしでcore unit/raceと6 CGO-free CLI cross-build成功。browser前提は明示的browserintegration test/commandだけに適用。 |
