@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/QUALITY.md
-source_sha256: 32dfdebc39bd408aa57d55a6e261de61e2d82a11e6ba25775930908646122603
+source_sha256: 55700d38679271e227d8658f8a96427a32bf8fa58e90909c28125542d7c66ff5
 ---
 
 # 品質と検証
@@ -153,7 +153,7 @@ Windows/macOS/Linux CI成功（Verify 34226859965）を完了Planに記録して
 
 ## Browser/CDPの検証
 
-受け入れ証拠は[実行中browser ExecPlan](exec-plans/active/browser-cdp-automation.ja.md)で管理します。
+受け入れ証拠は[完了browser ExecPlan](exec-plans/completed/browser-cdp-automation.ja.md)で管理します。
 `TestBrowserManifestContract`、`TestBrowserManifestNegativeFixtures`、
 `TestBrowserRequiresProcessRuntime`、`TestBrowserAbsentPreservesLegacyCanonicalShape`は、
 明示的binding、正確な専用profile/debugging flag、YAML null/merge/alias、互換性を検証します。
@@ -162,7 +162,7 @@ config単体・race testはローカルで成功しました。baselineの`go te
 この失敗と修正を英日planに記録します。
 
 実際のheadless Chrome for Testing 152.0.7977.82 / CDP 1.3をGo 1.27で動かし、
-`b48ab64`の3 OSすべてで成功しました（Browser native 34235476126）。fixtureではAX/DOM、
+`391288c`の3 OSすべてで成功しました（Browser native 34247636411）。fixtureではAX/DOM、
 screenshot、Unicode入力と消去、古い参照の拒否、iframe/shadow観測、上限付き診断、
 lease所有backend、永続的な入力redaction、安全なprofile cleanupを検証しました。
 Planにはnativeの証拠とCI修正履歴を、mock testやcross-buildと分けて記録しています。

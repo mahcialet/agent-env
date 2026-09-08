@@ -11,7 +11,7 @@ last_verified: 2026-09-08
 Browser commands observe and control an explicitly declared Chromium-family
 browser owned by a persistent process lease. They do not launch a second browser,
 attach to an external browser, or reuse a personal profile. Implementation and
-native acceptance are tracked in the [active ExecPlan](../exec-plans/active/browser-cdp-automation.md).
+native acceptance are tracked in the [completed ExecPlan](../exec-plans/completed/browser-cdp-automation.md).
 
 ## Manifest and prerequisites
 

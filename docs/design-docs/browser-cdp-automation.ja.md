@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/design-docs/browser-cdp-automation.md
-source_sha256: 63bb978d251af3d6dba2a861bcbe7a0b3a2e22bd15da71dcead036e722bc7749
+source_sha256: 31402134de30cd0c12f2fcacd96425d72dd2e6fc9872fe5d29a3e670d9b85f78
 ---
 
 # Browser/CDP設計
@@ -11,7 +11,7 @@ source_sha256: 63bb978d251af3d6dba2a861bcbe7a0b3a2e22bd15da71dcead036e722bc7749
 [英語版（翻訳元）](browser-cdp-automation.md)
 
 コマンドと上限は[製品契約](../product-specs/browser-cdp-automation.ja.md)、
-実装判断とnative環境での直接証拠は[実行中ExecPlan](../exec-plans/active/browser-cdp-automation.ja.md)に記録します。
+実装判断とnative環境での直接証拠は[完了ExecPlan](../exec-plans/completed/browser-cdp-automation.ja.md)に記録します。
 
 ## 所有権と依存関係
 
@@ -67,7 +67,7 @@ configの負例で明示的bindingと正確なswitch要件を検証します。a
 古い参照・別lease参照、run/証拠の失敗、destroy fencingを対象にします。
 transport fixtureは別接続先discovery、不正・過大応答を拒否することを検証します。
 native testはWindows・macOS・Linux、Go 1.27、Chrome for Testing 152.0.7977.82で実行します。
-`b48ab64`の3 native jobはすべて成功し（Browser native 34235476126）、CDP 1.3を報告しました。
+`391288c`の3 native jobはすべて成功し（Browser native 34247636411）、CDP 1.3を報告しました。
 browser/backend fixtureは同じleaseのendpointを使います。Planには実行したnative検証の証拠を、
 cross-buildの結果と分けて記録しています。
 

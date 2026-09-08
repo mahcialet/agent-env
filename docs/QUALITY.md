@@ -163,7 +163,7 @@ Windows/macOS/Linux CI at `f588960` (Verify 34226859965), are recorded in the co
 
 ## Browser/CDP verification
 
-The [active browser ExecPlan](exec-plans/active/browser-cdp-automation.md) owns
+The [completed browser ExecPlan](exec-plans/completed/browser-cdp-automation.md) owns
 acceptance evidence. `TestBrowserManifestContract`,
 `TestBrowserManifestNegativeFixtures`, `TestBrowserRequiresProcessRuntime` and
 `TestBrowserAbsentPreservesLegacyCanonicalShape` cover explicit bindings, exact
@@ -174,7 +174,7 @@ the supplied Japanese plan lacked translation metadata. That failure is recorded
 and corrected in the bilingual plan.
 
 Real headless Chrome for Testing 152.0.7977.82 / CDP 1.3 passed on all three
-OSes with Go 1.27 at `b48ab64` (Browser native 34235476126). The fixture exercised
+OSes with Go 1.27 at `391288c` (Browser native 34247636411). The fixture exercised
 AX/DOM, screenshots, Unicode input and clearing, stale rejection, iframe/shadow
 observation, bounded diagnostics, a lease-hosted backend, durable input redaction
 and safe profile cleanup. The plan records native evidence and CI repair history

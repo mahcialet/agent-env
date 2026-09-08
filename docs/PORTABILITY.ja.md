@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/PORTABILITY.md
-source_sha256: 82fbe6dfeff71b3486220d27dfb6e584653be9f3d9c1b8c565766e144dd0c58d
+source_sha256: 5796f99945780d92b107e0317433dcc2181ff072328486bccf2f38de2d23c08d
 ---
 
 [英語版（翻訳元）](PORTABILITY.md)
@@ -117,8 +117,8 @@ argvには`--enable-automation`と専用`${runtime_dir}/profile`などを必須�
 Node、Python、browser driver、CGO、shellの要件を追加しません。Chromeは同梱しません。
 選定したnative matrixはChrome for Testing 152.0.7977.82、Go 1.27、Windows/macOS/Linuxです。
 実測browser/protocol versionとnative成功・失敗の証拠は
-[実行中browser plan](exec-plans/active/browser-cdp-automation.ja.md)に記録しています。
-`b48ab64`の3 native jobがすべて成功し（Browser native 34235476126）、CDP 1.3を報告しました。
+[完了browser plan](exec-plans/completed/browser-cdp-automation.ja.md)に記録しています。
+`391288c`の3 native jobがすべて成功し（Browser native 34247636411）、CDP 1.3を報告しました。
 この実行結果はcross-buildの証拠と分けて扱います。
 
 Linuxでは、導入したbrowserのsandboxを利用できる必要があります。UbuntuのAppArmorは、

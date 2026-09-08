@@ -1,5 +1,5 @@
 ---
-status: active
+status: completed
 owner: maintainers
 last_verified: 2026-09-09
 ---
@@ -141,14 +141,14 @@ Out of scope:
 
 ### PR #10 review follow-up (2026-09-09)
 
-- [ ] Validate bounded Windows sharing-violation cleanup after native process-tree absence, preserving generic process ownership and failure barriers.
+- [x] Validate bounded Windows sharing-violation cleanup after native process-tree absence, preserving generic process ownership and failure barriers.
 
-Execution authority remains this reopened plan on `feat/browser-cdp-automation`.
-The prior completion checkpoint below is historical: Windows native run
-34236523326 later failed during text wait with cross-origin frame classification.
-PR-triggered run 34240370827 subsequently passed unchanged, but that does not
-resolve the classification defect or the new review findings. Keep this plan
-active until fixes and fresh native/Verify gates pass.
+This plan was reopened on `feat/browser-cdp-automation` after Windows native run
+34236523326 failed following the initial archive. The unchanged PR-triggered pass
+34240370827 was not treated as a repair. The plan remained active through the
+review fixes and a further Windows cleanup failure. All final gates passed at
+`391288c`, and all nine review threads were replied to and resolved before this
+bilingual re-archive on 2026-09-09.
 
 - [x] Classify iframe access by browser-reported security origins; cover inherited, blob and opaque origins and the native timing regression.
 - [x] Require a nonempty URL wait substring and reject role on URL waits.
@@ -157,8 +157,8 @@ active until fixes and fresh native/Verify gates pass.
 - [x] Subscribe only to required capture events; ignore unrelated events without disconnecting ordinary operations.
 - [x] Persist semantic page/snapshot/node provenance before input, including uncertain runs, without text disclosure.
 - [x] Correct bilingual architecture status and update contract/decision evidence.
-- [ ] Complete regression/race/harness and real three-OS native CI; reconcile final evidence before archival.
-- [ ] Reply to and resolve every addressed PR #10 review thread.
+- [x] Complete regression/race/harness and real three-OS native CI; reconcile final evidence before archival.
+- [x] Reply to and resolve every addressed PR #10 review thread.
 
 - [x] Merge PR #9 and record exact `master` revision.
 - [x] Create `feat/browser-cdp-automation`.
@@ -554,8 +554,23 @@ the same published commit; no timeout or readiness assertion has been relaxed.
 
 ## Outcomes & Retrospective
 
-Reopened on 2026-09-09 for PR #10 review. The previous outcomes below record the
-initial milestone; final acceptance is pending the review Progress gates above.
+PR #10 review completed on 2026-09-09. Commit `3d3fce5` repairs origin proof,
+wait predicates, truncation/byte budgets, event subscriptions and durable input
+target provenance; `391288c` adds bounded Windows sharing-violation cleanup after
+native absence proof. Both preserve ownership, sandboxing, privacy and the
+process/CDP responsibility boundary. Regression tests first reproduced the defects;
+real browser tests exposed inherited-origin placeholders and omitted OOPIFs that
+mocks had missed. Independent review added post-collection identity checks so a
+navigation cannot publish partial evidence under an old origin/loader.
+
+Final revision `391288c351dec3e41febcfec15d912c65905a3f0` passed
+[PR Verify 34247636419](https://github.com/mahcialet/agent-env/actions/runs/34247636419)
+(all 12 jobs), [PR Browser native 34247636411](https://github.com/mahcialet/agent-env/actions/runs/34247636411)
+(all three OSes) and [Release preview 34247636491](https://github.com/mahcialet/agent-env/actions/runs/34247636491)
+(build and all three native smoke jobs). Push Verify/native also passed. All nine
+threads received concrete replies and were resolved. This final archive changes
+only documentation; the failed Windows runs and failed implementation approaches
+remain below as historical evidence. The initial milestone retrospective follows.
 
 Completed on 2026-09-08 on `feat/browser-cdp-automation`. This slice delivers
 explicit Chromium-CDP bindings above the existing persistent process runtime.
@@ -888,17 +903,17 @@ Complete acceptance evidence and retrospective before archiving both plans.
 | B21 | Manual browser process death causes later CDP action refusal. | Native fixture kills the second browser root and verifies subsequent browser pages refuses; show reports non-ready with unchanged historical PID. |
 | B22 | Profile deletion occurs only after process-tree absence is proven; uncertainty retains/quarantines. | Native fixture destroys both leases and checks state/profile directories absent; generic `TestMissingLaunchingReceiptIsUncertain` and browser uncertain/evidence barriers preserve conservative cleanup. |
 | B23 | Browser process lifecycle remains owned by persistent-process runtime; no duplicate PID cleanup. | `TestArchitectureBoundaries` browser dependency negatives and arch-check passed; native fixture cleanup calls ordinary destroy, not CDP Browser.close. |
-| B24 | No automatic browser restart. | `TestBrowserLifecycleGuards` checks start count unchanged; native manual-death fixture keeps historical PID and never returns ready. |
-| B25 | Real native headless Browser/CDP integration passes on Windows. | PASS: `b48ab64`, Browser native 34235476126, windows/amd64, Chrome 152.0.7977.82 / CDP 1.3, real CLI fixture 29.97s. |
-| B26 | Real native headless Browser/CDP integration passes on macOS. | PASS: `b48ab64`, Browser native 34235476126, darwin/arm64, Chrome 152.0.7977.82 / CDP 1.3, real CLI fixture 19.62s. |
+| B24 | Native Linux | PASS: local sandboxed Chrome 152.0.7977.64 / CDP 1.3, final race native package 8.834s; PR native 34247636411 at `391288c`, Chrome 152.0.7977.82 / CDP 1.3, linux/amd64 test 8.86s. |
+| B25 | Native Windows | PASS: `391288c`, PR Browser native 34247636411, windows/amd64, Chrome 152.0.7977.82 / CDP 1.3, real CLI fixture 26.76s including sandbox-access guard and normal cleanup. |
+| B26 | Native macOS | PASS: `391288c`, PR Browser native 34247636411, darwin/arm64, Chrome 152.0.7977.82 / CDP 1.3, real CLI fixture 9.60s. |
 | B27 | Real native headless Browser/CDP integration passes on Linux. | Linux amd64 `TestBrowserNativeCLI`, sandbox enabled, Chrome 152.0.7977.64 / CDP 1.3: initial pass, three repetitions, latest race 8.489s package / 7.47s test. |
-| B28 | Real fixture proves AX/DOM/screenshot/Unicode/click/stale/iframe/shadow/console/network/cleanup. | All three native OS fixtures passed at `b48ab64` (Browser native 34235476126); same-origin iframe/shadow observation only, all iframe input and cross-origin observation explicitly unsupported. |
+| B28 | Real feature fixture | All three native OS fixtures passed at `391288c` (PR Browser native 34247636411), including inherited blank/srcdoc/blob observation and opaque/OOPIF refusal. Iframe input and cross-origin observation remain unsupported. |
 | B29 | Browser exercises a lease-hosted backend without one Compose-provider dependency. | Native fixture builds a repository-owned HTTP backend as another process runtime, correlates Unicode request/count/log evidence, and proves the second lease backend unaffected; no Compose provider used. |
 | B30 | Core standalone commands do not require a browser when Browser/CDP is unused. | Full core unit/race suites and six CGO-free CLI cross-builds passed without browser integration tag; browser prerequisite is required only by explicit browserintegration tests/commands. |
 | B31 | No Node/Python/Playwright/Selenium/ChromeDriver runtime dependency is introduced. | Go gorilla/websocket transport and direct native argv; architecture checks passed, no helper runtime/bundled browser added. |
 | B32 | Bilingual durable docs describe final behavior and privacy limits. | Paired product/design and supporting documents updated with exact flags, native prerequisites, privacy/limits; docs-check passed and hashes refreshed after meaning review. |
-| B33 | Final harness/translation/race/native CI passes. | PASS: final `b48ab64` Verify 34235476057 (12 jobs, full race/integration) and Browser native 34235476126 (3 OSes), plus local harness/docs-check and six cross-builds. |
-| B34 | Both plans contain direct evidence and Outcomes & Retrospective before archival. | PASS: B1–B34 reconciled with direct evidence, bilingual outcomes filled, both plans archived together and references/translations checked. |
+| B33 | Final checks | PASS: `391288c` PR Verify 34247636419 (12 jobs, full race/integration), PR Browser native 34247636411 (3 OSes), Release preview 34247636491 (build/native smoke), matching push CI, local harness and reviewed bilingual documentation. |
+| B34 | Living plan/evidence | PASS: PR #10 review gates and B1–B34 reconciled; all nine threads replied/resolved; failures retained, bilingual outcomes updated and both plans re-archived after final acceptance. |
 
 Code existence alone is not acceptance. Record exact browser/protocol versions,
 native runs and observed behavior.
@@ -1046,3 +1061,20 @@ successful cleanup. Independent review found no new defect. The two-second
 budget bounds retry scheduling, not a synchronous filesystem call in progress.
 Final local harness and strengthened Linux native validation passed; Windows
 execution and fresh full CI remain pending.
+
+2026-09-09 final native/release evidence at
+`391288c351dec3e41febcfec15d912c65905a3f0`: both
+[push Browser native 34247632201](https://github.com/mahcialet/agent-env/actions/runs/34247632201)
+and [PR Browser native 34247636411](https://github.com/mahcialet/agent-env/actions/runs/34247636411)
+passed all three OSes, including Windows normal profile deletion and the
+sandbox-access guard. PR Chrome 152.0.7977.82 / CDP 1.3 native times were
+Linux/amd64 8.86s, Windows/amd64 26.76s and macOS/arm64 9.60s.
+[Release preview 34247636491](https://github.com/mahcialet/agent-env/actions/runs/34247636491)
+also passed build and native smoke jobs. Eight review threads are replied/resolved;
+the plan gate remains open only until final Verify acceptance is confirmed.
+
+Final PR #10 closure (2026-09-09): all review Progress and acceptance gates are
+complete. Final Verify 34247636419 and push Verify 34247632059 passed at `391288c`.
+The native and release runs above also passed. All nine threads are resolved.
+This record supersedes the earlier pending checkpoints; source/test code is
+unchanged by the bilingual archive milestone.

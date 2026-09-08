@@ -1,7 +1,7 @@
 ---
-source_sha256: 413ffc303f5cb8c4a0124f7710890afe95da87e3f2b62b1af0bdd23d61ded485
-translation_of: docs/exec-plans/active/browser-cdp-automation.md
-status: active
+source_sha256: 7e25c8c4649db8a5356c854a33385f6ae1c8b45dd31e976c0ec6410b3424752c
+translation_of: docs/exec-plans/completed/browser-cdp-automation.md
+status: completed
 owner: maintainers
 last_verified: 2026-09-09
 ---
@@ -79,12 +79,13 @@ port名だけからbrowserをimplicit推測しない。
 
 ### PR #10 review対応（2026-09-09）
 
-- [ ] native process tree不在確認後のWindows共有違反cleanupを上限付きで検証し、汎用processの所有権と失敗時barrierを維持。
+- [x] native process tree不在確認後のWindows共有違反cleanupを上限付きで検証し、汎用processの所有権と失敗時barrierを維持。
 
-再開した本Planを`feat/browser-cdp-automation`の実行根拠とする。下の以前の完了記録は
-履歴であり、その後Windows native run 34236523326がtext待機中のcross-origin frame
-判定で失敗した。PR起動の34240370827は変更なしで成功したが、判定の不具合や新たな
-review指摘の解決にはならない。修正と最新native/Verify gateの成功までactiveを維持する。
+初回archive後にWindows native run 34236523326が失敗したため、
+`feat/browser-cdp-automation`で本Planを再開した。PR起動の34240370827が変更なしで
+成功しても修正済みとは扱わず、review修正と追加のWindows cleanup失敗の間はactiveを
+維持した。`391288c`で最終gateがすべて成功し、9 Threadすべてへ返信・Resolveした後、
+2026-09-09に英日Planを再archiveした。
 
 - [x] browser報告のsecurity originでiframeを判定。継承・blob・opaque originとnative timingの回帰を検証。
 - [x] URL waitに空でないsubstringを必須とし、roleを拒否。
@@ -93,8 +94,8 @@ review指摘の解決にはならない。修正と最新native/Verify gateの�
 - [x] captureに必要なeventだけを購読し、無関係eventで通常操作を切断しない。
 - [x] 不確定runを含め、入力前にpage/snapshot/nodeの根拠を保存。textは開示しない。
 - [x] architectureの英日statusを修正し、契約と判断の証拠を更新。
-- [ ] 回帰・race・harnessと実3 OS native CIを完了し、最新証拠を照合してからarchive。
-- [ ] PR #10の対応済みThreadすべてへ返信しResolve。
+- [x] 回帰・race・harnessと実3 OS native CIを完了し、最新証拠を照合してからarchive。
+- [x] PR #10の対応済みThreadすべてへ返信しResolve。
 
 - [x] PR #9 merge / exact revision記録
 - [x] branchを作成。
@@ -408,8 +409,20 @@ macOS/WindowsおよびLinuxのnative CIは未完了。既存のmacOS readiness t
 
 ## 成果と振り返り
 
-2026-09-09、PR #10 review対応のため再開した。以下は初回milestoneの成果の履歴であり、
-最終受け入れは上のreview進捗gateが完了するまで保留する。
+2026-09-09、PR #10 review対応を完了した。`3d3fce5`でoriginの証明、wait条件、
+省略・byte予算、event購読、永続的な入力対象の根拠を修正し、`391288c`でnative不在証明後の
+Windows共有違反cleanupを上限付きにした。所有権・sandbox・privacyとprocess/CDPの責務境界は
+維持した。回帰testで修正前の不具合を再現し、実browser testではmockで見つからなかった
+継承originの代用値と省略されたOOPIFを確認した。独立reviewで取得後の識別情報検査を追加し、
+navigation中の部分証拠を古いorigin/loader付きで公開しないようにした。
+
+最終revision `391288c351dec3e41febcfec15d912c65905a3f0`で
+[PR Verify 34247636419](https://github.com/mahcialet/agent-env/actions/runs/34247636419)の全12 job、
+[PR Browser native 34247636411](https://github.com/mahcialet/agent-env/actions/runs/34247636411)の全3 OS、
+[Release preview 34247636491](https://github.com/mahcialet/agent-env/actions/runs/34247636491)の
+buildと3 OS native smokeが成功した。pushのVerify/nativeも成功。9 Threadすべてへ
+具体的な根拠を返信しResolveした。今回の最終archiveは文書だけの変更で、Windowsの失敗runと
+試行した失敗案は以下に履歴として残す。続く部分は初回milestoneの振り返りである。
 
 2026-09-08、`feat/browser-cdp-automation`で完了した。既存の常駐process runtimeの上に、
 明示的なChromium-CDP bindingを実装した。processの所有・寿命管理はruntimeに残し、
@@ -641,17 +654,17 @@ bundleしない。
 | B21 | process death後CDP拒否 | native fixtureで2つ目のbrowser rootをkillし、後続browser pages拒否、showがnon-readyで履歴PID不変を確認。 |
 | B22 | process absence前profile削除無し | native fixtureで両lease destroy後のstate/profile directory不在を確認。generic `TestMissingLaunchingReceiptIsUncertain`とbrowser結果不明/証拠barrierで保守的cleanupを維持。 |
 | B23 | process lifecycle重複実装無し | `TestArchitectureBoundaries`のbrowser依存負例とarch-check成功。native fixtureはCDP Browser.closeではなく通常destroyでcleanup。 |
-| B24 | auto restart無し | `TestBrowserLifecycleGuards`で起動回数不変。native手動終了fixtureで履歴PID不変・readyに戻らないことを確認。 |
-| B25 | Windows real headless pass | 成功：`b48ab64`、Browser native 34235476126、windows/amd64、Chrome 152.0.7977.82 / CDP 1.3、実CLI fixture 29.97秒。 |
-| B26 | macOS real headless pass | 成功：`b48ab64`、Browser native 34235476126、darwin/arm64、Chrome 152.0.7977.82 / CDP 1.3、実CLI fixture 19.62秒。 |
+| B24 | Native Linux | 成功：local sandbox有効Chrome 152.0.7977.64 / CDP 1.3、最終race native package 8.834秒。`391288c`のPR native 34247636411、Chrome 152.0.7977.82 / CDP 1.3、linux/amd64 test 8.86秒。 |
+| B25 | Native Windows | 成功：`391288c`、PR Browser native 34247636411、windows/amd64、Chrome 152.0.7977.82 / CDP 1.3、実CLI fixture 26.76秒。sandboxアクセスguardと通常cleanupも成功。 |
+| B26 | Native macOS | 成功：`391288c`、PR Browser native 34247636411、darwin/arm64、Chrome 152.0.7977.82 / CDP 1.3、実CLI fixture 9.60秒。 |
 | B27 | Linux real headless pass | Linux amd64 `TestBrowserNativeCLI`、sandbox有効、Chrome 152.0.7977.64 / CDP 1.3。初回・3反復・最新race成功（package 8.489秒 / test 7.47秒）。 |
-| B28 | real AX/DOM/screenshot/Unicode/click/stale/iframe/shadow/console/network/cleanup | `b48ab64`の3 OS native fixtureですべて成功（Browser native 34235476126）。same-origin iframe/shadowは観測のみで、iframe入力とcross-origin観測は明示的に非対応。 |
+| B28 | 実機fixture機能 | `391288c`の3 OS native fixtureですべて成功（PR Browser native 34247636411）。継承blank/srcdoc/blob観測とopaque/OOPIF拒否を含む。iframe入力とcross-origin観測は引き続き非対応。 |
 | B29 | provider非依存lease backend E2E | native fixtureでrepository所有HTTP backendを別process runtimeとしてbuild。Unicode request/count/log相関と別lease backendの不変を確認。Compose provider不使用。 |
 | B30 | Browser未使用時coreにbrowser不要 | browser integration tagなしでcore unit/raceと6 CGO-free CLI cross-build成功。browser前提は明示的browserintegration test/commandだけに適用。 |
 | B31 | Node/Python/Playwright/Selenium/ChromeDriver runtime dependency無し | Go gorilla/websocket transportと直接native argvを使用。architecture check成功、helper runtime/browser同梱なし。 |
 | B32 | 英日durable docs final behavior/privacy | 製品・設計・関連文書を英日更新し、正確なflag、native前提、privacy/上限を記載。意味確認後hash更新、docs-check成功。 |
-| B33 | final harness/translation/race/native CI | 成功：最終`b48ab64`のVerify 34235476057（12 job、全race/integration）、Browser native 34235476126（3 OS）、local harness/docs-checkと6 cross-build。 |
-| B34 | 英日ExecPlan evidence/retrospective後archive | 成功：B1–B34の証拠を照合し、英日成果・振り返りを記入。両Planを同時にarchiveし、参照と翻訳を検査。 |
+| B33 | 最終検査 | 成功：`391288c`のPR Verify 34247636419（12 job、全race/integration）、PR Browser native 34247636411（3 OS）、Release preview 34247636491（build/native smoke）、対応するpush CI、local harnessと英日文書review。 |
+| B34 | 生きたplanと証拠 | 成功：PR #10 review gateとB1–B34を照合。9 Threadすべてへ返信・Resolveし、失敗履歴を保持。英日成果を更新し、最終受け入れ後に両Planを再archive。 |
 
 ## 冪等性と復旧
 
@@ -768,3 +781,18 @@ Windows native testはdelete sharingなしで実fileを保持し、RemoveAllの�
 から解放し、cleanup成功を検証する。独立reviewで新たな不具合は見つからなかった。2秒の
 予算は再試行の開始を制限し、実行中の同期filesystem呼出しを中断しない。最終local harnessと
 強化したLinux native検証は成功。Windows実行と新しい全CIは未完了。
+
+2026-09-09、最終native/release証拠（`391288c351dec3e41febcfec15d912c65905a3f0`）:
+[push Browser native 34247632201](https://github.com/mahcialet/agent-env/actions/runs/34247632201)と
+[PR Browser native 34247636411](https://github.com/mahcialet/agent-env/actions/runs/34247636411)が
+ともに3 OSすべて成功。Windowsの通常profile削除とsandboxアクセスguardも成功した。
+PRのChrome 152.0.7977.82 / CDP 1.3でのnative時間はLinux/amd64 8.86秒、
+Windows/amd64 26.76秒、macOS/arm64 9.60秒。
+[Release preview 34247636491](https://github.com/mahcialet/agent-env/actions/runs/34247636491)も
+buildとnative smokeが成功。8 Threadは返信・Resolve済みで、Planのgateだけを最終Verifyの
+成功確認まで開いている。
+
+PR #10最終完了（2026-09-09）: review進捗と受け入れgateはすべて完了した。
+`391288c`の最終Verify 34247636419とpush Verify 34247632059は成功し、上記nativeと
+releaseも成功した。9 ThreadすべてResolve済み。この記録で以前の未完了checkpointを更新する。
+英日archiveの区切りではsource/test codeを変更していない。

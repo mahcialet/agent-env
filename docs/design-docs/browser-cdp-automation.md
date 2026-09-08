@@ -9,7 +9,7 @@ last_verified: 2026-09-08
 [日本語](browser-cdp-automation.ja.md)
 
 The [product contract](../product-specs/browser-cdp-automation.md) defines commands
-and limits. The [active ExecPlan](../exec-plans/active/browser-cdp-automation.md)
+and limits. The [completed ExecPlan](../exec-plans/completed/browser-cdp-automation.md)
 records implementation decisions and direct native evidence.
 
 ## Ownership and dependencies
@@ -78,7 +78,7 @@ App tests must cover ownership rechecks, stale/cross-lease references, run/evide
 failure and destroy fencing. Transport fixtures must reject foreign discovery and
 malformed/oversized responses. Real native tests use pinned Chrome for Testing
 152.0.7977.82 on Windows, macOS and Linux with Go 1.27. All three native jobs
-passed at `b48ab64` (Browser native 34235476126), reporting CDP 1.3.
+passed at `391288c` (Browser native 34247636411), reporting CDP 1.3.
 Browser/backend fixtures exercise an endpoint owned by the same lease. The plan
 records direct native evidence separately from cross-build results.
 

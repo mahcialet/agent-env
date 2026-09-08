@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/roadmap.md
-source_sha256: 8e3e2f704cc6b3ad6a69e577911e1359ad606bf25df7cf1f96d2bcc708d2cd78
+source_sha256: 1fb1b48b1ffd339f808c1ac18a4b39f2a96dd3b56876d601ecfe4a9f368c1877
 ---
 
 [英語版（翻訳元）](roadmap.md)
@@ -26,7 +26,7 @@ moduleは`github.com/mahcialet/agent-env`で、既存のMITライセンスを保
 
 ## runtimeの拡張
 
-iOS、分散・複数ホストの調整は引き続き延期しています。Android Emulatorリースは専用AVD状態とローカルSDKプロセスを所有し、追加の実機CIにはアクセラレーションを利用できるrunnerが必要です。Browser/CDP観測・操作は汎用process所有の上に独立した[契約](product-specs/browser-cdp-automation.ja.md)を定義し、実装と3 OSでのnative受け入れを完了しました。証拠は[実行中browser plan](exec-plans/active/browser-cdp-automation.ja.md)に記録しています。外部browser接続、headful、download、Firefox/BiDi、Safari/WebKit、Android/Browser共通UI抽象化は今回の対象外です。
+iOS、分散・複数ホストの調整は引き続き延期しています。Android Emulatorリースは専用AVD状態とローカルSDKプロセスを所有し、追加の実機CIにはアクセラレーションを利用できるrunnerが必要です。Browser/CDP観測・操作は汎用process所有の上に独立した[契約](product-specs/browser-cdp-automation.ja.md)を定義し、実装と3 OSでのnative受け入れを完了しました。証拠は[完了browser plan](exec-plans/completed/browser-cdp-automation.ja.md)に記録しています。外部browser接続、headful、download、Firefox/BiDi、Safari/WebKit、Android/Browser共通UI抽象化は今回の対象外です。
 
 [常駐process runtime](product-specs/persistent-process-runtime.ja.md)は、argv直接実行、
 専用可変状態、名前付きloopback TCP port、保守的なnative tree cleanupを実装しています。

@@ -24,7 +24,7 @@ Remote mirror/cache management, HTTPS/SSH authentication, provider-specific PR s
 
 ## Runtime extensions
 
-iOS and distributed/multi-host coordination remain deferred. Android Emulator leases own private AVD state and local SDK processes; additional real-device CI needs acceleration-capable runners. Browser/CDP observation and actions now have a separate [contract](product-specs/browser-cdp-automation.md) above generic process ownership; implementation and native acceptance on all three OSes are complete, with evidence in the [active browser plan](exec-plans/active/browser-cdp-automation.md). External attachment, headful browsers, downloads, Firefox/BiDi, Safari/WebKit and a shared Android/Browser UI abstraction remain outside this slice.
+iOS and distributed/multi-host coordination remain deferred. Android Emulator leases own private AVD state and local SDK processes; additional real-device CI needs acceleration-capable runners. Browser/CDP observation and actions now have a separate [contract](product-specs/browser-cdp-automation.md) above generic process ownership; implementation and native acceptance on all three OSes are complete, with evidence in the [completed browser plan](exec-plans/completed/browser-cdp-automation.md). External attachment, headful browsers, downloads, Firefox/BiDi, Safari/WebKit and a shared Android/Browser UI abstraction remain outside this slice.
 
 The [persistent process runtime](product-specs/persistent-process-runtime.md) is
 implemented with direct argv, private mutable state, named loopback TCP ports and
