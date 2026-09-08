@@ -22,8 +22,12 @@ reuse verified existing content without Android-specific code in the asset core.
 ## Packaging and inspection
 
 Release construction validates immutable Git identity before build effects,
-uses `CGO_ENABLED=0` and trimmed paths, and stages all six targets in a private
-sibling of the requested new output directory. A complete set includes checksums
+uses `CGO_ENABLED=0` and trimmed paths, and stages all six targets in private
+temporary storage outside the source worktree. After final source validation,
+it copies the verified bytes into an owned sibling of the requested new output
+directory and renames that complete set into place. This permits non-ignored
+worktree output and different temporary/output filesystems without mistaking
+construction files for source changes. A complete set includes checksums
 and schema-1 manifest derived from actual archive/executable bytes. Git is the
 only version authority; build tooling records the actual Go runtime version.
 Release CI pins Go 1.27.1. Determinism is qualified to the same source and toolchain.
@@ -51,8 +55,10 @@ bytes through validation and smoke gates to publication without rebuilding.
 
 Build input is a private checkout of the resolved commit, rather than the caller's
 worktree. This excludes ignored Go sources and edits hidden by assume-unchanged or
-skip-worktree flags. Output still uses private sibling staging and refuses existing
-destinations. The checksum list is ordered by archive filename. Preview verification
+skip-worktree flags. Publication uses private sibling staging only after source checks and refuses
+existing destinations. Published non-ignored output counts as ordinary untracked
+content in subsequent release commands; ignored or external output keeps the
+source tree clean for those commands. The checksum list is ordered by archive filename. Preview verification
 uses a private `v0.1.0` tag without modifying caller or public refs; production
 repeat verification retains the requested real tag identity. CI passes release
 tags through `AGENT_ENV_RELEASE_TAG` and `--tag-env`, not shell interpolation.

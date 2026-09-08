@@ -146,12 +146,9 @@ func buildRelease(root, dir, version, tag, commit string, mt time.Time, out, err
 	if _, e := os.Lstat(dir); !os.IsNotExist(e) {
 		return fmt.Errorf("output must not exist: %s", dir)
 	}
-	// Stage alongside the destination for a same-filesystem rename. Never delete caller data.
-	parent := filepath.Dir(dir)
-	if e := os.MkdirAll(parent, 0755); e != nil {
-		return e
-	}
-	stage, e := os.MkdirTemp(parent, ".agent-env-release-")
+	// Keep construction out of the source worktree until its final cleanliness
+	// check. Destination siblings may be unignored Git inputs.
+	stage, e := os.MkdirTemp("", "agent-env-release-")
 	if e != nil {
 		return e
 	}
@@ -244,10 +241,32 @@ func buildRelease(root, dir, version, tag, commit string, mt time.Time, out, err
 	if _, e = checkRelease(root, stage, version, tag, commit, mt); e != nil {
 		return e
 	}
-	if _, e = os.Lstat(dir); !os.IsNotExist(e) {
+	return publishReleaseDirectory(stage, dir)
+}
+
+// Transfer verified bytes only after source validation. A destination-local
+// sibling retains same-filesystem rename even when os.TempDir is on another disk.
+func publishReleaseDirectory(stage, dir string) error {
+	if _, e := os.Lstat(dir); !os.IsNotExist(e) {
 		return fmt.Errorf("output appeared during build")
 	}
-	return os.Rename(stage, dir)
+	parent := filepath.Dir(dir)
+	if e := os.MkdirAll(parent, 0755); e != nil {
+		return e
+	}
+	transfer, e := os.MkdirTemp(parent, ".agent-env-publish-")
+	if e != nil {
+		return e
+	}
+	defer os.RemoveAll(transfer)
+	candidate := filepath.Join(transfer, "candidate")
+	if e = copyVerifiedRelease(stage, candidate); e != nil {
+		return e
+	}
+	if _, e = os.Lstat(dir); !os.IsNotExist(e) {
+		return fmt.Errorf("output appeared during publication")
+	}
+	return os.Rename(candidate, dir)
 }
 func releaseBuildEnv(t releaseTarget) []string {
 	controlled := map[string]string{"CGO_ENABLED": "0", "GOOS": t.GOOS, "GOARCH": t.GOARCH, "GOFLAGS": "", "GOENV": "off", "GOWORK": "off", "GOEXPERIMENT": "", "GOAMD64": "v1", "GOARM64": "v8.0", "GIT_NO_REPLACE_OBJECTS": "1"}

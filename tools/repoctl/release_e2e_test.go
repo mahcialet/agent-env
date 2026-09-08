@@ -15,7 +15,7 @@ import (
 func TestReleaseCandidate(t *testing.T) {
 	candidate := os.Getenv("AGENT_ENV_RELEASE_CANDIDATE")
 	if candidate == "" {
-		t.Skip("set AGENT_ENV_RELEASE_CANDIDATE to release-verify output for end-to-end negative tests")
+		t.Skip("set AGENT_ENV_RELEASE_CANDIDATE to release-verify output or build for end-to-end negative tests")
 	}
 	root, e := repositoryRoot()
 	if e != nil {
@@ -33,6 +33,12 @@ func TestReleaseCandidate(t *testing.T) {
 	tag, mt, e := releaseVersion(source, "0.1.0")
 	if e != nil {
 		t.Fatal(e)
+	}
+	if candidate == "build" {
+		candidate = filepath.Join(t.TempDir(), "candidate")
+		if e = buildRelease(source, candidate, "0.1.0", tag, commit, mt, io.Discard, io.Discard); e != nil {
+			t.Fatal(e)
+		}
 	}
 	original, e := checkRelease(source, candidate, "0.1.0", tag, commit, mt)
 	if e != nil {
@@ -166,6 +172,29 @@ func TestReleaseCandidate(t *testing.T) {
 			t.Fatal("caller output altered")
 		}
 	})
+	t.Run("nonignored_worktree_output", func(t *testing.T) {
+		output := filepath.Join(source, "release candidates 日本語", "nested", "v0.1.0")
+		if _, _, err := releaseVersion(source, "0.1.0"); err != nil {
+			t.Fatal(err)
+		}
+		if err := buildRelease(source, output, "0.1.0", tag, commit, mt, io.Discard, io.Discard); err != nil {
+			t.Fatal(err)
+		}
+		if err := compareReleaseDirectories(candidate, output); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := checkRelease(source, output, "0.1.0", tag, commit, mt); err != nil {
+			t.Fatal(err)
+		}
+		entries, err := os.ReadDir(filepath.Dir(output))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(entries) != 1 || entries[0].Name() != "v0.1.0" {
+			t.Fatal("owned staging leaked beside output")
+		}
+	})
+
 }
 
 func TestReleaseCommandUsage(t *testing.T) {
