@@ -39,8 +39,8 @@ native Windows, macOS and Linux.
 - installation is unpack/copy-and-run;
 - the executable reports its version, source revision, platform and bundled-asset
   provenance;
-- all writable agent-env state remains under an OS-native state root or an
-  explicit `--home` / `AGENT_ENV_HOME` override;
+- all writable agent-env state remains under an OS-native state root or the
+  existing `AGENT_ENV_HOME` override;
 - release archives are created and validated by the repository's Go harness;
 - extracted release artifacts are smoke-tested on native Windows, macOS and
   Linux runners.
@@ -83,8 +83,10 @@ documented and migrated deliberately.
 
 - [x] 2026-09-08: `master` at `938e584` includes PR #5; created
       `feat/standalone-distribution`.
-- [x] 2026-09-08: Baseline `repoctl check` and `go test -race ./...` started on
-      Go 1.27.1 before implementation changes; results are recorded below.
+- [x] 2026-09-08: Baseline `go test -race ./...` passed on Go 1.27.1 before
+      implementation changes. Baseline `repoctl check` completed unit/vet but
+      failed docs-check because the supplied Japanese plan lacked metadata;
+      metadata was repaired before subsequent checks.
 - [x] 2026-09-08: Inspected current CLI bootstrap, `AGENT_ENV_HOME` state-root,
       repoctl, CI and cross-build boundaries.
 - [x] 2026-09-08: Added bilingual standalone product/design contracts and

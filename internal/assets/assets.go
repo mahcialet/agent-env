@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 type AssetInfo struct {
@@ -15,7 +16,7 @@ type AssetInfo struct {
 }
 
 func Describe(name, version string, data []byte) (AssetInfo, error) {
-	if name == "" || filepath.Base(name) != name || name == "." || name == ".." || version == "" {
+	if name == "" || filepath.Base(name) != name || name == "." || name == ".." || version == "" || strings.ContainsAny(name, `/\\:`) {
 		return AssetInfo{}, fmt.Errorf("invalid asset identity")
 	}
 	sum := sha256.Sum256(data)
@@ -31,7 +32,7 @@ func Materialize(root string, info AssetInfo, data []byte) (string, error) {
 	}
 	dir := filepath.Join(root, "assets", info.Name, info.SHA256)
 	path := filepath.Join(dir, info.Name)
-	if err := os.MkdirAll(dir, 0700); err != nil {
+	if err := safeMkdirAll(root, dir); err != nil {
 		return "", err
 	}
 	if st, err := os.Lstat(path); err == nil {
@@ -72,4 +73,34 @@ func Materialize(root string, info AssetInfo, data []byte) (string, error) {
 		return "", err
 	}
 	return path, nil
+}
+
+func safeMkdirAll(root, target string) error {
+	root = filepath.Clean(root)
+	rel, err := filepath.Rel(root, target)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) || filepath.IsAbs(rel) {
+		return fmt.Errorf("asset path escapes root")
+	}
+	cur := root
+	if err := os.MkdirAll(cur, 0700); err != nil {
+		return err
+	}
+	parts := strings.Split(rel, string(filepath.Separator))
+	for _, part := range parts {
+		cur = filepath.Join(cur, part)
+		st, statErr := os.Lstat(cur)
+		if os.IsNotExist(statErr) {
+			if err := os.Mkdir(cur, 0700); err != nil {
+				return err
+			}
+			continue
+		}
+		if statErr != nil {
+			return statErr
+		}
+		if st.Mode()&os.ModeSymlink != 0 || !st.IsDir() {
+			return fmt.Errorf("asset ancestor is not a directory")
+		}
+	}
+	return nil
 }

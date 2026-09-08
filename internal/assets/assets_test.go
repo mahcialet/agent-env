@@ -27,8 +27,35 @@ func TestMaterializeIsContentAddressedAndIdempotent(t *testing.T) {
 	if _, err := os.Stat(first); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := Materialize(root, info, []byte("tampered")); err == nil {
-		t.Fatal("tampered bytes accepted")
+	if err := os.WriteFile(first, []byte("tampered"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Materialize(root, info, data); err == nil {
+		t.Fatal("corrupted materialized asset accepted")
+	}
+}
+
+func TestMaterializeRejectsSymlinkedAncestorAndPortableNames(t *testing.T) {
+	root := t.TempDir()
+	if err := os.Mkdir(filepath.Join(root, "assets"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	outside := t.TempDir()
+	if err := os.Symlink(outside, filepath.Join(root, "assets", "escape")); err != nil {
+		t.Skip("symlink unavailable")
+	}
+	info, err := Describe("asset", "1", []byte("x"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	info.Name = "escape"
+	if _, err := Materialize(root, info, []byte("x")); err == nil {
+		t.Fatal("symlink ancestor accepted")
+	}
+	for _, name := range []string{`a\b`, `C:asset`} {
+		if _, err := Describe(name, "1", []byte("x")); err == nil {
+			t.Fatalf("portable name accepted: %q", name)
+		}
 	}
 }
 

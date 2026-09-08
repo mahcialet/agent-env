@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/exec-plans/active/standalone-distribution.md
-source_sha256: 0d766fd87cee0f7e07c6e907cbb17ed30f37e9c7a35999f82d74b6475f976dd1
+source_sha256: e63136964eb80b0e42bafb7bb053ce8f6bb6e3ce43f45886c509663fa2e25387
 ---
 
 # agent-env をクロスプラットフォームのスタンドアロン配布物にする
@@ -22,7 +22,7 @@ PR #4 (`feat: run Flutter Android applications on owned emulator leases`) の
 実装開始時に `master` を更新し、正確なrevisionを以下へ記録し、専用branchを
 作成し、既存repository harnessを実行してbaselineを記録する。
 
-開始 revision: `TO_BE_RECORDED_AFTER_PR_4_MERGE`
+開始 revision: `938e584`（PR #5 merge後の`master`）
 
 ## 目的 / 全体像
 
@@ -37,7 +37,7 @@ standaloneを以下のように定義する。
 - agent-env所有companion assetを初回利用時に別download/buildさせず同梱可能
 - installはarchive展開・binary配置のみ
 - executable自身がversion/source revision/platform/bundled asset provenanceを報告
-- writable stateはOS-native state rootまたは`--home` / `AGENT_ENV_HOME`配下
+- writable stateはOS-native state rootまたは既存の`AGENT_ENV_HOME`配下
 - release archive生成・検証はrepositoryのGo harnessが担当
 - 展開release artifactをnative Windows/macOS/Linuxでsmoke test
 
@@ -84,7 +84,8 @@ compatibility burdenが小さい今の段階では、長期standalone contract�
 - [ ] release target matrix / archive naming/layout確定。
 - [ ] generic bundled asset metadata/materialization実装。
 - [ ] target-app dependencyを作らないembedded asset test追加。
-- [ ] 必要なら`--home` state-root override追加/改善。
+- [x] 2026-09-08: 既存の`AGENT_ENV_HOME`をstate-root overrideとして維持し、
+      重複する`--home` flagは追加しない判断を記録。
 - [ ] 全persistent writable pathがstate-root contractへ従うことを検証。
 - [ ] `repoctl release-build`実装。
 - [ ] `repoctl release-check`実装。
