@@ -18,6 +18,16 @@ type RuntimeInventory interface {
 	Inventory(context.Context, string) ([]domain.Resource, error)
 }
 
+// ComposeInventoryDoctor discovers engines without requiring Compose startup tools.
+type ComposeInventoryDoctor interface {
+	InventoryDoctorFor(context.Context, domain.ComposeProviderName) (map[string]string, error)
+}
+
+// ComposeProviderDiscovery lists installed providers without starting engines.
+type ComposeProviderDiscovery interface {
+	AvailableComposeProviders() []domain.ComposeProviderName
+}
+
 // ComposeProviderInventory observes an explicit provider and persisted engine identity.
 type ComposeProviderInventory interface {
 	InventoryFor(context.Context, domain.ComposeProviderName, string) ([]domain.Resource, error)
@@ -76,13 +86,20 @@ func (s *Service) Inventory(ctx context.Context) ([]domain.Resource, error) {
 		if !ok {
 			failures = append(failures, fmt.Errorf("runtime provider does not support global inventory"))
 		} else {
-			if len(providers) == 0 {
+			if discovery, ok := s.Runtime.(ComposeProviderDiscovery); ok {
+				for _, provider := range discovery.AvailableComposeProviders() {
+					providers[provider] = true
+				}
+			} else {
+				// Legacy adapters have only Docker, whose active context was always inspected.
 				providers[domain.ComposeProviderDocker] = true
 			}
 			for provider := range providers {
 				var doctor map[string]string
 				var e error
-				if selected, ok := s.Runtime.(ComposeProviderDoctor); ok {
+				if selected, ok := s.Runtime.(ComposeInventoryDoctor); ok {
+					doctor, e = selected.InventoryDoctorFor(ctx, provider)
+				} else if selected, ok := s.Runtime.(ComposeProviderDoctor); ok {
 					doctor, e = selected.DoctorFor(ctx, provider)
 				} else if provider == domain.ComposeProviderDocker {
 					doctor, e = s.Runtime.Doctor(ctx)

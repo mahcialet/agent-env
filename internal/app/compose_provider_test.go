@@ -120,3 +120,126 @@ func TestInventoryScopesCoincidentProjectsByProvider(t *testing.T) {
 		t.Fatalf("cross-provider collision: %+v %v %v", items, runtime.calls, err)
 	}
 }
+
+// Simulate container removal succeeding while residual-volume removal fails.
+// The second invocation must use durable proof even though inspection is empty.
+type residualRuntime struct {
+	*selectedRuntime
+	failed  bool
+	removed int
+}
+
+func (r *residualRuntime) PrepareCleanup(_ context.Context, v domain.Runtime) (domain.Runtime, error) {
+	if len(v.CleanupEvidence) == 0 && r.projects[v.Project] {
+		v.CleanupEvidence = []domain.Resource{{ID: v.Name + ":volume:anonymous", Runtime: v.Name, Kind: "volume", ExternalID: "anonymous", Metadata: map[string]string{"lease": v.LeaseID}}}
+	}
+	return v, nil
+}
+func (r *residualRuntime) Down(ctx context.Context, v domain.Runtime) error {
+	stored, err := r.store.Get(ctx, v.LeaseID)
+	if err != nil {
+		return err
+	}
+	found := false
+	for _, runtime := range stored.Runtimes {
+		if runtime.Name == v.Name && len(runtime.CleanupEvidence) > 0 {
+			found = true
+		}
+	}
+	if !found || len(v.CleanupEvidence) == 0 {
+		return errors.New("cleanup without durable attachment proof")
+	}
+	delete(r.projects, v.Project)
+	if !r.failed {
+		r.failed = true
+		return errors.New("container removed; volume removal interrupted")
+	}
+	r.removed++
+	return nil
+}
+func TestCleanupRetainsProofAfterContainerDisappears(t *testing.T) {
+	s, o, _, base, _ := lifecycleFixture(t)
+	r := &residualRuntime{selectedRuntime: &selectedRuntime{lifecycleRuntime: base}}
+	s.Runtime = r
+	l, err := s.Create(context.Background(), o, CreateOptions{Owner: "tester"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	l, err = s.Destroy(context.Background(), l.ID, false, false)
+	if err == nil || l.Observed != "quarantined" {
+		t.Fatalf("partial cleanup not quarantined: %s %v", l.Observed, err)
+	}
+	proofs := 0
+	for _, v := range l.Runtimes {
+		proofs += len(v.CleanupEvidence)
+	}
+	if proofs == 0 {
+		t.Fatal("lost proof after failed cleanup")
+	}
+	l, err = s.Destroy(context.Background(), l.ID, false, false)
+	if err != nil || l.Observed != "released" || r.removed != 2 {
+		t.Fatalf("residual cleanup not retried: %s removals=%d err=%v", l.Observed, r.removed, err)
+	}
+	for _, v := range l.Runtimes {
+		if len(v.CleanupEvidence) != 0 {
+			t.Fatal("confirmed cleanup retained pending proof")
+		}
+	}
+}
+
+type cleanupEvidenceStore struct{ Store }
+
+func (s cleanupEvidenceStore) Save(ctx context.Context, l domain.Lease) error {
+	for _, r := range l.Runtimes {
+		if len(r.CleanupEvidence) > 0 {
+			return errors.New("fixture cleanup proof write failed")
+		}
+	}
+	return s.Store.Save(ctx, l)
+}
+func TestCleanupProofWriteFailurePreventsDown(t *testing.T) {
+	s, o, _, base, _ := lifecycleFixture(t)
+	r := &residualRuntime{selectedRuntime: &selectedRuntime{lifecycleRuntime: base}}
+	s.Runtime = r
+	l, err := s.Create(context.Background(), o, CreateOptions{Owner: "tester"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	s.Store = cleanupEvidenceStore{s.Store}
+	_, err = s.Destroy(context.Background(), l.ID, false, false)
+	if err == nil || !strings.Contains(err.Error(), "proof write failed") {
+		t.Fatalf("write failure hidden: %v", err)
+	}
+	if r.failed || r.removed != 0 || len(r.projects) != 2 {
+		t.Fatal("destruction proceeded without persisted proof")
+	}
+}
+
+func (r *selectedInventory) AvailableComposeProviders() []domain.ComposeProviderName {
+	return []domain.ComposeProviderName{domain.ComposeProviderDocker, domain.ComposeProviderPodman}
+}
+func TestInventoryDiscoversOrphansOutsideRecordedProviders(t *testing.T) {
+	for _, known := range []domain.ComposeProviderName{"", domain.ComposeProviderDocker, domain.ComposeProviderPodman} {
+		t.Run(string(known), func(t *testing.T) {
+			runtime := &selectedInventory{}
+			leases := []domain.Lease{}
+			if known != "" {
+				leases = append(leases, domain.Lease{ID: string(known) + "-lease", Desired: "active", Runtimes: []domain.Runtime{{Type: "compose", Provider: known, Context: "same-engine-name", Project: "same-project"}}})
+			}
+			s := Service{Store: inventoryStore{leases: leases}, Runtime: runtime, Home: t.TempDir()}
+			items, err := s.Inventory(context.Background())
+			want := 2
+			if known != "" {
+				want = 1
+			}
+			if err != nil || len(items) != want || len(runtime.calls) != 2 {
+				t.Fatalf("orphan provider missed: %+v %v %v", items, runtime.calls, err)
+			}
+			for _, item := range items {
+				if item.Metadata["status"] != "orphaned" || item.Metadata["provider"] == string(known) {
+					t.Fatalf("wrong orphan identity: %+v", item)
+				}
+			}
+		})
+	}
+}

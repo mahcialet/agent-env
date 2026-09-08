@@ -31,7 +31,7 @@ func (c Client) provider(name domain.ComposeProviderName) (provider, error) {
 	case domain.ComposeProviderDocker:
 		return dockerClient{Runner: c.Runner, Policy: c.Policy}, nil
 	case domain.ComposeProviderPodman:
-		return nil, fmt.Errorf("Podman provider implementation is not available yet")
+		return podmanClient{Runner: c.Runner, Policy: c.Policy}, nil
 	default:
 		return nil, fmt.Errorf("unsupported Compose provider %q", name)
 	}
@@ -104,4 +104,30 @@ func (c Client) InventoryFor(ctx context.Context, name domain.ComposeProviderNam
 		items[i].ID = string(domain.EffectiveComposeProvider(name)) + ":" + items[i].ID
 	}
 	return items, err
+}
+
+func (c Client) PrepareCleanup(ctx context.Context, r domain.Runtime) (domain.Runtime, error) {
+	p, err := c.provider(r.Provider)
+	if err != nil {
+		return r, err
+	}
+	if preparer, ok := p.(interface {
+		PrepareCleanup(context.Context, domain.Runtime) (domain.Runtime, error)
+	}); ok {
+		return preparer.PrepareCleanup(ctx, r)
+	}
+	return r, nil
+}
+
+func (c Client) InventoryDoctorFor(ctx context.Context, name domain.ComposeProviderName) (map[string]string, error) {
+	p, err := c.provider(name)
+	if err != nil {
+		return nil, err
+	}
+	if inventory, ok := p.(interface {
+		InventoryDoctor(context.Context) (map[string]string, error)
+	}); ok {
+		return inventory.InventoryDoctor(ctx)
+	}
+	return c.DoctorFor(ctx, name)
 }

@@ -14,7 +14,7 @@ Environment leases isolate names, worktrees, and lifecycle ownership. They are *
 
 Planning and creation read the control checkout's `.agent-env.yaml` by default. `--manifest` explicitly selects a trusted manifest path; the canonical snapshot and digest are saved with the lease. Source refs choose pinned runtime/test source content, not a silently substituted manifest from the target revision. Review changes to both the manifest and the code it executes. Trusted base/PR overlay merging and remote credential management are deferred.
 
-Owner labels and `--mine` are advisory filters. Anyone with access to the local state directory and Docker daemon has the corresponding host authority. There is no distributed authentication or hostile multi-user isolation.
+Owner labels and `--mine` are advisory filters. Anyone with access to the local state directory and selected container engine has the corresponding host authority. There is no distributed authentication or hostile multi-user isolation.
 
 ## Built-in host policy
 
@@ -22,7 +22,20 @@ The current CLI uses built-in defaults: TTL 4 hours, maximum TTL 24 hours, and 8
 
 Before startup, normalized Compose configuration is checked for privileged containers, host networking, fixed container names, fixed published host ports, Docker socket access, device passthrough, and unsafe mounts. Bind paths must stay within allocated source roots, including after symlink resolution. External networks/volumes, globally shared names on selected resources, and unsafe/custom volume drivers or driver options are rejected. These checks reduce accidental host access and collisions; they do not make Docker builds or repository commands trustworthy.
 
-Only selected services and their reachable resource definitions enter the immutable execution snapshot. Ownership labels, a unique project, captured Docker context, and a configuration digest are retained. Execution and cleanup verify the saved configuration and observed resource identities. Unselected named resources cannot become collateral cleanup targets.
+Only selected services and their reachable resource definitions enter the immutable execution snapshot. Ownership labels, a unique project, recorded provider and engine identity, and a configuration digest are retained. Execution and cleanup verify the saved configuration and observed resource identities. Unselected named resources cannot become collateral cleanup targets.
+
+Podman applies the same policy to normalized YAML converted to canonical JSON.
+Pod creation and `x-podman*` extensions at any nesting depth are rejected.
+The supported mount types are `bind`, `volume` and `tmpfs`; Podman-specific `glob`
+and other unmodeled types fail explicitly. Supported `network_mode` values are
+omitted/empty, `bridge` and `none`; `host` is denied by common policy, while `ns:`,
+`pasta`, `slirp4netns` and other unmodeled modes fail rather than widen host access. Project
+`.env` files must not set reserved `PODMAN_*`, `CONTAINER_*`, `AGENT_ENV_PODMAN_*`
+or `COMPOSE_*` keys. Inherited routing controls are scrubbed, and the native bridge
+pins child calls to the recorded engine. Docker-compatible labels alone do not
+prove Podman ownership: native project labels and exact resource identities remain
+required. An engine topology fingerprint cannot detect an in-place reset that
+recreates identical topology; resource ownership checks are still necessary.
 
 ## Credentials and evidence
 
@@ -36,7 +49,7 @@ Resolved credential-bearing Compose environment entries and recognized inherited
 
 Cleanup validates pinned source and runtime ownership before deletion. Dirty tracked worktrees, resource identity mismatches, and uncertain cleanup quarantine the lease. `destroy --force` permits discarding tracked edits only after retaining a binary diff; it does not override ambiguous ownership. Untracked build/test output inside managed worktrees is disposable under ordinary cleanup.
 
-`gc` is dry-run by default; `gc --apply` is explicit and excludes quarantined/in-progress leases. Orphan observations never authorize blanket Docker or Git cleanup. Recorded operation locks prevent cooperating agent-env processes from racing lifecycle operations, but do not prevent a user or unrelated process from directly changing Git, Docker, or the filesystem.
+`gc` is dry-run by default; `gc --apply` is explicit and excludes quarantined/in-progress leases. Orphan observations never authorize blanket Docker, Podman or Git cleanup. Recorded operation locks prevent cooperating agent-env processes from racing lifecycle operations, but do not prevent a user or unrelated process from directly changing Git, container engines, or the filesystem.
 
 ## Android host trust
 

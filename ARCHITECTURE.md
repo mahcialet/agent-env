@@ -12,7 +12,17 @@ The system materializes pinned local Git sources and a selected component closur
 
 The CLI parses arguments and formats output, then delegates use cases to app. Domain types model leases, immutable source sets, components, resources and events without concrete adapters. Config strictly decodes the manifest; stack resolves deterministic dependency closure. App coordinates source and runtime interfaces, policy, readiness, evidence, and compensating cleanup.
 
-SQLite owns desired state, reservations, ownership, source identity and event history. Git source providers resolve refs, create detached worktrees, inspect tracked changes and remove safe worktrees. Compose runtime adapters validate normalized configuration, create selected services, inspect resources, collect evidence and destroy by explicit project identity. Reconciliation compares registry intent against Git and Docker observations; it never equates a stored ready row with a live healthy environment.
+SQLite owns desired state, reservations, ownership, source identity and event history. Git source providers resolve refs, create detached worktrees, inspect tracked changes and remove safe worktrees. Compose runtime adapters validate normalized configuration, create selected services, inspect resources, collect evidence and destroy by explicit project identity. Reconciliation compares registry intent against Git and the recorded Compose provider’s observations; it never equates a stored ready row with a live healthy environment.
+
+`internal/runtime/compose.Client` dispatches to private Docker and Podman clients
+within the same package boundary. Both use the common policy and canonical JSON
+snapshot. Podman children enter a native bridge in the current agent-env binary
+with recorded engine arguments; no shell wrapper or Python dependency enters the
+core. Domain runtime snapshots retain provider identity and `cleanup_evidence`;
+app persists pre-down ownership evidence so interrupted cleanup can resume without
+reconstructing deleted container attachments. See the
+[provider design](docs/design-docs/compose-providers.md); real-provider acceptance
+is still tracked by the active plan.
 
 ## Dependency direction
 

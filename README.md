@@ -2,7 +2,7 @@
 
 [日本語](README.ja.md)
 
-Create disposable environment leases from pinned local Git commits and isolated Docker Compose projects or private Android Emulators. Select a stack, inspect its live state, run named tests with retained evidence, then clean up its resources. Multiple repositories and simultaneous leases are supported.
+Create disposable environment leases from pinned local Git commits and isolated Compose projects using Docker or Podman or private Android Emulators. Select a stack, inspect its live state, run named tests with retained evidence, then clean up its resources. Multiple repositories and simultaneous leases are supported.
 
 **Environment isolation is not a malicious-code sandbox.** Dockerfiles, Compose configuration, tests, and package scripts execute repository-controlled code. Use trusted or controlled repositories; arbitrary untrusted pull requests need a stronger outer boundary.
 
@@ -20,19 +20,20 @@ Release availability and native verification are recorded in the
 | --- | --- |
 | Version, help, core diagnostics | None; no Go, shell, Docker, SDK, Flutter or Java |
 | Source resolution and managed worktrees | Git and a trusted local repository |
-| Compose leases | Git, Docker daemon and Compose plugin |
+| Docker Compose leases (default) | Git, Docker daemon and Compose v2 plugin |
+| Podman Compose leases | Git, Podman 5.x and standalone podman-compose >=1.6.0,<2.0.0; Linux rootless acceptance verified with 5.4.2 / 1.6.0 |
 | Android Emulator leases | Git, Android SDK, Emulator, adb, installed system image/AVD template and host acceleration |
 | Flutter Android applications | Android prerequisites plus Flutter and a compatible Java/Android build toolchain |
 | Android UI observation | Android lease and separately built optional UI companion; SDK/JDK and Go are needed to build that companion |
 | Release construction | Git and a supported Go toolchain; release CI pins Go 1.27.1 |
 
 External capability tools and the optional UI companion are not bundled in the
-archive. Missing optional prerequisites do not prevent version/help from running.
+archive. Python is not a core agent-env dependency. Missing optional prerequisites do not prevent version/help from running.
 See the [distribution contract](docs/product-specs/standalone-distribution.md).
 
 ## Build and verify
 
-Use Go 1.26.x or 1.27.x. Runtime operations need Git plus the selected runtime prerequisites: Docker with Compose for containers, or an installed Android SDK, Emulator, adb and stopped AVD template for Android. The repository harness itself needs no Bash, Make, PowerShell, or Docker for ordinary unit checks.
+Use Go 1.26.x or 1.27.x. Runtime operations need Git plus the selected runtime prerequisites: Docker with Compose v2 or Podman with podman-compose for containers, or an installed Android SDK, Emulator, adb and stopped AVD template for Android. The repository harness itself needs no Bash, Make, PowerShell, or Docker for ordinary unit checks.
 
 ```text
 go run ./tools/repoctl doctor
@@ -67,6 +68,14 @@ Alternatively, build the executable and put it on PATH to use `agent-env` (`agen
 Declare component endpoints to generate dynamic loopback host publishing in the saved execution configuration without editing source Compose files. Compose resources must be project-scoped and mounts must satisfy host policy. Fixed container names, privileged mode, host networking, Docker socket mounts, and unsafe external binds are rejected. Named tests use argv arrays, with stdout, stderr, exit status, and declared artifacts retained after cleanup. See the [CLI contract](docs/product-specs/cli-contract.md) and [security policy](docs/SECURITY.md).
 
 `gc` previews expired candidates; only `gc --apply` requests deletion. Tracked changes, uncertain ownership, or incomplete cleanup quarantine a lease. Explicit `destroy --force` retains tracked-diff evidence before discarding tracked edits and never overrides an ownership mismatch.
+
+Compose runtimes may set `provider: docker-compose` (the omitted-field default)
+or `provider: podman-compose`. Selection is pinned in each lease; missing tools
+never trigger fallback. `doctor --provider podman-compose` checks that provider,
+while `doctor <repository>` checks the providers declared by its manifest.
+Real Linux rootless acceptance passed with Podman 5.4.2 and podman-compose 1.6.0,
+including concurrent leases and Docker coexistence. Final native provider CI is
+pending; real Podman Machine infrastructure is unavailable. See the [provider contract](docs/product-specs/compose-providers.md).
 
 ## Android Emulator leases
 

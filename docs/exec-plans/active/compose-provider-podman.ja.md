@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/exec-plans/active/compose-provider-podman.md
-source_sha256: 50f24b392f6f0cb9856ac0fc09e81057e11989f383900fc8f52f8ff57fa91b66
+source_sha256: b7548ebe9b505e309ed9dcb70d2f73bea5c74824425959a6835dd8b8279daf21
 ---
 
 # Compose runtime provider として podman-compose を追加する
@@ -25,8 +25,8 @@ stacked PRの場合はbase branch/commitを以下へ記録し、merged-master ev
 - https://github.com/containers/podman-compose
 - 初期tested floor: `podman-compose >= 1.6.0`
 
-Podman engineのminimum versionはreal integration前に固定しない。実際の
-client/server/podman-compose versionをacceptance evidenceへ記録する。
+未検証の旧Podman構成を対応済みと記載しない。実際のclient/serverと
+podman-composeのバージョンを受け入れ証拠へ記録する。
 
 ## 目的 / 全体像
 
@@ -88,32 +88,38 @@ survival、conservative cleanup、uncertainty quarantineを維持する。
 - [x] 2026-09-08: provider-neutral Compose boundary
 - [x] 2026-09-08: Docker implementation移行
 - [x] 2026-09-08: Docker real integration非回帰
-- [ ] Podman Doctor/version
-- [ ] local/remote engine identity
-- [ ] recorded engine pinning
-- [ ] podman-compose config common normalization
-- [ ] canonical recorded config方式決定
-- [ ] unmodeled Podman extension拒否
-- [ ] Podman Up/Inspect/endpoint
-- [ ] Podman Logs
-- [ ] Down + residual reinspection
-- [ ] anonymous volume regression
-- [ ] network/volume ownership label強化検証
-- [ ] two Podman lease isolation
-- [ ] Docker+Podman coexistence
-- [ ] default connection change regression
-- [ ] real Linux rootless integration
-- [ ] same E2EをDocker/Podmanで実行
-- [ ] Windows/macOS/Linux native provider tests
-- [ ] possibleならPodman Machine real integration
-- [ ] bilingual durable docs/prerequisite matrix
-- [ ] final harness/race/integration
-- [ ] 英日acceptance/retrospective
-- [ ] completed移動/link/hash更新
-
+- [x] 2026-09-08: Doctorとバージョン検査を実装。`TestPodmanDoctorVersionFloorAndSnapshot`で1.3.0・2.0.0の拒否と1.6.0 fixtureの受け入れを確認。
+- [x] 2026-09-08: local/remote識別情報を保存しnative childの接続先を固定。`TestPodmanIdentityPinsLocalAndRemote`、`TestPodmanBridgeNativeRoundTrip`、`TestPodmanChangedEngineRefusesMutation`がローカルで成功。
+- [x] 2026-09-08: YAMLをcanonical JSONと共通policyモデルへ変換。`TestPodmanNormalizeComposeModel`と`TestPodmanRenderRejectsProviderSpecificHostAccess`が成功。実1.6.0 lifecycleによる保存JSONの受け入れも、その後110.13秒で成功。
+- [x] 2026-09-08: 未対応拡張の再帰的拒否と、値が未確定の環境変数引き継ぎの拒否を実装。Renderと正規化の回帰テストが成功。
+- [x] 2026-09-08: detached Up、構造化Inspectとendpoint、時刻付きLogs、Downと再検査を実装。ローカルharness/raceと実Linux lifecycleの受け入れが成功。
+- [x] 2026-09-08: Down前のanonymous volume証拠保存、中断後の保持、保存失敗時の副作用停止を実装。app/backendの回帰テストが成功。
+- [x] 2026-09-08: 以下の独立レビュー7件を修正し、別担当が再確認。
+- [x] 2026-09-08: 各OSで実行可能なprovider/path/argv/identityテストを追加。ローカルLinuxで成功し、最終Windows/macOS/Linux native CIは未完了。
+- [x] 2026-09-08: 英日architecture、portability、security、reliability、quality、roadmap、前提条件文書へ実装範囲と未検証範囲を反映。
+- [x] 2026-09-08: network/volumeの共通所有権labelを、Dockerの証拠に加えて実Podman lifecycleでも検証。
+- [x] 2026-09-08: Docker共存を有効にした`TestPodmanIntegrationConcurrentLeasesAndEvidence`が110.13秒で成功。Go 1.27.1、rootless Podman 5.4.2、podman-compose 1.6.0を使用。Podmanの2leaseがREADYになり、endpoint、named test、他lease・外部リソース・Dockerの維持、完全cleanupが成功。
+- [x] 2026-09-08: 実canonical JSON、logs、実anonymous volume証拠、秘密値を伏せたartifact、接続されていた全volumeの消失を以下の受け入れ証拠と照合。
+- [ ] 2026-09-08: 最終Windows/macOS/Linux native CIを実行し、利用可能なら実Podman Machineの証拠を記録（現在は環境なし）。
+- [x] 2026-09-08: 最終port修正後にローカルfull checkとfull raceが再度成功し、実Docker/Podman integrationも成功。ビルド済みstandaloneのhelp/versionは、PATHを空にしてPython/Podmanを利用できない環境でも成功。
+- [ ] 2026-09-08: 受け入れ条件と英日振り返りを完成させ、全要件に直接の証拠が揃ってから両Planをcompletedへ移す。
 checkboxは観測済み完了のみ。UTC date、revision、command/test/run、resultを記録する。
 
 ## 想定外の発見
+
+- 2026-09-08: 最初の実1.6.0 lifecycle実行は、共通command wrapperがproviderのstderrを落としていたため、native診断を十分に得られず失敗した。Podmanのエラーはprovider名を維持し、共通evidence処理で秘密値を伏せたstderrを最大8 KiBまで保持する。Upはadapterのエラーを取り出し、誤解を招くDockerエラーとして表示しない。次の実行でPodmanが`published: "0"`を拒否することが判明した。いずれも失敗した試行であり、受け入れ成功ではない。SIGINTにより順序どおりcleanupでき、その後の検査でcontainerが残っていないことを確認した。
+- 2026-09-08: 数値・文字列のpublishedゼロは、Podman専用の一時JSONでのみpublished省略へ変換する。host_ip、target、protocol、保存済みcanonical snapshotとdigestは維持する。その後の実lifecycleが110.13秒で成功し、endpoint・共存・cleanupの受け入れも確認した。
+- 2026-09-08: 実fixtureは失敗時の一時ディレクトリを保持し、createが失敗したりJSONを返さなかった場合も専用registryからlease識別情報を回収する。fixtureのimage・外部volumeのcleanupはlease cleanup確認後に行い、不確実な場合は入力と証拠を保持する。検証失敗で復旧証拠まで失うことを防ぐ。
+
+- 2026-09-08: 導入済みpodman-compose 1.3.0は予約前に拒否された（前提条件エラー、exit 3）。これはlifecycle成功ではない。その後ユーザーがpodman-compose 1.6.0を提供した。その後rootless Podman 5.4.2での実共存テストが110.13秒で成功した。
+- 2026-09-08: 独立レビューで7件を発見し、policyを弱めず修正・再確認した。
+  1. inventoryが残存provider行に依存し、孤立リソースだけのproviderを見落とした。登録済みproviderと利用可能なhost engineの和集合を調べ、inventory専用Doctorはpodman-composeを要求しない。
+  2. root/service直下の`x-podman`だけを拒否していた。network、service内network、secretの拡張も再帰的に拒否する。
+  3. Podmanの`glob` mountや`ns:`等の固有network modeが共通のbind/host network検査を回避できた。Renderが未対応形式を副作用前に拒否する。
+  4. `Exists`算出後に残存anonymous volumeを追加していた。Inspectは最終リソース集合から存在を判定する。
+  5. snapshotを一時ディレクトリへ移すとserviceの相対`env_file`、secret/config pathが壊れた。参照ファイルを検証・範囲制限して絶対pathへ変換し、最初のComposeファイルとproject directoryの不一致は明示的に未対応とする。
+  6. service識別をDocker互換labelだけに依存していた。Podman native service labelを必須とし、互換labelとの矛盾を拒否する。
+  7. null map/bare listの環境変数がUp時に再解決されていた。Renderで値未確定の引き継ぎを拒否し、明示的な空文字・literal値を維持する。hostの秘密値を診断へ出さない。
 
 - 2026-09-08: ユーザーがPodman 5.4.2とpodman-compose 1.3.0を導入し、rootless infoは動作しました。composeは必須の1.6.0に届かないため、更新または隔離した検証環境への導入許可を問い合わせています。下限は変更しません。
 - 2026-09-08: full checkとraceの並行実行中にAndroidのport所有権テストが一度失敗しました。raceとDocker integrationは成功しました。同じfull checkを単独で再実行した結果は成功しました。Androidには変更していません。
@@ -128,6 +134,14 @@ path/space/non-ASCII、same Compose fileのDocker/Podman behavior差を記録す
 Docker前提で差を隠さない。
 
 ## 判断の記録
+
+- 2026-09-08 / maintainers: 永続JSONの共通dynamic port表現を維持し、Podman実行境界でのみpublishedゼロを変換する。upstream 1.6.0はpublished省略とhost_ipを`host_ip::target`へ変換するため、loopbackへのbindを保ちながらengine割り当てportを要求できる。provider構文に合わせるためfixed port policyを弱めたり、検証済みsnapshotを書き換えたりしない。
+- 2026-09-08 / maintainers: 設定エラーとengineエラーを切り分けるためnative provider診断を残す。共通の秘密値マスク後にstderrを末尾8 KiBへ制限し、元のエラーを保持する。失敗したintegrationのregistryは復旧用に残す。診断とtest cleanupが、失敗した割り当ての修復に必要な証拠を消さないようにする。
+
+- 2026-09-08 / maintainers: canonical JSONとdigestを保存し、Podmanにはドル記号をescapeした一時JSONを渡す。literal値の二重展開を防ぐためであり、実1.6.0のlifecycleによる受け入れもその後成功した。mountはbind/volume/tmpfs、network modeはモデル化した範囲に限定する。provider固有の副作用を黙って受け入れず、再帰的な`x-podman`と値未確定の環境変数引き継ぎを拒否する。参照ファイルはproject_directory内の通常ファイルに限定し、snapshot移動前に絶対pathへ変換する。
+- 2026-09-08 / maintainers: appがDown前に`Runtime.CleanupEvidence`を永続化する。証拠はlease/runtime/project/engineの範囲、接続元container、anonymous volume fingerprintを組み合わせる。失敗・再試行で保持し、保存失敗時はDownを止める。残存volume削除前に現行の参照と識別を再検査し、cleanup確認後にだけ証拠を消す。container消失によるcleanup根拠の喪失を防ぐ。
+- 2026-09-08 / maintainers: global inventoryは登録済みprovider識別情報と利用可能なhost engineの和集合を調べ、engine専用inventory Doctorを使用する。孤立リソースを発見しつつ、任意のpodman-composeをDockerだけのlifecycleの依存にしない。providerの実行先選択にfallbackはない。
+- 2026-09-08 / maintainers: 同じpackage内のnative Podman command adapterを通じて既存Composeのリソース走査を共有する。native project/service labelとagent-env所有権を要求し、互換labelの矛盾を拒否する。fingerprintはendpointとhost/store構成を固定するもので、engine世代を不変に識別するものではない。同じ構成での再作成にもリソース所有権検査が必要となる。
 
 - 2026-09-08: provider省略時のcanonical manifest内容とdigestを保ち、domain snapshotでのみDockerの既定値を確定します。inventoryのキーにはprovider、engine識別情報、projectを含めます。
 - 2026-09-08: podman-composeの--podman-argsはsubcommand後に追加され、global remote flagを確実に固定できないため、native agent-env child bridgeを使用します。固定flagを先頭へ付け、環境の接続先指定を除去します。shell wrapperは使用しません。
@@ -170,7 +184,7 @@ Docker前提で差を隠さない。
 
 ## 成果と振り返り
 
-未完了。
+未完了。provider実装、ローカル回帰、実Linux lifecycleの受け入れは成功した。最終native CIは未完了で、実Podman Machine環境は利用できない。CIの証拠を照合するまで本Planをactiveに保つ。
 
 完了時にprovider syntax/architecture、Docker非回帰、tested Podman versions、
 engine identity、config format、ownership、endpoint、rootless、cleanup差、
@@ -385,35 +399,35 @@ final harness/translation/race/integration、evidence/retrospective後completed�
 
 | ID | 必須動作 | 証拠 |
 | --- | --- | --- |
-| P1 | provider省略existing ComposeはDockerで既存integration非回帰 | Pending |
-| P2 | explicit docker-composeはdefaultと同等 | Pending |
-| P3 | explicit podman-composeのみ選択しDocker fallback無し | Pending |
-| P4 | unknown/non-Compose providerをeffect前reject | Pending |
-| P5 | plan/snapshot/showにprovider identity | Pending |
-| P6 | Docker context/cleanup safety非回帰 | Pending |
-| P7 | Podman Doctorがprovider/client/server/mode/non-secret identity記録 | Pending |
-| P8 | default connection変更後もrecorded engineへ固定 | Pending |
-| P9 | engine mismatch/ambiguityでcleanup block/quarantine | Pending |
-| P10 | configがcommon host-policy modelへ入る | Pending |
-| P11 | unmodeled Podman extensionでpolicy bypass不可 | Pending |
-| P12 | selected service closureのみdetached start | Pending |
-| P13 | structured Podman inspectでowned resource/readiness | Pending |
-| P14 | real Linux rootless dynamic endpoint、fixed host port reject | Pending |
-| P15 | unsupported Docker-only flag無しでtimestamp/service attribution logs | Pending |
-| P16 | destructive effect前にownership verify | Pending |
-| P17 | two Podman leasesがdistinct resource/endpointでREADY | Pending |
-| P18 | A destroyでB/external resource維持 | Pending |
-| P19 | Docker/Podman coexist、cross observation/cleanup無し | Pending |
-| P20 | anonymous-volume差を検出しsafe residual handling/quarantine | Pending |
-| P21 | global Podman prune無し | Pending |
-| P22 | same E2E fixture両providerでpassまたは差document | Pending |
-| P23 | real Linux rootlessでcreate/endpoint/test/sibling/cleanup | Pending |
-| P24 | Windows/macOS/Linux native provider/path/argv/identity test、shell不要 | Pending |
-| P25 | Podman Machine evidenceをavailable時記録、fakeで代替しない | Pending |
-| P26 | Podman optional、core standaloneはPodman/Python不要 | Pending |
-| P27 | 英日durable docsがfinal contract/prerequisite説明 | Pending |
-| P28 | final harness/translation/race pass | Pending |
-| P29 | 英日ExecPlanにdirect evidence/retrospective後archive | Pending |
+| P1 | provider省略existing ComposeはDockerで既存integration非回帰 | baseline `aee3a3d`で実Docker integrationとVerify `34213899668`が成功。 |
+| P2 | explicit docker-composeはdefaultと同等 | providerのplan/config互換性テストがローカルで成功。 |
+| P3 | explicit podman-composeのみ選択しDocker fallback無し | 明示dispatcherとfallbackなしのCLI/appテストがローカルで成功。 |
+| P4 | unknown/non-Compose providerをeffect前reject | strict manifestの拒否fixtureがローカルで成功。 |
+| P5 | plan/snapshot/showにprovider identity | plan/domain snapshotと予約前create検査がローカルで成功。 |
+| P6 | Docker context/cleanup safety非回帰 | 選択・cleanup変更後の実Docker integration再実行と最終ローカルfull check/raceが成功。 |
+| P7 | Podman Doctorがprovider/client/server/mode/non-secret identity記録 | Doctor fixtureと実1.6.0/Podman 5.4.2 rootless lifecycleが成功。 |
+| P8 | default connection変更後もrecorded engineへ固定 | local/remote識別とnative bridgeテストがローカルで成功。最終OS CIは未完了。 |
+| P9 | engine mismatch/ambiguityでcleanup block/quarantine | engine変更時の副作用拒否とcleanup隔離・再試行fixtureがローカルで成功。 |
+| P10 | configがcommon host-policy modelへ入る | 正規化・Render policy回帰と実canonical JSON lifecycleが成功。 |
+| P11 | unmodeled Podman extensionでpolicy bypass不可 | 再帰的拡張とprovider固有hostアクセスのRender拒否fixtureが成功。 |
+| P12 | selected service closureのみdetached start | 選択closureとdetached実lifecycleのfixtureが成功（110.13秒）。 |
+| P13 | structured Podman inspectでowned resource/readiness | native label/healthと残存のみの回帰に加え、実READY・resource観測が成功。 |
+| P14 | real Linux rootless dynamic endpoint、fixed host port reject | 実dynamic loopback HTTP endpointとfixed port policy拒否テストが成功。 |
+| P15 | unsupported Docker-only flag無しでtimestamp/service attribution logs | 実logsとnamed testのartifact・秘密値マスク検査が成功。 |
+| P16 | destructive effect前にownership verify | native project/serviceと矛盾labelのfixture、実所有リソース削除が成功。 |
+| P17 | two Podman leasesがdistinct resource/endpointでREADY | 実同時2leaseのREADY・resource/endpoint分離fixtureが成功（110.13秒）。 |
+| P18 | A destroyでB/external resource維持 | 実lease削除後に他leaseと外部リソースを維持する検査が成功。 |
+| P19 | Docker/Podman coexist、cross observation/cleanup無し | provider別inventoryテストと実Docker/Podman共存が成功。 |
+| P20 | anonymous-volume差を検出しsafe residual handling/quarantine | 証拠・置換・再試行・保存失敗fixtureが成功。実anonymous証拠とcleanup後の接続されていた全volume消失も成功。 |
+| P21 | global Podman prune無し | backendレビューと実範囲限定cleanupでglobal prune commandを使用していない。 |
+| P22 | same E2E fixture両providerでpassまたは差document | Docker共存を有効にして同じnamed pass/failと証拠・artifact検査が成功。 |
+| P23 | real Linux rootlessでcreate/endpoint/test/sibling/cleanup | 実Linux rootless lifecycleが110.13秒で成功。正確なversion・commandは以下。 |
+| P24 | Windows/macOS/Linux native provider/path/argv/identity test、shell不要 | 各OSで実行可能なnativeテストを追加しローカルLinuxで成功。最終Windows/macOS/Linux CIは未完了。 |
+| P25 | Podman Machine evidenceをavailable時記録、fakeで代替しない | 実Machine環境は利用不可。実Machine検証済みとは主張しない。 |
+| P26 | Podman optional、core standaloneはPodman/Python不要 | ビルド済みstandalone help/versionが空PATH・Python/Podmanなしで成功。 |
+| P27 | 英日durable docsがfinal contract/prerequisite説明 | 英日最終範囲・前提条件・証拠更新とdocs-checkが成功。 |
+| P28 | final harness/translation/race pass | 最終ローカルfull check/raceと実Docker/Podman integrationが成功。最終native CIはP24で未完了。 |
+| P29 | 英日ExecPlanにdirect evidence/retrospective後archive | 英日直接証拠を記録済み。振り返り確定・archiveは最終native CI待ち。 |
 
 code存在だけではacceptanceではない。exact provider version、successful
 command/test/runを記録する。
@@ -434,6 +448,18 @@ ambiguousはquarantine。
 Podman対応のためDocker assertion/common policyを弱めない。
 
 ## 成果物と注記
+
+### 2026-09-08 実装チェックポイント
+
+- 2026-09-08の追加検証: provider選択とcleanup永続化の変更後に、実Docker integration全体が再度成功し、ローカル`repoctl check`全体も成功した。その後の実Podman成功は以下に記録する。最終native CIは別の検証として未完了。
+- 独立した追加検証で`go test ./internal/runtime/compose -run 'TestPodman(ProviderFailurePreservesRedactedNativeDiagnostic|UpUsesDynamicPortWithoutChangingCanonicalSnapshot)$' -count=1`が成功した。native stderrの秘密値マスク、数値・文字列ゼロの変換、canonical内容の維持、host_ip/target/protocolの保持を確認する。8 KiB制限はコードレビューで確認したが、この対象テストは長い診断を別途検査するものではない。
+
+- provider境界のbaseline commitは`aee3a3d`。native Verify run `34213899668`が成功した。これはbaselineの証拠であり、最終Podman backendのCIではない。
+- 現在の未commit実装でローカル`go run ./tools/repoctl check`と`go test -race ./...`が成功した。backendの対象raceテストとapp cleanupテストも成功。最終port修正後にfull checkとfull raceも再度成功した。
+- 独立した再確認で`go test ./internal/runtime/compose -run 'TestPodman(RejectsNestedExecutionExtensions|InspectRetainedAnonymousVolumeExists|RenderRejectsProviderSpecificHostAccess|NativeServiceOwnership|RelativeFileReferencesSurviveSnapshotRelocation|RejectsInitialFileDirectoryMismatchBeforeProvider)$' -count=1`と`go test ./internal/runtime/compose -run 'TestPodman(EnvironmentRequiresExplicitPassThroughValues|RenderRejectsProviderSpecificHostAccess)$' -count=1`が成功した。
+- appの`TestCleanupRetainsProofAfterContainerDisappears`、`TestCleanupProofWriteFailurePreventsDown`、`TestInventoryDiscoversOrphansOutsideRecordedProviders`が成功した。副作用前の証拠保存、container消失後の安全な再試行、保存失敗時の停止、登録行が残っていないproviderの孤立リソース発見を検証する。
+- 実Linux受け入れ: `AGENT_ENV_PODMAN_INTEGRATION=1`と`AGENT_ENV_PODMAN_DOCKER_COEXISTENCE=1`を設定した`go test -tags=integration ./internal/cli -run '^TestPodmanIntegrationConcurrentLeasesAndEvidence$' -count=1 -v`が110.13秒で成功。Go 1.27.1、native Linux、rootless Podman client/server 5.4.2、podman-compose 1.6.0を使用した。選択closure、同時2leaseのREADY、動的loopback endpoint疎通、時刻付きlogs、実anonymous volume証拠、成功・失敗のnamed test、artifactと秘密値マスク、cleanup後の接続されていた全volumeの消失、他lease・外部リソース・Dockerの維持を検証した。実際のcanonical JSON実行経路を通っている。永続的な証拠にlease IDやローカル実行ファイルpathは不要。
+- 最終port修正後のローカル`go run ./tools/repoctl check`と`go test -race ./...`が成功した。ビルド済みstandaloneの`help`と`version`はPATHが空でも成功し、両操作にPythonもPodmanも不要と確認した。最終Windows/macOS/Linux native CIは未完了、実Podman Machine環境は利用不可。
 
 2026-09-08のprovider境界の証拠: `go run ./tools/repoctl check`、`go test -race ./...`、`go run ./tools/repoctl test-integration`がすべて成功しました。integrationはPodmanの副作用を有効化する前に既存の実Docker lifecycleを検証しました。新規テストはmixed providerの予約前Doctor、不変snapshotによるcleanup、未知providerでrunnerを呼ばないこと、providerを含むinventory識別、manifestに基づくfallbackなしのCLI Doctorを検証します。
 
@@ -456,7 +482,7 @@ private key content/password/sensitive envをpersistしない。
 
 ## インターフェースと依存
 
-想定:
+実装済みdomain型:
 
 ```go
 type ComposeProviderName string
@@ -467,13 +493,7 @@ const (
 )
 ```
 
-想定layout:
-
-    internal/runtime/compose/
-    internal/runtime/compose/docker/
-    internal/runtime/compose/podman/
-
-実architectureに合わせて変更可。
+実装は`internal/runtime/compose`内に`dockerClient`、`podmanClient`、provider選択、正規化、native bridge、anonymous cleanupを置く。appがprovider選択と永続化を伴うcleanup手順を所有し、CLIが導入済みengineの検出を接続する。runtime adapter間のpackage importはない。
 
 Docker prerequisite:
 - docker
@@ -488,7 +508,7 @@ Podman prerequisite:
 
 core Python/shell/CGO dependencyを追加しない。
 
-Milestone 1で解決:
+当初の設計論点と残る受け入れ:
 
 1. key `provider` vs `compose_provider`
 2. engine fingerprint field
@@ -503,4 +523,4 @@ Milestone 1で解決:
 11. common project-name subset
 12. future profile overrideとの関係
 
-public behavior確定前にDecision Logで解決する。
+選択、fingerprint、bridge、正規化の対応範囲、logs、anonymous証拠の永続化は上記の判断で決定済み。実LinuxでのJSON/label/endpoint動作は検証済み。最終native CIは未完了で、profile overrideは将来範囲に残す。当初の論点は未検証事項を示すため保持し、決定済み事項を再度未決として扱わない。

@@ -52,6 +52,11 @@ func New(out, errOut io.Writer) *cobra.Command {
 				}
 				fmt.Fprintln(out)
 			}
+			for _, runtime := range p.Runtimes {
+				if runtime.Type == "compose" {
+					fmt.Fprintf(out, "Runtime %-12s type=compose provider=%s\n", runtime.Name, domain.EffectiveComposeProvider(runtime.Provider))
+				}
+			}
 			for _, a := range p.Applications {
 				fmt.Fprintf(out, "Application %-12s source=%s runtime=%s artifact=%s\n", a.Name, a.Source, a.Runtime, a.Artifact)
 				for _, binding := range a.Reverse {

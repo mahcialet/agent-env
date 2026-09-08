@@ -58,6 +58,11 @@ type ComposeProviderDoctor interface {
 	DoctorFor(context.Context, domain.ComposeProviderName) (map[string]string, error)
 }
 
+// RuntimeCleanupPreparation captures ownership proof that must survive resource deletion.
+type RuntimeCleanupPreparation interface {
+	PrepareCleanup(context.Context, domain.Runtime) (domain.Runtime, error)
+}
+
 type RuntimeProvider interface {
 	Doctor(context.Context) (map[string]string, error)
 	Render(context.Context, domain.Runtime, []string) (Rendered, error)
@@ -749,6 +754,16 @@ func (s *Service) cleanup(ctx context.Context, l *domain.Lease, force bool) erro
 			}
 			return false, nil
 		}
+		if preparer, ok := s.Runtime.(RuntimeCleanupPreparation); ok {
+			prepared, err := preparer.PrepareCleanup(ctx, *r)
+			if err != nil {
+				return false, err
+			}
+			r.CleanupEvidence = prepared.CleanupEvidence
+			if err := s.persist(ctx, *l); err != nil {
+				return true, err
+			}
+		}
 		o, err := s.inspectRuntime(ctx, *r)
 		if err != nil {
 			return false, err
@@ -756,11 +771,14 @@ func (s *Service) cleanup(ctx context.Context, l *domain.Lease, force bool) erro
 		if err := ownedResources(l.ID, o.Resources); err != nil {
 			return false, err
 		}
-		if o.Exists {
+		if o.Exists || len(r.CleanupEvidence) > 0 {
 			if err := s.event(ctx, l.ID, "runtime_logs_requested", r.Name); err != nil {
 				return true, err
 			}
 			for _, service := range r.Services {
+				if !o.Exists {
+					break
+				}
 				scoped := *r
 				scoped.Services = []string{service}
 				logs, err := s.Runtime.Logs(ctx, scoped)
@@ -785,6 +803,7 @@ func (s *Service) cleanup(ctx context.Context, l *domain.Lease, force bool) erro
 				return false, err
 			}
 		}
+		r.CleanupEvidence = nil
 		r.Started = false
 		if err := s.persist(ctx, *l); err != nil {
 			return true, err

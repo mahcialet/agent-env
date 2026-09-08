@@ -125,34 +125,40 @@ Out of scope:
 - [x] 2026-09-08: Introduce provider-neutral Compose boundary.
 - [x] 2026-09-08: Move current Docker implementation behind it.
 - [x] 2026-09-08: Re-run all Docker tests and real Docker integration.
-- [ ] Implement Podman Doctor/version checks.
-- [ ] Define and persist local/remote Podman engine identity.
-- [ ] Pin later Podman operations to the recorded engine.
-- [ ] Normalize `podman-compose config` into common host-policy model.
-- [ ] Decide canonical recorded config representation.
-- [ ] Reject behavior-changing unmodeled Podman extensions.
-- [ ] Implement Podman Up/Inspect/dynamic endpoints.
-- [ ] Implement Podman Logs.
-- [ ] Implement Down plus residual-resource reinspection.
-- [ ] Add anonymous-volume cleanup regression.
-- [ ] Strengthen common network/volume ownership labels if proven portable.
-- [ ] Prove two simultaneous Podman leases are isolated.
-- [ ] Prove Docker and Podman leases coexist.
-- [ ] Prove default Podman connection changes cannot redirect cleanup.
-- [ ] Run real Linux rootless Podman integration.
-- [ ] Run the same named/E2E fixture with Docker and Podman.
-- [ ] Add native Windows/macOS/Linux provider tests.
-- [ ] Run real Podman Machine integration where available.
-- [ ] Update bilingual architecture/portability/security/reliability/quality/roadmap.
-- [ ] Update standalone prerequisite matrix.
-- [ ] Run final harness/race/integration.
-- [ ] Complete acceptance evidence and bilingual retrospective.
-- [ ] Move both plans to `docs/exec-plans/completed/`.
+- [x] 2026-09-08: Implement Doctor/version checks; `TestPodmanDoctorVersionFloorAndSnapshot` rejects 1.3.0 and 2.0.0 and accepts the 1.6.0 fixture.
+- [x] 2026-09-08: Persist local/remote identity and pin native children; `TestPodmanIdentityPinsLocalAndRemote`, `TestPodmanBridgeNativeRoundTrip`, and `TestPodmanChangedEngineRefusesMutation` pass locally.
+- [x] 2026-09-08: Normalize YAML into canonical JSON and common policy; `TestPodmanNormalizeComposeModel` and `TestPodmanRenderRejectsProviderSpecificHostAccess` pass. Real 1.6.0 lifecycle acceptance of recorded JSON subsequently passed (110.13 s).
+- [x] 2026-09-08: Reject unmodeled extensions recursively and unresolved environment pass-through; focused Render and normalization regressions pass.
+- [x] 2026-09-08: Implement detached Up, structured Inspect/endpoints, timestamped Logs, and Down/reinspection. Local harness/race and real Linux lifecycle acceptance pass.
+- [x] 2026-09-08: Persist anonymous-volume proof before Down, retain it across interrupted cleanup, and halt before effects on write failure; app/backend regression tests pass.
+- [x] 2026-09-08: Fix and independently recheck all seven review findings recorded below.
+- [x] 2026-09-08: Add portable provider/path/argv/identity tests; local Linux execution passes. Final native Windows/macOS/Linux CI remains pending.
+- [x] 2026-09-08: Update bilingual architecture, portability, security, reliability, quality, roadmap, and prerequisite documentation with implemented scope and remaining gaps.
+- [x] 2026-09-08: Prove common network/volume ownership labels in the real Podman lifecycle, alongside the Docker evidence.
+- [x] 2026-09-08: `TestPodmanIntegrationConcurrentLeasesAndEvidence` passed in 110.13 s with Docker coexistence enabled, Go 1.27.1, rootless Podman 5.4.2 and podman-compose 1.6.0. Both Podman leases reached READY; endpoints, named tests, sibling/foreign/Docker survival and complete cleanup passed.
+- [x] 2026-09-08: Reconcile real canonical JSON, logs, actual anonymous-volume proof, redacted artifacts, and all-attached-volume absence with acceptance evidence below.
+- [ ] 2026-09-08: Run final native Windows/macOS/Linux CI, and record real Podman Machine evidence where available (currently unavailable).
+- [x] 2026-09-08: Full local check and full race passed again after the final port fix; real Docker and Podman integration passed. Built standalone help/version also succeeded with an empty PATH and no Python/Podman tools.
+- [ ] 2026-09-08: Complete acceptance and bilingual retrospective, then move both plans to completed only when all requirements have direct evidence.
 
 A checkbox means observed completion. Record UTC date, revision, command/test/run
 and result.
 
 ## Surprises & Discoveries
+
+- 2026-09-08: The first real 1.6.0 lifecycle attempt failed without useful native diagnostics because the shared command wrapper discarded provider stderr. Podman errors now retain native provider identity and shared-evidence-redacted stderr (at most 8 KiB); Up unwraps the adapter error rather than presenting a misleading Docker failure. The next attempt exposed Podman's rejection of `published: "0"`. These were failed approaches, not acceptance passes. SIGINT allowed orderly cleanup, and subsequent inspection found no remaining containers.
+- 2026-09-08: Translate numeric/string published zero into an omitted published port only in the private Podman JSON copy. Keep host_ip, target, protocol, and the recorded canonical snapshot/digest unchanged. The subsequent real lifecycle passed in 110.13 s, including endpoint/coexistence/cleanup acceptance.
+- 2026-09-08: The real fixture now retains its failed temporary directory and recovers lease identities from its private registry when create fails or does not return JSON. Cleanup of fixture images/foreign volumes follows verified lease cleanup; uncertain cleanup retains inputs and evidence. This prevents failed validation from erasing recovery evidence.
+
+- 2026-09-08: The installed podman-compose 1.3.0 was rejected before allocation (prerequisite exit 3); this was not a lifecycle pass. The user subsequently supplied podman-compose 1.6.0. The subsequent rootless Podman 5.4.2 real coexistence validation passed in 110.13 s.
+- 2026-09-08: Independent review found seven defects; all were fixed and rechecked without weakening policy:
+  1. Inventory depended on surviving provider rows and missed orphan-only providers. Discovery now unions recorded providers with available host engines; inventory-only Doctor does not require podman-compose.
+  2. Only root/service `x-podman` keys were rejected. Recursive checks now reject network, nested service-network, and secret extensions too.
+  3. Podman `glob` mounts and `ns:`/other provider-specific network modes bypassed the common bind/host-network checks. Render now rejects unmodeled forms before effects.
+  4. Retained anonymous volumes were appended after `Exists` was calculated. Inspect now derives existence from the final resource set.
+  5. Relative service `env_file` and secret/config paths broke when snapshots moved to temporary directories. File references are validated, confined, and made absolute; differing initial first-file/project directories are explicitly unsupported.
+  6. Container service attribution trusted only Docker-compatible labels. Native Podman service labels are now mandatory and conflicting compatibility labels are rejected.
+  7. Null-map/bare-list environment values were resolved again at Up time. Render now rejects unresolved pass-through while preserving explicit empty/literal values and keeping host secrets out of diagnostics.
 
 - 2026-09-08: User installed Podman 5.4.2 and podman-compose 1.3.0; rootless info works. The installed compose version is below the required 1.6.0 floor. Requested an update or permission for an isolated verification install; do not lower the floor.
 - 2026-09-08: Concurrent full-check/race execution hit an Android port ownership test once while the race suite and Docker integration passed. The same full check passed when rerun serially; no Android changes were made.
@@ -168,6 +174,14 @@ differently from Docker.
 Do not hide Podman differences behind Docker-oriented assumptions.
 
 ## Decision Log
+
+- 2026-09-08 / maintainers: Preserve the common dynamic-port representation in durable JSON and adapt published zero only at the Podman execution boundary. Upstream 1.6.0 formats an omitted published value plus host_ip as `host_ip::target`; this retains loopback binding while requesting an engine-assigned port. Do not weaken fixed-port policy or rewrite the validated snapshot to accommodate provider syntax.
+- 2026-09-08 / maintainers: Native provider diagnostics are necessary to distinguish configuration failures from engine failures. Use shared secret redaction before limiting stderr to its last 8 KiB, preserve error causes, and retain failed integration registries for recovery. Diagnostics and test cleanup must not discard the evidence needed to repair a failed allocation.
+
+- 2026-09-08 / maintainers: Keep canonical recorded JSON and its digest. Podman receives a temporary dollar-escaped JSON copy, preventing second interpolation of literal values. Real 1.6.0 lifecycle acceptance subsequently passed. Restrict mounts to bind/volume/tmpfs and network modes to the modeled subset; reject recursive `x-podman` and unresolved environment pass-through rather than silently accepting provider-specific effects. File references must be regular files confined to project_directory and become absolute before snapshot relocation.
+- 2026-09-08 / maintainers: App owns durable `Runtime.CleanupEvidence` before Down. Proof combines lease/runtime/project/engine scope, attachment container, and anonymous-volume fingerprint. Preserve proof on failure and retry, block Down on persistence failure, recheck current references and identity before residual removal, and clear proof only after verified cleanup. This prevents container disappearance from destroying the only cleanup authority.
+- 2026-09-08 / maintainers: Global inventory unions registered provider identities with available host engines and uses an engine-only inventory Doctor. This finds orphan resources without turning optional podman-compose into a dependency of Docker-only lifecycle operations. Provider dispatch itself never falls back.
+- 2026-09-08 / maintainers: Share existing Compose traversal through a native Podman command adapter in the same package. Require native project/service labels plus agent-env ownership and reject contradictory compatibility labels. Fingerprints bind endpoint and host/store topology, not an immutable engine generation; in-place resets with identical topology still require resource ownership checks.
 
 - 2026-09-08: Preserve omitted-provider canonical manifest bytes/digest; resolve the legacy Docker default only in the domain snapshot. Inventory keys include provider, engine identity and project.
 - 2026-09-08: Use a native agent-env child bridge for podman-compose: its --podman-args are appended after the command and cannot reliably pin global remote flags. The bridge prepends pinned flags and scrubs ambient routing; no shell wrapper.
@@ -216,7 +230,7 @@ Do not hide Podman differences behind Docker-oriented assumptions.
 
 ## Outcomes & Retrospective
 
-Not completed.
+Not completed. Provider implementation and local regression validation are delivered; real Linux lifecycle has passed and final native CI remains pending. Real Podman Machine infrastructure is unavailable. Keep this plan active until acceptance evidence is reconciled.
 
 At completion summarize final manifest syntax, provider architecture, Docker
 non-regression, tested Podman versions, engine identity model, config format,
@@ -464,35 +478,35 @@ then complete evidence/retrospective and archive both plans.
 
 | ID | Required behavior | Evidence |
 | --- | --- | --- |
-| P1 | Existing provider-omitted Compose manifests still use Docker and pass current integration unchanged. | Pending |
-| P2 | Explicit `docker-compose` equals the default. | Pending |
-| P3 | Explicit `podman-compose` selects only Podman and never falls back. | Pending |
-| P4 | Unknown/non-Compose provider configuration fails before effects. | Pending |
-| P5 | Plan/snapshot/show diagnostics persist provider identity. | Pending |
-| P6 | Docker context/cleanup safety is unchanged by refactor. | Pending |
-| P7 | Podman Doctor records provider version, client/server versions, mode and non-secret engine identity. | Pending |
-| P8 | Later Podman operations remain pinned to the recorded engine after default connection changes. | Pending |
-| P9 | Engine identity mismatch blocks destructive cleanup and quarantines. | Pending |
-| P10 | podman-compose config enters the same common host-policy model before effects. | Pending |
-| P11 | Unmodeled Podman extensions cannot bypass common policy. | Pending |
-| P12 | Podman starts only selected service closure in detached mode. | Pending |
-| P13 | Structured Podman inspection reports owned resources/readiness. | Pending |
-| P14 | Real Linux rootless dynamic endpoints work and fixed host ports remain rejected. | Pending |
-| P15 | Logs retain timestamps and service/container attribution without unsupported Docker-only flags. | Pending |
-| P16 | Ownership identity is verified before Podman destructive effects. | Pending |
-| P17 | Two simultaneous Podman leases have distinct projects/resources/endpoints and both become READY. | Pending |
-| P18 | Destroying Podman A preserves Podman B and external Podman resources. | Pending |
-| P19 | Docker and Podman leases coexist without cross-provider observation/cleanup. | Pending |
-| P20 | Anonymous-volume cleanup differences are detected; proven residuals are handled safely and ambiguous residuals quarantine. | Pending |
-| P21 | No global Podman prune command is used. | Pending |
-| P22 | Same named/E2E fixture succeeds on Docker and Podman, or differences are explicitly documented. | Pending |
-| P23 | Real Linux rootless integration proves create/endpoint/test/sibling/cleanup. | Pending |
-| P24 | Native Windows/macOS/Linux provider/path/argv/identity tests pass without shell dependency. | Pending |
-| P25 | Podman Machine evidence is recorded where available; missing environments are not replaced by fake claims. | Pending |
-| P26 | Podman remains optional; standalone core commands require neither Podman nor Python. | Pending |
-| P27 | Bilingual durable docs describe final provider contract and prerequisites. | Pending |
-| P28 | Final harness/translation/race suites pass. | Pending |
-| P29 | Both plans contain direct evidence and retrospective before archival. | Pending |
+| P1 | Existing provider-omitted Compose manifests still use Docker and pass current integration unchanged. | Baseline `aee3a3d`: real Docker integration and Verify `34213899668` passed. |
+| P2 | Explicit `docker-compose` equals the default. | Provider plan/config compatibility tests passed locally. |
+| P3 | Explicit `podman-compose` selects only Podman and never falls back. | Explicit dispatcher and no-fallback CLI/app tests passed locally. |
+| P4 | Unknown/non-Compose provider configuration fails before effects. | Strict manifest negative fixtures passed locally. |
+| P5 | Plan/snapshot/show diagnostics persist provider identity. | Plan/domain snapshot and create-before-reservation tests passed locally. |
+| P6 | Docker context/cleanup safety is unchanged by refactor. | Real Docker integration rerun passed after dispatch/cleanup changes; final full local check/race passed. |
+| P7 | Podman Doctor records provider version, client/server versions, mode and non-secret engine identity. | Doctor fixture and real 1.6.0/Podman 5.4.2 rootless lifecycle passed. |
+| P8 | Later Podman operations remain pinned to the recorded engine after default connection changes. | Local/remote identity and native bridge tests passed locally; final OS CI pending. |
+| P9 | Engine identity mismatch blocks destructive cleanup and quarantines. | Changed-engine mutation rejection and cleanup quarantine/retry fixtures passed locally. |
+| P10 | podman-compose config enters the same common host-policy model before effects. | Normalize/Render policy regressions and real canonical JSON lifecycle passed. |
+| P11 | Unmodeled Podman extensions cannot bypass common policy. | Recursive extension and provider-specific host-access Render negative fixtures passed. |
+| P12 | Podman starts only selected service closure in detached mode. | Real selected-closure and detached lifecycle fixture passed (110.13 s). |
+| P13 | Structured Podman inspection reports owned resources/readiness. | Native label/health and retained-only regressions plus real READY/resource observations passed. |
+| P14 | Real Linux rootless dynamic endpoints work and fixed host ports remain rejected. | Real dynamic loopback HTTP endpoints passed; fixed-port policy negatives passed. |
+| P15 | Logs retain timestamps and service/container attribution without unsupported Docker-only flags. | Real logs and named-test artifact/redaction assertions passed. |
+| P16 | Ownership identity is verified before Podman destructive effects. | Native project/service and conflicting-label fixtures plus real owned destruction passed. |
+| P17 | Two simultaneous Podman leases have distinct projects/resources/endpoints and both become READY. | Real two-lease concurrent READY/distinct resource/endpoint fixture passed (110.13 s). |
+| P18 | Destroying Podman A preserves Podman B and external Podman resources. | Real sibling and foreign resource survival assertions passed after lease destruction. |
+| P19 | Docker and Podman leases coexist without cross-provider observation/cleanup. | Provider-scoped inventory tests and real Docker/Podman coexistence passed. |
+| P20 | Anonymous-volume cleanup differences are detected; proven residuals are handled safely and ambiguous residuals quarantine. | Proof/replacement/retry/write-failure fixtures passed; real actual anonymous proof and every attached volume absent after cleanup passed. |
+| P21 | No global Podman prune command is used. | Backend review and real scoped cleanup use no global prune commands. |
+| P22 | Same named/E2E fixture succeeds on Docker and Podman, or differences are explicitly documented. | Same named pass/fail and evidence/artifact assertions succeeded with Docker coexistence enabled. |
+| P23 | Real Linux rootless integration proves create/endpoint/test/sibling/cleanup. | Real Linux rootless lifecycle passed in 110.13 s; exact versions/command below. |
+| P24 | Native Windows/macOS/Linux provider/path/argv/identity tests pass without shell dependency. | Portable native test sources added and passed on local Linux; final Windows/macOS/Linux CI pending. |
+| P25 | Podman Machine evidence is recorded where available; missing environments are not replaced by fake claims. | Real Machine infrastructure unavailable; no real Machine claim. |
+| P26 | Podman remains optional; standalone core commands require neither Podman nor Python. | Built standalone help/version passed with empty PATH and no Python/Podman tools. |
+| P27 | Bilingual durable docs describe final provider contract and prerequisites. | Bilingual final scope/prerequisite/evidence updates and docs-check passed. |
+| P28 | Final harness/translation/race suites pass. | Final local full check/race and real Docker/Podman integration passed; final native CI remains pending under P24. |
+| P29 | Both plans contain direct evidence and retrospective before archival. | Direct bilingual evidence recorded; retrospective finalization/archive await final native CI. |
 
 Code existence alone is not acceptance. Record exact provider versions and
 successful commands/tests/workflow runs.
@@ -518,6 +532,18 @@ host policy.
 
 ## Artifacts and Notes
 
+### 2026-09-08 implementation checkpoint
+
+- 2026-09-08 follow-up: Full real Docker integration passed again after provider dispatch and durable-cleanup changes; full local `repoctl check` also passed. The later real Podman success is recorded below; final native CI remains separate and pending.
+- Independent follow-up passed `go test ./internal/runtime/compose -run 'TestPodman(ProviderFailurePreservesRedactedNativeDiagnostic|UpUsesDynamicPortWithoutChangingCanonicalSnapshot)$' -count=1`. The tests check redacted native stderr and both numeric/string zero conversion with unchanged canonical bytes and preserved host_ip/target/protocol. The implementation's 8 KiB bound is code-reviewed; this focused test does not separately exercise a long diagnostic.
+
+- Baseline provider-boundary commit: `aee3a3d`; native Verify run `34213899668` succeeded. This is baseline evidence, not final Podman backend CI.
+- Current uncommitted implementation: local `go run ./tools/repoctl check` and `go test -race ./...` passed. Focused backend race and app cleanup tests also passed. Full check and full race passed again after the final port fix.
+- Independent recheck passed `go test ./internal/runtime/compose -run 'TestPodman(RejectsNestedExecutionExtensions|InspectRetainedAnonymousVolumeExists|RenderRejectsProviderSpecificHostAccess|NativeServiceOwnership|RelativeFileReferencesSurviveSnapshotRelocation|RejectsInitialFileDirectoryMismatchBeforeProvider)$' -count=1` and `go test ./internal/runtime/compose -run 'TestPodman(EnvironmentRequiresExplicitPassThroughValues|RenderRejectsProviderSpecificHostAccess)$' -count=1`.
+- App regressions: `TestCleanupRetainsProofAfterContainerDisappears`, `TestCleanupProofWriteFailurePreventsDown`, and `TestInventoryDiscoversOrphansOutsideRecordedProviders` passed. These prove persisted proof before effects, safe retry without containers, fail-closed writes, and orphan discovery beyond surviving registry rows.
+- Real Linux acceptance: `go test -tags=integration ./internal/cli -run '^TestPodmanIntegrationConcurrentLeasesAndEvidence$' -count=1 -v` passed in 110.13 s with `AGENT_ENV_PODMAN_INTEGRATION=1` and `AGENT_ENV_PODMAN_DOCKER_COEXISTENCE=1`. Environment: Go 1.27.1, native Linux, rootless Podman client/server 5.4.2, podman-compose 1.6.0. The fixture proved selected closure, two simultaneous READY leases, reachable dynamic loopback endpoints, timestamped logs, actual anonymous-volume proof, successful and failed named tests, artifacts/redaction, absence of every attached volume after cleanup, and sibling/foreign/Docker survival. It exercises the actual canonical JSON execution path. No lease IDs or local executable paths are needed as durable evidence.
+- Final local `go run ./tools/repoctl check` and `go test -race ./...` passed after the port fix. Built standalone `help` and `version` succeeded with PATH empty, proving these operations need neither Python nor Podman. Final native Windows/macOS/Linux CI is pending; real Podman Machine remains unavailable.
+
 2026-09-08 provider-boundary evidence: `go run ./tools/repoctl check`, `go test -race ./...`, and `go run ./tools/repoctl test-integration` all passed. The integration run exercised the existing real Docker lifecycle before enabling Podman effects. New tests cover mixed-provider Doctor-before-reservation, immutable snapshot cleanup, unknown-provider no-runner behavior, provider-scoped inventory collisions, and manifest-aware CLI Doctor without fallback.
 
 Record:
@@ -540,7 +566,7 @@ Never persist private key contents, passwords or sensitive environment values.
 
 ## Interfaces and Dependencies
 
-Likely shape:
+Implemented domain shape:
 
 ```go
 type ComposeProviderName string
@@ -551,13 +577,7 @@ const (
 )
 ```
 
-Potential layout:
-
-    internal/runtime/compose/
-    internal/runtime/compose/docker/
-    internal/runtime/compose/podman/
-
-Exact package/type design may change after inspection.
+Implemented layout keeps `dockerClient`, `podmanClient`, provider dispatch, normalization, native bridge, and anonymous cleanup in `internal/runtime/compose`. App owns provider selection and durable cleanup orchestration; CLI wires installed-engine discovery. No runtime adapter imports another runtime package.
 
 Docker prerequisites:
 - docker;
@@ -572,7 +592,7 @@ Podman prerequisites:
 
 No new core Python, shell, CGO or mandatory-daemon dependency is introduced.
 
-## Unresolved Issues to Settle During Milestone 1
+## Original design questions and remaining acceptance
 
 1. Final key name `provider` versus `compose_provider` (default preference:
    `provider`).
@@ -589,4 +609,4 @@ No new core Python, shell, CGO or mandatory-daemon dependency is introduced.
 11. Common project-name subset.
 12. Future profile override interaction with provider.
 
-Resolve these in Decision Log before dependent behavior is declared stable.
+The decisions above settle selection, fingerprint, bridge, normalization subset, logs, and durable anonymous proof. Real Linux JSON/label/endpoint behavior is now validated; final native CI remains pending and profile overrides remain future scope. Retain these original questions to show what still needs acceptance rather than reopening settled decisions.

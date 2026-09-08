@@ -3,14 +3,14 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: README.md
-source_sha256: d017e68009f47cef7e3142e3f40d1b0e3ec4dd3838d5f3deff6af53aabf3ad8c
+source_sha256: 263c141e3218486e8384ecd253387a52b11f743590566deeb9680fca9ced161d
 ---
 
 [英語版（翻訳元）](README.md)
 
 # agent-env
 
-固定したローカルGitコミットと、隔離されたDocker Composeプロジェクトまたは専用Android Emulatorから、使い捨ての環境リースを作成します。stackを選び、稼働状態を確認し、証拠を保持する名前付きテストを実行して、最後にリソースを片付けます。複数リポジトリと同時に存在する複数リースに対応します。
+固定したローカルGitコミットと、DockerまたはPodmanを使う隔離されたComposeプロジェクトまたは専用Android Emulatorから、使い捨ての環境リースを作成します。stackを選び、稼働状態を確認し、証拠を保持する名前付きテストを実行して、最後にリソースを片付けます。複数リポジトリと同時に存在する複数リースに対応します。
 
 **環境の隔離は、悪意あるコードを封じ込めるsandboxではありません。** Dockerfile、Compose設定、テスト、パッケージスクリプトは、リポジトリが制御するコードを実行します。信頼できる、または管理下にあるリポジトリを使用してください。任意の信頼できないpull requestには、より強い外側の境界が必要です。
 
@@ -28,19 +28,20 @@ GitHub Releases から OS と CPU に合うアーカイブを取得し、バー�
 | --- | --- |
 | version、help、基本診断 | なし。Go、シェル、Docker、SDK、Flutter、Java は不要 |
 | ソース解決と管理対象 worktree | Git と信頼できるローカルリポジトリ |
-| Compose リース | Git、Docker daemon、Compose plugin |
+| Docker Compose リース（既定） | Git、Docker daemon、Compose v2 plugin |
+| Podman Compose リース | Git、Podman 5.x、独立したpodman-compose >=1.6.0,<2.0.0。5.4.2 / 1.6.0でLinux rootless受け入れを検証済み |
 | Android Emulator リース | Git、Android SDK、Emulator、adb、インストール済み system image/AVD テンプレート、ホストのアクセラレーション |
 | Flutter Android アプリ | Android の前提条件に加え、Flutter と互換性のある Java/Android ビルドツールチェーン |
 | Android UI 観測 | Android リースと別途ビルドした任意の UI companion。そのビルドには SDK/JDK と Go が必要 |
 | リリースの作成 | Git と対応する Go ツールチェーン。リリース CI は Go 1.27.1 に固定 |
 
-機能ごとの外部ツールと任意の UI companion はアーカイブに同梱しません。
+機能ごとの外部ツールと任意の UI companion はアーカイブに同梱しません。Pythonはagent-env coreの依存関係ではありません。
 任意の前提ツールがなくても version/help は実行できます。
 [配布仕様](docs/product-specs/standalone-distribution.ja.md)を参照してください。
 
 ## ビルドと検証
 
-Go 1.26.xまたは1.27.xを使用します。runtime操作にはGitに加え、選択したruntimeの前提条件が必要です。コンテナーならComposeを備えたDocker、Androidならインストール済みのAndroid SDK、Emulator、adb、停止したAVDテンプレートを用意します。リポジトリharnessの通常の単体検査にはBash、Make、PowerShell、Dockerは不要です。
+Go 1.26.xまたは1.27.xを使用します。runtime操作にはGitに加え、選択したruntimeの前提条件が必要です。コンテナーならCompose v2を備えたDocker、またはpodman-composeを備えたPodman、Androidならインストール済みのAndroid SDK、Emulator、adb、停止したAVDテンプレートを用意します。リポジトリharnessの通常の単体検査にはBash、Make、PowerShell、Dockerは不要です。
 
 ```text
 go run ./tools/repoctl doctor
@@ -77,6 +78,14 @@ go run ./cmd/agent-env destroy <lease-id>
 名前付きテストはargv配列を使い、stdout、stderr、終了ステータス、宣言した成果物はcleanup後も保持されます。[CLI契約](docs/product-specs/cli-contract.ja.md)と[セキュリティポリシー](docs/SECURITY.ja.md)を参照してください。
 
 `gc`は期限切れ候補をプレビューし、削除を要求するのは`gc --apply`だけです。追跡対象の変更、所有権の不確定、不完全なcleanupがあるリースはquarantinedになります。明示的な`destroy --force`は、追跡対象の編集を破棄する前に差分証拠を保持し、所有権の不一致を上書きすることはありません。
+
+Compose runtimeには`provider: docker-compose`（省略時の既定値）または
+`provider: podman-compose`を指定できます。選択はleaseごとに固定し、ツールがなくても
+fallbackしません。`doctor --provider podman-compose`はそのproviderを検査し、
+`doctor <repository>`はmanifestで宣言したproviderを検査します。Podman 5.4.2と
+podman-compose 1.6.0で、並行leaseとDocker共存を含む実Linux rootless受け入れが
+成功しました。最終native provider CIは未完了で、実機のPodman Machine環境はありません。[provider契約](docs/product-specs/compose-providers.ja.md)を
+参照してください。
 
 ## Android Emulatorリース
 

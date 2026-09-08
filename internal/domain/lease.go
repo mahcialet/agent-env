@@ -60,20 +60,22 @@ func EffectiveComposeProvider(name ComposeProviderName) ComposeProviderName {
 }
 
 type Runtime struct {
-	Provider     ComposeProviderName `json:"provider,omitempty"`
-	LeaseID      string              `json:"lease_id"`
-	Name         string              `json:"name"`
-	Type         string              `json:"type"`
-	Source       string              `json:"source"`
-	Project      string              `json:"project"`
-	Directory    string              `json:"directory"`
-	Files        []string            `json:"files"`
-	Services     []string            `json:"services"`
-	Context      string              `json:"docker_context"`
-	ConfigDigest string              `json:"config_digest"`
-	ConfigPath   string              `json:"config_path"`
-	Started      bool                `json:"started"`
-	Android      *AndroidEmulator    `json:"android,omitempty"`
+	// CleanupEvidence survives container disappearance until residual cleanup is verified.
+	CleanupEvidence []Resource          `json:"cleanup_evidence,omitempty"`
+	Provider        ComposeProviderName `json:"provider,omitempty"`
+	LeaseID         string              `json:"lease_id"`
+	Name            string              `json:"name"`
+	Type            string              `json:"type"`
+	Source          string              `json:"source"`
+	Project         string              `json:"project"`
+	Directory       string              `json:"directory"`
+	Files           []string            `json:"files"`
+	Services        []string            `json:"services"`
+	Context         string              `json:"docker_context"`
+	ConfigDigest    string              `json:"config_digest"`
+	ConfigPath      string              `json:"config_path"`
+	Started         bool                `json:"started"`
+	Android         *AndroidEmulator    `json:"android,omitempty"`
 }
 
 // AndroidEmulator records a lease-owned slot, private writable AVD and process

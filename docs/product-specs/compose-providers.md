@@ -9,9 +9,9 @@ last_verified: 2026-09-08
 [日本語](compose-providers.ja.md)
 
 This is the provider contract being implemented by the
-[active ExecPlan](../exec-plans/active/compose-provider-podman.md). Implementation
-and acceptance evidence remain incomplete; this document does not claim tested
-support for every described host configuration.
+[active ExecPlan](../exec-plans/active/compose-provider-podman.md). Real Linux rootless acceptance has passed with Podman 5.4.2 and podman-compose
+1.6.0, including Docker coexistence. Final native provider CI remains pending;
+real Podman Machine infrastructure is unavailable.
 
 ## Selection and prerequisites
 
@@ -42,7 +42,7 @@ the stored selection, even if the target manifest changes.
 | Provider | External prerequisites | Version contract |
 | --- | --- | --- |
 | `docker-compose` | Docker client, Compose v2 and reachable selected engine | Existing Docker contract |
-| `podman-compose` | Podman client/engine and standalone podman-compose | podman-compose 1.6.0 or newer; exact tested client/server versions belong in acceptance evidence |
+| `podman-compose` | Podman 5.x client/engine and standalone podman-compose | podman-compose >=1.6.0,<2.0.0; exact tested client/server versions belong in acceptance evidence |
 
 Podman, podman-compose and their installation dependencies are host prerequisites,
 not bundled assets or dependencies of the standalone core. An older installation,
@@ -63,7 +63,9 @@ Resource ownership checks remain necessary.
 
 Both providers apply the existing host policy before creating resources. Only the
 selected service closure starts. Fixed host ports remain rejected; dynamic
-endpoints require observed mappings. Podman Machine host-loopback mappings must
+endpoints require observed mappings. The common snapshot retains published port
+`0`; Podman receives a private copy with that field omitted and `host_ip` preserved,
+requesting an engine-assigned port without widening the loopback binding. Podman Machine host-loopback mappings must
 not be advertised as usable without evidence of reachability from the agent-env
 host. Unsupported or unproven mappings fail closed. Native fake tests and
 cross-builds do not establish real Machine support.
@@ -74,20 +76,35 @@ generated name alone is insufficient. Logs preserve timestamps and service/conta
 attribution. Destroy re-inspects resources after provider down and preserves sibling
 leases and unrelated resources.
 
-Anonymous volumes require explicit cleanup evidence. A residual volume can be
-removed only when it was attached to a proven-owned container and no external or
-sibling container currently references it; uncertainty requires quarantine. No
-lease cleanup uses global Podman prune commands.
+Anonymous volumes require explicit cleanup evidence. Before down, app saves
+`Runtime.cleanup_evidence` with the exact native volume fingerprint and proven
+container attachment. Recovery retains that proof after containers disappear,
+rechecks current identity and references, and removes a residual volume only when
+no external or sibling container currently references it. Uncertainty requires
+quarantine. No lease cleanup uses global Podman prune commands.
 
 ## Scope and acceptance
 
-Pod creation is disabled. Behavior-changing `x-podman` extensions are rejected
-rather than bypassing the common policy. Arbitrary provider executables, Docker
+Pod creation is disabled and `x-podman*` extensions are rejected recursively at
+any nesting depth. Mount types are limited to `bind`, `volume` and `tmpfs`;
+`glob` and other unmodeled types fail explicitly. `network_mode` may be omitted,
+empty, `bridge` or `none`; common policy denies `host`, and other explicit modes
+such as `ns:`, `pasta` and `slirp4netns` are unsupported.
+
+For Podman, the first Compose file must share its parent directory with
+`project_directory`. `env_file`, config and secret file references must resolve to
+regular files confined to that directory after symlink resolution; normalized
+references use absolute paths. Environment values must be frozen explicitly in
+normalized configuration: unresolved bare-key or null pass-through entries are
+rejected. These restrictions fail before effects instead of silently widening
+host access or rereading later ambient environment values.
+
+Arbitrary provider executables, Docker
 Compose v1, Quadlet/Kubernetes, OCI retention and hostile-code sandboxing are out
 of scope.
 
 Acceptance requires unchanged real Docker integration, Linux rootless Podman with
-podman-compose 1.6.0 or newer, two concurrent Podman leases, reachable dynamic
+Podman 5.x and podman-compose >=1.6.0,<2.0.0, two concurrent Podman leases, reachable dynamic
 endpoints, the same named/E2E fixture, sibling survival, verified cleanup and
 Docker/Podman coexistence. Native Windows/macOS/Linux tests cover selection,
 parsing, paths, argv and identity pinning. Real Podman Machine evidence is recorded

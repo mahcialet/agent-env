@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: ARCHITECTURE.md
-source_sha256: 55102f127e64e284720717fb17a7c1af84aa9afc1dc614a574bb0492a4b7f651
+source_sha256: 1af4f5b93e3bc10da55f1a58c8c8a6e3cc2504e9a524875624dc1f810f5bb1d3
 ---
 
 [英語版（翻訳元）](ARCHITECTURE.md)
@@ -14,7 +14,16 @@ source_sha256: 55102f127e64e284720717fb17a7c1af84aa9afc1dc614a574bb0492a4b7f651
 
 CLIは引数を解析し、出力を整形して、ユースケースをappに委譲します。domainの型は、具体的なアダプターに依存せず、リース、不変のソース集合、コンポーネント、リソース、イベントをモデル化します。configはマニフェストを厳密にデコードし、stackは決定的な依存閉包を解決します。appはソースとruntimeのインターフェース、ポリシー、準備完了判定、証拠、補償cleanupを調整します。
 
-SQLiteは期待状態、予約、所有権、ソースの識別情報、イベント履歴を管理します。Gitソースプロバイダーはrefを解決し、detached worktreeを作成し、追跡対象の変更を検査して、安全なworktreeを削除します。Compose runtimeアダプターは正規化した設定を検証し、選択したサービスを作成し、リソースを検査し、証拠を収集して、明示的なプロジェクト識別情報に基づき破棄します。reconcileはレジストリの意図とGit・Dockerの観測結果を比較します。保存されたreadyの行を、稼働中の健全な環境と同一視しません。
+SQLiteは期待状態、予約、所有権、ソースの識別情報、イベント履歴を管理します。Gitソースプロバイダーはrefを解決し、detached worktreeを作成し、追跡対象の変更を検査して、安全なworktreeを削除します。Compose runtimeアダプターは正規化した設定を検証し、選択したサービスを作成し、リソースを検査し、証拠を収集して、明示的なプロジェクト識別情報に基づき破棄します。reconcileはレジストリの意図とGitと記録済みCompose providerの観測結果を比較します。保存されたreadyの行を、稼働中の健全な環境と同一視しません。
+
+`internal/runtime/compose.Client`は同じpackage境界内の非公開Docker/Podman clientへ
+処理を振り分けます。両者は共通policyとcanonical JSON snapshotを使います。Podmanの
+子processは、記録済みengine引数を持って現在のagent-envバイナリのnative bridgeへ入り、
+coreにshell wrapperやPython依存を追加しません。domainのruntime snapshotはprovider
+情報と`cleanup_evidence`を保持します。appはdown前の所有証拠を永続化するため、中断後の
+cleanupで、削除済みcontainerの接続を再構成する必要がありません。
+[provider設計](docs/design-docs/compose-providers.ja.md)を参照してください。
+実providerの受け入れは引き続きactive planで管理します。
 
 ## 依存方向
 

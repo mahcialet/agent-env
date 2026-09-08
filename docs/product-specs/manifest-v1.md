@@ -8,7 +8,7 @@ last_verified: 2026-09-08
 
 [日本語](manifest-v1.ja.md)
 
-`.agent-env.yaml` is a strict, single-document YAML contract. Unknown fields, duplicate keys, unsupported versions, empty required collections, invalid names, dependency cycles, and references to missing sources/runtimes/components/stacks are rejected. `agent-env validate <file-or-repository>` checks the contract without running Git or Docker.
+`.agent-env.yaml` is a strict, single-document YAML contract. Unknown fields, duplicate keys, unsupported versions, empty required collections, invalid names, dependency cycles, and references to missing sources/runtimes/components/stacks are rejected. `agent-env validate <file-or-repository>` checks the contract without running Git or a Compose provider.
 
 ## Complete example
 
@@ -83,7 +83,7 @@ Set the explicitly requested host `TEST_TOKEN` variable before invoking this nam
 | --- | --- |
 | Root | Required `version: 1`, nonempty `sources`, `runtimes`, `components`, and `stacks`; optional `applications` and `tests` |
 | `sources.<alias>` | Required local `repository`; optional `default_ref` (Git HEAD when empty), `writable` (only false is supported in review mode) |
-| `runtimes.<name>` | Required `type` and `source`; Compose requires nonempty `files` with optional `project_directory`; Android requires `type: android-emulator` and `avd`, without Compose fields |
+| `runtimes.<name>` | Required `type` and `source`; Compose requires nonempty `files` with optional `project_directory` and `provider`; Android requires `type: android-emulator` and `avd`, without Compose fields |
 | `applications.<name>` | `type: flutter-android`, `source`, Android `runtime`, `build.command`, `build.artifact`, `package`, and `activity`; optional `project_directory`, `build.timeout`, and `reverse`. See the [Flutter contract](flutter-android-runtime.md) |
 | `components.<name>` | Required `runtime`; Compose requires nonempty `compose_services`; Android omits Compose services/endpoints/readiness and may select an `application` using the same runtime. Optional `depends_on`, `provides` and applicable `readiness` |
 | `stacks.<name>` | Required nonempty `roots`; optional `description` |
@@ -97,6 +97,17 @@ Relative source repositories resolve from the control repository. Runtime files 
 
 Selected components follow deterministic dependency order. Compose's service dependency closure is also included. The executed normalized configuration contains only selected services and their reachable networks, volumes, configs, and secrets, preventing unselected global resources from entering cleanup.
 
+Compose runtimes accept optional `provider: docker-compose` or
+`provider: podman-compose`. Omission means Docker; explicit empty/null, unknown
+values and provider fields on Android are errors. Plans and lease snapshots record
+the effective provider without adding an omitted field to the canonical manifest.
+Old snapshots without provider retain Docker semantics. The selected provider never
+falls back to another engine. Podman requires Podman 5.x and standalone
+podman-compose >=1.6.0,<2.0.0. Real Linux rootless acceptance passed with
+5.4.2 / 1.6.0; final native CI remains pending and real Machine infrastructure is
+unavailable. See the
+[provider contract](compose-providers.md).
+
 ## Readiness probes
 
 A component's `readiness` is a list of these probe shapes:
@@ -107,13 +118,13 @@ A component's `readiness` is a list of these probe shapes:
 | `http` | `type`, credential-free HTTP(S) `url` | `timeout`, `interval` |
 | `command` | `type`, `source`, argv `command` | `working_directory`, `timeout`, `interval` |
 
-Durations must be positive Go duration strings such as `500ms`, `10s`, or `2m`. Selected Compose probe declarations bound aggregate runtime readiness using the earliest declared timeout and fastest interval together with the built-in 2-minute/1-second defaults. Fields belonging to another probe type are errors. Running containers must have healthy Docker healthchecks where defined, and every selected service must exist. HTTP probes require a successful response within bounded observation. Command probes execute in the pinned source during create and retain output evidence; ordinary list/show do not rerun repository commands.
+Durations must be positive Go duration strings such as `500ms`, `10s`, or `2m`. Selected Compose probe declarations bound aggregate runtime readiness using the earliest declared timeout and fastest interval together with the built-in 2-minute/1-second defaults. Fields belonging to another probe type are errors. Running containers must have healthy container healthchecks where defined, and every selected service must exist. HTTP probes require a successful response within bounded observation. Command probes execute in the pinned source during create and retain output evidence; ordinary list/show do not rerun repository commands.
 
 HTTP URLs are literal, explicitly configured URLs. There is no automatic substitution of a dynamic endpoint into a probe URL. Use a Compose healthcheck for container-local HTTP readiness and use endpoint observations to discover the allocated host port.
 
 ## Endpoints
 
-`components.<name>.endpoints` maps endpoint names to `service`, integer `target` (1–65535), and optional `protocol` (`tcp`, the default, or `udp`). The service must be selected directly by that component. Before startup, each declaration generates a `127.0.0.1` binding with host port `0` for that service/target/protocol in the normalized execution snapshot; source Compose files are unchanged. Docker chooses the actual host port. This does not permit fixed host ports rejected by policy in the input configuration. Observation records allocated ports in resource metadata and exposes component-qualified endpoint names through `capabilities`, alongside runtime service/port/protocol observations. Missing or stopped bindings do not provide a live usable endpoint.
+`components.<name>.endpoints` maps endpoint names to `service`, integer `target` (1–65535), and optional `protocol` (`tcp`, the default, or `udp`). The service must be selected directly by that component. Before startup, each declaration generates a `127.0.0.1` binding with host port `0` for that service/target/protocol in the normalized execution snapshot; source Compose files are unchanged. The selected engine chooses the actual host port. Remote Podman mappings require observed reachability from the agent-env host; unproven endpoints are withheld. This does not permit fixed host ports rejected by policy in the input configuration. Observation records allocated ports in resource metadata and exposes component-qualified endpoint names through `capabilities`, alongside runtime service/port/protocol observations. Missing or stopped bindings do not provide a live usable endpoint.
 
 ## Named command environment and artifacts
 

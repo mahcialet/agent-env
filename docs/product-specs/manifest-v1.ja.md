@@ -3,14 +3,14 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/product-specs/manifest-v1.md
-source_sha256: 21c38dd58eed7e2433595f45f2e363f5f8bb04955e7b234b19c5a8ec6b075b30
+source_sha256: cc244ba4a4cacd504a158f016196af795917aa834e4d7c0c1d74e92dcd5262e9
 ---
 
 [English（翻訳元）](manifest-v1.md)
 
 # Manifest v1
 
-`.agent-env.yaml` は厳密な単一文書 YAML 契約です。未知の field、重複 key、未対応 version、必須 collection が空であること、不正な名前、依存関係 cycle、不在の source/runtime/component/stack への参照を拒否します。`agent-env validate <file-or-repository>` は Git や Docker を実行せずに契約を確認します。
+`.agent-env.yaml` は厳密な単一文書 YAML 契約です。未知の field、重複 key、未対応 version、必須 collection が空であること、不正な名前、依存関係 cycle、不在の source/runtime/component/stack への参照を拒否します。`agent-env validate <file-or-repository>` は Git や Compose provider を実行せずに契約を確認します。
 
 ## 完全な例
 
@@ -85,7 +85,7 @@ tests:
 | --- | --- |
 | Root | `version: 1` と空でない `sources`、`runtimes`、`components`、`stacks` が必須。`applications` と `tests` は任意 |
 | `sources.<alias>` | ローカル `repository` が必須。`default_ref`（空なら Git HEAD）、`writable`（review mode では false のみ対応）は任意 |
-| `runtimes.<name>` | `type` と `source` が必須。Compose は空でない `files` が必須で `project_directory` は任意。Android は `type: android-emulator` と `avd` が必須で Compose field は不可 |
+| `runtimes.<name>` | `type` と `source` が必須。Compose は空でない `files` が必須で `project_directory` と `provider` は任意。Android は `type: android-emulator` と `avd` が必須で Compose field は不可 |
 | `applications.<name>` | `type: flutter-android`、`source`、Android の `runtime`、`build.command`、`build.artifact`、`package`、`activity`。`project_directory`、`build.timeout`、`reverse` は任意。[Flutter 契約](flutter-android-runtime.ja.md)を参照 |
 | `components.<name>` | `runtime` が必須。Compose は空でない `compose_services` が必須。Android では Compose services/endpoints/readiness を省略し、同じ runtime の `application` を選択可能。`depends_on`、`provides`、適用可能な `readiness` は任意 |
 | `stacks.<name>` | 空でない `roots` が必須。`description` は任意 |
@@ -105,6 +105,15 @@ test/probe の working directory と artifact path は、宣言した source roo
 
 選択コンポーネントは決定的な依存順序に従います。Compose のサービス依存関係の閉包も含めます。実行する正規化設定には選択サービスと、そこから到達できる network、volume、config、secret だけを含め、未選択のグローバルリソースが削除対象へ入り込むのを防ぎます。
 
+Compose runtimeは任意の`provider: docker-compose`または`provider: podman-compose`を
+受け付けます。省略時はDockerです。明示的な空文字列・null、未知の値、Androidのprovider
+fieldはエラーです。planとlease snapshotには実効providerを記録し、省略したfieldを
+canonical manifestへ追加しません。providerを持たない旧snapshotはDockerとして扱います。
+選択したproviderから他engineへのfallbackはありません。PodmanにはPodman 5.xと独立した
+podman-compose >=1.6.0,<2.0.0が必要です。5.4.2 / 1.6.0で実Linux rootless受け入れが
+成功しました。最終native CIは未完了であり、実機のMachine環境はありません。
+[provider契約](compose-providers.ja.md)を参照してください。
+
 ## Readiness probe
 
 コンポーネントの `readiness` は次の形式の probe のリストです。
@@ -115,13 +124,13 @@ test/probe の working directory と artifact path は、宣言した source roo
 | `http` | `type`、資格情報を含まない HTTP(S) `url` | `timeout`、`interval` |
 | `command` | `type`、`source`、argv `command` | `working_directory`、`timeout`、`interval` |
 
-期間は `500ms`、`10s`、`2m` などの正の Go duration 文字列にします。選択した Compose probe の宣言は、最短の宣言 timeout と最速の interval を組み込み既定値の 2 分/1 秒と組み合わせ、ランタイム全体の readiness に上限を与えます。別の probe type に属する field はエラーです。稼働コンテナに Docker healthcheck が定義されていれば healthy である必要があり、選択した全サービスが存在しなければなりません。HTTP probe は時間制限付き観測内の成功応答を要求します。command probe は create 中に固定 source 内で実行し、出力証拠を保持します。通常の list/show はリポジトリコマンドを再実行しません。
+期間は `500ms`、`10s`、`2m` などの正の Go duration 文字列にします。選択した Compose probe の宣言は、最短の宣言 timeout と最速の interval を組み込み既定値の 2 分/1 秒と組み合わせ、ランタイム全体の readiness に上限を与えます。別の probe type に属する field はエラーです。稼働コンテナに container healthcheck が定義されていれば healthy である必要があり、選択した全サービスが存在しなければなりません。HTTP probe は時間制限付き観測内の成功応答を要求します。command probe は create 中に固定 source 内で実行し、出力証拠を保持します。通常の list/show はリポジトリコマンドを再実行しません。
 
 HTTP URL は明示設定した literal URL です。動的 endpoint の probe URL への自動代入はありません。コンテナ内 HTTP readiness には Compose healthcheck を使い、割り当てられたホストポートは endpoint 観測で取得します。
 
 ## Endpoint
 
-`components.<name>.endpoints` は endpoint 名を `service`、整数 `target`（1〜65535）、任意の `protocol`（既定の `tcp` または `udp`）へ対応付けます。service はそのコンポーネントが直接選択している必要があります。起動前に各宣言から、その service/target/protocol に対する host port `0` の `127.0.0.1` binding を正規化実行 snapshot に生成します。元の Compose file は変更しません。実際のホストポートは Docker が選びます。これは、入力設定で policy が拒否する固定ホストポートを許可するものではありません。観測は割り当てポートを resource metadata に記録し、runtime の service/port/protocol 観測とともに、コンポーネント名で修飾した endpoint 名を `capabilities` で公開します。不在または停止した binding は、実際に使える endpoint を提供しません。
+`components.<name>.endpoints` は endpoint 名を `service`、整数 `target`（1〜65535）、任意の `protocol`（既定の `tcp` または `udp`）へ対応付けます。service はそのコンポーネントが直接選択している必要があります。起動前に各宣言から、その service/target/protocol に対する host port `0` の `127.0.0.1` binding を正規化実行 snapshot に生成します。元の Compose file は変更しません。実際のホストポートは選択したengineが決めます。remote Podmanのmappingはagent-envホストからの到達性確認が必要であり、未確認のendpointは公開しません。これは、入力設定で policy が拒否する固定ホストポートを許可するものではありません。観測は割り当てポートを resource metadata に記録し、runtime の service/port/protocol 観測とともに、コンポーネント名で修飾した endpoint 名を `capabilities` で公開します。不在または停止した binding は、実際に使える endpoint を提供しません。
 
 ## Named command の環境と artifact
 

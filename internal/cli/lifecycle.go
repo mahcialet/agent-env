@@ -86,6 +86,25 @@ func (r runtimeAdapter) Inventory(ctx context.Context, name string) ([]domain.Re
 	return r.client.Inventory(ctx, name)
 }
 
+func (r runtimeAdapter) AvailableComposeProviders() []domain.ComposeProviderName {
+	var providers []domain.ComposeProviderName
+	if _, err := execx.LookPath("docker"); err == nil {
+		providers = append(providers, domain.ComposeProviderDocker)
+	}
+	if _, err := execx.LookPath("podman"); err == nil {
+		providers = append(providers, domain.ComposeProviderPodman)
+	}
+	return providers
+}
+
+func (r runtimeAdapter) PrepareCleanup(ctx context.Context, v domain.Runtime) (domain.Runtime, error) {
+	return r.client.PrepareCleanup(ctx, v)
+}
+
+func (r runtimeAdapter) InventoryDoctorFor(ctx context.Context, name domain.ComposeProviderName) (map[string]string, error) {
+	return r.client.InventoryDoctorFor(ctx, name)
+}
+
 func (r runtimeAdapter) DoctorFor(ctx context.Context, name domain.ComposeProviderName) (map[string]string, error) {
 	return r.client.DoctorFor(ctx, name)
 }

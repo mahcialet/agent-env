@@ -8,7 +8,7 @@ last_verified: 2026-09-08
 
 [日本語](PORTABILITY.ja.md)
 
-The module targets Go 1.26.x and 1.27.x, native Windows, macOS, and Linux, with no CGO requirement. Git and the Docker Compose plugin are external runtime prerequisites. Cross-compilation proves build compatibility; it does not prove native process, path, SQLite, or Docker behavior.
+The module targets Go 1.26.x and 1.27.x, native Windows, macOS, and Linux, with no CGO requirement. Git and the selected Compose provider’s tools are external runtime prerequisites. Cross-compilation proves build compatibility; it does not prove native process, path, SQLite, or Docker behavior.
 
 ## State and paths
 
@@ -24,7 +24,7 @@ Manifest paths within a source use forward slashes. Native absolute local reposi
 
 ## Native tools and cancellation
 
-Commands use executable-plus-argv, explicit working directories, deadlines, and streamed output. Git inspection uses machine-readable output; Docker inspection uses JSON and recorded context identity. Newline handling tolerates CRLF. The Go repository harness invokes standard tools directly and requires no shell scripting language.
+Commands use executable-plus-argv, explicit working directories, deadlines, and streamed output. Git inspection uses machine-readable output; Compose engine inspection uses structured output and recorded provider/engine identity. Newline handling tolerates CRLF. The Go repository harness invokes standard tools directly and requires no shell scripting language.
 
 On Unix, managed command process groups provide cancellation of descendants. On Windows, command children are assigned to a Job Object before they run, with job termination used for cancellation and timeout. This supports bounded named tests and probes; it is not a generic persistent host-process runtime. Background programs deliberately escaping OS containment are outside the trusted-repository model. Failure to verify termination is surfaced as a typed unconfirmed-process-tree result; the app must retain a running registry record and refuse cleanup until reviewed recovery establishes completion.
 
@@ -35,6 +35,22 @@ Windows `.cmd` and `.bat` execution is isolated in the Windows adapter. Wrapper 
 Windows and macOS normally use Docker Desktop. Linux may use Docker Engine or rootless Docker where Compose works. The chosen Docker context is captured before allocation and used during observation, logs, and cleanup, even if the user's active context later changes. A reachable context alone does not guarantee that its daemon can access local worktree bind paths; remote-daemon path availability is a host prerequisite.
 
 WSL is treated as Linux. Keep repositories, Git, Docker connectivity, and paths consistently on that side of the boundary. Mixed Windows/WSL leases and Windows-host Android Emulator control from WSL are not supported workflows.
+
+## Podman prerequisites and evidence limits
+
+The Podman provider requires Podman 5.x and standalone podman-compose
+>=1.6.0,<2.0.0. Python belongs to the provider’s host installation, not agent-env
+core. The current executable acts as the native child bridge; no generated shell
+script is required. Local Linux uses a pinned local engine; remote/Machine calls
+retain the resolved endpoint rather than a mutable connection name. Remote bind
+paths must be accessible to that engine. Reported remote loopback endpoints require
+successful host-side reachability checks.
+
+Real Linux rootless integration passed with Podman 5.4.2 and podman-compose 1.6.0,
+including Docker coexistence, dynamic endpoints and anonymous-volume cleanup.
+Final native provider CI remains pending; no real Podman Machine environment is
+available. Cross-builds or fake connection tests do not replace Machine evidence. Exact evidence belongs to the
+[provider plan](exec-plans/active/compose-provider-podman.md).
 
 ## Verification coverage
 
