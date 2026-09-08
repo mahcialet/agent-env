@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/exec-plans/active/standalone-release-finalization.md
-source_sha256: f81f801cabd6c4a5a3228f490ce56b431a67aab512cf360b942f8de56ff902a8
+source_sha256: 9113c2db287fbecb6f74bf36b84e0a979f702f3f7adac95e9913dd155817331b
 ---
 
 # スタンドアロン配布のリリース工程を完成させる

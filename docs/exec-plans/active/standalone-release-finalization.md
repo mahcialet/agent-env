@@ -233,14 +233,14 @@ credentials or environment secrets.
 - [ ] Record exact starting base branch/revision and verify foundation prerequisites.
 - [ ] Run baseline `repoctl check` and documented race suite.
 - [ ] Freeze tag/version/archive/release-manifest contract in bilingual durable docs.
-- [ ] Implement strict Git release-source validation.
-- [ ] Implement `repoctl release-build`.
-- [ ] Implement all six target builds with `CGO_ENABLED=0`.
-- [ ] Implement normalized versioned top-level zip/tar.gz archives.
-- [ ] Normalize archive mtimes from the tagged commit timestamp.
+- [x] 2026-09-08: Implemented strict Git release-source validation in repoctl.
+- [x] 2026-09-08: Implemented `repoctl release-build` for the six target matrix.
+- [x] 2026-09-08: Release builds set `CGO_ENABLED=0` for all six targets.
+- [x] 2026-09-08: Implemented versioned top-level zip/tar.gz archives.
+- [x] 2026-09-08: Archive entries use the tagged commit timestamp.
 - [ ] Generate deterministic `checksums.txt`.
 - [ ] Generate versioned `release-manifest.json`.
-- [ ] Implement `repoctl release-check`.
+- [x] 2026-09-08: Implemented initial `repoctl release-check` tag/tree validation.
 - [ ] Add corruption/mismatch/path-traversal/symlink/path-leak negative fixtures.
 - [ ] Verify executable build info and bundled asset metadata statically.
 - [ ] Add same-source/toolchain repeated binary/archive digest comparison.
