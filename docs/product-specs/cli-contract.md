@@ -12,6 +12,17 @@ The following commands are implemented. Platform validation is recorded separate
 
 ```text
 agent-env version
+agent-env ui snapshot <lease-id> [--application <name>|--runtime <name>] [--all-windows]
+agent-env ui screenshot <lease-id> [--application <name>|--runtime <name>]
+agent-env ui tap <lease-id> --snapshot <snapshot-id> --node <ref>
+agent-env ui set-text <lease-id> --snapshot <snapshot-id> --node <ref> --text <value>
+agent-env ui tap-coordinate <lease-id> --runtime <name> --x <x> --y <y>
+agent-env ui back <lease-id> [--runtime <name>]
+agent-env ui home <lease-id> [--runtime <name>]
+agent-env ui swipe <lease-id> --runtime <name> --x <x> --y <y> --to-x <x> --to-y <y> [--duration <duration>]
+agent-env ui wait <lease-id> --application <name> --contains <text> [--timeout <duration>]
+agent-env ui logcat <lease-id> --application <name> [--since <duration>]
+agent-env ui recover <lease-id> --run <run-id>
 agent-env init [repository]
 agent-env validate [repository-or-manifest]
 agent-env plan [repository] --stack <name> [--manifest <path>] [--ref <ref>] [--source alias=ref]
@@ -88,9 +99,41 @@ The registry receives a terminal status only after process-tree termination and 
 
 Environment maps are not copied into run records. `${env:NAME}` explicitly reads a host variable; `${lease_id}` inserts the lease identity. Literal credential-like environment values are rejected before allocation. See [manifest details](manifest-v1.md) and [security limits](../SECURITY.md).
 
+## Android UI observation
+
+`ui` operates on durable owned Android runtime identities, never arbitrary serials.
+Snapshots expose Android accessibility semantics, not Flutter widgets. The default
+application scope is its package; runtime-only or `--all-windows` snapshots include
+system windows. JSON uses the existing envelope; table output renders snapshot-local
+node refs and artifact paths. The [observer contract](android-ui-observer.md) defines
+selection, state restrictions, stable error codes, bounds and privacy.
+
+Semantic tap/set-text require a registered snapshot and current unique fingerprint.
+A stale or ambiguous target returns an error before input, without coordinate fallback.
+Text replacement requires a focused editable node and successful read-back equality.
+Raw and normalized observations, PNGs, scoped logs and operation evidence remain in
+lease artifacts. PNG pixels cannot be redacted like text. UI commands share the lease
+fence with cleanup; uncertain remote completion retains the running-command barrier.
+`ui recover` only handles a registered interrupted helper operation, verifies its
+identity and absence, and records recovery before clearing that run's barrier.
+It neither retries input nor declares the interrupted operation successful.
+Recovery requires positively persisted `termination-unconfirmed` eligibility and
+verified original result evidence; unclassified crashes remain blocked.
+
+UI errors follow the shared exit contract: missing prerequisites return 3; invalid
+options, target selection, missing leases and stale/ambiguous references return 2;
+registry and observation failures return 7. Typed error categories survive redaction
+so secret-safe diagnostics do not collapse these distinctions.
+
+Set `AGENT_ENV_UI_HELPER` to a verified companion build directory for semantic
+commands. Build it explicitly with `go run ./tools/uihelper --sdk <sdk> --jdk <jdk>
+--platform android-35 --build-tools 36.0.0 --output <new-directory>` using installed
+tools; the directory must not already exist. Host environment configuration remains
+the user's choice. No target-manifest change or automatic download is required.
+
 ## Deferred commands
 
-Expand/shrink, writable forks, checkpoint/reproduce, browser/UI observation, and artifact promotion are not implemented. They do not return placeholder success; see the [roadmap](../roadmap.md).
+Expand/shrink, writable forks, checkpoint/reproduce, browser observation, and artifact promotion are not implemented. They do not return placeholder success; see the [roadmap](../roadmap.md).
 
 ## Cancellation and manifest provenance
 

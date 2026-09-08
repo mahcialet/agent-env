@@ -64,6 +64,7 @@ type SourceDiff interface {
 }
 
 type Service struct {
+	AndroidUI           AndroidUIProvider
 	Flutter             FlutterProvider
 	AndroidApplications AndroidApplicationProvider
 	Store               Store

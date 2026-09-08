@@ -161,7 +161,7 @@ func serviceForStore(home string, store app.Store, out, errOut io.Writer) *app.S
 	runner := execx.OSRunner{}
 	p := policy.Defaults()
 	android := androidruntime.Adapter{Runner: runner, Processes: execx.NativeDetached{}}
-	return &app.Service{Home: home, Store: store, Source: gitSource{gitcli.Client{Runner: runner}}, Runtime: runtimeAdapter{compose.Client{Runner: runner, Policy: p}}, Android: android, Flutter: flutterruntime.Adapter{Runner: runner}, AndroidApplications: android, Policy: p, Runner: runner, Stdout: out, Stderr: errOut}
+	return &app.Service{Home: home, Store: store, Source: gitSource{gitcli.Client{Runner: runner}}, Runtime: runtimeAdapter{compose.Client{Runner: runner, Policy: p}}, Android: android, Flutter: flutterruntime.Adapter{Runner: runner}, AndroidApplications: android, AndroidUI: android, Policy: p, Runner: runner, Stdout: out, Stderr: errOut}
 }
 
 func addLifecycle(root *cobra.Command, output *string, emit func(any) error, out, errOut io.Writer) {

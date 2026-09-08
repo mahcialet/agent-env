@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/design-docs/index.md
-source_sha256: 47245d8f31adb3f202d117181a51e0cd0f6d5f020415e93999a385423dbbf5a4
+source_sha256: 96e3465faed088ebe9ff9ce1f3c024ab5db764b79a9156ab3fa2c0ce5b2574ef
 ---
 
 [English（翻訳元）](index.md)
@@ -18,3 +18,4 @@ source_sha256: 47245d8f31adb3f202d117181a51e0cd0f6d5f020415e93999a385423dbbf5a4
 - [bilingual-documentation](bilingual-documentation.ja.md) · [English](bilingual-documentation.md)
 
 - [flutter-android-runtime](flutter-android-runtime.ja.md) · [English](flutter-android-runtime.md)
+- [android-ui-observer](android-ui-observer.ja.md) · [English](android-ui-observer.md)

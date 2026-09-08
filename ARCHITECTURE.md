@@ -41,3 +41,12 @@ Neither adapter imports the other or Compose; app owns their ordering and
 compensation. Additive application/build/reverse records use the existing Lease
 JSON persistence. See the [Flutter design](docs/design-docs/flutter-android-runtime.md)
 and [ADR 0005](docs/adr/0005-separate-flutter-applications.md).
+
+Android UI observation uses `app.AndroidUIProvider`, implemented by the same Android
+adapter and its optional self-targeting companion in `internal/runtime/android/uihelper`.
+App owns selection, stale-reference policy, operation fencing, recovery and artifact
+publication. Domain owns serializable UI values; the adapter owns accessibility/ADB
+effects and helper identity. Existing `CommandRun` rows provide intent and cleanup
+barriers; no SQL migration or target-manifest section is added. `tools/uihelper`
+builds the companion explicitly using native tool argv. No runtime adapter imports
+another runtime. See the [observer design](docs/design-docs/android-ui-observer.md).

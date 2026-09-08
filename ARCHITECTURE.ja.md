@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: ARCHITECTURE.md
-source_sha256: 663d73afbf64805f16c8822e440d8f3f0ac07ffe729a72b70e388a58bf9cf645
+source_sha256: 5769103c6ddaa21d705f0f7b14dd016249092f08bf7e00fbea6dff3c86f00758
 ---
 
 [英語版（翻訳元）](ARCHITECTURE.md)
@@ -43,3 +43,11 @@ reverse、起動は `app.AndroidApplicationProvider` を通じ、既存のAndroi
 アプリ・ビルド・reverseの追加記録は既存のLease JSON保存を利用します。
 [Flutter設計](docs/design-docs/flutter-android-runtime.ja.md)と
 [ADR 0005](docs/adr/0005-separate-flutter-applications.ja.md)を参照してください。
+
+Android UI の観測には `app.AndroidUIProvider` を使います。既存の Android adapter と、
+`internal/runtime/android/uihelper` にある任意の自己対象 companion がこれを実装します。
+app は対象選択、古い参照の扱い、operation fencing、復旧、artifact 公開を担います。
+domain は直列化できる UI 値を定義し、adapter は accessibility/ADB の副作用と helper の同一性を担います。
+操作意図と cleanup barrier には既存の `CommandRun` row を使い、SQL migration や対象 manifest の
+section は追加しません。`tools/uihelper` が native tool の argv を使って companion を明示的に build します。
+runtime adapter 同士の import はありません。[observer 設計](docs/design-docs/android-ui-observer.ja.md)を参照してください。

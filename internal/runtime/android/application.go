@@ -15,6 +15,11 @@ import (
 	"github.com/mahcialet/agent-env/internal/execx"
 )
 
+type adbPreflightError struct{ err error }
+
+func (e *adbPreflightError) Error() string { return e.err.Error() }
+func (e *adbPreflightError) Unwrap() error { return e.err }
+
 var applicationPackage = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_]*)+$`)
 var applicationActivity = regexp.MustCompile(`^(\.[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*|[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)+)$`)
 
@@ -22,29 +27,33 @@ var applicationActivity = regexp.MustCompile(`^(\.[A-Za-z_][A-Za-z0-9_]*(\.[A-Za
 // observation. It cannot start or replace the shared server and never chooses
 // an implicit device. A command's duration is bounded independently of probes.
 func (a Adapter) applicationADB(ctx context.Context, r domain.Runtime, timeout time.Duration, args ...string) (execx.Result, error) {
+	return a.applicationADBLimited(ctx, r, timeout, 0, args...)
+}
+
+func (a Adapter) applicationADBLimited(ctx context.Context, r domain.Runtime, timeout time.Duration, limit int, args ...string) (execx.Result, error) {
 	if r.Type != "android-emulator" || r.Android == nil {
 		return execx.Result{}, identityError("application operation requires an Android Emulator runtime")
 	}
 	observed, err := a.Inspect(ctx, r)
 	if err != nil {
-		return execx.Result{}, err
+		return execx.Result{}, &adbPreflightError{err}
 	}
 	if !observed.Exists || !observed.Ready {
 		return execx.Result{}, fmt.Errorf("owned Android Emulator is not ready for application operation")
 	}
 	protocol, err := a.adbProtocol(ctx, r.Android.SDKPath)
 	if err != nil {
-		return execx.Result{}, err
+		return execx.Result{}, &adbPreflightError{err}
 	}
 	available, err := a.compatibleADB(ctx, protocol)
 	if err != nil {
-		return execx.Result{}, err
+		return execx.Result{}, &adbPreflightError{err}
 	}
 	if !available {
-		return execx.Result{}, fmt.Errorf("shared local ADB server is unavailable")
+		return execx.Result{}, &adbPreflightError{fmt.Errorf("shared local ADB server is unavailable")}
 	}
 	scoped := []string{"-H", "127.0.0.1", "-P", "5037", "-s", r.Android.Serial}
-	result, err := a.runner().Run(ctx, execx.Command{Name: executable(r.Android.SDKPath, "platform-tools", "adb"), Args: append(scoped, args...), UnsetEnv: adbRoutingEnvironment(), Timeout: timeout})
+	result, err := a.runner().Run(ctx, execx.Command{Name: executable(r.Android.SDKPath, "platform-tools", "adb"), Args: append(scoped, args...), UnsetEnv: adbRoutingEnvironment(), Timeout: timeout, CaptureLimit: limit})
 	if err != nil {
 		return result, applicationOutputError(err, result)
 	}

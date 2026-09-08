@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/product-specs/cli-contract.md
-source_sha256: cc29fea5e74dcdcceb66fbcf6ccd9bdef9cdc8d9f56b87af9f849abfa7e9210e
+source_sha256: b5feab71c9b9defcd3d55617869cf30137435f653aec8d7f7f3ca9b115caaed2
 ---
 
 [English（翻訳元）](cli-contract.md)
@@ -14,6 +14,17 @@ source_sha256: cc29fea5e74dcdcceb66fbcf6ccd9bdef9cdc8d9f56b87af9f849abfa7e9210e
 
 ```text
 agent-env version
+agent-env ui snapshot <lease-id> [--application <name>|--runtime <name>] [--all-windows]
+agent-env ui screenshot <lease-id> [--application <name>|--runtime <name>]
+agent-env ui tap <lease-id> --snapshot <snapshot-id> --node <ref>
+agent-env ui set-text <lease-id> --snapshot <snapshot-id> --node <ref> --text <value>
+agent-env ui tap-coordinate <lease-id> --runtime <name> --x <x> --y <y>
+agent-env ui back <lease-id> [--runtime <name>]
+agent-env ui home <lease-id> [--runtime <name>]
+agent-env ui swipe <lease-id> --runtime <name> --x <x> --y <y> --to-x <x> --to-y <y> [--duration <duration>]
+agent-env ui wait <lease-id> --application <name> --contains <text> [--timeout <duration>]
+agent-env ui logcat <lease-id> --application <name> [--since <duration>]
+agent-env ui recover <lease-id> --run <run-id>
 agent-env init [repository]
 agent-env validate [repository-or-manifest]
 agent-env plan [repository] --stack <name> [--manifest <path>] [--ref <ref>] [--source alias=ref]
@@ -98,9 +109,39 @@ test は固定された manifest に存在し、要求する component stack が
 
 環境 map は run 記録にコピーしません。`${env:NAME}` はホスト変数を明示的に読み、`${lease_id}` は lease 識別子を挿入します。資格情報らしい環境値の literal は割り当て前に拒否します。[manifest 詳細](manifest-v1.ja.md)と[セキュリティ上の限界](../SECURITY.ja.md)を参照してください。
 
+## Android UI の観測
+
+`ui` は、永続化された所有 Android runtime の識別情報を使い、任意の serial は受け付けません。
+snapshot が公開するのは Android accessibility の意味情報であり、Flutter widget ではありません。
+application 指定時は既定でその package を対象とします。runtime だけを指定した場合や
+`--all-windows` を指定した場合は system window も含めます。JSON は既存の envelope を使い、
+table 出力では snapshot 内だけで有効な node 参照と artifact path を表示します。
+対象選択、状態の制約、stable error code、上限、プライバシーは[observer 仕様](android-ui-observer.ja.md)で定義します。
+
+意味情報に基づく tap/set-text には、登録済み snapshot と、現在の一意な fingerprint が必要です。
+対象が古い場合や曖昧な場合は入力前に error を返し、座標へ fallback しません。
+text 置換には、focus のある編集可能な node と、読み戻しの一致確認が必要です。
+生および正規化した観測結果、PNG、対象を絞った log、操作証拠を lease artifact に保持します。
+PNG のピクセルは text のように秘密値を伏せられません。UI コマンドは cleanup と同じ lease fence を使い、
+remote 完了を確認できない場合は実行中コマンドの barrier を保持します。
+`ui recover` は登録済みの中断された helper 操作だけを扱い、その同一性と不在を確認し、
+復旧を記録してからその run の barrier を解除します。入力を再試行せず、中断された操作を成功とも扱いません。
+復旧には、明示的に永続化された `termination-unconfirmed` の分類と、検証済みの元の結果証拠が必要です。
+分類がない crash は引き続き拒否します。
+
+UI error は共通の終了コード仕様に従います。前提条件の不足は 3、無効な option・対象選択・
+存在しない lease・stale/ambiguous な参照は 2、registry と観測の障害は 7 を返します。
+秘密値を伏せた後も error の型による分類を保ち、これらを区別できるようにします。
+
+意味情報を使うコマンドでは、`AGENT_ENV_UI_HELPER` に検証済み companion build directory を指定します。
+インストール済み tool を使い、`go run ./tools/uihelper --sdk <sdk> --jdk <jdk>
+--platform android-35 --build-tools 36.0.0 --output <new-directory>` で明示的に build します。
+出力 directory は新規である必要があります。host 環境変数の設定方法は利用者が選択します。
+対象 manifest の変更や自動 download は不要です。
+
 ## 延期されたコマンド
 
-Expand/shrink、書き込み可能な fork、checkpoint/reproduce、browser/UI 観測、artifact promotion は未実装です。placeholder の成功は返しません。[ロードマップ](../roadmap.ja.md)を参照してください。
+Expand/shrink、書き込み可能な fork、checkpoint/reproduce、browser 観測、artifact promotion は未実装です。placeholder の成功は返しません。[ロードマップ](../roadmap.ja.md)を参照してください。
 
 ## キャンセルと manifest の由来
 
