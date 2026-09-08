@@ -130,7 +130,7 @@ func (s *Service) RecoverUI(ctx context.Context, id, runID string) (result UIRes
 		return result, err
 	}
 	bounded, cancel := context.WithTimeout(ctx, 10*time.Second)
-	result.Observation, err = s.AndroidUI.ObserveUI(bounded, runtime, domain.UIRequest{Version: 1, Operation: "quiesce"})
+	result.Observation, err = s.AndroidUI.ObserveUI(bounded, runtime, domain.UIRequest{Version: 1, Operation: "quiesce", ExpectedBackend: previous.Backend})
 	cancel()
 	secrets := evidence.InheritedSecrets()
 	sanitizeUIObservation(&result.Observation, secrets)

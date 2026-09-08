@@ -41,6 +41,7 @@ func uiFixture(t *testing.T) (*Service, *sqlite.Store, domain.Lease, *fakeUIProv
 	l.Sources = nil
 	avdHome := filepath.Join(s.Home, "leases", l.ID, "avd")
 	l.Runtimes = []domain.Runtime{{Name: "phone", Type: "android-emulator", LeaseID: l.ID, Android: &domain.AndroidEmulator{Template: "fixture", AVDName: "fixture", AVDHome: avdHome, AVDPath: filepath.Join(avdHome, "fixture.avd")}}}
+	l.Applications = []domain.Application{{Name: "mobile", Runtime: "phone", Package: "com.example.mobile"}}
 	if err := db.Reserve(context.Background(), l, 0); err != nil {
 		t.Fatal(err)
 	}
@@ -252,7 +253,7 @@ func TestUIPNGValidation(t *testing.T) {
 }
 func TestUIWaitIsBoundedAndDoesNotInput(t *testing.T) {
 	s, _, l, p := uiFixture(t)
-	result, err := s.UI(context.Background(), l.ID, UIOptions{Operation: "wait", Contains: "never appears", Timeout: 20 * time.Millisecond})
+	result, err := s.UI(context.Background(), l.ID, UIOptions{Operation: "wait", Application: "mobile", Contains: "never appears", Timeout: 20 * time.Millisecond})
 	if err == nil || p.calls != 1 || p.request.Operation != "snapshot" || result.Run.Status != "failed" {
 		t.Fatalf("wait %+v %v calls=%d", result, err, p.calls)
 	}
@@ -418,7 +419,7 @@ func TestUIHelperRecoveryAfterInternalTimeout(t *testing.T) {
 			if mode == "native" {
 				operation = "back"
 			}
-			result, err := s.UI(ctx, l.ID, UIOptions{Operation: operation, Contains: "Ready", Timeout: time.Millisecond})
+			result, err := s.UI(ctx, l.ID, UIOptions{Operation: operation, Application: "mobile", Contains: "Ready", Timeout: time.Millisecond})
 			if err == nil {
 				t.Fatal("interrupted operation incorrectly succeeded")
 			}

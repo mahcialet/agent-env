@@ -51,6 +51,9 @@ func validateUIOptions(o *UIOptions) error {
 		return errors.New("application and runtime selectors conflict")
 	}
 	semantic := o.Operation == "tap" || o.Operation == "set-text"
+	if o.Operation == "wait" && (o.Application == "" || o.Runtime != "" || o.AllWindows) {
+		return errors.New("wait requires an application selector and cannot include all windows")
+	}
 	if semantic != (o.Snapshot != "" && o.Node != "") || !semantic && (o.Snapshot != "" || o.Node != "") {
 		return errors.New("semantic actions require both snapshot and node; other operations reject them")
 	}
@@ -215,6 +218,12 @@ func (s *Service) UI(ctx context.Context, id string, o UIOptions) (result UIResu
 		req.ExpectedBackend = prior.Backend
 	}
 	result.Run = domain.CommandRun{ID: newID(), LeaseID: id, Name: "ui-" + o.Operation, Argv: []string{"ui", o.Operation, "--runtime", r.Name}, Status: "running", StartedAt: time.Now().UTC(), ExitCode: -1, Notes: []string{"Android serial: " + r.Android.Serial}}
+	if o.Application != "" {
+		result.Run.Argv = append(result.Run.Argv, "--application", o.Application)
+	}
+	if o.Operation == "wait" {
+		result.Run.Argv = append(result.Run.Argv, "--contains", evidence.RedactString(o.Contains, evidence.InheritedSecrets()), "--timeout", o.Timeout.String())
+	}
 
 	if req.Package != "" {
 		result.Run.Notes = append(result.Run.Notes, "Application selector package: "+req.Package)
@@ -423,14 +432,24 @@ func uiContains(tree domain.UITree, want string) bool {
 	return false
 }
 func sanitizeUIObservation(o *domain.UIObservation, secrets []string) {
+	windowSecret := false
 	for i := range o.Snapshot.Windows {
 		w := &o.Snapshot.Windows[i]
+		before := w.Title + "\x00" + w.RootPackage + "\x00" + w.RootClass
 		w.Title = evidence.RedactString(w.Title, secrets)
 		w.RootPackage = evidence.RedactString(w.RootPackage, secrets)
 		w.RootClass = evidence.RedactString(w.RootClass, secrets)
+		windowSecret = windowSecret || before != w.Title+"\x00"+w.RootPackage+"\x00"+w.RootClass
 	}
+	if windowSecret {
+		for i := range o.Snapshot.Windows {
+			o.Snapshot.Windows[i].Key = ""
+		}
+	}
+	nodeSecret := false
 	for i := range o.Snapshot.Nodes {
 		n := &o.Snapshot.Nodes[i]
+		before := n.Text + "\x00" + n.Description + "\x00" + n.Hint
 		if n.Editable || n.Password {
 			n.Text = "[REDACTED]"
 			n.Description = "[REDACTED]"
@@ -439,6 +458,12 @@ func sanitizeUIObservation(o *domain.UIObservation, secrets []string) {
 		n.Text = evidence.RedactString(n.Text, secrets)
 		n.Description = evidence.RedactString(n.Description, secrets)
 		n.Hint = evidence.RedactString(n.Hint, secrets)
+		nodeSecret = nodeSecret || before != n.Text+"\x00"+n.Description+"\x00"+n.Hint
+	}
+	if nodeSecret {
+		for i := range o.Snapshot.Nodes {
+			o.Snapshot.Nodes[i].Fingerprint = ""
+		}
 	}
 	o.Detail = evidence.RedactString(o.Detail, secrets)
 	o.Log = evidence.RedactString(o.Log, secrets)
@@ -454,7 +479,12 @@ func sanitizeUIObservation(o *domain.UIObservation, secrets []string) {
 		} else {
 			raw.Raw = nil
 			sanitizeUIObservation(&raw, secrets)
-			o.Raw, _ = json.Marshal(raw)
+			normalized, marshalErr := json.Marshal(raw)
+			if marshalErr != nil || len(normalized) > 1<<20 {
+				o.Raw = []byte(`{"detail":"raw evidence rejected after redaction: size bound"}`)
+			} else {
+				o.Raw = normalized
+			}
 		}
 	}
 }

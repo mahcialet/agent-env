@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"os/exec"
 	"regexp"
 	"strconv"
 	"strings"
@@ -52,9 +53,24 @@ func (a Adapter) ObserveUI(ctx context.Context, r domain.Runtime, q domain.UIReq
 		}
 		meta, e := uihelper.Load(os.Getenv("AGENT_ENV_UI_HELPER"))
 		if e != nil {
+			if q.Operation == "quiesce" {
+				const prefix = "uiautomation-v1:source="
+				if strings.HasPrefix(q.ExpectedBackend, prefix) {
+					parts := strings.Split(strings.TrimPrefix(q.ExpectedBackend, prefix), ":apk=")
+					if len(parts) == 2 && len(parts[0]) == 64 && len(parts[1]) == 64 {
+						meta = uihelper.Metadata{Version: 1, Package: uihelper.Package, SourceSHA256: parts[0], APKSHA256: parts[1]}
+						o.Backend = q.ExpectedBackend
+						e = nil
+					}
+				}
+			}
+		}
+		if e != nil {
 			return o, fmt.Errorf("%w: AGENTENV-UI-UNAVAILABLE: build and configure the verified UI helper: %v", app.ErrPrerequisite, e)
 		}
-		o.Backend = fmt.Sprintf("uiautomation-v%d:source=%s:apk=%s", meta.Version, meta.SourceSHA256, meta.APKSHA256)
+		if o.Backend == "" {
+			o.Backend = fmt.Sprintf("uiautomation-v%d:source=%s:apk=%s", meta.Version, meta.SourceSHA256, meta.APKSHA256)
+		}
 		if (q.Operation == "tap" || q.Operation == "set-text") && q.ExpectedBackend != o.Backend {
 			o.Status = "stale"
 			return o, nil
@@ -349,6 +365,9 @@ func uiSafeError(err error) error {
 		if errors.Is(err, marker) {
 			safe = errors.Join(safe, marker)
 		}
+	}
+	if errors.Is(err, exec.ErrNotFound) {
+		safe = errors.Join(app.ErrPrerequisite, safe)
 	}
 	return safe
 }
