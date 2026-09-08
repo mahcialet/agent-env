@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/PORTABILITY.md
-source_sha256: 7ec5ea49b51dba4d65d3126e7dd0a08008f83103f9d1a05dc7f0553c7073bcb0
+source_sha256: 08c02cbfa3373fec9bafef6e5d58abdbea4d6335351120835fb442cc66a03ad3
 ---
 
 [英語版（翻訳元）](PORTABILITY.md)
@@ -68,6 +68,6 @@ Windows は ZIP、macOS/Linux は tar.gz を使い、全対象を `CGO_ENABLED=0
 6 対象のクロスビルド成功は、6 通りすべてのネイティブ動作を証明しません。
 arm64 を含め、実際に smoke test を実行したネイティブ runner を個別に記録します。
 アーカイブが生成されたことから実行済みとは判断しません。現在の証拠は
-[リリース計画](exec-plans/active/standalone-release-finalization.ja.md)で管理します。
+[リリース計画](exec-plans/completed/standalone-release-finalization.ja.md)で管理します。
 展開した CLI の実行に Go は不要です。選択した機能の外部前提条件は
 [README](../README.ja.md)に記載しています。

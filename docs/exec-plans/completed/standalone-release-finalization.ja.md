@@ -1,9 +1,9 @@
 ---
-status: active
+status: completed
 owner: maintainers
 last_verified: 2026-09-08
-translation_of: docs/exec-plans/active/standalone-release-finalization.md
-source_sha256: cda6b4d26c0a3b3cd62ee6d7357537819f48c3dabf4fa5d30a7549fce86c8670
+translation_of: docs/exec-plans/completed/standalone-release-finalization.md
+source_sha256: 5873102e5335acfc37a10266b9d2635dcb842923ee2bbb2bb82e3be001dd4868
 ---
 
 # スタンドアロン配布のリリース工程を完成させる
@@ -79,7 +79,7 @@ pipeline要件にしない。packagingはGo標準libraryとrepository Go codeで
 - [x] 2026-09-08: Linux の展開済み version/help/list が、ソース外・空の PATH・
   日本語と空白を含む状態保存先で成功した。
 - [x] 2026-09-08: Windows/macOS/Linux の native smoke job と tag workflow を追加。
-  外国OSの実行結果は引き続き確認中。
+  最終preview 34190701402で各OSの実行も成功した。
 - [x] 2026-09-08: publication gate のテストで依存欠落・無条件公開・成果物名の
   不一致・再ビルド検証の欠落を拒否した。
 - [x] 2026-09-08: README/architecture/portability/quality/security/roadmap を英日で
@@ -88,9 +88,9 @@ pipeline要件にしない。packagingはGo標準libraryとrepository Go codeで
   zipfile/tarfile で確認した。詳細は成果物と注記に記録。
 - [x] 2026-09-08: preview 34190096757 で linux/amd64・windows/amd64・darwin/arm64 のnativeが成功。他はcross/staticのみ。
 - [x] 2026-09-08: Verify 34190096727 の12 job、preview 34190096757 の4 job、ローカル最終raceが成功。
-- [x] 2026-09-08: R1–R27 の証拠を整理。最終archivalはまだ未完了。
-- [ ] 英日の成果と振り返りを完成する。
-- [ ] 両 Plan を completed へ移動し、リンクと hash を更新する。
+- [x] 2026-09-08: R1–R29 の証拠を整理。英日版のarchivalも完了した。
+- [x] 2026-09-08: 最終native/harness成功後に英日の成果と振り返りを完成した。
+- [x] 2026-09-08: 両子Planをcompletedへ移動し、参照リンク・翻訳パス・hashを更新した。
 
 チェックは観測済みの完了のみを示す。実装の存在と native 実行証拠を区別する。
 
@@ -99,7 +99,7 @@ pipeline要件にしない。packagingはGo標準libraryとrepository Go codeで
 - 2026-09-08: 最初の native 成功後、ZIP のローカルヘッダーだけを改ざんすると、
   中央側の安全な名前が走査パス・絶対パスを隠し、検査を通ることを再現した。
   回帰テストは修正前に失敗。再圧縮せずにローカル・中央の名前、metadata、offset、
-  descriptor を照合する修正を追加した。最終修正後の配布物・native検証を再実行する。
+  descriptor を照合する修正を追加した。最終修正後のpreview 34190701402とVerify 34190701428も成功した。
 
 - 2026-09-08: `0bf2d12` の完了記録は早すぎた。Git コマンドは root 引数を
   無視し、release-check はアーカイブを検査していなかった。入力の欠落と close
@@ -187,11 +187,29 @@ antivirus、asset metadata mismatch等を記録する。digest assertionを弱�
 
 ## 成果と振り返り
 
-未完了。
+2026-09-08 完了。最終実装 `641cb49` でローカル harness・実候補の負例・race、
+Verify 34190701428（12 job）、Release preview 34190701402（buildと3つのnative
+smoke）が成功した。
 
-完了時に、end-to-end version、tag enforcement、6target artifact、archive normalization、
-manifest schema、determinism、native smoke matrix、release workflow evidence、failure gate、
-state-root/asset検証、doc更新、signing/package-manager follow-upを記録する。
+private clone の v0.1.0 候補で、厳密なtag/tree/version/commit検証、commit固定の
+checkout、6つのCGO不要アーカイブ、metadata正規化、checksums、schema 1 manifest、
+実行ファイルの静的識別を検証した。2回のビルドでarchive/executable/checksum/manifest
+のバイトが一致した。nativeはLinux/amd64、Windows/amd64、macOS/arm64を実証し、
+他の3組はcross-buildと静的検査のみとする。各native runnerでUnicodeの状態保存先と
+空PATHでの実行が成功。同梱runtime assetsは現在空配列で、Android/Flutterツールを
+暗黙に同梱・初期化しない。
+
+tag workflowはharness/race、厳密なsourceのbuild、静的検査、同じtagの再生成比較、
+全native smokeを公開の前提とする。previewでupload済み候補を実行し、gateの回帰
+テストで迂回を拒否した。公開tagやGitHub Releaseは作成していない。実際の公開は
+maintainerによる意図的なtag pushで行う。署名、notarization、package manager、
+SBOM、attestationはこのPlanの範囲外として残る。
+
+当初のharness成功はリリース完了の根拠にならなかった。配布物を検査するテストが
+なかったためである。実際の負例で検査不足とZIPのlocal/central名の不一致を発見した。
+別担当のレビューでignored source混入と最終source識別の未比較も発見し、現在は
+防止処理と回帰証拠を備える。英日進捗の本文もhashとともに修正した。親の受け入れは
+別途照合し、asset inventory・stress・より広いstate/prerequisite条件はactiveで残す。
 
 ## 背景と構成
 
@@ -304,31 +322,31 @@ final repoctl check/race/release/determinism/native smoke/manual archive inspect
 | R2 | HEAD == tag commit必須 | HEAD 移動・tag の commit 解決・annotated tag のテストが成功。専用 snapshot はローカル変更を含めない。 |
 | R3 | clean-tree/index policyを強制 | dirty/staged/untracked と専用 checkout の回帰テストが成功。 |
 | R4 | requested X.Y.Z == selected vX.Y.Z minus v | 要求バージョン不一致・数値の先頭ゼロを拒否するテストが成功。 |
-| R5 | 6targetすべてCGO=0 build | d628098 のローカル検証と preview 34190096757 で6ターゲットをビルドし、CGO=0 を静的検証。 |
+| R5 | 6targetすべてCGO=0 build | 641cb49 のローカル検証と preview 34190701402 で6ターゲットをビルドし、CGO=0 を静的検証。 |
 | R6 | archive name contract一致 | 6つの契約通りの名前をローカル・preview・独立検査で確認。 |
 | R7 | top-level dir + executable/LICENSE/READMEのみ | roundtrip・不正memberテストと独立検査で、同じディレクトリ配下の3通常ファイルを確認。 |
 | R8 | commit timestamp mtime + normalized metadata | テストと独立検査で commit 秒、ZIP 拡張timestamp、mode、TAR/gzip 正規化を確認。 |
-| R9 | checksumsが6archive bytes一致 | 全checksumを検証し、ローカルと preview 34190096757 で2組のバイト一致を確認。 |
+| R9 | checksumsが6archive bytes一致 | 全checksumを検証し、ローカルと preview 34190701402 で2組のバイト一致を確認。 |
 | R10 | manifestがactual version/tag/source/toolchain/target/archive/executable/asset bytes一致 | 6バイナリを静的検査。実候補テストで manifest/target/digest/toolchain/架空asset の不一致を拒否。 |
 | R11 | valid setをforeign binary実行無しでrelease-check pass | 全ターゲットの静的検査が成功。外国OSの実行ファイルを起動せず検証する。 |
 | R12 | corruption/mismatch/traversal/symlink/missing/unexpected拒否 | 不正アーカイブのテストと実候補17 subtest が成功。hash再計算後の不正version/license/readmeも拒否。 |
 | R13 | source/worktree/temp absolute path leak無し | private source pathを加えたバイナリはhashを再計算しても拒否。検査範囲は既知のパスと管理下のmetadataで、万能の秘密検出ではない。 |
-| R14 | same-source/toolchain digest比較 | d628098・Go 1.27.1の2回のビルドで8ファイルが一致。preview 34190096757 も成功。実tag workflowもrepeatを要求。 |
-| R15 | repository外/Go無しでextracted version/help | preview 34190096757 の3OSで、ソース外・空PATHの version/help/list が成功。 |
+| R14 | same-source/toolchain digest比較 | 641cb49・Go 1.27.1の2回のビルドで8ファイルが一致。preview 34190701402 も成功。実tag workflowもrepeatを要求。 |
+| R15 | repository外/Go無しでextracted version/help | preview 34190701402 の3OSで、ソース外・空PATHの version/help/list が成功。 |
 | R16 | AGENT_ENV_HOME spaces/non-ASCII + state leak無し | 同じnative smokeでUnicode/空白のAGENT_ENV_HOME、version/helpの無書込、配布先/作業先/default homeへの漏洩なしを確認。 |
-| R17 | Windows native smoke | preview 34190096757 の Windows/amd64 native smoke が成功。 |
-| R18 | macOS native smoke | preview 34190096757 の Darwin/arm64 native smoke が成功。 |
-| R19 | Linux native smoke | preview 34190096757 とローカルの Linux/amd64 native smoke が成功。 |
+| R17 | Windows native smoke | preview 34190701402 の Windows/amd64 native smoke が成功。 |
+| R18 | macOS native smoke | preview 34190701402 の Darwin/arm64 native smoke が成功。 |
+| R19 | Linux native smoke | preview 34190701402 とローカルの Linux/amd64 native smoke が成功。 |
 | R20 | arm64 native/cross evidence正確区別 | Windows/arm64・Darwin/amd64・Linux/arm64 はcross-build/静的検査のみ。他の3ターゲットにはnative証拠あり。 |
 | R21 | maintainer-created tag起点、Git ref mutation無し | maintainerのv* tag pushで起動し厳密なtagを検証。tag作成は使い捨てclone内のみで、callerのrefs保護をテスト。 |
 | R22 | workflowがrepoctlへmechanics委譲 | 両workflowはbuild/check/repeat/smokeをrepoctlへ委ね、YAMLやシェルにpackaging処理を実装しない。 |
 | R23 | validation/smoke failure時publish無し | publication gateと4つの迂回負例が成功。build/smoke依存とrepeatを必須にし、無条件公開や失敗無視を拒否。公開releaseは作成していない。 |
 | R24 | publish bytesがvalidated bytesそのもの | preview native jobはupload済み候補をdownloadし、再ビルドしない。gateテストは同じartifact名を要求しpublishのrunを拒否。 |
 | R25 | 英日durable docsがfinal contract/prerequisiteを説明 | 英日の文書・前提ツール比較表を更新し、docs-check成功。 |
-| R26 | final repoctl/docs/translation/race pass | Verify 34190096727 の12 job（native harness、Linux race、Docker integration）が成功。ローカル最終raceも成功。 |
-| R27 | Windows/macOS/Linux代表archive manual inspection | d628098 の代表3アーカイブを Python zipfile/tarfile で独立検査し、下記へ記録。 |
-| R28 | 英日Outcomes/Retrospective/direct evidence完成 | Pending |
-| R29 | 英日plan completed移動、links/hash同期 | Pending |
+| R26 | final repoctl/docs/translation/race pass | Verify 34190701428 の12 job（native harness、Linux race、Docker integration）が成功。ローカル最終raceも成功。 |
+| R27 | Windows/macOS/Linux代表archive manual inspection | 641cb49 の代表3アーカイブを Python zipfile/tarfile で独立検査し、下記へ記録。 |
+| R28 | 英日Outcomes/Retrospective/direct evidence完成 | 2026-09-08: 最終ローカル/native証拠と公開/platformの限界を上記に記録。 |
+| R29 | 英日plan completed移動、links/hash同期 | 2026-09-08: 両子Planをarchivalし、親/README/quality/portability/roadmapリンクと翻訳metadataを更新。 |
 
 code/workflow存在だけではacceptanceではない。
 
@@ -342,6 +360,32 @@ same input mismatchは証拠記録前に上書きして隠さない。GitHub pub
 auto move/recreateしない。
 
 ## 成果物と注記
+
+最終コード checkpoint: `641cb49d91972b40fff352c14945697d876dad6d`。
+
+- `go run ./tools/repoctl release-verify --out dist/verified-641cb49` が成功。
+  6ターゲットを2回生成し、8ファイルのバイト一致と Linux のnativeを確認。
+- `AGENT_ENV_RELEASE_CANDIDATE=../../dist/verified-641cb49 go test ./tools/repoctl
+  -run 'TestReleaseCandidate|TestReleaseArchive|TestReleasePublicationGate' -count=1`
+  が成功。修正前に失敗した ZIP の local 名改ざんも拒否した。
+- 最終ローカル `go test -race ./...` が成功。別担当によるアーカイブの独立
+  レビューで追加の重大な不具合は見つからず、対象テストも成功した。
+- source timestamp は 1788845253、toolchain は go1.27.1、private test tag は v0.1.0。
+  manifest SHA-256 は `c82f7917ecbd08ce0ee719003a3a31c0f9c82e07e2266dab1e420e193a097830`。
+- Windows/macOS/Linux amd64 を zipfile/tarfile で再確認。正しい3 member、
+  正確な tag 対象秒（ZIP拡張fieldを含む）、0644/0755、TAR uid/gid 0 を確認した。
+- 最終 hosted run 34190701402（Release preview）と34190701428（Verify）は
+  全job成功。前回のnative証拠も以下へ保持する。
+
+| ターゲット | アーカイブ SHA-256 | 実行ファイル SHA-256 |
+| --- | --- | --- |
+| windows/amd64 | `7e6903883dacca78756ec5f38542e5665605972324433f6fc2e1e4a56effa71a` | `779b8e44290c9465508e998b92c02e71f9ec9198ccb1e7a2ba1544857f0a25fe` |
+| windows/arm64 | `c8b287df2a9f97a83f3d3f9380c54a5195f6716b16776df25ed81ae4d36c2d05` | `d9f3909083087fe6fdf08bcb6952c2af4f19ff4e7ae9080dce322458384a23e1` |
+| darwin/amd64 | `3f7a715e6e6341849009905f28654fbbfc1ae566d2a3940d80f6e155a9621abf` | `c11d274bfa4f1115c3ea91cac820e5ddaddfbece282091b11db8610023bba683` |
+| darwin/arm64 | `a336bde3e9aba609a48618e8e3226e85719f09d889e1763aa5040dc51f4be850` | `19634f3cf0f975b038a48e0347d4e863487088f64a5169f4ab42646673c21179` |
+| linux/amd64 | `e281cb2840024a364e2b5d2933162a7b2c9f4e3c1331e8dd232e21be2577cd3b` | `5679e746800e6a0e5bd801ebd17e1562bb46dd35414e66571cef5c7ee831c3f7` |
+| linux/arm64 | `732ca440fd9f7202c2f984770b68e1b545ddfb20fbe70af794a1fc56407310b6` | `3411d2c2fc75d0e99205ad94c10629b0d165370075235557f14655a3dffad5ff` |
+
 
 2026-09-08、`d6280988441537418d70925174cfa58374efea9b` のローカル証拠:
 
@@ -393,17 +437,7 @@ runtime lease/domain型へrelease manifest型を安易に統合しない。
 release construction external toolはGo + Gitのみ。archive/checksum external utility不要。GitHub CLIはlocal
 release-build dependencyではない。
 
-Milestone 2前に解決する未確定事項:
-
-1. end-to-end evidence用version
-2. untracked file clean-tree policy
-3. HEAD複数version tagの扱い
-4. zip timestamp range/precision
-5. tar/gzip metadata normalization
-6. README.txt authority
-7. foreign executable buildinfo static inspection
-8. release Go patch version authority
-9. arm64 native runner availability
-10. actual public releaseまで本Planで実証するかpre-publication gateまでにするか
-
-public behavior固定前にDecision Logへ記録する。
+初期の10項目は判断の記録と証拠で解決した。private test v0.1.0、未追跡もdirty、
+HEADの複数有効tagは拒否、ZIP拡張秒と扱える範囲、USTAR/gzipの正規化、生成する
+英日README.txt、debug/buildinfoとReleaseRecord、CIのGo 1.27.1固定、native arm64は
+macOSのみ、公開はmaintainerの意図的なtag操作まで行わず事前gateを検証する方針である。

@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/QUALITY.md
-source_sha256: ae545c04f9e9340f43d3bdbfa00c788e5b74db30366a405e79ce9cb9eb26d00d
+source_sha256: 60ec1a8cddfbf2b7bb04a9f6a4a1cf436749415a37fb8a4943f160f6cf09d8a1
 ---
 
 # 品質と検証
@@ -78,7 +78,7 @@ Go 実行ファイルのビルド情報を静的に検査します。`release-sm
 繰り返し作成し、実行ファイルとアーカイブの digest、checksum、manifest を比較します。
 コンパイル成功をバイト列比較の代わりにしません。リリース CI の builder は Go 1.27.1 に固定します。
 Windows/macOS/Linux のネイティブ smoke 結果と arm64 の検証範囲は、
-[リリース計画](exec-plans/active/standalone-release-finalization.ja.md)に明記します。
+[リリース計画](exec-plans/completed/standalone-release-finalization.ja.md)に明記します。
 
 tag workflow は、リポジトリ検査、成果物の静的検証、繰り返しビルドの比較、ネイティブ smoke job の
 成功を公開条件にします。公開 job は再ビルドせず、検証済みの候補バイト列をアップロードします。

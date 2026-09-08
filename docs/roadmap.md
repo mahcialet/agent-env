@@ -37,7 +37,7 @@ tracked in the [completed plan](exec-plans/completed/android-ui-observer.md).
 
 Local OCI registries, image promotion, image-retention references, and exact-artifact replay are deferred. Runtime inspection records actual container image identity, but this is not reproducible image promotion. Automatic artifact expiry, event compaction, migration rollback tooling, generated CLI/JSON Schema references, and a longer-term handoff archive policy remain open.
 
-The initial distribution uses GitHub Release archives under the [standalone contract](product-specs/standalone-distribution.md). Release engineering and direct native evidence are tracked in the [release plan](exec-plans/active/standalone-release-finalization.md). Signing, notarization, package-manager recipes, self-update, SBOMs and attestations remain follow-up work. A release must cite the tested revision's native and integration evidence; supported build targets are not a substitute for that evidence.
+The initial distribution uses GitHub Release archives under the [standalone contract](product-specs/standalone-distribution.md). Release engineering and direct native evidence are tracked in the [release plan](exec-plans/completed/standalone-release-finalization.md). Signing, notarization, package-manager recipes, self-update, SBOMs and attestations remain follow-up work. A release must cite the tested revision's native and integration evidence; supported build targets are not a substitute for that evidence.
 
 ## CI expansion
 

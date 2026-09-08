@@ -81,7 +81,7 @@ documented and migrated deliberately.
 
 ## Child ExecPlans
 
-`standalone-release-finalization.md` is a child execution plan of this plan.
+[standalone-release-finalization.md](../completed/standalone-release-finalization.md) is a completed child execution plan of this plan.
 
 It owns the remaining concrete release-engineering work:
 
@@ -119,22 +119,22 @@ its Outcomes & Retrospective.
 - [x] 2026-09-08: Added generic content-addressed, digest-verified atomic asset
       materialization with idempotence and traversal/symlink checks in
       `internal/assets`; tests cover reuse and tamper rejection.
-- [ ] Complete the child ExecPlan `docs/exec-plans/active/standalone-release-finalization.md`. This child plan owns release-build, release-check, deterministic packaging, native smoke tests, and GitHub Release workflow implementation.
-- [ ] After the child plan completes, reconcile its acceptance evidence into this parent plan and verify all remaining standalone-distribution acceptance requirements.
+- [x] 2026-09-08: Completed child `docs/exec-plans/completed/standalone-release-finalization.md`; release-build/check, deterministic packaging, native smoke and GitHub Release workflow delivered and validated at `641cb49`.
+- [ ] Finish remaining parent requirements after child evidence reconciliation below: capability prerequisite errors, CLI asset inventory, asset concurrency stress, broad persistent-path audit and future helper contract. Child completion does not close these requirements.
 - [ ] Add deterministic embedded-asset tests without a target-app dependency.
-- [ ] Add/refine an explicit `--home` state-root override if justified.
+- [x] 2026-09-08: Retain AGENT_ENV_HOME as the sole explicit override; an additional --home flag is not justified (existing Decision Log).
 - [ ] Verify every persistent writable path follows the resolved state-root contract.
-- [ ] Implement `repoctl release-build`.
-- [ ] Implement `repoctl release-check`.
-- [ ] Generate normalized archives, release manifest and checksums.
-- [ ] Add exact-version/tag/clean-tree release guards.
-- [ ] Add repeated same-source deterministic build/package regression.
-- [ ] Add native extracted-artifact smoke tests on Windows/macOS/Linux.
-- [ ] Add a GitHub tag/release workflow that delegates mechanics to repoctl.
-- [ ] Update architecture/portability/quality/security/roadmap docs in both languages.
-- [ ] Verify existing manifests, leases and development workflows are unchanged.
+- [x] 2026-09-08: Implement `repoctl release-build`. Child evidence: `641cb49`, preview 34190701402, Verify 34190701428.
+- [x] 2026-09-08: Implement `repoctl release-check`. Child evidence: `641cb49`, preview 34190701402, Verify 34190701428.
+- [x] 2026-09-08: Generate normalized archives, release manifest and checksums. Child evidence: `641cb49`, preview 34190701402, Verify 34190701428.
+- [x] 2026-09-08: Add exact-version/tag/clean-tree release guards. Child evidence: `641cb49`, preview 34190701402, Verify 34190701428.
+- [x] 2026-09-08: Add repeated same-source deterministic build/package regression. Child evidence: `641cb49`, preview 34190701402, Verify 34190701428.
+- [x] 2026-09-08: Add native extracted-artifact smoke tests on Windows/macOS/Linux. Child evidence: `641cb49`, preview 34190701402, Verify 34190701428.
+- [x] 2026-09-08: Add a GitHub tag/release workflow that delegates mechanics to repoctl. Child evidence: `641cb49`, preview 34190701402, Verify 34190701428.
+- [x] 2026-09-08: Update architecture/portability/quality/security/roadmap docs in both languages. Child evidence: `641cb49`, preview 34190701402, Verify 34190701428.
+- [x] 2026-09-08: Verify existing manifests, leases and development workflows are unchanged. Child evidence: `641cb49`, preview 34190701402, Verify 34190701428.
 - [ ] Run the full repository harness and final race validation.
-- [ ] Record native-platform and release evidence honestly.
+- [x] 2026-09-08: Record native-platform and release evidence honestly. Child evidence: `641cb49`, preview 34190701402, Verify 34190701428.
 - [ ] Complete acceptance evidence and retrospective.
 - [ ] Move both ExecPlans to `docs/exec-plans/completed/`.
 
@@ -225,6 +225,13 @@ Preserve failed approaches when they influence the final design.
   2026-09-08 / maintainers.
 
 ## Outcomes & Retrospective
+
+2026-09-08 child reconciliation: release engineering is complete at `641cb49`.
+The child acceptance evidence is mapped into S1/S2, S6–S10, S15–S24 below.
+This parent remains active: S3, the asset inventory portion of S4/S13, S11
+cross-process stress, S14's broader persistent-path audit and S25's future helper
+contract still require direct evidence. No completed child is a substitute for
+those remaining parent checks.
 
 Not completed.
 
@@ -535,30 +542,30 @@ including Docker, Android or Flutter.
 
 | ID | Required behavior | Evidence |
 | --- | --- | --- |
-| S1 | Extracted release runs `version`/help without Go or repository files. | Pending |
-| S2 | Core CLI startup does not require Docker, Android, Flutter, Java, Python, Node or shell. | Pending |
+| S1 | Extracted release runs `version`/help without Go or repository files. | Child R15 and preview 34190701402: extracted version/help/list run with empty PATH outside source on all three native OS runners. |
+| S2 | Core CLI startup does not require Docker, Android, Flutter, Java, Python, Node or shell. | The same native smoke runs core commands with no optional tools on PATH. |
 | S3 | Capability-specific commands report missing prerequisites lazily and honestly. | Pending |
 | S4 | `version --output json` reports documented version/commit/toolchain/platform/asset metadata. | 2026-09-08: `internal/buildinfo.Current` and CLI JSON output report version, commit, dirty marker, Go version and GOOS/GOARCH without optional-provider initialization; asset list integration remains pending. |
 | S5 | Development builds have an honest identity without release metadata. | 2026-09-08: development defaults report `devel`/`unknown` identity through `agent-env version`; unit test passes. |
-| S6 | Release builds reject mismatched tag/version/commit or dirty release input. | Pending |
-| S7 | Release builds use `CGO_ENABLED=0` and no shell packaging tools. | Pending |
-| S8 | The fixed matrix produces exactly the documented archive set. | Pending |
-| S9 | Checksums and release manifest match exact archive/executable bytes. | Pending |
-| S10 | Archives contain only safe relative regular files; no symlink/traversal. | Pending |
+| S6 | Release builds reject mismatched tag/version/commit or dirty release input. | Child R1–R4: strict Git identity and negative fixtures, including private committed-source isolation. |
+| S7 | Release builds use `CGO_ENABLED=0` and no shell packaging tools. | Child R5: all six binaries statically verify CGO_ENABLED=0; Go-only archive mechanics pass. |
+| S8 | The fixed matrix produces exactly the documented archive set. | Child R6–R7: exact six archive names and three prefixed regular members. |
+| S9 | Checksums and release manifest match exact archive/executable bytes. | Child R9–R11: real checksums/manifest/binary identity verified and mismatch fixtures rejected. |
+| S10 | Archives contain only safe relative regular files; no symlink/traversal. | Child R12: traversal/symlink/member tests plus ZIP local/central-name regression pass. |
 | S11 | Bundled asset materialization is content-addressed, digest-verified, atomic, concurrency-safe and idempotent. | 2026-09-08: `internal/assets` tests pass content-addressed reuse and atomic creation; cross-process stress evidence remains pending. |
 | S12 | Corrupted materialized asset content is detected and never silently trusted. | 2026-09-08: `TestMaterializeIsContentAddressedAndIdempotent` rejects tampered bytes. |
 | S13 | Bundled asset metadata is available without capability initialization. | Pending |
 | S14 | Persistent runtime state follows documented state-root precedence and does not leak into target repositories. | Pending |
-| S15 | Explicit state root works on native Windows/macOS/Linux paths including spaces; non-ASCII is tested where practical. | Pending |
-| S16 | Repeated same-source/toolchain release construction is compared for deterministic binary/archive output and any gap is documented. | Pending |
-| S17 | Extracted release artifacts are smoke-tested on native Windows/macOS/Linux. | Pending |
-| S18 | Cross-build-only architecture evidence is clearly separated from native execution. | Pending |
-| S19 | GitHub release workflow delegates artifact mechanics to repoctl and refuses publication after validation failure. | Pending |
-| S20 | Release workflow starts from a maintainer-created tag and never rewrites Git history. | Pending |
-| S21 | Existing manifests, leases and development commands continue to work unchanged. | Pending |
-| S22 | Full harness, docs/translation checks and Go race suite pass at final revision. | Pending |
-| S23 | Standalone product/design/ExecPlan docs exist in English and Japanese and are indexed. | Pending |
-| S24 | Roadmap no longer describes archive-based release packaging as undecided after completion. | Pending |
+| S15 | Explicit state root works on native Windows/macOS/Linux paths including spaces; non-ASCII is tested where practical. | Child R16: Unicode/space state-root smoke on Windows/amd64, macOS/arm64 and Linux/amd64. |
+| S16 | Repeated same-source/toolchain release construction is compared for deterministic binary/archive output and any gap is documented. | Child R14: two same-source/toolchain builds at 641cb49 produce eight identical files. |
+| S17 | Extracted release artifacts are smoke-tested on native Windows/macOS/Linux. | Preview 34190701402 passes native smoke on Windows/amd64, macOS/arm64 and Linux/amd64. |
+| S18 | Cross-build-only architecture evidence is clearly separated from native execution. | Windows/arm64, macOS/amd64, Linux/arm64 remain cross-build/static-only evidence. |
+| S19 | GitHub release workflow delegates artifact mechanics to repoctl and refuses publication after validation failure. | Child R22–R24: repoctl mechanics and tested validation/repeat/native publication gates; no public release was cut. |
+| S20 | Release workflow starts from a maintainer-created tag and never rewrites Git history. | Child R21: maintainer tag trigger; only private-clone test tags created, caller refs protected by tests. |
+| S21 | Existing manifests, leases and development commands continue to work unchanged. | Verify 34190701428 passes all 12 jobs, including existing native tests and actual Linux Docker integration. |
+| S22 | Full harness, docs/translation checks and Go race suite pass at final revision. | Child R26: final code 641cb49 passes local race and all hosted harness jobs; parent-specific remaining work still needs its own final check. |
+| S23 | Standalone product/design/ExecPlan docs exist in English and Japanese and are indexed. | Bilingual indexed docs exist and docs-check passes after child archival. |
+| S24 | Roadmap no longer describes archive-based release packaging as undecided after completion. | Updated bilingual roadmap settles archive-based GitHub Release packaging. |
 | S25 | The distribution contract is sufficient for `android-ui-observer` to consume a future embedded helper without a separate downloader design. | Pending |
 
 Every acceptance item requires direct evidence. File/workflow existence alone is

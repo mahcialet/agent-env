@@ -80,7 +80,7 @@ Compare executable and archive digests, checksums and manifest across repeated
 same-source, same-toolchain builds; do not substitute successful compilation for
 byte comparison. CI pins the release builder to Go 1.27.1. Native Windows/macOS/Linux
 smoke results and arm64 coverage must be recorded explicitly in the
-[release plan](exec-plans/active/standalone-release-finalization.md).
+[release plan](exec-plans/completed/standalone-release-finalization.md).
 
 The tag workflow must gate publication on repository checks, static artifact
 validation, repeat-build comparison and native smoke jobs. The publishing job

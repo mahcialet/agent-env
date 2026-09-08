@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: README.md
-source_sha256: ad12f45bb7cc97fcb3e31b1b048ebd9fbfc1fa4ac6ba4a815b7d2651828e439c
+source_sha256: d017e68009f47cef7e3142e3f40d1b0e3ec4dd3838d5f3deff6af53aabf3ad8c
 ---
 
 [英語版（翻訳元）](README.md)
@@ -22,7 +22,7 @@ GitHub Releases から OS と CPU に合うアーカイブを取得し、バー�
 バージョン、ソースコミット、ビルドに使った Go のバージョン、プラットフォームを表示します。
 実行に Go や checkout は不要です。ソースからのビルドには Go が必要です。
 リリースの公開状況とネイティブ検証の証拠は
-[リリース計画](docs/exec-plans/active/standalone-release-finalization.ja.md)で管理します。
+[リリース計画](docs/exec-plans/completed/standalone-release-finalization.ja.md)で管理します。
 
 | 機能 | 外部の前提条件 |
 | --- | --- |

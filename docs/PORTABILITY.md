@@ -66,6 +66,6 @@ including paths containing spaces and non-ASCII characters.
 A successful six-target cross-build does not establish native operation on all six
 tuples. Record each actual native smoke runner separately, including arm64; do not
 infer execution coverage from a produced archive. The
-[release plan](exec-plans/active/standalone-release-finalization.md) tracks current
+[release plan](exec-plans/completed/standalone-release-finalization.md) tracks current
 evidence. Extracted CLI execution needs no Go; selected external capabilities keep
 the prerequisites in the [README](../README.md).

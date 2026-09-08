@@ -14,7 +14,7 @@ directly or add that directory to PATH. `agent-env version --output json` report
 release version, source commit, Go build version and platform. The executable
 needs no Go installation or checkout; Go is needed only to build from source.
 Release availability and native verification are recorded in the
-[release plan](docs/exec-plans/active/standalone-release-finalization.md).
+[release plan](docs/exec-plans/completed/standalone-release-finalization.md).
 
 | Capability | External prerequisites |
 | --- | --- |
