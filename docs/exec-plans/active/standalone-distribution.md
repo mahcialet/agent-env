@@ -119,7 +119,12 @@ revision and outcome at each meaningful checkpoint.
 
 ## Surprises & Discoveries
 
-No discoveries recorded yet.
+- 2026-09-08: The supplied Japanese active plan lacked translation metadata,
+  so the baseline docs-check failed before implementation. Added exact
+  translation metadata and synchronized the hash; no checker was weakened.
+- 2026-09-08: Existing `AGENT_ENV_HOME` already provides absolute OS-native
+  state-root precedence. Adding a second `--home` flag would duplicate policy,
+  so this slice keeps the established override and records that decision.
 
 Record at least:
 
@@ -509,15 +514,15 @@ including Docker, Android or Flutter.
 | S1 | Extracted release runs `version`/help without Go or repository files. | Pending |
 | S2 | Core CLI startup does not require Docker, Android, Flutter, Java, Python, Node or shell. | Pending |
 | S3 | Capability-specific commands report missing prerequisites lazily and honestly. | Pending |
-| S4 | `version --output json` reports documented version/commit/toolchain/platform/asset metadata. | Pending |
-| S5 | Development builds have an honest identity without release metadata. | Pending |
+| S4 | `version --output json` reports documented version/commit/toolchain/platform/asset metadata. | 2026-09-08: `internal/buildinfo.Current` and CLI JSON output report version, commit, dirty marker, Go version and GOOS/GOARCH without optional-provider initialization; asset list integration remains pending. |
+| S5 | Development builds have an honest identity without release metadata. | 2026-09-08: development defaults report `devel`/`unknown` identity through `agent-env version`; unit test passes. |
 | S6 | Release builds reject mismatched tag/version/commit or dirty release input. | Pending |
 | S7 | Release builds use `CGO_ENABLED=0` and no shell packaging tools. | Pending |
 | S8 | The fixed matrix produces exactly the documented archive set. | Pending |
 | S9 | Checksums and release manifest match exact archive/executable bytes. | Pending |
 | S10 | Archives contain only safe relative regular files; no symlink/traversal. | Pending |
-| S11 | Bundled asset materialization is content-addressed, digest-verified, atomic, concurrency-safe and idempotent. | Pending |
-| S12 | Corrupted materialized asset content is detected and never silently trusted. | Pending |
+| S11 | Bundled asset materialization is content-addressed, digest-verified, atomic, concurrency-safe and idempotent. | 2026-09-08: `internal/assets` tests pass content-addressed reuse and atomic creation; cross-process stress evidence remains pending. |
+| S12 | Corrupted materialized asset content is detected and never silently trusted. | 2026-09-08: `TestMaterializeIsContentAddressedAndIdempotent` rejects tampered bytes. |
 | S13 | Bundled asset metadata is available without capability initialization. | Pending |
 | S14 | Persistent runtime state follows documented state-root precedence and does not leak into target repositories. | Pending |
 | S15 | Explicit state root works on native Windows/macOS/Linux paths including spaces; non-ASCII is tested where practical. | Pending |
