@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/product-specs/standalone-distribution.md
-source_sha256: db25708b69b3da825b840449e72d4da374a81d068f03283813cef3636b124da5
+source_sha256: 1624d813f6c0d96cb6b873a28d821c2d68d80c0e1efab656fb252905678ade55
 ---
 
 # スタンドアロン配布
@@ -72,3 +72,17 @@ CI は `--tag-env` で `AGENT_ENV_RELEASE_TAG` を直接読み、tag をシェ�
 `release-repeat` は既存の tag 対応成果物を検証し、新たなビルドと比較する。
 作成には厳密なコミットの専用 checkout を使うため、ignore 対象のソースや
 Git index のフラグで隠れたローカル編集が実行ファイルに混入することはない。
+
+## 実行ファイルの同梱アセット一覧
+
+`version --output json` の `data.assets` は、`name`、`version`、`sha256`
+（小文字の16進数）、`size`（バイト数）を持つオブジェクトの配列です。
+現在の製品には同梱アセットがないため、省略やnullではなく `[]` を返します。
+表形式では `Bundled assets: 0` と表示します。外部から指定されたhelper APKや
+テスト用fixtureは一覧に含めません。一覧の取得で状態保存先を作成したり、
+外部ツールを探索したりすることはありません。
+
+絶対パスの `AGENT_ENV_HOME` は、ユーザーのホームを取得できない環境でも
+使用できます。検証済みUI helperのインストール用コピーを含む実行時の一時
+ファイルは、解決済みの状態保存先内に置きます。Gitのworktree登録情報や
+共有ADBサーバーなど、外部ツールが管理するホスト側の状態は既存の契約に従います。

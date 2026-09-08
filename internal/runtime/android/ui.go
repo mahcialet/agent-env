@@ -104,7 +104,7 @@ func (a Adapter) ObserveUI(ctx context.Context, r domain.Runtime, q domain.UIReq
 			if hex.EncodeToString(sum[:]) != meta.APKSHA256 {
 				return o, fmt.Errorf("AGENTENV-UI-UNAVAILABLE: helper changed after verification")
 			}
-			tmp, tempErr := os.CreateTemp("", "agent-env-observer-*.apk")
+			tmp, tempErr := os.CreateTemp(r.Directory, ".agent-env-observer-*.apk")
 			if tempErr != nil {
 				return o, fmt.Errorf("AGENTENV-UI-UNAVAILABLE: helper staging failed: %w", tempErr)
 			}

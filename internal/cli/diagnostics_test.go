@@ -11,6 +11,8 @@ import (
 
 func TestDoctorMissingPrerequisitesReturnsStructuredFailure(t *testing.T) {
 	t.Setenv("PATH", t.TempDir())
+	home := filepath.Join(t.TempDir(), "unused-state")
+	t.Setenv("AGENT_ENV_HOME", home)
 	var out, errOut bytes.Buffer
 	cmd := New(&out, &errOut)
 	cmd.SetArgs([]string{"doctor", "--output", "json"})
@@ -30,6 +32,17 @@ func TestDoctorMissingPrerequisitesReturnsStructuredFailure(t *testing.T) {
 	}
 	if result.SchemaVersion != 1 || result.Data.OK || len(result.Data.Diagnostics) != 2 {
 		t.Fatalf("misleading doctor: %s", out.String())
+	}
+	for i, tool := range []string{"git", "docker"} {
+		if result.Data.Diagnostics[i] != "missing "+tool+": install it and add it to PATH" {
+			t.Fatalf("missing actionable %s diagnosis: %s", tool, out.String())
+		}
+	}
+	if errOut.Len() != 0 {
+		t.Fatalf("JSON diagnostics leaked to stderr: %s", errOut.String())
+	}
+	if _, err := os.Stat(home); !os.IsNotExist(err) {
+		t.Fatalf("doctor allocated state: %v", err)
 	}
 }
 

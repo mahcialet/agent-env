@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/exec-plans/active/standalone-distribution.md
-source_sha256: 4af6e888d23ba2b869d17d61d17b0506ae8bedc3d6d2801883031ad40c1da5f0
+source_sha256: bb599da3a0d90740385815ef9a17fcc331441050e191515fdf95c5ef3bd6b38c
 ---
 
 # agent-env をクロスプラットフォームのスタンドアロン配布物にする
@@ -94,6 +94,8 @@ compatibility burdenが小さい今の段階では、長期standalone contract�
 
 ## 進捗
 
+- [x] 2026-09-08: PR #7のmerge `16afc83` から親Planを再開。baselineの `go run ./tools/repoctl check` が成功。同梱一覧をCLIに明示し、JSON/表形式と状態未作成の回帰テストを追加。残りのauditと最終検証は継続中。
+
 - [x] 2026-09-08: master `938e584`（PR #5を含む）から作業ブランチを作成。
 - [x] 2026-09-08: baseline Go 1.27.1 raceが成功。初回checkは日本語Planの
   metadata欠落で失敗し、修復後のcheckが成功。
@@ -109,17 +111,16 @@ compatibility burdenが小さい今の段階では、長期standalone contract�
 - [x] 2026-09-08: 子 `docs/exec-plans/completed/standalone-release-finalization.ja.md`
   を完了。release-build/check・packaging・native smoke・GitHub workflowを
   `641cb49`、preview 34190701402、Verify 34190701428で検証した。
-- [ ] 子の証拠を下記へ照合した上で、親に残る前提エラー・CLI asset一覧・asset
-  並行stress・広範な永続パスaudit・将来helper契約を検証する。
-- [ ] target appに依存しないdeterministic embedded-assetテストを追加。
+- [x] 2026-09-08: 前提エラー、CLI一覧、asset stress、永続パスaudit、将来helper契約を実装・検証。local harness/race成功。最終revisionのnative CIは下記で記録する。
+- [x] 2026-09-08: TestEmbeddedFixtureで17バイトと固定SHA-256を対象appなしで検証。asset race stressは10回成功。
 - [x] 2026-09-08: 既存判断通りAGENT_ENV_HOMEのみをoverrideとし、--homeは追加しない。
-- [ ] 全永続書込先が解決済みstate-root契約に従うことをauditする。
+- [x] 2026-09-08: design文書に全永続パス監査を記録。override、lifecycle、command evidence、helper stagingの回帰テストが成功。
 - [x] 2026-09-08: 子でrelease-build/check、正規化archive/manifest/checksums、
   厳密なtag/version/clean guard、再現性比較を実装・検証した。
 - [x] 2026-09-08: 子で3OSの展開済みnative smokeとrepoctlに委ねるtag workflowを検証。
 - [x] 2026-09-08: 子でarchitecture/portability/quality/security/roadmapを英日更新。
 - [x] 2026-09-08: Verify 34190701428で既存manifest/lease/workflowの回帰検査も成功。
-- [ ] 親Plan最終のfull harnessとraceを実行する。
+- [x] 2026-09-08: 統合後の `go run ./tools/repoctl check` と `go test -race ./...` がLinux Go 1.27.1で成功。production変更の独立レビューに確認済み不具合なし。archival前に最終native CI/release証拠を確認する。
 - [x] 2026-09-08: native/crossの範囲とリリース証拠を子から引き継いだ。
 - [ ] 親の受け入れ証拠と振り返りを完成する。
 - [ ] 親の英日Planをcompletedへ移動する。
@@ -127,6 +128,8 @@ compatibility burdenが小さい今の段階では、長期standalone contract�
 チェックは観測済み完了を示す。子の完了で親の未検証条件を完了扱いにしない。
 
 ## 想定外の発見
+
+- 2026-09-08: merge `16afc83` からの再開時に回帰テストで3件を発見。同時asset mkdirが正常な先行作成を拒否し5子プロセスが失敗、絶対パスoverrideでもHOMEが必要、UI helperの一時コピーがinstall成功時・失敗時ともOS一時領域に作成されていた。検証条件を弱めず修正。asset race stressは10反復、120子プロセス、10,800展開、300新規rootで成功。統合途中のテストはAssetInfo重複宣言と意図したstaging回帰で失敗したため、統合後に最終検証する。
 
 - 2026-09-08: 提供された日本語の active plan に翻訳 metadata がなく、実装前の
   baseline docs-check が失敗した。正確な翻訳 metadata を追加して hash を同期した。
@@ -152,6 +155,10 @@ compatibility burdenが小さい今の段階では、長期standalone contract�
 設計へ影響した失敗した試行は残す。
 
 ## 判断の記録
+
+- 判断: 製品の同梱一覧は明示的な空配列とし、将来の埋め込み利用は既存のDescribe/Materialize APIとテスト専用fixtureで示す。実際のhelper追加時はCLIとmanifestの由来情報を同時に更新する。破損は黙って修復せず拒否し、mkdir競合はロック追加ではなく先行作成の再検証で扱う。理由: 同一の不変バイト列は並行公開でき、packagingのために不要な製品helperを作るべきではない。日付/担当: 2026-09-08 / maintainers。
+
+- 判断: 絶対パスのAGENT_ENV_HOMEをhome探索より先に採用し、APK install用コピーは所有runtime内に置く。Git登録情報と外部ツールのキャッシュは所有状態と区別する。理由: headless環境ではdefault homeが不要であり、crash残留物はlease内に保存する一方、信頼する外部ツールの既存責務は維持する。日付/担当: 2026-09-08 / maintainers。
 
 - 判断: standaloneを「agent-env自身にlanguage/runtime/manual helper downloadが
   不要」と定義し、「optional external tool全部をbundle」とはしない。

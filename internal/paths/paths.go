@@ -10,6 +10,9 @@ import (
 )
 
 func Resolve() (string, error) {
+	if os.Getenv("AGENT_ENV_HOME") != "" {
+		return For(runtime.GOOS, "", os.Getenv)
+	}
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", err

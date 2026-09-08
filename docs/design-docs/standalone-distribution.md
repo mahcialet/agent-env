@@ -68,3 +68,54 @@ attributes in their child-process environment. The private clone uses an empty
 Git template. This prevents ambient smudge/process filters from changing compiler
 inputs while clean filters conceal those changes. User Git configuration is never
 modified; no release command relies on a globally configured checkout filter.
+
+## Inventory and future embedded consumers
+
+`assets.Inventory()` is the capability-independent production inventory consumed
+by `buildinfo.Current()`. It returns an explicit empty list today; the fixture is
+embedded only in test binaries. Release native smoke requires the CLI inventory
+to match the current empty manifest inventory. Adding a real companion must update
+both inventories and their validation in the same change; the release checker
+currently rejects nonempty manifests rather than claiming unverified provenance.
+
+A future helper integrates by embedding trusted build-time bytes with `go:embed`,
+using `assets.Describe(name, version, bytes)` to compute exact metadata, and calling
+`assets.Materialize(resolvedStateRoot, info, bytes)` only when selected. The caller
+owns capability identity, license review and expected-version checks; assets owns
+only immutable byte verification/publication. The returned regular file has mode
+0600 (APK input is not a host executable). No downloader or target-app build is
+part of this contract. The existing external UI helper path is unchanged until a
+separate feature explicitly replaces it. Tests exercise embedded bytes with no
+Android SDK, Flutter, target application or runtime initialization.
+
+Materializers can race to create directories: an EEXIST winner is re-inspected
+and accepted only as a nonsymlink directory. Each writer publishes identical
+verified bytes from a unique temporary file in the destination directory; another
+writer's completed regular file may be reused only after content verification.
+Existing corruption is rejected, not silently repaired. The trusted state root
+must not have hostile concurrent filesystem mutation; this is not a sandbox.
+
+## Persistent path audit
+
+| Owned data | Location below resolved state root |
+| --- | --- |
+| Registry, WAL and shared-memory sidecars | `registry.sqlite*` |
+| Pinned source worktrees and build outputs | `worktrees/<lease>/<source>/` |
+| Environment descriptor, Compose configuration | `leases/<lease>/` |
+| Command logs, results, copied artifacts, UI recovery evidence | `leases/<lease>/artifacts/` |
+| Android ownership marker, private AVD, emulator/ADB logs and startup identity | `leases/<lease>/android/<runtime>/` |
+| Emulator host data and temporary directory | Runtime's private `emulator-data/` and `Temp/` |
+| Verified helper install copy | Temporary APK in the owned runtime directory, removed on success/error |
+| Immutable bundle cache | `assets/<name>/<sha256>/<name>` |
+
+Atomic evidence/marker writes stage beside their destination. Windows detached
+process completion proofs likewise stay beside the owned stdout file. Tests use
+real SQLite and native command children with fake lifecycle providers; native
+release smoke separately proves core state-root behavior on three operating systems.
+
+Git intentionally registers linked worktrees in the source repository's Git
+metadata. Docker resources, shared ADB service/keys and SDK/Flutter/Gradle caches
+are external-tool state governed by their existing contracts. Target-defined
+commands run in owned worktrees and can have other trusted-code side effects.
+Developer release/helper builders use explicit output paths, outside the runtime
+state contract. The audit does not claim containment of arbitrary external tools.

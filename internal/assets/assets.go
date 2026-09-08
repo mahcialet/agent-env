@@ -10,11 +10,6 @@ import (
 	"strings"
 )
 
-type AssetInfo struct {
-	Name, Version, SHA256 string
-	Size                  int64
-}
-
 func Describe(name, version string, data []byte) (AssetInfo, error) {
 	if name == "" || filepath.Base(name) != name || name == "." || name == ".." || version == "" || strings.ContainsAny(name, `/\\:`) {
 		return AssetInfo{}, fmt.Errorf("invalid asset identity")
@@ -47,6 +42,8 @@ func Materialize(root string, info AssetInfo, data []byte) (string, error) {
 			return "", fmt.Errorf("materialized asset digest mismatch")
 		}
 		return path, nil
+	} else if !os.IsNotExist(err) {
+		return "", err
 	}
 	tmp, err := os.CreateTemp(dir, ".asset-")
 	if err != nil {
@@ -85,15 +82,22 @@ func safeMkdirAll(root, target string) error {
 	if err := os.MkdirAll(cur, 0700); err != nil {
 		return err
 	}
+	if st, err := os.Lstat(cur); err != nil {
+		return err
+	} else if st.Mode()&os.ModeSymlink != 0 || !st.IsDir() {
+		return fmt.Errorf("asset root is not a directory")
+	}
 	parts := strings.Split(rel, string(filepath.Separator))
 	for _, part := range parts {
 		cur = filepath.Join(cur, part)
 		st, statErr := os.Lstat(cur)
 		if os.IsNotExist(statErr) {
-			if err := os.Mkdir(cur, 0700); err != nil {
+			if err := os.Mkdir(cur, 0700); err != nil && !os.IsExist(err) {
 				return err
 			}
-			continue
+			// A concurrent materializer can create this component after Lstat.
+			// Check the winner's entry rather than trusting EEXIST alone.
+			st, statErr = os.Lstat(cur)
 		}
 		if statErr != nil {
 			return statErr

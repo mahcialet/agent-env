@@ -5,6 +5,8 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
+
+	"github.com/mahcialet/agent-env/internal/assets"
 )
 
 // These variables are populated by release builds with -ldflags. Development
@@ -32,12 +34,13 @@ func ParseReleaseRecord(record string) (version, commit string, ok bool) {
 }
 
 type Info struct {
-	Version   string `json:"version"`
-	Commit    string `json:"commit"`
-	Dirty     string `json:"dirty"`
-	GoVersion string `json:"go_version"`
-	GOOS      string `json:"goos"`
-	GOARCH    string `json:"goarch"`
+	Version   string             `json:"version"`
+	Commit    string             `json:"commit"`
+	Dirty     string             `json:"dirty"`
+	GoVersion string             `json:"go_version"`
+	GOOS      string             `json:"goos"`
+	GOARCH    string             `json:"goarch"`
+	Assets    []assets.AssetInfo `json:"assets"`
 }
 
 func Current() Info {
@@ -49,5 +52,5 @@ func Current() Info {
 	if version == "" {
 		version = "devel"
 	}
-	return Info{Version: version, Commit: commit, Dirty: dirty, GoVersion: runtime.Version(), GOOS: runtime.GOOS, GOARCH: runtime.GOARCH}
+	return Info{Version: version, Commit: commit, Dirty: dirty, GoVersion: runtime.Version(), GOOS: runtime.GOOS, GOARCH: runtime.GOARCH, Assets: assets.Inventory()}
 }

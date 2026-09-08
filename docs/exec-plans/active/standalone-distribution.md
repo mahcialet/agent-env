@@ -101,6 +101,8 @@ its Outcomes & Retrospective.
 
 ## Progress
 
+- [x] 2026-09-08: Resumed parent at PR #7 merge `16afc83`; baseline `go run ./tools/repoctl check` passed. Added explicit CLI bundled inventory and state-free JSON/table regression; remaining audits and final validation continue.
+
 - [x] 2026-09-08: `master` at `938e584` includes PR #5; created
       `feat/standalone-distribution`.
 - [x] 2026-09-08: Baseline `go test -race ./...` passed on Go 1.27.1 before
@@ -120,10 +122,10 @@ its Outcomes & Retrospective.
       materialization with idempotence and traversal/symlink checks in
       `internal/assets`; tests cover reuse and tamper rejection.
 - [x] 2026-09-08: Completed child `docs/exec-plans/completed/standalone-release-finalization.md`; release-build/check, deterministic packaging, native smoke and GitHub Release workflow delivered and validated at `641cb49`.
-- [ ] Finish remaining parent requirements after child evidence reconciliation below: capability prerequisite errors, CLI asset inventory, asset concurrency stress, broad persistent-path audit and future helper contract. Child completion does not close these requirements.
-- [ ] Add deterministic embedded-asset tests without a target-app dependency.
+- [x] 2026-09-08: Completed capability prerequisite tests, CLI inventory, asset stress, persistent-path audit and future helper contract; local harness/race passed. Native final-revision CI remains below.
+- [x] 2026-09-08: TestEmbeddedFixture verifies 17 embedded bytes and fixed SHA-256 without a target app; asset race stress passed ten times.
 - [x] 2026-09-08: Retain AGENT_ENV_HOME as the sole explicit override; an additional --home flag is not justified (existing Decision Log).
-- [ ] Verify every persistent writable path follows the resolved state-root contract.
+- [x] 2026-09-08: Audited persistent paths in the design document; state override, lifecycle, command evidence and helper staging regression tests pass.
 - [x] 2026-09-08: Implement `repoctl release-build`. Child evidence: `641cb49`, preview 34190701402, Verify 34190701428.
 - [x] 2026-09-08: Implement `repoctl release-check`. Child evidence: `641cb49`, preview 34190701402, Verify 34190701428.
 - [x] 2026-09-08: Generate normalized archives, release manifest and checksums. Child evidence: `641cb49`, preview 34190701402, Verify 34190701428.
@@ -133,7 +135,7 @@ its Outcomes & Retrospective.
 - [x] 2026-09-08: Add a GitHub tag/release workflow that delegates mechanics to repoctl. Child evidence: `641cb49`, preview 34190701402, Verify 34190701428.
 - [x] 2026-09-08: Update architecture/portability/quality/security/roadmap docs in both languages. Child evidence: `641cb49`, preview 34190701402, Verify 34190701428.
 - [x] 2026-09-08: Verify existing manifests, leases and development workflows are unchanged. Child evidence: `641cb49`, preview 34190701402, Verify 34190701428.
-- [ ] Run the full repository harness and final race validation.
+- [x] 2026-09-08: Integrated `go run ./tools/repoctl check` and `go test -race ./...` passed on Linux Go 1.27.1. Independent review of production changes found no confirmed defect. Final native CI/release evidence still required before archival.
 - [x] 2026-09-08: Record native-platform and release evidence honestly. Child evidence: `641cb49`, preview 34190701402, Verify 34190701428.
 - [ ] Complete acceptance evidence and retrospective.
 - [ ] Move both ExecPlans to `docs/exec-plans/completed/`.
@@ -142,6 +144,8 @@ A checked item means observed completion. Record date, exact command/run,
 revision and outcome at each meaningful checkpoint.
 
 ## Surprises & Discoveries
+
+- 2026-09-08: Resumption at merge `16afc83` found three gaps using new regressions: concurrent asset mkdir rejected legitimate EEXIST winners (five child failures), an absolute state override still needed HOME, and UI helper staging used OS temporary storage on both install success/error. Fixed each without weakening checks. Asset race stress passed ten repetitions: 120 children, 10,800 materializations, 300 fresh roots. Intermediate combined tests saw duplicate AssetInfo while files were being integrated and the intentionally failing staging test; final validation must use the integrated tree.
 
 - 2026-09-08: The supplied Japanese active plan lacked translation metadata,
   so the baseline docs-check failed before implementation. Added exact
@@ -167,6 +171,10 @@ Record at least:
 Preserve failed approaches when they influence the final design.
 
 ## Decision Log
+
+- Decision: Keep the production asset inventory explicitly empty; describe future embedded consumers through the existing Describe/Materialize API and a test-only embedded fixture. Adding an actual helper must update CLI/manifest provenance together. Reject corruption rather than silently repairing it; revalidate mkdir race winners without adding locks. Rationale: identical immutable bytes can publish concurrently, and no production helper should be invented for a packaging task. Date/Author: 2026-09-08 / maintainers.
+
+- Decision: Honor absolute AGENT_ENV_HOME before home discovery and stage APK installation in the owned runtime directory. Document external Git registration/tool caches separately from owned state. Rationale: headless installations need no default home, and crash leftovers belong to the lease while trusted external tools retain their existing responsibilities. Date/Author: 2026-09-08 / maintainers.
 
 - Decision: Define standalone as "agent-env itself needs no language/runtime or
   manually downloaded helper", not "bundle every optional external tool".

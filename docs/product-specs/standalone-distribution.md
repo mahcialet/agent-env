@@ -68,3 +68,16 @@ six archives, `checksums.txt` and `release-manifest.json`. `release-repeat` vali
 an existing tag-specific set and compares it with a fresh build. Construction uses
 a private checkout of the exact commit, so ignored source files or local edits
 hidden by Git index flags cannot enter the packaged executable.
+
+## Executable asset inventory
+
+`version --output json` includes `data.assets`, an array of objects with `name`,
+`version`, `sha256` (lowercase hexadecimal), and `size` (bytes). The current
+production inventory is explicitly `[]`, never omitted or null. Table output
+reports `Bundled assets: 0`. External helper APKs and test fixtures are not
+bundled assets. Inventory inspection does not create state or discover tools.
+
+An absolute `AGENT_ENV_HOME` works even when no user home can be discovered.
+Runtime staging files, including the verified UI helper installation copy, stay
+under the resolved state root. External tools retain their documented host-owned
+state, such as Git worktree registration and the shared ADB server.

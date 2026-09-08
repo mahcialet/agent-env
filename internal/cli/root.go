@@ -79,7 +79,15 @@ func New(out, errOut io.Writer) *cobra.Command {
 		if output == "json" {
 			return emit(info)
 		}
-		_, err := fmt.Fprintf(out, "agent-env %s\nCommit: %s\nDirty: %s\nGo: %s\nPlatform: %s/%s\n", info.Version, info.Commit, info.Dirty, info.GoVersion, info.GOOS, info.GOARCH)
+		_, err := fmt.Fprintf(out, "agent-env %s\nCommit: %s\nDirty: %s\nGo: %s\nPlatform: %s/%s\nBundled assets: %d\n", info.Version, info.Commit, info.Dirty, info.GoVersion, info.GOOS, info.GOARCH, len(info.Assets))
+		if err != nil {
+			return err
+		}
+		for _, asset := range info.Assets {
+			if _, err = fmt.Fprintf(out, "  %s %s sha256:%s (%d bytes)\n", asset.Name, asset.Version, asset.SHA256, asset.Size); err != nil {
+				return err
+			}
+		}
 		return err
 	}})
 	root.AddCommand(&cobra.Command{Use: "validate [repository]", Args: cobra.MaximumNArgs(1), RunE: func(_ *cobra.Command, args []string) error {

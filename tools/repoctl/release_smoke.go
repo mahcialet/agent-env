@@ -88,14 +88,20 @@ func smokeReleaseFiles(files map[string][]byte, exe string, identity releaseIden
 		return e
 	}
 	var envelope struct {
-		SchemaVersion int             `json:"schema_version"`
-		Data          releaseIdentity `json:"data"`
+		SchemaVersion int `json:"schema_version"`
+		Data          struct {
+			releaseIdentity
+			Assets []releaseAsset `json:"assets"`
+		} `json:"data"`
 	}
 	if e = json.Unmarshal(b, &envelope); e != nil {
 		return e
 	}
-	if envelope.SchemaVersion != 1 || !reflect.DeepEqual(envelope.Data, identity) {
+	if envelope.SchemaVersion != 1 || !reflect.DeepEqual(envelope.Data.releaseIdentity, identity) {
 		return fmt.Errorf("native version identity mismatch: %s", b)
+	}
+	if envelope.Data.Assets == nil || len(envelope.Data.Assets) != 0 {
+		return fmt.Errorf("native bundled asset inventory differs from the empty release manifest: %s", b)
 	}
 	if _, e = run("--help"); e != nil {
 		return e

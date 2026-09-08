@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/design-docs/standalone-distribution.md
-source_sha256: fdf53733afa90f5855359a46b4069b6c8c3ba961b81524eabd4f4b6f6054e706
+source_sha256: 8b91dbe4271af7eee872140ef10108d5afaa8de880859fd66dd3955780e272a4
 ---
 
 # スタンドアロン配布の設計
@@ -64,3 +64,57 @@ release用Gitコマンドは子プロセス環境でglobal/systemのGit設定と
 専用cloneには空のGit templateを使う。外部のsmudge/process filterがコンパイラ入力を
 書き換え、clean filterがその変更を隠すことを防ぐ。ユーザーのGit設定自体は変更せず、
 releaseコマンドはglobal設定のcheckout filterに依存しない。
+
+## 一覧と将来の埋め込みアセット利用
+
+`assets.Inventory()` は外部機能に依存しない製品の同梱一覧で、
+`buildinfo.Current()` が参照します。現在は明示的な空配列を返します。
+fixtureはテスト用実行ファイルにだけ埋め込みます。リリースのnative smokeは、
+CLIの一覧が現在のmanifestの空一覧と一致することを要求します。実際の
+companionを追加するときは、両方の一覧と検証を同じ変更で更新します。
+現時点のrelease checkerは、検証していない内容を受け入れないよう、
+空でないmanifestのアセット一覧を拒否します。
+
+将来のhelperは、信頼するビルド時のバイト列を `go:embed` で埋め込み、
+`assets.Describe(name, version, bytes)` で正確なメタデータを計算します。
+選択された機能が必要とするときだけ
+`assets.Materialize(resolvedStateRoot, info, bytes)` を呼び出します。
+機能の識別、ライセンス確認、期待するバージョンの検証は呼び出し側が担当し、
+assetsは不変のバイト列の検証と保存だけを担当します。返される通常ファイルの
+modeは0600です。APKはホスト上の実行ファイルではありません。
+この契約にダウンローダーや対象アプリのビルドは含みません。既存の外部UI
+helper指定は、別の機能変更で明示的に置き換えるまで維持します。
+テストはAndroid SDK、Flutter、対象アプリ、runtimeの初期化なしで埋め込みを検証します。
+
+複数プロセスのディレクトリ作成が競合しEEXISTになった場合、作成された
+エントリを再検査し、symlinkではないディレクトリだけを受け入れます。
+各書き込みは保存先ディレクトリ内の固有の一時ファイルから、同一の検証済み
+バイト列を公開します。他の書き込みが作成した通常ファイルも、内容を検証して
+から再利用します。既存内容の破損は拒否し、黙って修復しません。
+状態保存先に対する悪意ある並行変更は信頼境界の外です。sandboxではありません。
+
+## 永続的な書き込み先の監査
+
+| agent-envが所有するデータ | 解決済み状態保存先からの相対位置 |
+| --- | --- |
+| registry、WAL、共有メモリ用ファイル | `registry.sqlite*` |
+| 固定したソースのworktreeとビルド出力 | `worktrees/<lease>/<source>/` |
+| 環境記述、Compose設定 | `leases/<lease>/` |
+| コマンドログ、結果、コピーした成果物、UI復旧証拠 | `leases/<lease>/artifacts/` |
+| Android所有者マーカー、専用AVD、emulator/ADBログ、起動識別情報 | `leases/<lease>/android/<runtime>/` |
+| Emulatorのホストデータと一時ディレクトリ | runtime専用の `emulator-data/` と `Temp/` |
+| 検証済みhelperのインストール用コピー | 所有runtimeディレクトリ内の一時APK。成功時も失敗時も削除 |
+| 不変アセットのキャッシュ | `assets/<name>/<sha256>/<name>` |
+
+証拠とマーカーのatomic writeは保存先と同じディレクトリに一時ファイルを
+作成します。Windowsのdetached process終了証拠も、所有するstdoutファイルと
+同じ場所に置きます。テストでは実際のSQLiteとnative子プロセスを使い、
+lifecycle providerはfakeに置き換えます。別のnative release smokeで、
+3OSのcoreコマンドの状態保存先を検証します。
+
+GitはソースリポジトリのGit管理情報にlinked worktreeを登録します。
+Dockerリソース、共有ADBサービスと鍵、SDK/Flutter/Gradleキャッシュは、
+既存の契約に従う外部ツールの状態です。対象リポジトリが定義するコマンドは
+所有worktree内で実行され、信頼するコードとして他の副作用を持つ場合があります。
+開発者向けrelease/helperビルダーの明示的な出力先は、実行時の状態保存先とは
+別の契約です。この監査は任意の外部ツールの書き込みを封じ込める保証ではありません。
