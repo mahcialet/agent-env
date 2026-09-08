@@ -423,6 +423,12 @@ func uiContains(tree domain.UITree, want string) bool {
 	return false
 }
 func sanitizeUIObservation(o *domain.UIObservation, secrets []string) {
+	for i := range o.Snapshot.Windows {
+		w := &o.Snapshot.Windows[i]
+		w.Title = evidence.RedactString(w.Title, secrets)
+		w.RootPackage = evidence.RedactString(w.RootPackage, secrets)
+		w.RootClass = evidence.RedactString(w.RootClass, secrets)
+	}
 	for i := range o.Snapshot.Nodes {
 		n := &o.Snapshot.Nodes[i]
 		if n.Editable || n.Password {

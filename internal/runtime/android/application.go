@@ -15,6 +15,11 @@ import (
 	"github.com/mahcialet/agent-env/internal/execx"
 )
 
+type adbPreflightError struct{ err error }
+
+func (e *adbPreflightError) Error() string { return e.err.Error() }
+func (e *adbPreflightError) Unwrap() error { return e.err }
+
 var applicationPackage = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_]*)+$`)
 var applicationActivity = regexp.MustCompile(`^(\.[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*|[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)+)$`)
 
@@ -31,21 +36,21 @@ func (a Adapter) applicationADBLimited(ctx context.Context, r domain.Runtime, ti
 	}
 	observed, err := a.Inspect(ctx, r)
 	if err != nil {
-		return execx.Result{}, err
+		return execx.Result{}, &adbPreflightError{err}
 	}
 	if !observed.Exists || !observed.Ready {
 		return execx.Result{}, fmt.Errorf("owned Android Emulator is not ready for application operation")
 	}
 	protocol, err := a.adbProtocol(ctx, r.Android.SDKPath)
 	if err != nil {
-		return execx.Result{}, err
+		return execx.Result{}, &adbPreflightError{err}
 	}
 	available, err := a.compatibleADB(ctx, protocol)
 	if err != nil {
-		return execx.Result{}, err
+		return execx.Result{}, &adbPreflightError{err}
 	}
 	if !available {
-		return execx.Result{}, fmt.Errorf("shared local ADB server is unavailable")
+		return execx.Result{}, &adbPreflightError{fmt.Errorf("shared local ADB server is unavailable")}
 	}
 	scoped := []string{"-H", "127.0.0.1", "-P", "5037", "-s", r.Android.Serial}
 	result, err := a.runner().Run(ctx, execx.Command{Name: executable(r.Android.SDKPath, "platform-tools", "adb"), Args: append(scoped, args...), UnsetEnv: adbRoutingEnvironment(), Timeout: timeout, CaptureLimit: limit})

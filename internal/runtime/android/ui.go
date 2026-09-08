@@ -37,7 +37,8 @@ func (a Adapter) ObserveUI(ctx context.Context, r domain.Runtime, q domain.UIReq
 	call := func(limit int, args ...string) (execx.Result, error) {
 		v, e := a.applicationADBLimited(ctx, r, 30*time.Second, limit, args...)
 		if e != nil {
-			if errors.Is(e, execx.ErrProcessTreeUnconfirmed) || errors.Is(e, execx.ErrOutputIncomplete) {
+			var preflight *adbPreflightError
+			if !errors.As(e, &preflight) && (errors.Is(e, execx.ErrProcessTreeUnconfirmed) || errors.Is(e, execx.ErrOutputIncomplete)) {
 				o.Confirmed = false
 			}
 			return v, uiSafeError(e)

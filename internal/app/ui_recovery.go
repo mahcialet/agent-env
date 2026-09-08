@@ -27,7 +27,7 @@ func (s *Service) RecoverUI(ctx context.Context, id, runID string) (result UIRes
 		return result, errors.New("UI store/provider unavailable")
 	}
 	if runID == "" || filepath.Base(runID) != runID || strings.ContainsAny(runID, "/\\") || runID == "." || runID == ".." {
-		return result, errors.New("invalid UI run ID")
+		return result, errors.Join(domain.ErrUIInput, errors.New("invalid UI run ID"))
 	}
 	inputCtx := ctx
 	ctx, release, err := s.Store.AcquireContext(ctx, id, newID(), 2*time.Minute)
@@ -59,7 +59,7 @@ func (s *Service) RecoverUI(ctx context.Context, id, runID string) (result UIRes
 		}
 	}
 	if found != 1 || result.Run.LeaseID != id || result.Run.Status != "running" {
-		return result, errors.New("recovery requires one registered running UI helper run")
+		return result, errors.Join(domain.ErrUIInput, errors.New("recovery requires one registered running UI helper run"))
 	}
 	args := result.Run.Argv
 	if len(args) < 4 || args[0] != "ui" || args[2] != "--runtime" || result.Run.Name != "ui-"+args[1] {
