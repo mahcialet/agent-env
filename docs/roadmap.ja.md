@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/roadmap.md
-source_sha256: 2d22cc5bdf72165cd308e9cdfa7e8c8f50e78ded0ae39072a438e8aefc2d2283
+source_sha256: ac5c49a79c164c08072cfe686d8ec0b0b09e9df8357602f7b5c27c6c14c3b012
 ---
 
 [英語版（翻訳元）](roadmap.md)
@@ -38,7 +38,7 @@ observer の最終受け入れ確認と platform 別の証拠は[完了した計
 
 ローカルOCI registry、image promotion、image保持参照、厳密な成果物のreplayは延期しています。runtime検査は実際のコンテナーimageの識別情報を記録しますが、再現可能なimage promotionではありません。成果物の自動期限切れ、event圧縮、migration rollbackツール、生成CLI/JSON Schemaリファレンス、長期的なhandoff archive方針は未決です。
 
-GitHub Releasesやpackage managerによるリリースパッケージ化は未決です。リリースはテストしたrevisionのネイティブ検証と統合検証の証拠を引用する必要があります。対応build targetはその証拠の代わりにはなりません。
+初回の配布は[スタンドアロン仕様](product-specs/standalone-distribution.ja.md)に従う GitHub Release アーカイブです。リリース実装と直接のネイティブ検証の証拠は[リリース計画](exec-plans/active/standalone-release-finalization.ja.md)で管理します。署名、notarization、package manager 向け定義、自己更新、SBOM、attestation は後続作業です。リリースはテストしたrevisionのネイティブ検証と統合検証の証拠を引用する必要があります。対応build targetはその証拠の代わりにはなりません。
 
 ## CIの拡張
 

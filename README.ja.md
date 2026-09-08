@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: README.md
-source_sha256: fcde3691c3ca19885d36f1b9c8d66f03cd2c12efb1599c6b622c580d26f79400
+source_sha256: ad12f45bb7cc97fcb3e31b1b048ebd9fbfc1fa4ac6ba4a815b7d2651828e439c
 ---
 
 [英語版（翻訳元）](README.md)
@@ -13,6 +13,30 @@ source_sha256: fcde3691c3ca19885d36f1b9c8d66f03cd2c12efb1599c6b622c580d26f79400
 固定したローカルGitコミットと、隔離されたDocker Composeプロジェクトまたは専用Android Emulatorから、使い捨ての環境リースを作成します。stackを選び、稼働状態を確認し、証拠を保持する名前付きテストを実行して、最後にリソースを片付けます。複数リポジトリと同時に存在する複数リースに対応します。
 
 **環境の隔離は、悪意あるコードを封じ込めるsandboxではありません。** Dockerfile、Compose設定、テスト、パッケージスクリプトは、リポジトリが制御するコードを実行します。信頼できる、または管理下にあるリポジトリを使用してください。任意の信頼できないpull requestには、より強い外側の境界が必要です。
+
+## スタンドアロンアーカイブ
+
+GitHub Releases から OS と CPU に合うアーカイブを取得し、バージョン付き
+ディレクトリを展開します。`agent-env`（Windows では `agent-env.exe`）を直接実行するか、
+そのディレクトリを PATH に追加します。`agent-env version --output json` はリリース
+バージョン、ソースコミット、ビルドに使った Go のバージョン、プラットフォームを表示します。
+実行に Go や checkout は不要です。ソースからのビルドには Go が必要です。
+リリースの公開状況とネイティブ検証の証拠は
+[リリース計画](docs/exec-plans/active/standalone-release-finalization.ja.md)で管理します。
+
+| 機能 | 外部の前提条件 |
+| --- | --- |
+| version、help、基本診断 | なし。Go、シェル、Docker、SDK、Flutter、Java は不要 |
+| ソース解決と管理対象 worktree | Git と信頼できるローカルリポジトリ |
+| Compose リース | Git、Docker daemon、Compose plugin |
+| Android Emulator リース | Git、Android SDK、Emulator、adb、インストール済み system image/AVD テンプレート、ホストのアクセラレーション |
+| Flutter Android アプリ | Android の前提条件に加え、Flutter と互換性のある Java/Android ビルドツールチェーン |
+| Android UI 観測 | Android リースと別途ビルドした任意の UI companion。そのビルドには SDK/JDK と Go が必要 |
+| リリースの作成 | Git と対応する Go ツールチェーン。リリース CI は Go 1.27.1 に固定 |
+
+機能ごとの外部ツールと任意の UI companion はアーカイブに同梱しません。
+任意の前提ツールがなくても version/help は実行できます。
+[配布仕様](docs/product-specs/standalone-distribution.ja.md)を参照してください。
 
 ## ビルドと検証
 

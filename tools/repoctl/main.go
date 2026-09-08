@@ -41,7 +41,10 @@ func run(args []string, out, errOut io.Writer) int {
 }
 
 func executeArgs(root string, args []string, out, errOut io.Writer) error {
-	if args[0] == "release-build" || args[0] == "release-check" {
+	if args[0] == "release-verify" || args[0] == "release-preview-smoke" {
+		return executeReleaseVerify(root, args, out, errOut)
+	}
+	if args[0] == "release-build" || args[0] == "release-check" || args[0] == "release-smoke" || args[0] == "release-repeat" {
 		return executeRelease(root, args, out, errOut)
 	}
 	if len(args) != 1 {

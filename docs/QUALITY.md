@@ -59,3 +59,48 @@ checkout therefore agrees with Linux/macOS. Checks are read-only and never
 refresh translation metadata automatically. A matching hash detects which
 source revision was acknowledged; it cannot prove that the translation is
 accurate. Review the actual Japanese text before updating the hash.
+
+## Release verification
+
+Run release construction from the exact clean tagged source using an output
+path that does not exist. Use separate output directories for repeat builds.
+
+```text
+go run ./tools/repoctl release-build --version X.Y.Z --out <new-directory>
+go run ./tools/repoctl release-check --dir <directory> --version X.Y.Z
+go run ./tools/repoctl release-repeat --dir <directory> --version X.Y.Z
+go run ./tools/repoctl release-smoke --dir <directory> --version X.Y.Z
+```
+
+`release-check` statically inspects the six-archive set and Go executable build
+information without executing foreign binaries. `release-smoke` executes only the
+host tuple after extraction outside the checkout, with a restricted executable
+search path and separate state home containing spaces/non-ASCII characters.
+Compare executable and archive digests, checksums and manifest across repeated
+same-source, same-toolchain builds; do not substitute successful compilation for
+byte comparison. CI pins the release builder to Go 1.27.1. Native Windows/macOS/Linux
+smoke results and arm64 coverage must be recorded explicitly in the
+[release plan](exec-plans/active/standalone-release-finalization.md).
+
+The tag workflow must gate publication on repository checks, static artifact
+validation, repeat-build comparison and native smoke jobs. The publishing job
+uploads the already checked candidate bytes without rebuilding. Workflow presence
+alone is not evidence that a release or native test has succeeded.
+
+`release-repeat` validates the tag-specific candidate, rebuilds from the same
+commit/toolchain and compares all eight output files byte for byte. For untagged
+branch/PR validation, use a private preview:
+
+```text
+go run ./tools/repoctl release-verify --out <new-directory>
+go run ./tools/repoctl release-preview-smoke --dir <directory>
+```
+
+`release-verify` requires clean source, creates `v0.1.0` only inside a private
+clone, performs two builds, compares bytes and runs the local native smoke before
+copying the candidate to a new output directory. `release-preview-smoke` verifies
+that preview against the current commit in another private clone. Neither command
+creates public refs or publishes. The preview workflow runs this comparison and
+three native OS smoke jobs; the tag workflow independently requires repeat-build
+and three native smoke gates before publishing. These are workflow requirements,
+not a claim that any particular run has passed.

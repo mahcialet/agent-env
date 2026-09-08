@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/PORTABILITY.md
-source_sha256: 53d10c89a2feb9efe5d7dbd7b1cfea407e6be97e4aa382340809215087a38eb4
+source_sha256: 7ec5ea49b51dba4d65d3126e7dd0a08008f83103f9d1a05dc7f0553c7073bcb0
 ---
 
 [英語版（翻訳元）](PORTABILITY.md)
@@ -53,3 +53,21 @@ SDK探索は`ANDROID_HOME`、次に`ANDROID_SDK_ROOT`、最後にプラットフ
 `127.0.0.1:5037`の互換ローカルADBサーバーは共有前提条件です。アダプターは起動またはboot検査の前に、直接の読み取り専用`host:version`応答をSDKクライアントのプロトコルバージョンと比較します。互換性がない、または不正な応答のサーバーは拒否します。サーバーがなければ、Emulatorより先にSDKの`adb -L tcp:localhost:5037 start-server`を別個のdetached起動で実行し、起動診断を保持します。時間制限付きboot検査は`-H 127.0.0.1 -P 5037 -s <reserved-serial>`を使い、継承したserver-routing変数を解除します。このboot検査では、欠けたサーバーを起動しません。互換性probeは、通常のSDKクライアントのversion不一致による置換経路を防ぎます。共有ADBはリースcleanupの対象外です。
 
 ネイティブ単体CIと実Emulator統合は別です。実SDK統合はLinuxで実施しています。Windows/macOSでの実SDK起動、アクセラレーション、共有サーバーの寿命は未検証です。Android ExecPlanにテストしたrevisionと残るプラットフォーム上の不足を記録しています。
+
+## スタンドアロンリリースの対象
+
+アーカイブの仕様では、従来の 5 ビルド対象に windows/arm64 を加えます。
+Windows、macOS（`darwin`）、Linux のそれぞれに amd64 と arm64 を用意します。
+Windows は ZIP、macOS/Linux は tar.gz を使い、全対象を `CGO_ENABLED=0` でビルドします。
+パッケージ生成は Go ライブラリで行い、外部のシェル、tar、zip、checksum ツールは不要です。
+アーカイブはバージョン付きディレクトリを一つ持ち、作成時刻ではなく tag 対象コミットの
+時刻を使います。ZIP は精度の粗い DOS フィールドに加え、UTC の拡張 timestamp を保持します。
+状態の保存先は引き続き OS 標準の state root または絶対パスの `AGENT_ENV_HOME` であり、
+空白や非 ASCII 文字を含むパスも扱います。
+
+6 対象のクロスビルド成功は、6 通りすべてのネイティブ動作を証明しません。
+arm64 を含め、実際に smoke test を実行したネイティブ runner を個別に記録します。
+アーカイブが生成されたことから実行済みとは判断しません。現在の証拠は
+[リリース計画](exec-plans/active/standalone-release-finalization.ja.md)で管理します。
+展開した CLI の実行に Go は不要です。選択した機能の外部前提条件は
+[README](../README.ja.md)に記載しています。

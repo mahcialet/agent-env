@@ -6,6 +6,30 @@ Create disposable environment leases from pinned local Git commits and isolated 
 
 **Environment isolation is not a malicious-code sandbox.** Dockerfiles, Compose configuration, tests, and package scripts execute repository-controlled code. Use trusted or controlled repositories; arbitrary untrusted pull requests need a stronger outer boundary.
 
+## Standalone archives
+
+Download the archive matching your OS and architecture from GitHub Releases and
+extract its versioned directory. Run `agent-env` (`agent-env.exe` on Windows)
+directly or add that directory to PATH. `agent-env version --output json` reports
+release version, source commit, Go build version and platform. The executable
+needs no Go installation or checkout; Go is needed only to build from source.
+Release availability and native verification are recorded in the
+[release plan](docs/exec-plans/active/standalone-release-finalization.md).
+
+| Capability | External prerequisites |
+| --- | --- |
+| Version, help, core diagnostics | None; no Go, shell, Docker, SDK, Flutter or Java |
+| Source resolution and managed worktrees | Git and a trusted local repository |
+| Compose leases | Git, Docker daemon and Compose plugin |
+| Android Emulator leases | Git, Android SDK, Emulator, adb, installed system image/AVD template and host acceleration |
+| Flutter Android applications | Android prerequisites plus Flutter and a compatible Java/Android build toolchain |
+| Android UI observation | Android lease and separately built optional UI companion; SDK/JDK and Go are needed to build that companion |
+| Release construction | Git and a supported Go toolchain; release CI pins Go 1.27.1 |
+
+External capability tools and the optional UI companion are not bundled in the
+archive. Missing optional prerequisites do not prevent version/help from running.
+See the [distribution contract](docs/product-specs/standalone-distribution.md).
+
 ## Build and verify
 
 Use Go 1.26.x or 1.27.x. Runtime operations need Git plus the selected runtime prerequisites: Docker with Compose for containers, or an installed Android SDK, Emulator, adb and stopped AVD template for Android. The repository harness itself needs no Bash, Make, PowerShell, or Docker for ordinary unit checks.

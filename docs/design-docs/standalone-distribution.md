@@ -18,3 +18,41 @@ The normal state root remains owned by `internal/paths`. Release output is an
 explicit caller directory and is never confused with runtime state. Future
 embedded companions can describe bytes once, materialize them by digest, and
 reuse verified existing content without Android-specific code in the asset core.
+
+## Packaging and inspection
+
+Release construction validates immutable Git identity before build effects,
+uses `CGO_ENABLED=0` and trimmed paths, and stages all six targets in a private
+sibling of the requested new output directory. A complete set includes checksums
+and schema-1 manifest derived from actual archive/executable bytes. Git is the
+only version authority; build tooling records the actual Go runtime version.
+Release CI pins Go 1.27.1. Determinism is qualified to the same source and toolchain.
+
+Go tar/zip/gzip writers normalize member order, relative paths, modes, ownership
+and timestamps to the tagged commit. Gzip metadata contains no host identity.
+ZIP's UTC extended timestamp retains seconds that its DOS field cannot represent.
+Supported commit timestamps run from 1980-01-01 UTC through 2106-02-07
+06:28:15 UTC; timestamps outside that common archive range are rejected.
+The deterministic bilingual README.txt comes from the harness, not the host or
+wall clock. No runtime companion is currently embedded; generic asset metadata
+is consequently empty, while the external UI helper keeps its existing boundary.
+
+Static inspection uses Go `debug/buildinfo` to inspect all target executables,
+checks VCS identity, CGO and platform settings, and verifies a linker-supplied
+`ReleaseRecord` marker also read by runtime build identity. With `-trimpath`, Go
+omits linker flags from `debug/buildinfo`; the marker supplies version/commit
+values for static comparison. Inspection also checks declared and actual digests
+and rejects unsafe or unexpected archive entries. Path-leak coverage is bounded
+to controlled metadata and known repository/temporary path prefixes, not a
+universal search for every possible host path. It does not execute foreign binaries. Native smoke is a separate
+operation on the extracted host tuple with restricted PATH, an external working
+directory and isolated state. Workflow orchestration passes the same candidate
+bytes through validation and smoke gates to publication without rebuilding.
+
+Build input is a private checkout of the resolved commit, rather than the caller's
+worktree. This excludes ignored Go sources and edits hidden by assume-unchanged or
+skip-worktree flags. Output still uses private sibling staging and refuses existing
+destinations. The checksum list is ordered by archive filename. Preview verification
+uses a private `v0.1.0` tag without modifying caller or public refs; production
+repeat verification retains the requested real tag identity. CI passes release
+tags through `AGENT_ENV_RELEASE_TAG` and `--tag-env`, not shell interpolation.

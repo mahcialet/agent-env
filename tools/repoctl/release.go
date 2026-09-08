@@ -1,183 +1,412 @@
 package main
 
 import (
-	"archive/tar"
-	"archive/zip"
-	"compress/gzip"
+	"bytes"
 	"crypto/sha256"
+	"debug/buildinfo"
 	"encoding/hex"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 )
 
-var releaseTag = regexp.MustCompile(`^v[0-9]+\.[0-9]+\.[0-9]+$`)
-
-type releaseTarget struct{ GOOS, GOARCH string }
+type releaseTarget struct {
+	GOOS   string `json:"goos"`
+	GOARCH string `json:"goarch"`
+}
 
 var releaseTargets = []releaseTarget{{"windows", "amd64"}, {"windows", "arm64"}, {"darwin", "amd64"}, {"darwin", "arm64"}, {"linux", "amd64"}, {"linux", "arm64"}}
 
-func gitOut(root string, args ...string) (string, error) {
-	b, e := exec.Command("git", args...).Output()
-	if e != nil {
-		return "", e
-	}
-	return strings.TrimSpace(string(b)), nil
+type releaseIdentity struct {
+	Version   string `json:"version"`
+	Commit    string `json:"commit"`
+	Dirty     string `json:"dirty"`
+	GoVersion string `json:"go_version"`
+	GOOS      string `json:"goos"`
+	GOARCH    string `json:"goarch"`
 }
-func releaseVersion(root, requested string) (string, time.Time, error) {
-	if !regexp.MustCompile(`^[0-9]+\.[0-9]+\.[0-9]+$`).MatchString(requested) {
-		return "", time.Time{}, fmt.Errorf("invalid semver")
+type releaseAsset struct {
+	Name    string `json:"name"`
+	Version string `json:"version"`
+	SHA256  string `json:"sha256"`
+	Size    int64  `json:"size"`
+}
+type releaseArtifact struct {
+	releaseTarget
+	Archive          string          `json:"archive"`
+	SHA256           string          `json:"sha256"`
+	Executable       string          `json:"executable"`
+	ExecutableSHA256 string          `json:"executable_sha256"`
+	BuildInfo        releaseIdentity `json:"build_info"`
+	Assets           []releaseAsset  `json:"assets"`
+}
+type releaseManifest struct {
+	SchemaVersion   int               `json:"schema_version"`
+	Product         string            `json:"product"`
+	Version         string            `json:"version"`
+	Tag             string            `json:"tag"`
+	Commit          string            `json:"commit"`
+	SourceTimestamp int64             `json:"source_timestamp"`
+	GoVersion       string            `json:"go_version"`
+	Artifacts       []releaseArtifact `json:"artifacts"`
+}
+
+func digest(b []byte) string { s := sha256.Sum256(b); return hex.EncodeToString(s[:]) }
+func archiveNames(version string, t releaseTarget) (prefix, name, exe string) {
+	prefix = "agent-env_v" + version + "_" + t.GOOS + "_" + t.GOARCH
+	name = prefix + ".tar.gz"
+	exe = "agent-env"
+	if t.GOOS == "windows" {
+		name = prefix + ".zip"
+		exe += ".exe"
 	}
-	st, e := gitOut(root, "status", "--porcelain")
-	if e != nil {
-		return "", time.Time{}, e
-	}
-	if st != "" {
-		return "", time.Time{}, fmt.Errorf("working tree is not clean")
-	}
-	head, e := gitOut(root, "rev-parse", "HEAD")
-	if e != nil {
-		return "", time.Time{}, e
-	}
-	tags, e := gitOut(root, "tag", "--points-at", head)
-	if e != nil {
-		return "", time.Time{}, e
-	}
-	var match string
-	for _, t := range strings.Fields(tags) {
-		if releaseTag.MatchString(t) && strings.TrimPrefix(t, "v") == requested {
-			if match != "" {
-				return "", time.Time{}, fmt.Errorf("multiple matching tags")
-			}
-			match = t
-		}
-	}
-	if match == "" {
-		return "", time.Time{}, fmt.Errorf("no matching release tag")
-	}
-	ts, e := gitOut(root, "show", "-s", "--format=%ct", match)
-	if e != nil {
-		return "", time.Time{}, e
-	}
-	var sec int64
-	fmt.Sscan(ts, &sec)
-	return match, time.Unix(sec, 0).UTC(), nil
+	return
+}
+func releaseFlags(version, commit string) string {
+	const pkg = "github.com/mahcialet/agent-env/internal/buildinfo."
+	return "-s -w -X " + pkg + "ReleaseRecord=agent-env-release-v1|" + version + "|" + commit + "|false|end"
+}
+
+// This deterministic bilingual text is the README.txt source; no local paths.
+func releaseReadme(version string) []byte {
+	return []byte("agent-env " + version + "\n\nExtract the directory and run agent-env version or agent-env --help.\nNo Go installation or shell is required to run the executable.\nAGENT_ENV_HOME sets an absolute writable state directory.\nOptional capabilities require Git; Docker/Compose; Android SDK/Emulator;\nor Flutter/Java/Android build tools. These tools are not bundled.\n\nディレクトリを展開し、agent-env version または agent-env --help を実行します。\n実行に Go やシェルは不要です。AGENT_ENV_HOME で状態保存先の絶対パスを指定できます。\n機能に応じて Git、Docker/Compose、Android SDK/Emulator、Flutter/Java が別途必要です。\n")
 }
 func executeRelease(root string, args []string, out, errOut io.Writer) error {
-	if args[0] == "release-check" {
-		if len(args) != 2 {
-			return fmt.Errorf("usage: release-check VERSION")
-		}
-		_, _, e := releaseVersion(root, args[1])
+	fs := flag.NewFlagSet(args[0], flag.ContinueOnError)
+	fs.SetOutput(errOut)
+	version := fs.String("version", "", "release version without v")
+	selectedTag := fs.String("tag", "", "release tag (alternative to version)")
+	tagEnv := fs.Bool("tag-env", false, "read tag from AGENT_ENV_RELEASE_TAG")
+	var dir string
+	if args[0] == "release-build" {
+		fs.StringVar(&dir, "out", "", "new output directory")
+	} else {
+		fs.StringVar(&dir, "dir", "", "release directory")
+	}
+	if e := fs.Parse(args[1:]); e != nil {
 		return e
 	}
-	if len(args) != 2 {
-		return fmt.Errorf("usage: release-build VERSION")
+	if *tagEnv {
+		if *selectedTag != "" {
+			return fmt.Errorf("tag and tag-env are mutually exclusive")
+		}
+		*selectedTag = os.Getenv("AGENT_ENV_RELEASE_TAG")
+		if *selectedTag == "" {
+			return fmt.Errorf("missing AGENT_ENV_RELEASE_TAG")
+		}
 	}
-	ver := args[1]
-	tag, mt, e := releaseVersion(root, ver)
+	if *selectedTag != "" {
+		if *version != "" || !releaseTag.MatchString(*selectedTag) {
+			return fmt.Errorf("specify either valid tag or version")
+		}
+		*version = strings.TrimPrefix(*selectedTag, "v")
+	}
+	if fs.NArg() != 0 || *version == "" || dir == "" {
+		return fmt.Errorf("AGENTENV-RELEASE-001: version and directory flags required")
+	}
+	dir, e := filepath.Abs(dir)
 	if e != nil {
 		return e
 	}
-	outdir := filepath.Join(root, "dist", ver)
-	os.RemoveAll(outdir)
-	if e = os.MkdirAll(outdir, 0755); e != nil {
+	tag, mt, e := releaseVersion(root, *version)
+	if e != nil {
 		return e
 	}
-	_ = tag
+	commit, e := gitOut(root, "rev-parse", "HEAD")
+	if e != nil {
+		return e
+	}
+	switch args[0] {
+	case "release-build":
+		e = buildRelease(root, dir, *version, tag, commit, mt, out, errOut)
+	case "release-repeat":
+		e = repeatRelease(root, dir, *version, tag, commit, mt, out, errOut)
+	case "release-check":
+		_, e = checkRelease(root, dir, *version, tag, commit, mt)
+	case "release-smoke":
+		e = smokeRelease(root, dir, *version, tag, commit, mt, out)
+	default:
+		return fmt.Errorf("unknown release command")
+	}
+	if e == nil {
+		fmt.Fprintln(out, args[0]+" passed")
+	}
+	return e
+}
+func buildRelease(root, dir, version, tag, commit string, mt time.Time, out, errOut io.Writer) error {
+	if _, e := os.Lstat(dir); !os.IsNotExist(e) {
+		return fmt.Errorf("output must not exist: %s", dir)
+	}
+	// Stage alongside the destination for a same-filesystem rename. Never delete caller data.
+	parent := filepath.Dir(dir)
+	if e := os.MkdirAll(parent, 0755); e != nil {
+		return e
+	}
+	stage, e := os.MkdirTemp(parent, ".agent-env-release-")
+	if e != nil {
+		return e
+	}
+	defer os.RemoveAll(stage)
+	payload, e := os.MkdirTemp("", "agent-env-build-")
+	if e != nil {
+		return e
+	}
+	defer os.RemoveAll(payload)
+	source, cleanup, e := privateReleaseSource(root, commit, tag)
+	if e != nil {
+		return e
+	}
+	defer cleanup()
+	license, e := gitOut(source, "show", commit+":LICENSE")
+	if e != nil {
+		return e
+	}
+	licenseBytes := []byte(license + "\n")
+	manifest := releaseManifest{SchemaVersion: 1, Product: "agent-env", Version: version, Tag: tag, Commit: commit, SourceTimestamp: mt.Unix()}
 	for _, t := range releaseTargets {
-		ext := ".tar.gz"
-		if t.GOOS == "windows" {
-			ext = ".zip"
-		}
-		name := fmt.Sprintf("agent-env_v%s_%s_%s", ver, t.GOOS, t.GOARCH)
-		bin := filepath.Join(outdir, name, "agent-env")
-		if t.GOOS == "windows" {
-			bin += ".exe"
-		}
-		if e = os.MkdirAll(filepath.Dir(bin), 0755); e != nil {
-			return e
-		}
-		cmd := exec.Command("go", "build", "-trimpath", "-ldflags", fmt.Sprintf("-s -w -X github.com/mahcialet/agent-env/internal/buildinfo.Version=%s", ver), "-o", bin, "./cmd/agent-env")
-		cmd.Dir = root
-		cmd.Env = append(os.Environ(), "CGO_ENABLED=0", "GOOS="+t.GOOS, "GOARCH="+t.GOARCH)
-		cmd.Stdout, cmd.Stderr = errOut, errOut
+		prefix, name, exe := archiveNames(version, t)
+		bin := filepath.Join(payload, exe)
+		cmd := exec.Command("go", "build", "-trimpath", "-buildvcs=true", "-ldflags", releaseFlags(version, commit), "-o", bin, "./cmd/agent-env")
+		cmd.Dir = source
+		cmd.Env = releaseBuildEnv(t)
+		cmd.Stdout = out
+		cmd.Stderr = errOut
+		fmt.Fprintln(out, "build", t.GOOS, t.GOARCH)
 		if e = cmd.Run(); e != nil {
 			return e
 		}
-		for _, f := range []string{"LICENSE", "README.md"} {
-			src := filepath.Join(root, f)
-			if b, x := os.ReadFile(src); x == nil {
-				os.WriteFile(filepath.Join(filepath.Dir(bin), f), b, 0644)
-			}
-		}
-		if e = writeArchive(filepath.Join(outdir, name+ext), filepath.Dir(bin), name, t.GOOS == "windows", mt); e != nil {
-			return e
-		}
-	}
-	return nil
-}
-func writeArchive(dst, dir, prefix string, zipMode bool, mt time.Time) error {
-	files := []string{"agent-env", "agent-env.exe", "LICENSE", "README.md"}
-	if zipMode {
-		f, e := os.Create(dst)
+		b, e := os.ReadFile(bin)
 		if e != nil {
 			return e
 		}
-		defer f.Close()
-		z := zip.NewWriter(f)
-		defer z.Close()
-		for _, n := range files {
-			p := filepath.Join(dir, n)
-			if b, e := os.ReadFile(p); e == nil {
-				h := &zip.FileHeader{Name: prefix + "/" + n, Method: zip.Deflate, Modified: mt}
-				w, e := z.CreateHeader(h)
-				if e != nil {
-					return e
-				}
-				if _, e = w.Write(b); e != nil {
-					return e
-				}
-			}
+		info, e := inspectReleaseBinary(b, version, commit, t)
+		if e != nil {
+			return e
 		}
-		return nil
+		if manifest.GoVersion == "" {
+			manifest.GoVersion = info.GoVersion
+		}
+		if info.GoVersion != manifest.GoVersion {
+			return fmt.Errorf("toolchain changed during build")
+		}
+		if e = os.WriteFile(filepath.Join(payload, "LICENSE"), licenseBytes, 0644); e != nil {
+			return e
+		}
+		if e = os.WriteFile(filepath.Join(payload, "README.txt"), releaseReadme(version), 0644); e != nil {
+			return e
+		}
+		if e = writeArchive(filepath.Join(stage, name), payload, prefix, t.GOOS == "windows", mt); e != nil {
+			return e
+		}
+		ar, e := os.ReadFile(filepath.Join(stage, name))
+		if e != nil {
+			return e
+		}
+		manifest.Artifacts = append(manifest.Artifacts, releaseArtifact{t, name, digest(ar), prefix + "/" + exe, digest(b), info, []releaseAsset{}})
+		if e = os.Remove(bin); e != nil {
+			return e
+		}
 	}
-	f, e := os.Create(dst)
+	data, e := json.MarshalIndent(manifest, "", "  ")
 	if e != nil {
 		return e
 	}
-	defer f.Close()
-	g := gzip.NewWriter(f)
-	defer g.Close()
-	tw := tar.NewWriter(g)
-	defer tw.Close()
-	for _, n := range files {
-		p := filepath.Join(dir, n)
-		b, e := os.ReadFile(p)
-		if e != nil {
-			continue
-		}
-		h := &tar.Header{Name: prefix + "/" + n, Mode: 0755, Size: int64(len(b)), ModTime: mt}
-		if n == "LICENSE" || n == "README.md" {
-			h.Mode = 0644
-		}
-		if e = tw.WriteHeader(h); e != nil {
-			return e
-		}
-		if _, e = tw.Write(b); e != nil {
-			return e
+	if e = os.WriteFile(filepath.Join(stage, "release-manifest.json"), append(data, '\n'), 0644); e != nil {
+		return e
+	}
+	if e = os.WriteFile(filepath.Join(stage, "checksums.txt"), releaseChecksums(manifest), 0644); e != nil {
+		return e
+	}
+	// Recheck source after builds to catch edits during construction.
+	finalTag, finalTime, e := releaseVersion(root, version)
+	if e != nil {
+		return e
+	}
+	finalCommit, e := gitOut(root, "rev-parse", "HEAD")
+	if e != nil {
+		return e
+	}
+	if finalTag != tag || !finalTime.Equal(mt) || finalCommit != commit {
+		return fmt.Errorf("release source changed during build")
+	}
+	if _, e = checkRelease(source, stage, version, tag, commit, mt); e != nil {
+		return e
+	}
+	if _, e = checkRelease(root, stage, version, tag, commit, mt); e != nil {
+		return e
+	}
+	if _, e = os.Lstat(dir); !os.IsNotExist(e) {
+		return fmt.Errorf("output appeared during build")
+	}
+	return os.Rename(stage, dir)
+}
+func releaseBuildEnv(t releaseTarget) []string {
+	controlled := map[string]string{"CGO_ENABLED": "0", "GOOS": t.GOOS, "GOARCH": t.GOARCH, "GOFLAGS": "", "GOENV": "off", "GOWORK": "off", "GOEXPERIMENT": "", "GOAMD64": "v1", "GOARM64": "v8.0", "GIT_NO_REPLACE_OBJECTS": "1"}
+	env := []string{}
+	for _, s := range releaseGitEnv() {
+		k, _, _ := strings.Cut(s, "=")
+		if _, ok := controlled[strings.ToUpper(k)]; !ok {
+			env = append(env, s)
 		}
 	}
-	return nil
+	keys := []string{}
+	for k := range controlled {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		env = append(env, k+"="+controlled[k])
+	}
+	return env
+}
+func releaseChecksums(m releaseManifest) []byte {
+	lines := []string{}
+	artifacts := append([]releaseArtifact(nil), m.Artifacts...)
+	sort.Slice(artifacts, func(i, j int) bool { return artifacts[i].Archive < artifacts[j].Archive })
+	for _, a := range artifacts {
+		lines = append(lines, a.SHA256+"  "+a.Archive+"\n")
+	}
+	return []byte(strings.Join(lines, ""))
+}
+func inspectReleaseBinary(b []byte, version, commit string, t releaseTarget) (releaseIdentity, error) {
+	info, e := buildinfo.Read(bytes.NewReader(b))
+	if e != nil {
+		return releaseIdentity{}, e
+	}
+	settings := map[string]string{}
+	for _, s := range info.Settings {
+		settings[s.Key] = s.Value
+	}
+	expected := map[string]string{"GOOS": t.GOOS, "GOARCH": t.GOARCH, "CGO_ENABLED": "0", "-trimpath": "true", "vcs.revision": commit, "vcs.modified": "false"}
+	for k, v := range expected {
+		if settings[k] != v {
+			return releaseIdentity{}, fmt.Errorf("binary %s mismatch: got %q expected %q", k, settings[k], v)
+		}
+	}
+	if info.Path != "github.com/mahcialet/agent-env/cmd/agent-env" || !strings.HasPrefix(info.GoVersion, "go1.") {
+		return releaseIdentity{}, fmt.Errorf("unexpected executable build identity")
+	}
+	records := regexp.MustCompile(`agent-env-release-v1\|[^|\x00]{1,100}\|[a-f0-9]{40,64}\|false\|end`).FindAll(b, -1)
+	expectedRecord := []byte("agent-env-release-v1|" + version + "|" + commit + "|false|end")
+	if len(records) != 1 || !bytes.Equal(records[0], expectedRecord) {
+		return releaseIdentity{}, fmt.Errorf("static release record mismatch")
+	}
+	return releaseIdentity{version, commit, "false", info.GoVersion, t.GOOS, t.GOARCH}, nil
+}
+func regularRead(path string, limit int64) ([]byte, error) {
+	st, e := os.Lstat(path)
+	if e != nil {
+		return nil, e
+	}
+	if !st.Mode().IsRegular() || st.Size() > limit {
+		return nil, fmt.Errorf("invalid release file %s", path)
+	}
+	return os.ReadFile(path)
+}
+func checkRelease(root, dir, version, tag, commit string, mt time.Time) (releaseManifest, error) {
+	var m releaseManifest
+	b, e := regularRead(filepath.Join(dir, "release-manifest.json"), 1<<20)
+	if e != nil {
+		return m, e
+	}
+	dec := json.NewDecoder(bytes.NewReader(b))
+	dec.DisallowUnknownFields()
+	if e = dec.Decode(&m); e != nil {
+		return m, e
+	}
+	canonical, e := json.MarshalIndent(m, "", "  ")
+	if e != nil {
+		return m, e
+	}
+	if !bytes.Equal(b, append(canonical, '\n')) {
+		return m, fmt.Errorf("manifest must use canonical generated JSON")
+	}
+	var extra any
+	if dec.Decode(&extra) != io.EOF {
+		return m, fmt.Errorf("trailing manifest data")
+	}
+	if m.SchemaVersion != 1 || m.Product != "agent-env" || m.Version != version || m.Tag != tag || m.Commit != commit || m.SourceTimestamp != mt.Unix() || len(m.Artifacts) != len(releaseTargets) {
+		return m, fmt.Errorf("release manifest identity mismatch")
+	}
+	entries, e := os.ReadDir(dir)
+	if e != nil {
+		return m, e
+	}
+	if len(entries) != 8 {
+		return m, fmt.Errorf("expected exactly eight release files")
+	}
+	license, e := gitOut(root, "show", commit+":LICENSE")
+	if e != nil {
+		return m, e
+	}
+	for i, t := range releaseTargets {
+		a := m.Artifacts[i]
+		prefix, name, exe := archiveNames(version, t)
+		if a.releaseTarget != t || a.Archive != name || a.Executable != prefix+"/"+exe || a.Assets == nil || len(a.Assets) != 0 {
+			return m, fmt.Errorf("target/member/asset mismatch")
+		}
+		ar, e := regularRead(filepath.Join(dir, name), 256<<20)
+		if e != nil {
+			return m, e
+		}
+		if digest(ar) != a.SHA256 {
+			return m, fmt.Errorf("archive checksum mismatch")
+		}
+		files, e := readReleaseArchive(filepath.Join(dir, name), prefix, t.GOOS == "windows", mt)
+		if e != nil {
+			return m, e
+		}
+		binary := files[exe]
+		if digest(binary) != a.ExecutableSHA256 {
+			return m, fmt.Errorf("executable checksum mismatch")
+		}
+		info, e := inspectReleaseBinary(binary, version, commit, t)
+		if e != nil {
+			return m, e
+		}
+		if !reflect.DeepEqual(info, a.BuildInfo) || info.GoVersion != m.GoVersion {
+			return m, fmt.Errorf("build info mismatch")
+		}
+		if !bytes.Equal(files["LICENSE"], []byte(license+"\n")) || !bytes.Equal(files["README.txt"], releaseReadme(version)) {
+			return m, fmt.Errorf("license/readme mismatch")
+		}
+		for _, p := range []string{root, os.TempDir()} {
+			if len(p) > 3 && (bytes.Contains(binary, []byte(p+string(filepath.Separator))) || bytes.Contains(binary, []byte(filepath.ToSlash(p)+"/"))) {
+				return m, fmt.Errorf("local path leaked in binary")
+			}
+		}
+	}
+	sums, e := regularRead(filepath.Join(dir, "checksums.txt"), 1<<20)
+	if e != nil {
+		return m, e
+	}
+	if !bytes.Equal(sums, releaseChecksums(m)) {
+		return m, fmt.Errorf("checksums file mismatch")
+	}
+	return m, nil
 }
 
-var _ = sha256.Sum256
-var _ = hex.EncodeToString
-var _ = json.Marshal
-var _ io.Reader
+func repeatRelease(root, dir, version, tag, commit string, mt time.Time, out, errOut io.Writer) error {
+	if _, e := checkRelease(root, dir, version, tag, commit, mt); e != nil {
+		return e
+	}
+	base, e := os.MkdirTemp("", "agent-env-repeat-")
+	if e != nil {
+		return e
+	}
+	defer os.RemoveAll(base)
+	next := filepath.Join(base, "candidate")
+	if e = buildRelease(root, next, version, tag, commit, mt, out, errOut); e != nil {
+		return e
+	}
+	return compareReleaseDirectories(dir, next)
+}

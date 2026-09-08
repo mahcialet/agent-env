@@ -233,14 +233,14 @@ credentials or environment secrets.
 - [ ] Record exact starting base branch/revision and verify foundation prerequisites.
 - [ ] Run baseline `repoctl check` and documented race suite.
 - [ ] Freeze tag/version/archive/release-manifest contract in bilingual durable docs.
-- [x] 2026-09-08: Implemented strict Git release-source validation in repoctl.
-- [x] 2026-09-08: Implemented `repoctl release-build` for the six target matrix.
-- [x] 2026-09-08: Release builds set `CGO_ENABLED=0` for all six targets.
-- [x] 2026-09-08: Implemented versioned top-level zip/tar.gz archives.
-- [x] 2026-09-08: Archive entries use the tagged commit timestamp.
+- [ ] Implemented strict Git release-source validation in repoctl. Revalidate against acceptance; earlier completion was premature.
+- [ ] Implemented `repoctl release-build` for the six target matrix. Revalidate against acceptance; earlier completion was premature.
+- [ ] Release builds set `CGO_ENABLED=0` for all six targets. Revalidate against acceptance; earlier completion was premature.
+- [ ] Implemented versioned top-level zip/tar.gz archives. Revalidate against acceptance; earlier completion was premature.
+- [ ] Archive entries use the tagged commit timestamp. Revalidate against acceptance; earlier completion was premature.
 - [ ] Generate deterministic `checksums.txt`.
 - [ ] Generate versioned `release-manifest.json`.
-- [x] 2026-09-08: Implemented initial `repoctl release-check` tag/tree validation.
+- [ ] Implemented initial `repoctl release-check` tag/tree validation. Revalidate against acceptance; earlier completion was premature.
 - [ ] Add corruption/mismatch/path-traversal/symlink/path-leak negative fixtures.
 - [ ] Verify executable build info and bundled asset metadata statically.
 - [ ] Add same-source/toolchain repeated binary/archive digest comparison.
@@ -267,7 +267,16 @@ revision, command/workflow run and outcome.
 
 ## Surprises & Discoveries
 
-No discoveries recorded yet.
+- 2026-09-08: Audit of `0bf2d12` found premature completion checkboxes:
+  Git commands ignored the root argument; release-check inspected no artifacts;
+  packaging silently omitted inputs, used README.md, ignored close errors and
+  removed an existing output directory. Existing unit tests did not exercise
+  release behavior. Completion is reset until direct release tests pass.
+- 2026-09-08: Japanese plan hashes had been refreshed without translating the
+  updated starting revision and progress. Corrected the actual text, not only hashes.
+- 2026-09-08: A Go 1.27.1 probe using `go build -trimpath` showed that
+  debug/buildinfo omits linker flags. Runtime and static verification now share
+  a ReleaseRecord, with independent VCS/platform/CGO checks.
 
 Preserve discoveries such as multiple version tags, build-info differences,
 archive nondeterminism, timestamp precision differences, gzip header behavior,
@@ -277,6 +286,32 @@ publication pressure, antivirus/quarantine behavior, or asset metadata mismatch.
 Do not mask nondeterminism by weakening digest assertions.
 
 ## Decision Log
+
+- Decision: Untracked files count as dirt; ignored outputs do not. Reject more
+  than one canonical release tag on HEAD, even when one matches the request.
+  Numeric version components have no leading zeros.
+  Rationale: Prevent hidden inputs and ambiguous release identity.
+  Date/Author: 2026-09-08 / maintainers.
+- Decision: ZIP uses exact UTC extended Unix seconds; supported common timestamp
+  range is 1980-01-01 through 2106-02-07 06:28:15 UTC. TAR uses normalized USTAR;
+  gzip has no timestamp, original filename, or comment. Exactly three regular
+  members share an implicit versioned top-level directory.
+  Rationale: Preserve commit seconds while rejecting unrepresentable metadata.
+  Date/Author: 2026-09-08 / maintainers.
+- Decision: README.txt is generated from bilingual repository-harness text.
+  LICENSE is read from the release commit; no source or local paths are shipped.
+  Rationale: Deterministic install instructions and the existing MIT license.
+  Date/Author: 2026-09-08 / maintainers.
+- Decision: ReleaseRecord carries CLI identity because trimpath omits linker
+  flags; static verification also checks debug/buildinfo. Assets are currently
+  an explicit empty array: the optional Android helper is not embedded.
+  Rationale: Do not claim shipped assets or identity from unverified manifest data.
+  Date/Author: 2026-09-08 / maintainers.
+- Decision: Pin Go 1.27.1 in release workflows; local artifacts record the actual
+  Go toolchain. Use private-clone v0.1.0 for preview/repeat evidence. Public tags
+  remain maintainer-created; publication requires an intentional tag push.
+  Rationale: Exercise release guards without creating a public release implicitly.
+  Date/Author: 2026-09-08 / maintainers.
 
 - Decision: Git tag is the sole release version authority.
   Rationale: Avoids a duplicate VERSION source and proves release identity from Git.

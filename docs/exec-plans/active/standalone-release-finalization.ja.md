@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/exec-plans/active/standalone-release-finalization.md
-source_sha256: 9113c2db287fbecb6f74bf36b84e0a979f702f3f7adac95e9913dd155817331b
+source_sha256: 3685f4148514bf01e14d338fc38dfd191b941c94dbe9acaf01db25939516ead1
 ---
 
 # スタンドアロン配布のリリース工程を完成させる
@@ -39,9 +39,9 @@ release pipelineを完成させる実行authorityである。
 PRにする場合はbase branch/base commitを明記し、stacked evidenceを
 merged-master evidenceと表現しない。
 
-開始 revision: `TO_BE_RECORDED_AT_START`
+開始 revision: `e37242a312c090c51430d519ea623e1bb41d2941`
 
-開始 base branch: `TO_BE_RECORDED_AT_START`
+開始 base branch: `feat/standalone-distribution`
 
 ## 目的 / 全体像
 
@@ -66,6 +66,8 @@ Bash/PowerShell/external tar/zip/sha256sum/CGO/separate release toolをrelease
 pipeline要件にしない。packagingはGo標準libraryとrepository Go codeで実装する。
 
 ## 進捗
+
+- [x] 2026-09-08: `e37242a` から作業ブランチを作成し、Go 1.27.1 の `repoctl check` が成功。
 
 - [ ] exact starting base/revisionを記録しfoundation prerequisite確認
 - [ ] baseline `repoctl check` / race suite
@@ -103,6 +105,16 @@ checkboxは観測済み完了だけを表す。UTC date、revision、command/run
 
 ## 想定外の発見
 
+- 2026-09-08: `0bf2d12` の完了記録は早すぎた。Git コマンドは root 引数を
+  無視し、release-check はアーカイブを検査していなかった。入力の欠落と close
+  エラーを見逃し、README.md を収録し、既存出力先を削除していた。既存の単体
+  テストはリリース経路を検証していなかったため、直接検証するまで未完了とする。
+- 2026-09-08: 日本語 Plan の開始 revision と進捗を翻訳せず hash だけ更新した
+  記録があった。本文も修正した。
+- 2026-09-08: Go 1.27.1 で `go build -trimpath` を試すと、debug/buildinfo に
+  linker flags が残らなかった。実行時と静的検証で共通の ReleaseRecord を読み、
+  VCS・platform・CGO 情報も独立に確認する。
+
 現時点ではなし。
 
 複数version tag、local/CI build metadata差、archive nondeterminism、timestamp precision、
@@ -110,6 +122,32 @@ gzip header、Windows path/mode、native runner制約、absolute path leak、pre
 antivirus、asset metadata mismatch等を記録する。digest assertionを弱めて隠さない。
 
 ## 判断の記録
+
+- 判断: 未追跡ファイルも dirty とし、ignore 対象の出力は除外する。HEAD 上の
+  有効なリリース tag が複数なら、要求と一致するものがあっても拒否する。
+  バージョンの数値には先頭のゼロを認めない。
+  理由: 隠れた入力と曖昧なリリース識別を避ける。
+  日付/担当: 2026-09-08 / maintainers.
+- 判断: ZIP は UTC の拡張 Unix 秒を保存し、1980-01-01 から
+  2106-02-07 06:28:15 UTC までを扱う。TAR は正規化した USTAR、gzip は
+  timestamp・元ファイル名・comment なしとする。3つの通常ファイルだけを
+  同じバージョン付きディレクトリ配下に収録し、ディレクトリエントリは作らない。
+  理由: commit の秒を保ち、表現できないメタデータを拒否する。
+  日付/担当: 2026-09-08 / maintainers.
+- 判断: README.txt はハーネス内の英日テキストから生成し、LICENSE は release
+  commit から取得する。ソースやローカルパスを収録しない。
+  理由: 決定的な導入説明と既存の MIT license を配布する。
+  日付/担当: 2026-09-08 / maintainers.
+- 判断: trimpath が linker flags を省くため、CLI の識別情報を ReleaseRecord に
+  格納し、debug/buildinfo も確認する。assets は空配列とする。任意の Android
+  helper は現在埋め込まれていない。
+  理由: 未検証の manifest だけから識別や同梱物を主張しない。
+  日付/担当: 2026-09-08 / maintainers.
+- 判断: release workflow は Go 1.27.1 に固定し、ローカル成果物は実際の
+  toolchain を記録する。preview・再現性検証には private clone の v0.1.0 を使う。
+  公開 tag は maintainer が作成し、公開には意図的な tag push が必要となる。
+  理由: 公開リリースを暗黙に作らず、リリース条件を検証する。
+  日付/担当: 2026-09-08 / maintainers.
 
 - 判断: Git tagを唯一のrelease version authorityとする。
   理由: duplicate VERSION sourceを避け、Gitからrelease identityを証明。
