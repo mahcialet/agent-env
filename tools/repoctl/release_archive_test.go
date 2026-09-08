@@ -199,3 +199,41 @@ func TestArchiveTimestampRange(t *testing.T) {
 		}
 	}
 }
+
+func TestReleaseArchiveRejectsMismatchedZIPLocalNames(t *testing.T) {
+	dir := t.TempDir()
+	stage := filepath.Join(dir, "stage")
+	if err := os.Mkdir(stage, 0755); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range releaseArchiveNames(true) {
+		if err := os.WriteFile(filepath.Join(stage, name), []byte("content"), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	mt := time.Date(2026, 9, 8, 1, 2, 3, 0, time.UTC)
+	original := filepath.Join(dir, "original.zip")
+	if err := writeArchive(original, stage, "prefix", true, mt); err != nil {
+		t.Fatal(err)
+	}
+	source, err := os.ReadFile(original)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, badName := range []string{"../../LICENSE!", "/root/LICENSE!"} {
+		t.Run(badName, func(t *testing.T) {
+			data := append([]byte(nil), source...)
+			if len(badName) != len("prefix/LICENSE") {
+				t.Fatal("fixture length mismatch")
+			}
+			copy(data[30:30+len(badName)], badName)
+			path := filepath.Join(t.TempDir(), "mutated.zip")
+			if err := os.WriteFile(path, data, 0600); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := readReleaseArchive(path, "prefix", true, mt); err == nil {
+				t.Fatal("accepted unsafe local filename concealed by safe central directory")
+			}
+		})
+	}
+}

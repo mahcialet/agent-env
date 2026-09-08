@@ -168,6 +168,9 @@ func readReleaseArchive(path, prefix string, windows bool, mt time.Time) (result
 			return nil, e
 		}
 		defer func() { err = errors.Join(err, z.Close()) }()
+		if e = validateReleaseZIPRecords(path, z.File, end, stat.Size()); e != nil {
+			return nil, e
+		}
 		if len(z.File) != 3 || z.Comment != "" {
 			return nil, fmt.Errorf("invalid ZIP member count or comment")
 		}
@@ -241,4 +244,88 @@ func readReleaseArchive(path, prefix string, windows bool, mt time.Time) (result
 		return nil, fmt.Errorf("missing archive members")
 	}
 	return result, nil
+}
+
+// Go's ZIP reader trusts the central directory for names and metadata. Validate
+// local records too: streaming extractors may instead trust those records.
+// Release archives use three ordinary (non-ZIP64) deflated files with signed
+// data descriptors. Compare structure, not recompressed bytes, so validation
+// remains independent of the toolchain's compression implementation.
+func validateReleaseZIPRecords(path string, files []*zip.File, end []byte, size int64) (err error) {
+	if len(files) != 3 || binary.LittleEndian.Uint16(end[4:6]) != 0 || binary.LittleEndian.Uint16(end[6:8]) != 0 || binary.LittleEndian.Uint16(end[8:10]) != 3 || binary.LittleEndian.Uint16(end[10:12]) != 3 {
+		return fmt.Errorf("unexpected ZIP directory structure")
+	}
+	centralStart := int64(binary.LittleEndian.Uint32(end[16:20]))
+	centralSize := int64(binary.LittleEndian.Uint32(end[12:16]))
+	if centralStart+centralSize != size-22 {
+		return fmt.Errorf("unexpected ZIP directory extent")
+	}
+	source, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer func() { err = errors.Join(err, source.Close()) }()
+	readAt := func(offset int64, n int) ([]byte, error) {
+		if offset < 0 || offset+int64(n) > size {
+			return nil, fmt.Errorf("ZIP record outside archive")
+		}
+		b := make([]byte, n)
+		_, e := source.ReadAt(b, offset)
+		return b, e
+	}
+	centralOffset, localOffset := centralStart, int64(0)
+	for _, file := range files {
+		central, e := readAt(centralOffset, 46)
+		if e != nil {
+			return e
+		}
+		if !bytes.Equal(central[:4], []byte{'P', 'K', 1, 2}) || int64(binary.LittleEndian.Uint32(central[42:46])) != localOffset {
+			return fmt.Errorf("unexpected ZIP local record offset")
+		}
+		nameLen := int(binary.LittleEndian.Uint16(central[28:30]))
+		extraLen := int(binary.LittleEndian.Uint16(central[30:32]))
+		commentLen := int(binary.LittleEndian.Uint16(central[32:34]))
+		centralVariable, e := readAt(centralOffset+46, nameLen+extraLen+commentLen)
+		if e != nil {
+			return e
+		}
+		if nameLen != len(file.Name) || extraLen != len(file.Extra) || commentLen != 0 || string(centralVariable[:nameLen]) != file.Name || !bytes.Equal(centralVariable[nameLen:], file.Extra) {
+			return fmt.Errorf("inconsistent ZIP central metadata")
+		}
+		local, e := readAt(localOffset, 30)
+		if e != nil {
+			return e
+		}
+		if !bytes.Equal(local[:4], []byte{'P', 'K', 3, 4}) || !bytes.Equal(local[4:14], central[6:16]) || binary.LittleEndian.Uint16(local[26:28]) != uint16(nameLen) || binary.LittleEndian.Uint16(local[28:30]) != uint16(extraLen) {
+			return fmt.Errorf("ZIP local and central headers differ")
+		}
+		// Streaming headers carry sizes/CRC in the trailing descriptor, never here.
+		if file.Flags & ^uint16(0x808) != 0 || file.Flags&8 == 0 || !bytes.Equal(local[14:26], make([]byte, 12)) {
+			return fmt.Errorf("unexpected ZIP streaming metadata")
+		}
+		localVariable, e := readAt(localOffset+30, nameLen+extraLen)
+		if e != nil {
+			return e
+		}
+		if !bytes.Equal(localVariable, centralVariable) {
+			return fmt.Errorf("ZIP local and central name or metadata differ")
+		}
+		if file.CompressedSize64 > uint64(maxReleaseMemberSize) {
+			return fmt.Errorf("oversized ZIP compressed member")
+		}
+		descriptorOffset := localOffset + 30 + int64(nameLen+extraLen) + int64(file.CompressedSize64)
+		descriptor, e := readAt(descriptorOffset, 16)
+		if e != nil {
+			return e
+		}
+		if !bytes.Equal(descriptor[:4], []byte{'P', 'K', 7, 8}) || binary.LittleEndian.Uint32(descriptor[4:8]) != file.CRC32 || uint64(binary.LittleEndian.Uint32(descriptor[8:12])) != file.CompressedSize64 || uint64(binary.LittleEndian.Uint32(descriptor[12:16])) != file.UncompressedSize64 {
+			return fmt.Errorf("inconsistent ZIP data descriptor")
+		}
+		localOffset = descriptorOffset + 16
+		centralOffset += 46 + int64(nameLen+extraLen+commentLen)
+	}
+	if localOffset != centralStart || centralOffset != size-22 {
+		return fmt.Errorf("unexpected data between ZIP records")
+	}
+	return nil
 }

@@ -73,40 +73,80 @@ compatibility burdenが小さい今の段階では、長期standalone contract�
 ための内部package/build layoutの大きな変更を許容する。ただしpublic behavior
 変更は明示的にdocument/migrationする。
 
+## 子 ExecPlan
+
+`standalone-release-finalization.ja.md` は、本計画の子 ExecPlan である。
+
+残っている具体的なリリース実装・検証のうち、次を担当する。
+
+- 厳密な Git tag のリリース検証
+- `repoctl release-build`
+- `repoctl release-check`
+- 6 対象のアーカイブ生成
+- 決定性・再現性の検証
+- ネイティブ smoke test
+- GitHub Release workflow
+- 最終的なリリース文書と証拠
+
+子計画の完了は必要条件であるが、それだけで親計画を完了してよいわけではない。
+子計画を完了済みへ移動した後、親計画の受け入れ条件に照らして実装された動作と証拠を
+整理し直し、「成果と振り返り」を記入する必要がある。
+
 ## 進捗
 
-- [ ] PR #4 merge、`master`更新、開始revision記録、`feat/standalone-distribution`作成。
-- [ ] baseline `repoctl check` とdocumented race suiteを記録。
-- [ ] build info/state root/CI/release/cross-buildを調査。
-- [ ] standalone product/design docsを英日作成。
-- [ ] release version source/tag policy確定。
-- [ ] central build-info APIと`agent-env version`定義。
-- [ ] release target matrix / archive naming/layout確定。
-- [ ] generic bundled asset metadata/materialization実装。
-- [ ] target-app dependencyを作らないembedded asset test追加。
-- [x] 2026-09-08: 既存の`AGENT_ENV_HOME`をstate-root overrideとして維持し、
-      重複する`--home` flagは追加しない判断を記録。
-- [ ] 全persistent writable pathがstate-root contractへ従うことを検証。
-- [ ] `repoctl release-build`実装。
-- [ ] `repoctl release-check`実装。
-- [ ] normalized archive/release manifest/checksum生成。
-- [ ] exact version/tag/clean-tree release guard追加。
-- [ ] same-source deterministic build/package regression追加。
-- [ ] native Windows/macOS/Linux extracted-artifact smoke追加。
-- [ ] mechanicsをrepoctlへ委譲するGitHub tag/release workflow追加。
-- [ ] architecture/portability/quality/security/roadmapを英日更新。
-- [ ] 既存manifest/lease/development workflowの非回帰確認。
-- [ ] full harness/race validation。
-- [ ] native platform/release evidenceを正直に記録。
-- [ ] acceptance/retrospective完成。
-- [ ] 英日planをcompletedへ移動。
+- [x] 2026-09-08: `master` の `938e584` に PR #5 が含まれていることを確認し、
+      `feat/standalone-distribution` を作成した。
+- [x] 2026-09-08: 実装変更前の baseline `go test -race ./...` が Go 1.27.1 で成功した。
+      baseline `repoctl check` は単体テストと vet を完了したが、提供された日本語計画に
+      metadata がなかったため docs-check で失敗した。後続の検査前に metadata を修復した。
+- [x] 2026-09-08: 現在の CLI 初期化、`AGENT_ENV_HOME` の状態保存先、repoctl、CI、
+      クロスビルドの責務境界を調査した。
+- [x] 2026-09-08: スタンドアロンの製品仕様・設計を英日で追加して索引に登録し、
+      docs-check 用 metadata を同期した。
+- [x] 2026-09-08: リリースバージョンの唯一の根拠を Git tag とした。
+      厳密な `v<semver>`、変更のない作業ツリー、`HEAD == tag commit`、
+      `v` を除いた値と要求バージョンの一致を必須にする。
+- [x] 2026-09-08: `internal/buildinfo` を追加し、`agent-env version` の table/JSON 出力を拡張した。
+      開発ビルドでも使える version、commit、dirty、Go、platform の識別情報を表示し、
+      任意の provider は初期化しない。
+- [x] 2026-09-08: 6 対象の matrix とトップレベルディレクトリを持つアーカイブ構成を確定した。
+      アーカイブの mtime は tag 対象コミットの時刻を使う。
+- [x] 2026-09-08: `internal/assets` に、内容に応じた配置先、digest 検証、atomic な配置を備える
+      汎用資産処理を追加した。冪等性と traversal/symlink 検査を持ち、再利用と改ざん拒否を
+      テストで確認した。
+- [ ] 子 ExecPlan `docs/exec-plans/active/standalone-release-finalization.ja.md` を完了する。
+      子計画は release-build、release-check、決定的なパッケージ生成、ネイティブ smoke test、
+      GitHub Release workflow の実装を担当する。
+- [ ] 子計画の完了後、その受け入れ証拠を親計画へ整理し直し、残るすべての
+      standalone-distribution 受け入れ条件を検証する。
+- [ ] 対象アプリへの依存を作らず、埋め込み資産の決定的なテストを追加する。
+- [ ] 妥当な理由があれば、状態保存先を指定する明示的な `--home` override を追加・改善する。
+- [ ] 永続的な書き込み先すべてが、解決した状態保存先の仕様に従うことを検証する。
+- [ ] `repoctl release-build` を実装する。
+- [ ] `repoctl release-check` を実装する。
+- [ ] 正規化したアーカイブ、release manifest、checksum を生成する。
+- [ ] 厳密な version/tag/clean-tree のリリース条件を追加する。
+- [ ] 同じソースからの決定的なビルド・パッケージ生成を繰り返す回帰検証を追加する。
+- [ ] Windows/macOS/Linux で、展開した成果物のネイティブ smoke test を追加する。
+- [ ] 実処理を repoctl へ委譲する GitHub tag/release workflow を追加する。
+- [ ] architecture、portability、quality、security、roadmap 文書を英日で更新する。
+- [ ] 既存の manifest、lease、開発 workflow が変わらないことを検証する。
+- [ ] リポジトリの全 harness と最終 race 検証を実行する。
+- [ ] ネイティブプラットフォームとリリースの証拠を、未検証と区別して記録する。
+- [ ] 受け入れ証拠と振り返りを完成させる。
+- [ ] 英日両 ExecPlan を `docs/exec-plans/completed/` へ移動する。
 
-checkboxは観測済み完了を表す。checkpointごとに日付、revision、command/run、
-resultを記録する。
+チェック済みの項目は、観測した完了を表す。意味のある節目ごとに、日付、
+正確なコマンド・実行、revision、結果を記録する。
 
 ## 想定外の発見
 
-現時点ではなし。
+- 2026-09-08: 提供された日本語の active plan に翻訳 metadata がなく、実装前の
+  baseline docs-check が失敗した。正確な翻訳 metadata を追加して hash を同期した。
+  検査は弱めていない。
+- 2026-09-08: 既存の `AGENT_ENV_HOME` が、OS 固有の絶対パスによる状態保存先の
+  優先順位を既に定義していた。別の `--home` flag は同じ方針を重複させるため、
+  今回は既存の override を維持し、その判断を記録する。
 
 少なくとも以下を記録する。
 
@@ -163,6 +203,12 @@ resultを記録する。
 
 - 判断: durable docs/living ExecPlanは英日双方で維持。
   理由: bilingual documentation policyに従うため。
+  日付/担当: 2026-09-08 / maintainers.
+
+- 判断: スタンドアロンの状態保存先 override は `AGENT_ENV_HOME` のままとし、
+  今回は別の `--home` flag を追加しない。
+  理由: 既存のパス解決が OS 固有の絶対パスを必須にし、lifecycle コードもその結果を使っている。
+  CLI に優先順位を重複実装すると、状態保存先の仕様が二つできてしまうため。
   日付/担当: 2026-09-08 / maintainers.
 
 ## 成果と振り返り

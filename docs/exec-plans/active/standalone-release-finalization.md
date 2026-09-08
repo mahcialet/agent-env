@@ -230,35 +230,35 @@ credentials or environment secrets.
 
 - [x] 2026-09-08: Created `feat/standalone-release-finalization` from `e37242a`; baseline `repoctl check` passed with Go 1.27.1.
 
-- [ ] Record exact starting base branch/revision and verify foundation prerequisites.
-- [ ] Run baseline `repoctl check` and documented race suite.
-- [ ] Freeze tag/version/archive/release-manifest contract in bilingual durable docs.
-- [ ] Implemented strict Git release-source validation in repoctl. Revalidate against acceptance; earlier completion was premature.
-- [ ] Implemented `repoctl release-build` for the six target matrix. Revalidate against acceptance; earlier completion was premature.
-- [ ] Release builds set `CGO_ENABLED=0` for all six targets. Revalidate against acceptance; earlier completion was premature.
-- [ ] Implemented versioned top-level zip/tar.gz archives. Revalidate against acceptance; earlier completion was premature.
-- [ ] Archive entries use the tagged commit timestamp. Revalidate against acceptance; earlier completion was premature.
-- [ ] Generate deterministic `checksums.txt`.
-- [ ] Generate versioned `release-manifest.json`.
-- [ ] Implemented initial `repoctl release-check` tag/tree validation. Revalidate against acceptance; earlier completion was premature.
-- [ ] Add corruption/mismatch/path-traversal/symlink/path-leak negative fixtures.
-- [ ] Verify executable build info and bundled asset metadata statically.
-- [ ] Add same-source/toolchain repeated binary/archive digest comparison.
-- [ ] Add state-root release-binary tests with spaces and non-ASCII paths.
-- [ ] Prove extracted release runs outside repository without Go.
-- [ ] Add Windows native smoke job.
-- [ ] Add macOS native smoke job.
-- [ ] Add Linux native smoke job.
-- [ ] Record arm64 native/cross-build evidence honestly per available runners.
-- [ ] Add tag-triggered GitHub Release workflow using repoctl mechanics.
-- [ ] Prove validation failure prevents publication.
-- [ ] Update README/architecture/portability/quality/security/roadmap in English/Japanese.
-- [ ] Add capability prerequisite matrix.
-- [ ] Run final full harness.
-- [ ] Run final race suite.
-- [ ] Run final release-build/release-check.
-- [ ] Inspect final archives manually and record the inspection.
-- [ ] Populate direct acceptance evidence.
+- [x] 2026-09-08: Foundation/base recorded above and verified by baseline harness.
+- [x] 2026-09-08: Baseline check passed at start; the race suite was delayed until this continuation and passed with Go 1.27.1. This is not pre-change race evidence.
+- [x] 2026-09-08: Bilingual contracts and schema 1 documented; docs-check passed.
+- [x] 2026-09-08: Implemented strict Git release-source validation in repoctl. Revalidated with real candidates at `d628098`.
+- [x] 2026-09-08: Implemented `repoctl release-build` for the six target matrix. Revalidated with real candidates at `d628098`.
+- [x] 2026-09-08: Release builds set `CGO_ENABLED=0` for all six targets. Revalidated with real candidates at `d628098`.
+- [x] 2026-09-08: Implemented versioned top-level zip/tar.gz archives. Revalidated with real candidates at `d628098`.
+- [x] 2026-09-08: Archive entries use the tagged commit timestamp. Revalidated with real candidates at `d628098`.
+- [x] 2026-09-08: Filename-sorted checksums match all six actual archives at `d628098`.
+- [x] 2026-09-08: Schema 1 metadata validated against actual bytes at `d628098`.
+- [x] 2026-09-08: Implemented initial `repoctl release-check` tag/tree validation. Revalidated with real candidates at `d628098`.
+- [x] 2026-09-08: Archive negative tests plus 17 real-candidate negative/preservation cases pass at `d628098`.
+- [x] 2026-09-08: All six build identities and explicit empty asset inventories pass static verification at `d628098`.
+- [x] 2026-09-08: Two full builds at `d628098` produce eight byte-identical release files.
+- [x] 2026-09-08: Extracted Linux version/help/list pass with empty PATH and isolated Unicode state paths.
+- [x] 2026-09-08: Linux native smoke passed at `d628098`; foreign native evidence is tracked separately.
+- [x] 2026-09-08: Preview and tag workflows define Windows extracted-artifact smoke; execution remains pending below.
+- [x] 2026-09-08: Preview and tag workflows define macOS extracted-artifact smoke; execution remains pending below.
+- [x] 2026-09-08: Preview and tag workflows define Linux extracted-artifact smoke; local execution passed.
+- [x] 2026-09-08: Native linux/amd64, windows/amd64 and darwin/arm64 passed preview 34190096757; other targets are cross-build/static only.
+- [x] 2026-09-08: Added tag workflow with check/race/repeat/native gates and exact candidate publication; no public tag created.
+- [x] 2026-09-08: TestReleasePublicationGate rejects missing dependencies, unconditional publication, changed artifact identity and omitted repeat gate.
+- [x] 2026-09-08: Durable English/Japanese docs updated and docs-check passed.
+- [x] 2026-09-08: README prerequisite matrix separates core, Git, Compose, Android and Flutter.
+- [x] 2026-09-08: Verify 34190096727 passes all 12 jobs at d628098; local harness passed.
+- [x] 2026-09-08: Local final race and Verify 34190096727 Linux race pass.
+- [x] 2026-09-08: Preview 34190096757 runs real build/check twice plus all three native smoke jobs successfully.
+- [x] 2026-09-08: Python zipfile/tarfile independently inspected three representative archives at `d628098`; see evidence below.
+- [x] 2026-09-08: R1–R27 evidence reconciled below; closure pending final archival.
 - [ ] Complete English/Japanese Outcomes & Retrospective.
 - [ ] Move both ExecPlans to `docs/exec-plans/completed/` and update links/hashes.
 
@@ -266,6 +266,12 @@ A checked item means observed completion, not intent. Record UTC date, exact
 revision, command/workflow run and outcome.
 
 ## Surprises & Discoveries
+
+- 2026-09-08: After the first native green run, a ZIP local-header-only mutation
+  reproduced a validation bypass: a safe central name concealed a traversal or
+  absolute local filename. The regression failed before the fix. Validation now
+  compares local/central names, metadata, offsets and descriptors without
+  recompression. Re-run release/native evidence after this final validator fix.
 
 - 2026-09-08: Audit of `0bf2d12` found premature completion checkboxes:
   Git commands ignored the root argument; release-check inspected no artifacts;
@@ -488,33 +494,33 @@ and bilingual retrospective, then move both plans to completed and update links.
 
 | ID | Required behavior | Evidence |
 | --- | --- | --- |
-| R1 | `release-build` rejects missing/malformed/ambiguous tags before build effects. | Pending |
-| R2 | `HEAD == tag commit` is mandatory. | Pending |
-| R3 | Documented clean-tree/index policy is enforced. | Pending |
-| R4 | Requested `X.Y.Z` equals selected `vX.Y.Z` without `v`. | Pending |
-| R5 | All six targets build with `CGO_ENABLED=0`. | Pending |
-| R6 | Archive names exactly match the contract. | Pending |
-| R7 | Each archive contains one top-level dir with executable/LICENSE/README.txt only. | Pending |
-| R8 | Member mtime derives from tagged commit timestamp and metadata is normalized. | Pending |
-| R9 | `checksums.txt` matches all six final archives. | Pending |
-| R10 | `release-manifest.json` matches actual version/tag/source/toolchain/target/archive/executable/asset bytes. | Pending |
-| R11 | `release-check` accepts valid final set without executing foreign binaries. | Pending |
-| R12 | `release-check` rejects corruption, mismatch, traversal, symlink, missing/unexpected members. | Pending |
-| R13 | No source/worktree/temp absolute path leaks in covered release metadata. | Pending |
-| R14 | Same-source/toolchain repeated executable/archive digests are compared and nondeterminism is resolved or qualified. | Pending |
-| R15 | Extracted native binary runs version/help outside repository without Go/source tree. | Pending |
-| R16 | `AGENT_ENV_HOME` works with spaces/non-ASCII and state does not leak beside executable/target/default home. | Pending |
-| R17 | Windows native smoke passes. | Pending |
-| R18 | macOS native smoke passes. | Pending |
-| R19 | Linux native smoke passes. | Pending |
-| R20 | arm64 is labeled native only where an actual native runner executed it. | Pending |
-| R21 | Release workflow starts from maintainer-created valid tag and never mutates Git refs/history. | Pending |
-| R22 | Workflow delegates artifact mechanics to repoctl. | Pending |
-| R23 | Validation/smoke failure prevents successful publication. | Pending |
-| R24 | Publication bytes are the exact validated bytes, not rebuilt copies. | Pending |
-| R25 | English/Japanese durable docs describe final release contract and capability prerequisites. | Pending |
-| R26 | Final repoctl check/docs/translation/race pass. | Pending |
-| R27 | Representative Windows/macOS/Linux archives have recorded manual inspection. | Pending |
+| R1 | `release-build` rejects missing/malformed/ambiguous tags before build effects. | TestReleaseSourceRejectsInvalidIdentity and TestReleaseCommandUsage pass; missing/noncanonical/ambiguous tags fail before construction. |
+| R2 | `HEAD == tag commit` is mandatory. | Source fixtures test moved HEAD, exact peeled commit and annotated tags; private snapshots exclude local uncommitted inputs. |
+| R3 | Documented clean-tree/index policy is enforced. | TestReleaseSourceRejectsDirtRegardlessGitConfig and TestPrivateReleaseSourceUsesOnlyCommittedFiles pass. |
+| R4 | Requested `X.Y.Z` equals selected `vX.Y.Z` without `v`. | Canonical requested-version mismatch/leading-zero cases fail in source tests. |
+| R5 | All six targets build with `CGO_ENABLED=0`. | d628098 local release-verify and preview 34190096757 build all six targets; static CGO_ENABLED=0 checks pass. |
+| R6 | Archive names exactly match the contract. | Six exact archive names checked in local verification and preview build; independent archive inspection recorded below. |
+| R7 | Each archive contains one top-level dir with executable/LICENSE/README.txt only. | Archive roundtrip/member negative tests and independent Windows/macOS/Linux inspection confirm exactly three prefixed regular members. |
+| R8 | Member mtime derives from tagged commit timestamp and metadata is normalized. | Archive tests and independent inspection verify tagged seconds, ZIP extended timestamp, modes and normalized TAR/gzip metadata. |
+| R9 | `checksums.txt` matches all six final archives. | All six checksums validated; two complete sets byte-identical locally and in preview 34190096757. |
+| R10 | `release-manifest.json` matches actual version/tag/source/toolchain/target/archive/executable/asset bytes. | All six binaries inspected statically; TestReleaseCandidate rejects manifest identity, target, digest, toolchain and invented assets. |
+| R11 | `release-check` accepts valid final set without executing foreign binaries. | release-verify passes static checks on all six foreign/native binaries before native smoke; no foreign executable is launched. |
+| R12 | `release-check` rejects corruption, mismatch, traversal, symlink, missing/unexpected members. | Archive malformed-input tests and 17 real-candidate negative/preservation subtests pass, including rehashed wrong version/license/readme. |
+| R13 | No source/worktree/temp absolute path leaks in covered release metadata. | Rehashed binary containing a private source path is rejected; controlled metadata equals expected identities. This is bounded path-leak checking, not universal secret detection. |
+| R14 | Same-source/toolchain repeated executable/archive digests are compared and nondeterminism is resolved or qualified. | Local and preview 34190096757 compare eight byte-identical files from two builds at d628098 with Go 1.27.1; actual tag workflow also requires release-repeat. |
+| R15 | Extracted native binary runs version/help outside repository without Go/source tree. | Preview 34190096757 passes version/help/list with empty PATH outside source on all three native OS runners. |
+| R16 | `AGENT_ENV_HOME` works with spaces/non-ASCII and state does not leak beside executable/target/default home. | The same native smoke verifies Unicode/space AGENT_ENV_HOME, no state from version/help, and no writes beside binary/cwd/default home. |
+| R17 | Windows native smoke passes. | Preview 34190096757: Windows/amd64 native smoke success. |
+| R18 | macOS native smoke passes. | Preview 34190096757: Darwin/arm64 native smoke success. |
+| R19 | Linux native smoke passes. | Preview 34190096757: Linux/amd64 native smoke success (also local). |
+| R20 | arm64 is labeled native only where an actual native runner executed it. | Windows/arm64, Darwin/amd64 and Linux/arm64 are cross-build/static-check only; remaining targets have native smoke evidence. |
+| R21 | Release workflow starts from maintainer-created valid tag and never mutates Git refs/history. | Tag workflow triggers on maintainer-pushed v* and enforces exact tag before building. Source operations create tags only in disposable private clones; caller refs are covered by regression tests. |
+| R22 | Workflow delegates artifact mechanics to repoctl. | Both workflows invoke repoctl for build/check/repeat/smoke; packaging never appears as shell/YAML logic. |
+| R23 | Validation/smoke failure prevents successful publication. | TestReleasePublicationGate plus four bypass mutations pass: build/smoke dependencies mandatory, no unconditional/ignored failures, repeat required. Preview gates succeeded; no public release was created. |
+| R24 | Publication bytes are the exact validated bytes, not rebuilt copies. | Preview native jobs download the uploaded candidate without rebuilding it. Publication gate tests require the same artifact identity and reject publish run/rebuild steps. |
+| R25 | English/Japanese durable docs describe final release contract and capability prerequisites. | Bilingual durable docs/prerequisite matrix updated and docs-check passed. |
+| R26 | Final repoctl check/docs/translation/race pass. | Verify 34190096727 passes all 12 jobs including native harness, Linux race and Docker integration; local final race also passed. |
+| R27 | Representative Windows/macOS/Linux archives have recorded manual inspection. | Independent Python zipfile/tarfile inspection of Windows/macOS/Linux amd64 archives at d628098 recorded below. |
 | R28 | Bilingual Outcomes/Retrospective and direct evidence are complete. | Pending |
 | R29 | Both plans are moved to completed with links/hash synchronized. | Pending |
 
@@ -533,6 +539,32 @@ GitHub publication is the final side effect; preferably validate everything befo
 creating the public release. Never auto-move/recreate the source tag.
 
 ## Artifacts and Notes
+
+2026-09-08 local release evidence at `d6280988441537418d70925174cfa58374efea9b`:
+
+- Go 1.27.1: `go run ./tools/repoctl check` and `go test -race ./...` passed
+  during the implementation checkpoint. Latest workflow graph regression was
+  subsequently added and the harness rerun successfully.
+- `go run ./tools/repoctl release-verify --out dist/verified-d628098` passed:
+  six targets built twice, eight files byte-identical, Linux/amd64 native smoke.
+- `AGENT_ENV_RELEASE_CANDIDATE=../../dist/verified-d628098 go test ./tools/repoctl
+  -run TestReleaseCandidate -count=1 -v` passed all 17 subtests. The environment
+  value is relative to the Go test package directory; the CI workflow sets it.
+- Private test tag: v0.1.0; source timestamp: 1788844585.
+  Manifest SHA-256: `d69cfbcd2ad5e5251654b460a23cd5317ffd67790edc945a9ec369198093a41d`.
+- Independent Python zipfile/tarfile inspection confirmed exactly LICENSE,
+  README.txt and the executable below each versioned directory for Windows,
+  macOS and Linux amd64. Files are 0644/0755, TAR uid/gid are zero, TAR mtimes
+  match the source second. ZIP DOS seconds round down by one for this odd-second
+  commit; the extended Unix timestamp preserves the exact source second.
+- Native version/help/list ran outside source with empty PATH and Unicode/space
+  directories; only the overridden state directory was created by list.
+- Independent review identified ignored-source injection, discarded final source
+  identity, and absent tag-specific repeat gate. These were fixed before the
+  candidate checkpoint. Private checkout regression proves ignored/hidden edits
+  cannot enter the build; final identity is compared and tag workflow repeats.
+- Hosted runs: Release preview 34190096757 (4 jobs) and Verify 34190096727 (12 jobs) succeeded.
+  No public release/tag was created; public publication remains maintainer-triggered.
 
 Expected output:
 

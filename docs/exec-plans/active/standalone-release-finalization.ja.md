@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/exec-plans/active/standalone-release-finalization.md
-source_sha256: 3685f4148514bf01e14d338fc38dfd191b941c94dbe9acaf01db25939516ead1
+source_sha256: cda6b4d26c0a3b3cd62ee6d7357537819f48c3dabf4fa5d30a7549fce86c8670
 ---
 
 # スタンドアロン配布のリリース工程を完成させる
@@ -67,43 +67,39 @@ pipeline要件にしない。packagingはGo標準libraryとrepository Go codeで
 
 ## 進捗
 
-- [x] 2026-09-08: `e37242a` から作業ブランチを作成し、Go 1.27.1 の `repoctl check` が成功。
+- [x] 2026-09-08: 開始 base/revision と前提基盤を確認し、Go 1.27.1 の baseline
+  check が成功。race は開始時に実行せず、今回の継続作業中に成功した。
+- [x] 2026-09-08: 英日のタグ・バージョン・アーカイブ・schema 1 契約を整備。
+- [x] 2026-09-08: 厳密な Git 検証、release-build/check、CGO=0 の6ターゲット、
+  正規化した ZIP/tar.gz と commit timestamp を `d628098` の実配布候補で再検証。
+- [x] 2026-09-08: checksums と manifest を生成し、全バイナリの識別情報と
+  空の assets 配列を静的検証した。
+- [x] 2026-09-08: アーカイブの不正入力テストと、実候補の17件の改ざん・保存
+  テストが成功。2回のビルドで8ファイルのバイト一致も確認した。
+- [x] 2026-09-08: Linux の展開済み version/help/list が、ソース外・空の PATH・
+  日本語と空白を含む状態保存先で成功した。
+- [x] 2026-09-08: Windows/macOS/Linux の native smoke job と tag workflow を追加。
+  外国OSの実行結果は引き続き確認中。
+- [x] 2026-09-08: publication gate のテストで依存欠落・無条件公開・成果物名の
+  不一致・再ビルド検証の欠落を拒否した。
+- [x] 2026-09-08: README/architecture/portability/quality/security/roadmap を英日で
+  更新し、前提ツールの比較表を追加。docs-check が成功した。
+- [x] 2026-09-08: Windows/macOS/Linux の代表アーカイブを独立の Python
+  zipfile/tarfile で確認した。詳細は成果物と注記に記録。
+- [x] 2026-09-08: preview 34190096757 で linux/amd64・windows/amd64・darwin/arm64 のnativeが成功。他はcross/staticのみ。
+- [x] 2026-09-08: Verify 34190096727 の12 job、preview 34190096757 の4 job、ローカル最終raceが成功。
+- [x] 2026-09-08: R1–R27 の証拠を整理。最終archivalはまだ未完了。
+- [ ] 英日の成果と振り返りを完成する。
+- [ ] 両 Plan を completed へ移動し、リンクと hash を更新する。
 
-- [ ] exact starting base/revisionを記録しfoundation prerequisite確認
-- [ ] baseline `repoctl check` / race suite
-- [ ] tag/version/archive/release-manifest contractを英日docでfreeze
-- [ ] strict Git release-source validation
-- [ ] `repoctl release-build`
-- [ ] 6target `CGO_ENABLED=0`
-- [ ] normalized top-level directory付きzip/tar.gz
-- [ ] tagged commit timestamp mtime
-- [ ] deterministic `checksums.txt`
-- [ ] versioned `release-manifest.json`
-- [ ] `repoctl release-check`
-- [ ] corruption/mismatch/traversal/symlink/path-leak negative fixture
-- [ ] executable build info / bundled asset metadata static verify
-- [ ] same-source/toolchain repeated binary/archive comparison
-- [ ] spaces/non-ASCII state-root release binary test
-- [ ] repository外/Go無しextracted artifact smoke
-- [ ] Windows native smoke
-- [ ] macOS native smoke
-- [ ] Linux native smoke
-- [ ] arm64 native/cross evidence区別
-- [ ] tag-triggered GitHub Release workflow
-- [ ] validation failureによるpublication gate実証
-- [ ] README/architecture/portability/quality/security/roadmap英日更新
-- [ ] capability prerequisite matrix
-- [ ] final full harness
-- [ ] final race suite
-- [ ] final release-build/release-check
-- [ ] final archive manual inspection
-- [ ] acceptance evidence
-- [ ] 英日Outcomes & Retrospective
-- [ ] 英日ExecPlanをcompletedへ移動しlink/hash更新
-
-checkboxは観測済み完了だけを表す。UTC date、revision、command/run、resultを記録する。
+チェックは観測済みの完了のみを示す。実装の存在と native 実行証拠を区別する。
 
 ## 想定外の発見
+
+- 2026-09-08: 最初の native 成功後、ZIP のローカルヘッダーだけを改ざんすると、
+  中央側の安全な名前が走査パス・絶対パスを隠し、検査を通ることを再現した。
+  回帰テストは修正前に失敗。再圧縮せずにローカル・中央の名前、metadata、offset、
+  descriptor を照合する修正を追加した。最終修正後の配布物・native検証を再実行する。
 
 - 2026-09-08: `0bf2d12` の完了記録は早すぎた。Git コマンドは root 引数を
   無視し、release-check はアーカイブを検査していなかった。入力の欠落と close
@@ -304,33 +300,33 @@ final repoctl check/race/release/determinism/native smoke/manual archive inspect
 
 | ID | 必須動作 | 証拠 |
 | --- | --- | --- |
-| R1 | missing/malformed/ambiguous tagをbuild前に拒否 | Pending |
-| R2 | HEAD == tag commit必須 | Pending |
-| R3 | clean-tree/index policyを強制 | Pending |
-| R4 | requested X.Y.Z == selected vX.Y.Z minus v | Pending |
-| R5 | 6targetすべてCGO=0 build | Pending |
-| R6 | archive name contract一致 | Pending |
-| R7 | top-level dir + executable/LICENSE/READMEのみ | Pending |
-| R8 | commit timestamp mtime + normalized metadata | Pending |
-| R9 | checksumsが6archive bytes一致 | Pending |
-| R10 | manifestがactual version/tag/source/toolchain/target/archive/executable/asset bytes一致 | Pending |
-| R11 | valid setをforeign binary実行無しでrelease-check pass | Pending |
-| R12 | corruption/mismatch/traversal/symlink/missing/unexpected拒否 | Pending |
-| R13 | source/worktree/temp absolute path leak無し | Pending |
-| R14 | same-source/toolchain digest比較 | Pending |
-| R15 | repository外/Go無しでextracted version/help | Pending |
-| R16 | AGENT_ENV_HOME spaces/non-ASCII + state leak無し | Pending |
-| R17 | Windows native smoke | Pending |
-| R18 | macOS native smoke | Pending |
-| R19 | Linux native smoke | Pending |
-| R20 | arm64 native/cross evidence正確区別 | Pending |
-| R21 | maintainer-created tag起点、Git ref mutation無し | Pending |
-| R22 | workflowがrepoctlへmechanics委譲 | Pending |
-| R23 | validation/smoke failure時publish無し | Pending |
-| R24 | publish bytesがvalidated bytesそのもの | Pending |
-| R25 | 英日durable docsがfinal contract/prerequisiteを説明 | Pending |
-| R26 | final repoctl/docs/translation/race pass | Pending |
-| R27 | Windows/macOS/Linux代表archive manual inspection | Pending |
+| R1 | missing/malformed/ambiguous tagをbuild前に拒否 | source/usage の負例テストが成功。欠落・不正・曖昧な tag はビルド前に拒否。 |
+| R2 | HEAD == tag commit必須 | HEAD 移動・tag の commit 解決・annotated tag のテストが成功。専用 snapshot はローカル変更を含めない。 |
+| R3 | clean-tree/index policyを強制 | dirty/staged/untracked と専用 checkout の回帰テストが成功。 |
+| R4 | requested X.Y.Z == selected vX.Y.Z minus v | 要求バージョン不一致・数値の先頭ゼロを拒否するテストが成功。 |
+| R5 | 6targetすべてCGO=0 build | d628098 のローカル検証と preview 34190096757 で6ターゲットをビルドし、CGO=0 を静的検証。 |
+| R6 | archive name contract一致 | 6つの契約通りの名前をローカル・preview・独立検査で確認。 |
+| R7 | top-level dir + executable/LICENSE/READMEのみ | roundtrip・不正memberテストと独立検査で、同じディレクトリ配下の3通常ファイルを確認。 |
+| R8 | commit timestamp mtime + normalized metadata | テストと独立検査で commit 秒、ZIP 拡張timestamp、mode、TAR/gzip 正規化を確認。 |
+| R9 | checksumsが6archive bytes一致 | 全checksumを検証し、ローカルと preview 34190096757 で2組のバイト一致を確認。 |
+| R10 | manifestがactual version/tag/source/toolchain/target/archive/executable/asset bytes一致 | 6バイナリを静的検査。実候補テストで manifest/target/digest/toolchain/架空asset の不一致を拒否。 |
+| R11 | valid setをforeign binary実行無しでrelease-check pass | 全ターゲットの静的検査が成功。外国OSの実行ファイルを起動せず検証する。 |
+| R12 | corruption/mismatch/traversal/symlink/missing/unexpected拒否 | 不正アーカイブのテストと実候補17 subtest が成功。hash再計算後の不正version/license/readmeも拒否。 |
+| R13 | source/worktree/temp absolute path leak無し | private source pathを加えたバイナリはhashを再計算しても拒否。検査範囲は既知のパスと管理下のmetadataで、万能の秘密検出ではない。 |
+| R14 | same-source/toolchain digest比較 | d628098・Go 1.27.1の2回のビルドで8ファイルが一致。preview 34190096757 も成功。実tag workflowもrepeatを要求。 |
+| R15 | repository外/Go無しでextracted version/help | preview 34190096757 の3OSで、ソース外・空PATHの version/help/list が成功。 |
+| R16 | AGENT_ENV_HOME spaces/non-ASCII + state leak無し | 同じnative smokeでUnicode/空白のAGENT_ENV_HOME、version/helpの無書込、配布先/作業先/default homeへの漏洩なしを確認。 |
+| R17 | Windows native smoke | preview 34190096757 の Windows/amd64 native smoke が成功。 |
+| R18 | macOS native smoke | preview 34190096757 の Darwin/arm64 native smoke が成功。 |
+| R19 | Linux native smoke | preview 34190096757 とローカルの Linux/amd64 native smoke が成功。 |
+| R20 | arm64 native/cross evidence正確区別 | Windows/arm64・Darwin/amd64・Linux/arm64 はcross-build/静的検査のみ。他の3ターゲットにはnative証拠あり。 |
+| R21 | maintainer-created tag起点、Git ref mutation無し | maintainerのv* tag pushで起動し厳密なtagを検証。tag作成は使い捨てclone内のみで、callerのrefs保護をテスト。 |
+| R22 | workflowがrepoctlへmechanics委譲 | 両workflowはbuild/check/repeat/smokeをrepoctlへ委ね、YAMLやシェルにpackaging処理を実装しない。 |
+| R23 | validation/smoke failure時publish無し | publication gateと4つの迂回負例が成功。build/smoke依存とrepeatを必須にし、無条件公開や失敗無視を拒否。公開releaseは作成していない。 |
+| R24 | publish bytesがvalidated bytesそのもの | preview native jobはupload済み候補をdownloadし、再ビルドしない。gateテストは同じartifact名を要求しpublishのrunを拒否。 |
+| R25 | 英日durable docsがfinal contract/prerequisiteを説明 | 英日の文書・前提ツール比較表を更新し、docs-check成功。 |
+| R26 | final repoctl/docs/translation/race pass | Verify 34190096727 の12 job（native harness、Linux race、Docker integration）が成功。ローカル最終raceも成功。 |
+| R27 | Windows/macOS/Linux代表archive manual inspection | d628098 の代表3アーカイブを Python zipfile/tarfile で独立検査し、下記へ記録。 |
 | R28 | 英日Outcomes/Retrospective/direct evidence完成 | Pending |
 | R29 | 英日plan completed移動、links/hash同期 | Pending |
 
@@ -346,6 +342,30 @@ same input mismatchは証拠記録前に上書きして隠さない。GitHub pub
 auto move/recreateしない。
 
 ## 成果物と注記
+
+2026-09-08、`d6280988441537418d70925174cfa58374efea9b` のローカル証拠:
+
+- Go 1.27.1 で `go run ./tools/repoctl check` と `go test -race ./...` が
+  実装中の checkpoint で成功。workflow gate の回帰テスト追加後も harness が成功。
+- `go run ./tools/repoctl release-verify --out dist/verified-d628098` が成功。
+  6ターゲットを2回ビルドし、8ファイルのバイト一致と Linux/amd64 の実行を確認。
+- `AGENT_ENV_RELEASE_CANDIDATE=../../dist/verified-d628098 go test ./tools/repoctl
+  -run TestReleaseCandidate -count=1 -v` の17 subtest が成功。環境変数のパスは
+  Go test の package directory 基準で、CI でも同じ方法で渡す。
+- private test tag は v0.1.0、source timestamp は 1788844585。
+  manifest SHA-256 は `d69cfbcd2ad5e5251654b460a23cd5317ffd67790edc945a9ec369198093a41d`。
+- Python zipfile/tarfile で Windows/macOS/Linux amd64 の代表アーカイブを確認。
+  バージョン付きディレクトリ配下は LICENSE、README.txt、実行ファイルのみ。
+  mode は 0644/0755、TAR の uid/gid は0、mtime は source 秒と一致。
+  今回は奇数秒のため ZIP の DOS 秒は1秒切り下がるが、拡張 Unix timestamp は
+  正確な source 秒を保持している。
+- ソース外・空の PATH・日本語と空白を含むパスで version/help/list が成功し、
+  list は override した状態保存先だけを作成した。
+- 独立レビューで ignored source 混入、最後の source identity 未比較、tag 用
+  repeat gate 欠落を発見し、候補 checkpoint 前に修正した。専用 checkout の
+  回帰テストで隠れた変更を排除し、最後の識別比較と tag workflow の再ビルドを追加。
+- Hosted run は Release preview 34190096757 と Verify 34190096727。両runとも全job成功。
+  公開 tag/release は作成していない。公開は maintainer の意図的な操作で行う。
 
     dist/
       agent-env_vX.Y.Z_windows_amd64.zip
