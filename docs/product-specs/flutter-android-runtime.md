@@ -91,8 +91,8 @@ Named tests may use `${android:<runtime>:serial}` only for a selected, confirmed
 lease-owned Android runtime. Existing `${lease_id}` and `${env:NAME}` remain
 supported. Flutter integration tests may rebuild/reinstall a different APK;
 their results do not prove execution of the lifecycle-installed APK. Named-test
-output and persisted run `notes` state this distinction. UI automation and
-historical artifact promotion remain separate follow-up work.
+output and persisted run `notes` state this distinction. [Android UI observation](android-ui-observer.md) is a separate capability over the
+owned runtime. Historical artifact promotion remains follow-up work.
 
 ## Real integration validation
 
@@ -110,6 +110,12 @@ weaken ownership checks to fit.
 ```text
 go test -tags=flutterintegration -run TestRealFlutterAndroidBackendLease -v ./internal/cli -timeout=40m
 ```
+
+Optional fixture-only `AGENT_ENV_FLUTTER_OFFLINE_FIXTURE=1` adds Flutter's official
+`flutter create --offline` option while creating the disposable project. It uses an
+existing package cache and fails if that cache is incomplete; it does not change
+ordinary build/runtime behavior or relax any acceptance checks. Set it through the
+host environment when cached fixture creation is needed.
 
 This opt-in test creates a disposable Flutter project and two concurrent leases.
 Each builds and installs a debug APK, launches it against its own real Compose

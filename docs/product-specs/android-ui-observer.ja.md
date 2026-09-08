@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/product-specs/android-ui-observer.md
-source_sha256: acd02b10328884c7491bdd69fdea38a5058f5f0637550b38552d9ac92a9fbb56
+source_sha256: 20c7812ffb2c718ecab1d317a45ebd09f375025fd365306a8ed107f2c5829128
 ---
 
 # Android UI observer
@@ -84,9 +84,12 @@ API が対応していない場合は `AGENTENV-UI-UNAVAILABLE` を返します�
 ## 証拠とプライバシー
 
 操作意図、対象の識別情報、完了または不確実な結果、artifact の digest を永続化します。
-編集可能な text、password text、set-text の入力値は、保持する JSON、生の tree 証拠、log、error から
-完全に伏せます。読み戻しとの比較は helper 内で実施し、その外へは一致したかどうかの真偽値だけを返します。
+編集可能な node と password node のフィールドは常に伏せます。set-text の入力値は、そのコマンド自身が
+保持する JSON、生の tree 証拠、log、error を含む証拠から完全に伏せます。読み戻しとの比較は helper 内で実施し、その外へは一致したかどうかの真偽値だけを返します。
 label や編集可能でない text にも秘密情報が含まれ得るため、設定済みの秘密値を伏せます。
+入力値を将来のコマンド用の秘密値照合データとして保持することはありません。後の snapshot には、アプリが
+編集可能でない場所に表示した同じ値が含まれる場合があります。明示的に要求した logcat にも、アプリが log に
+書いた値が含まれ得ます。設定済み秘密値の redaction は引き続き適用します。
 アプリが表示する任意の text に機密情報がないことまでは保証できません。証拠ファイルには限定的なアクセス権を設定します。
 
 screenshot は application を指定していても display 全体を取得します。PNG のピクセルに text redaction は適用できません。

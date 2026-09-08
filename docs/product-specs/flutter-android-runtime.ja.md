@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/product-specs/flutter-android-runtime.md
-source_sha256: 5b7e66d5e5b9103af7a145cd7b296ae5a9a9eb73729bcaab4d1fc3bab219871d
+source_sha256: ae01c4492f42343dba5bd1b4da01f72249b7a2d10c59c8201de6559f4b9f0307
 ---
 
 # Flutter Androidアプリケーション
@@ -85,7 +85,8 @@ createは宣言パッケージが既に存在すればインストール前に�
 Androidランタイムだけを参照します。既存の `${lease_id}` と `${env:NAME}` も使えます。
 Flutter結合テストは別APKを再ビルド・再インストールする場合があるため、その結果だけで
 create時のAPKを実行したとはいえません。この区別は名前付きテストの出力と保存する実行の
-`notes` に記録します。UI操作と過去APKの保管・昇格は別の後続作業です。
+`notes` に記録します。[Android UI 観測](android-ui-observer.ja.md)は、所有 runtime 上の独立した機能です。
+過去 APK の保管・昇格は引き続き後続作業です。
 
 ## 実結合の検証
 
@@ -102,6 +103,11 @@ PATH上のGit・Flutter・Docker Compose、稼働中のDockerエンジン、`AND
 ```text
 go test -tags=flutterintegration -run TestRealFlutterAndroidBackendLease -v ./internal/cli -timeout=40m
 ```
+
+任意の fixture 専用環境変数 `AGENT_ENV_FLUTTER_OFFLINE_FIXTURE=1` を設定すると、使い捨て project の
+作成時に Flutter 標準の `flutter create --offline` option を追加します。既存の package cache を使用し、
+cache が不足していれば失敗します。通常の build/runtime の挙動や受け入れ検査は変更しません。
+cache を使った fixture 作成が必要な場合に、host の環境変数として設定します。
 
 明示選択するこのテストは、使い捨てFlutterプロジェクトと同時に存在する二つのリースを作成します。
 それぞれdebug APKをビルド・インストールし、reverse経由で専用の実Composeバックエンドにつないで

@@ -81,11 +81,15 @@ use native Android input. Unsupported APIs report `AGENTENV-UI-UNAVAILABLE`.
 ## Evidence and privacy
 
 Intent, target identity, completion or uncertainty, and artifact digests are durable.
-Editable/password text and set-text payloads are fully redacted from retained JSON,
-raw tree evidence, logs and errors. Read-back comparison happens inside the helper;
+Editable/password node fields are always suppressed. The set-text payload is fully
+redacted from its own command evidence, including retained JSON, raw tree evidence,
+logs and errors. Read-back comparison happens inside the helper;
 only the boolean result leaves it. Labels and noneditable text can still contain
-secrets and receive configured secret redaction. Snapshots cannot guarantee that
-arbitrary application text is nonsensitive. Evidence uses private file permissions.
+secrets and receive configured secret redaction. The entered value is not retained as a secret matcher for future commands. Later
+snapshots can contain noneditable application echoes, and explicitly requested
+logcat can contain values the application logged; configured secret redaction still
+applies. Snapshots cannot guarantee that arbitrary application text is nonsensitive.
+Evidence uses private file permissions.
 
 Screenshots cover the entire display even when an application is selected. PNG
 pixels cannot be text-redacted. A complete PNG is decoded, dimensions checked and

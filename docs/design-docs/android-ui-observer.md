@@ -9,7 +9,7 @@ last_verified: 2026-09-08
 [日本語](android-ui-observer.ja.md)
 
 The [product contract](../product-specs/android-ui-observer.md) defines behavior.
-The [active plan](../exec-plans/active/android-ui-observer.md) records implementation
+The [completed plan](../exec-plans/completed/android-ui-observer.md) records implementation
 and acceptance evidence. This adds no target-manifest section or SQL migration.
 
 App owns selection, policy, operation fencing, durable intent and final artifacts
@@ -71,3 +71,18 @@ Android window IDs are ephemeral across instrumentation connections. Retain them
 in raw observations, but exclude them from node matching; use semantic window
 metadata instead. An unchanged Flutter tree must remain actionable after reconnect.
 Duplicate semantic window identities still require unique node matching.
+
+## Real observer validation
+
+Use the [Flutter SDK integration prerequisites](../product-specs/flutter-android-runtime.md)
+and a verified `AGENT_ENV_UI_HELPER` directory, then run the observer fixture alone:
+
+```text
+go test -tags=flutterintegration -run '^TestRealAndroidUIObserver$' -v ./internal/cli -timeout=40m
+```
+
+Optional `AGENT_ENV_FLUTTER_OFFLINE_FIXTURE=1` affects only disposable fixture creation:
+it adds the official `flutter create --offline` option, requires a complete existing
+package cache, and fails if dependencies are unavailable there. It does not alter
+core builds/runtime operations, bypass dependencies or weaken observer acceptance.
+Do not overlap this fixture with other tests reserving real Emulator ports.

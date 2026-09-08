@@ -31,7 +31,7 @@ snapshots, PNGs, Unicode replacement, navigation and current-PID logs to existin
 owned Emulators. Its separate optional platform companion requires no target-app
 instrumentation. OCR, visual regression, richer gestures, physical devices and remote
 Emulator hosts remain deferred. Final observer acceptance and platform evidence are
-tracked in the [active plan](exec-plans/active/android-ui-observer.md).
+tracked in the [completed plan](exec-plans/completed/android-ui-observer.md).
 
 ## Artifacts and releases
 

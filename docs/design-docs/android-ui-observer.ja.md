@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/design-docs/android-ui-observer.md
-source_sha256: 1aeb2a9a24e22a43edc5e452090b83df06ed137782bd699fa9da62c3914f53d5
+source_sha256: 00aedf290709947c387000ea7cb9b6b1ee457c0389af2968f9996983211f623b
 ---
 
 # Android UI observer の設計
@@ -11,7 +11,7 @@ source_sha256: 1aeb2a9a24e22a43edc5e452090b83df06ed137782bd699fa9da62c3914f53d5
 [English（翻訳元）](android-ui-observer.md)
 
 動作は[製品仕様](../product-specs/android-ui-observer.ja.md)で定義します。
-実装と受け入れの証拠は[進行中の計画](../exec-plans/active/android-ui-observer.ja.md)に記録します。
+実装と受け入れの証拠は[完了した計画](../exec-plans/completed/android-ui-observer.ja.md)に記録します。
 対象マニフェストへの section 追加や SQL migration はありません。
 
 app は小さな `AndroidUIProvider` interface を通じて、対象選択、policy、operation fencing、
@@ -70,3 +70,17 @@ Android window ID は instrumentation の接続をまたぐと変わる一時的
 生の観測には保持しますが、node の照合には含めず、window の意味情報を示す metadata を使います。
 変化していない Flutter tree は再接続後も操作できる必要があります。
 意味情報が同じ window が複数ある場合も、node の照合結果が一意であることを要求します。
+
+## 実 observer の検証
+
+[Flutter SDK 統合の前提条件](../product-specs/flutter-android-runtime.ja.md)と、検証済みの
+`AGENT_ENV_UI_HELPER` directory を用意し、observer fixture を単独で実行します。
+
+```text
+go test -tags=flutterintegration -run '^TestRealAndroidUIObserver$' -v ./internal/cli -timeout=40m
+```
+
+任意の `AGENT_ENV_FLUTTER_OFFLINE_FIXTURE=1` は、使い捨て fixture の作成だけに作用します。
+Flutter 標準の `flutter create --offline` option を追加し、完全な既存 package cache を必要とします。
+必要な依存が cache に存在しなければ失敗します。core の build/runtime 操作を変えず、依存を省略せず、
+observer の受け入れ検査も緩めません。実 Emulator のポートを予約する他の試験とは同時実行しないでください。

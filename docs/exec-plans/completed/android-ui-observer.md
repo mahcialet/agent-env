@@ -1,5 +1,5 @@
 ---
-status: active
+status: completed
 owner: maintainers
 last_verified: 2026-09-08
 ---
@@ -197,40 +197,47 @@ Do not adopt a pre-release AndroidX dependency implicitly. Record the exact API 
 - [x] 2026-09-08: Wrote bilingual observer product contracts before public CLI behavior; `repoctl docs-check` passed after the initial translation.
 - [x] 2026-09-08: Wrote bilingual observer design docs and indexes; retained existing adapter and SQL boundaries.
 - [x] 2026-09-08: Defined version 1 domain snapshot/node/window types and deterministic compact text rendering in the product contract and `internal/domain/ui.go` / `internal/cli/ui.go`.
-- [x] 2026-09-08: Defined `AGENTENV-UI-STALE`, `AGENTENV-UI-AMBIGUOUS` and `AGENTENV-UI-UNAVAILABLE` in the bilingual product contract; backend-status mapping has dedicated regression coverage awaiting final validation.
-- [ ] Implement owned-runtime/application selection and identity proof.
-- [ ] Implement semantic snapshot capture and normalization.
-- [ ] Implement snapshot evidence persistence and compact rendering.
-- [ ] Implement screenshot capture and digest evidence.
-- [ ] Implement stale-safe semantic-node tap.
-- [ ] Implement explicit coordinate tap.
-- [ ] Implement Unicode-capable editable-node text replacement.
-- [ ] Implement Back, Home and swipe primitives.
-- [ ] Implement bounded wait/poll behavior.
-- [ ] Implement bounded package-scoped logcat capture.
-- [ ] Integrate operation lock/heartbeat behavior.
-- [ ] Add CLI JSON/text contracts and negative fixtures.
-- [ ] Add tests for multi-runtime/multi-application selection.
-- [ ] Add stale-snapshot and ambiguous-node regressions.
-- [ ] Add evidence redaction/size-bound tests.
-- [ ] Prove sibling leases cannot observe or control each other's devices.
-- [ ] Run full repository harness and Go race validation.
-- [ ] Record native Windows/macOS/Linux evidence separately from real SDK runs.
-- [ ] Run real Flutter + Emulator UI-observer validation where prerequisites are available.
-- [ ] Complete acceptance evidence and retrospective.
-- [ ] Move both language plans to `docs/exec-plans/completed/`.
+- [x] 2026-09-08: Defined `AGENTENV-UI-STALE`, `AGENTENV-UI-AMBIGUOUS` and `AGENTENV-UI-UNAVAILABLE` in the bilingual product contract; backend-status mapping regressions passed in the latest full Linux unit run.
+- [x] 2026-09-08: Implement owned-runtime/application selection and identity proof. Linux unit verification passed in `repoctl check` at `867a862`; final real/native results are recorded below.
+- [x] 2026-09-08: Implement semantic snapshot capture and normalization. Linux unit verification passed in `repoctl check` at `867a862`; final real/native results are recorded below.
+- [x] 2026-09-08: Implement snapshot evidence persistence and compact rendering. Linux unit verification passed in `repoctl check` at `867a862`; final real/native results are recorded below.
+- [x] 2026-09-08: Implement screenshot capture and digest evidence. Linux unit verification passed in `repoctl check` at `867a862`; final real/native results are recorded below.
+- [x] 2026-09-08: Implement stale-safe semantic-node tap. Linux unit verification passed in `repoctl check` at `867a862`; final real/native results are recorded below.
+- [x] 2026-09-08: Implement explicit coordinate tap. Linux unit verification passed in `repoctl check` at `867a862`; final real/native results are recorded below.
+- [x] 2026-09-08: Implement Unicode-capable editable-node text replacement. Linux unit verification passed in `repoctl check` at `867a862`; final real/native results are recorded below.
+- [x] 2026-09-08: Implement Back, Home and swipe primitives. Linux unit verification passed in `repoctl check` at `867a862`; final real/native results are recorded below.
+- [x] 2026-09-08: Implement bounded wait/poll behavior. Linux unit verification passed in `repoctl check` at `867a862`; final real/native results are recorded below.
+- [x] 2026-09-08: Implement bounded package-scoped logcat capture. Linux unit verification passed in `repoctl check` at `867a862`; final real/native results are recorded below.
+- [x] 2026-09-08: Integrate operation lock/heartbeat behavior. Linux unit verification passed in `repoctl check` at `867a862`; final real/native results are recorded below.
+- [x] 2026-09-08: Add CLI JSON/text contracts and negative fixtures. Linux unit verification passed in `repoctl check` at `867a862`; final real/native results are recorded below.
+- [x] 2026-09-08: Add tests for multi-runtime/multi-application selection. Linux unit verification passed in `repoctl check` at `867a862`; final real/native results are recorded below.
+- [x] 2026-09-08: Add stale-snapshot and ambiguous-node regressions. Linux unit verification passed in `repoctl check` at `867a862`; final real/native results are recorded below.
+- [x] 2026-09-08: Add evidence redaction/size-bound tests. Linux unit verification passed in `repoctl check` at `867a862`; final real/native results are recorded below.
+- [x] 2026-09-08: Real run 6 proved cross-lease rejection, sibling Count0/UI and backend HTTP after the first destroy, and normal cleanup of both leases.
+- [x] 2026-09-08: Run full repository harness and Go race validation. Linux unit verification passed in `repoctl check` at `867a862`; final real/native results are recorded below.
+- [x] 2026-09-08: Native CI at `867a862` passed six OS/Go jobs; five cross-builds passed separately. These results do not substitute for real SDK runs.
+- [x] 2026-09-08: `TestRealAndroidUIObserver` run 6 passed in 217.34s with the final dialog/Home/viewport fixture assertions.
+- [x] 2026-09-08: Completed U1–U23 evidence and retrospective, distinguishing native CI from Linux SDK evidence.
+- [x] 2026-09-08: Archived both language plans under `docs/exec-plans/completed/` and updated inbound links.
 
-Implementation checkpoint (2026-09-08): app/domain/Android adapter/companion/CLI code
-and focused negative fixtures are present for snapshots, PNGs, semantic and native
-input, wait/logcat, fencing and evidence. These implementation items remain unchecked
-above until final validation and review findings are resolved. Recovery implementation
-is in progress under the documented contract; no final acceptance is claimed.
-`go test -tags flutterintegration ./internal/cli -run '^$'` passed for the new real
-observer fixture. This is compile-only evidence, not an Emulator run. Focused
-`go test ./internal/runtime/android/uihelper ./internal/execx -run
-'TestVerify|TestBuildRejects|TestEmbedded|TestLoad|TestCapture' -count=1` passed on Linux
-with Go 1.27.1. Native Windows/macOS evidence, final harness/race checks and the full
-real two-lease observer run remain pending.
+Implementation checkpoint (2026-09-08): documentation milestone `a717d59` and
+implementation `867a862` are committed and pushed on `feat/android-ui-observer`.
+The app/domain/Android adapter/companion/CLI implementation, recovery and focused
+negative fixtures are complete at the Linux unit-test level. `go run
+./tools/repoctl check` passed formatting, all unit tests, vet, documentation,
+generated-output and architecture checks. `go run ./tools/repoctl doctor` passed
+using Go 1.27.1; `go test -race ./...` passed. `go run ./tools/repoctl test-integration`
+passed the existing real Docker/Compose integration suite; that suite is not SDK
+evidence. `go test -tags flutterintegration ./internal/cli -run '^$'` previously
+passed compilation of the observer fixture. The sixth real two-Emulator `TestRealAndroidUIObserver` attempt passed in 217.34s
+on Linux amd64, Go 1.27.1, Flutter 3.47.2, API 35 and the third companion build.
+The final fixture checks explicit dialog visibility before/after Back, no visible
+application node after Home and scrolling within the current visible viewport.
+Both leases cleaned up normally, with the sibling UI and backend HTTP surviving
+the first destroy. CI run `34175369767` at `867a862` passed all 12 jobs (six native
+OS/Go, five cross-builds and integration). All acceptance requirements have direct
+evidence below. The post-archive full `repoctl check` passed formatting, unit tests, vet,
+documentation, generated-output and architecture validation with exit code 0.
 
 Additional local evidence (2026-09-08): the implementation owner exercised snapshot,
 screenshot, explicit recovery and normal destroy on a single owned Emulator; these
@@ -245,11 +252,20 @@ A checked item means observed completion, not intention. Include date, command/t
 
 ## Surprises & Discoveries
 
-- 2026-09-08 second real two-Emulator attempt: `TestRealAndroidUIObserver` ran 276.86s and launched both applications, then rejected the fresh semantic tap as stale. Retained before/after evidence matched except for Android window IDs changing from 8 to 11 and the derived fingerprints. Window IDs are ephemeral across UiAutomation reconnections, so they cannot be durable semantic identity. The helper now uses semantic window metadata and has been rebuilt (third production build); the real regression retry remains pending.
-- 2026-09-08 follow-up checks: full unit tests and vet passed again. CLI coverage now checks inline log content, rejection of explicitly zero durations, missing lease exit 2 and corrupt registry exit 7. Standalone `go run ./tools/repoctl docs-check` passed after this translation synchronization; Go race validation is running; no final native or real observer acceptance is claimed.
+- 2026-09-08 fifth real attempt: failed after 177.24s at the swipe assertion. Back correctly restored Count1. The visible ScrollView bounds were `[0,80,320,346]` because the IME resized the viewport, while the fixed screenshot-based swipe started at y=480, outside that viewport. The fixture now derives explicit coordinates from the unique currently visible scrollable node, inset by one eighth, and retains the assertion that scrolling exposes a previously unseen visible label. It also independently verifies the dialog is visible before Back and absent afterward, and that Home leaves no visible application nodes. The sixth attempt subsequently passed with all these fixture changes; its final evidence is recorded above.
 
-- 2026-09-08 real integration attempt: `TestRealAndroidUIObserver` failed after 222.41s during Android activity startup (`am start -W` returned `Status: timeout`), before reaching observer assertions. Registry inspection and conservative cleanup confirmed both leases released. No readiness, ownership or timeout check was relaxed. The independent retry is recorded separately; this failed attempt is not observer acceptance evidence.
-- 2026-09-08 independent app/recovery review: the final classification `SaveRun` could fail after registering the original result, leaving an unclassified run. Recovery previously rejected only explicitly forbidden classifications, allowing that missing classification to bypass host-process/evidence barriers. It now requires positively durable `termination-unconfirmed` eligibility plus verified original result evidence. `TestUIRecoverRefusesUnpersistedFailureClassification` covers the failed-write path. Focused recovery/fence/backend-diagnostic tests passed on Linux / Go 1.27.1; final acceptance remains pending.
+- 2026-09-08 fourth real attempt: failed after 144.49s at the swipe assertion. Both pre-swipe and post-swipe accessibility trees were empty because Back had exited the application; the fixture had incorrectly assumed Back would dismiss the IME. Both leases were confirmed released after the attempt. The fixture now explicitly opens a dialog, waits for it, sends Back and waits for Count1 before swiping. This establishes a known Back target without weakening the swipe assertion. The fifth real attempt is recorded separately; final real acceptance was pending at that checkpoint and subsequently passed; see final evidence.
+- 2026-09-08 evidence correction: the recorded test durations for attempts 1 and 2 are 104.97s and 127.31s respectively. Earlier 222.41s / 276.86s entries were inaccurate elapsed-time summaries and have been corrected throughout this plan; the failure causes and retained evidence are unchanged.
+
+- 2026-09-08 third real attempt: fixture creation stopped after 342.98s during Flutter dependency resolution, before any lease allocation. A direct HTTPS probe to pub.dev timed out after 10s. Only the owned fixture's pub subprocess was deliberately terminated to finish this failed attempt; no leases had been allocated. No observer acceptance was exercised.
+- 2026-09-08: added explicit fixture-only `AGENT_ENV_FLUTTER_OFFLINE_FIXTURE=1`, which appends official `flutter create --offline` and consumes an existing cache, failing if incomplete. Ordinary core build/runtime behavior and every acceptance check are unchanged. The fourth attempt used this option and the third helper build; its outcome is recorded separately.
+- 2026-09-08 native evidence: head `867a862` passed all six Windows/macOS/Linux × supported-Go native CI jobs and five cross-build jobs. This is native fake/backend and build evidence, not real Android SDK evidence. The CI integration job also passed: run `34175369767` at `867a862` completed all 12 jobs successfully.
+
+- 2026-09-08 second real two-Emulator attempt: `TestRealAndroidUIObserver` ran 127.31s and launched both applications, then rejected the fresh semantic tap as stale. Retained before/after evidence matched except for Android window IDs changing from 8 to 11 and the derived fingerprints. Window IDs are ephemeral across UiAutomation reconnections, so they cannot be durable semantic identity. The helper now uses semantic window metadata and has been rebuilt (third production build); the real regression retry was pending at that checkpoint and subsequently passed; see final evidence.
+- 2026-09-08 follow-up checks: full unit tests and vet passed again. CLI coverage now checks inline log content, rejection of explicitly zero durations, missing lease exit 2 and corrupt registry exit 7. Standalone `go run ./tools/repoctl docs-check` passed after this translation synchronization; Go race and native/real validation were still pending at this checkpoint and subsequently passed; see final evidence.
+
+- 2026-09-08 real integration attempt: `TestRealAndroidUIObserver` failed after 104.97s during Android activity startup (`am start -W` returned `Status: timeout`), before reaching observer assertions. Registry inspection and conservative cleanup confirmed both leases released. No readiness, ownership or timeout check was relaxed. The independent retry is recorded separately; this failed attempt is not observer acceptance evidence.
+- 2026-09-08 independent app/recovery review: the final classification `SaveRun` could fail after registering the original result, leaving an unclassified run. Recovery previously rejected only explicitly forbidden classifications, allowing that missing classification to bypass host-process/evidence barriers. It now requires positively durable `termination-unconfirmed` eligibility plus verified original result evidence. `TestUIRecoverRefusesUnpersistedFailureClassification` covers the failed-write path. Focused recovery/fence/backend-diagnostic tests passed on Linux / Go 1.27.1; final acceptance was pending at that checkpoint and subsequently completed; see final evidence.
 - 2026-09-08 independent CLI review: raw UI errors previously defaulted to exit 2 even for missing tools and registry failures. Typed error propagation and CLI mapping now distinguish prerequisite 3, invalid options/selection/missing lease/stale/ambiguous 2, and registry/observation 7 without exposing secrets through diagnostic errors.
 
 - 2026-09-08: Baseline `go run ./tools/repoctl check` passed unit tests and vet, then failed AGENTENV-DOC-008 because the supplied Japanese plan lacked translation metadata. Added metadata; `repoctl docs-check` passed. No check was weakened.
@@ -257,7 +273,7 @@ A checked item means observed completion, not intention. Include date, command/t
 - 2026-09-08 failed approach: an unfocused Flutter node returned true for ACTION_SET_TEXT without changing the value. Focusing changes keyboard windows and node ordinals; replaying a prior ordinal also returned success on the wrong node. Production must require advertised action/focus, semantic fingerprint matching and read-back equality. Successful dispatch alone is not acceptance evidence.
 
 
-- 2026-09-08 independent review: found a concrete adapter/app logcat channel mismatch (`Raw` versus `Binary`), missing backend-status diagnostic mapping, missing post-action fingerprint, and incomplete hierarchy traversal handling. Fixes and regression coverage belong to this implementation; final review/validation remains pending. This demonstrates why an app fake alone cannot prove the concrete adapter/evidence boundary.
+- 2026-09-08 independent review: found a concrete adapter/app logcat channel mismatch (`Raw` versus `Binary`), missing backend-status diagnostic mapping, missing post-action fingerprint, and incomplete hierarchy traversal handling. Fixes and regression coverage belong to this implementation; final review/validation was pending at that checkpoint and subsequently completed; see final evidence. This demonstrates why an app fake alone cannot prove the concrete adapter/evidence boundary.
 - 2026-09-08 recovery design finding: a local ADB timeout does not itself prove that remote instrumentation has stopped. Retaining only a running barrier without a supported recovery route could strand normal destroy. Add verified helper-only quiescence under a valid fence and explicit recovery of registered helper runs; never replay input or recover arbitrary commands.
 
 Record at least:
@@ -277,6 +293,8 @@ Record at least:
 Failed experiments remain part of this plan when they materially affect the design.
 
 ## Decision Log
+
+- 2026-09-08, implementation owner: editable/password node fields remain suppressed and the set-text payload is redacted from its own command evidence. Do not persist that input as a future secret matcher. Later noneditable application echoes or explicitly requested application logcat may contain the value; configured secret redaction still applies. Rationale: preserve direct-command secrecy without claiming retrospective knowledge of deliberately unretained input.
 
 - 2026-09-08, implementation owner: window identity uses type, title, bounds, root package/class and active state; exclude ephemeral Android window ID, traversal ordinal and layer. Retain raw IDs as observation evidence and retain ambiguity rejection. Rationale: identical Flutter UI must remain actionable after a UiAutomation reconnect without treating duplicate semantic windows as unique.
 - 2026-09-08, implementation owner: semantic actions carry `ExpectedBackend` from the registered snapshot. Reject backend provenance mismatches before semantic dispatch, so a snapshot from another helper build cannot authorize the current backend. Rationale: fingerprint rules belong to a specific verified helper implementation and must not silently change under an existing reference.
@@ -316,23 +334,48 @@ Failed experiments remain part of this plan when they materially affect the desi
   Rationale: This is repository policy.
   Date/Author: 2026-09-08 / maintainers.
 
+Final verification checkpoint (2026-09-08): targeted tagged CLI `TestUI` and
+`repoctl doctor` passed. Final `go test -race ./...` passed (app 32.784s).
+Final fixture changes were committed/pushed as `2001eac`. CI `34176592070` on that
+head has ten successful jobs; integration and macOS Go 1.27 are still pending. The unchanged production code
+already has full native/integration CI evidence at `867a862`. The post-archive
+full `repoctl check` passed all formatting/unit/vet/docs/generated/architecture
+checks with exit code 0.
+
 ## Outcomes & Retrospective
 
-Not completed.
+Completed on 2026-09-08. The observer delivers versioned, bounded accessibility
+snapshots with ephemeral node references, validated PNGs, stale-safe semantic taps,
+focused Unicode text replacement with read-back, explicit coordinate taps,
+Back/Home/swipe, bounded waits and attributed bounded logcat. A separately built,
+self-targeting platform UiAutomation companion avoids target-app instrumentation
+and AndroidX dependencies; verified version/source/APK provenance binds snapshots
+to their backend. App orchestration, Android resource management and Flutter builds
+remain separate. Existing registry runs/artifacts provide intent, conservative
+cleanup barriers and narrow evidence-backed recovery without schema changes.
 
-At completion summarize:
+Actual Flutter tests established that platform action success does not guarantee
+text replacement without focus/read-back, and Android window IDs are ephemeral
+across instrumentation reconnects. Semantic window identity preserves valid refs
+while unique matching rejects stale/ambiguous input. IME-resized viewports and Back
+navigation require observable fixture state, not assumptions based on screen size
+or keyboard presence. The final fixture strengthens these assertions. Five failed
+attempts remain recorded below; tests and ownership checks were not weakened.
 
-- selected Android UI backend and why;
-- helper artifact/versioning model if one exists;
-- normalized snapshot contract;
-- stale-node semantics;
-- implemented actions and deliberate omissions;
-- evidence/retention behavior;
-- Flutter semantics findings;
-- native platform evidence;
-- real Android/Flutter validation;
-- known API-level or Unicode limitations;
-- follow-up work such as richer gestures, visual regression or browser/CDP symmetry.
+Real run 6 passed in 217.34s on Linux amd64 / Go 1.27.1 / Flutter 3.47.2 / API 35
+with two concurrent leases, all requested observer actions, Unicode/privacy/PNG
+checks, sibling isolation and normal cleanup. Full Linux harness, race and real
+Docker checks passed, and CI `34175369767` at `867a862` passed all 12 jobs. Native
+Windows/macOS fake/backend execution and cross-builds do not claim real SDK
+execution there. API 26 is the supported floor, but real SDK evidence is API 35;
+other API images remain unverified. Richer gestures, OCR, visual regression,
+physical devices, remote hosts and browser/CDP symmetry remain future work.
+
+Editable/password fields and direct set-text command evidence are suppressed;
+future arbitrary app echoes/logcat and PNG pixels can still contain sensitive
+content. Unclassified crash/host-process/evidence uncertainty remains a deliberate
+cleanup barrier. The final post-archive harness rerun passed all checks with exit code 0;
+no feature acceptance remains pending.
 
 ## Context and Orientation
 
@@ -568,29 +611,29 @@ Run fake/native portability tests on Windows/macOS/Linux separately. Do not call
 
 | ID | Required behavior | Evidence |
 | --- | --- | --- |
-| U1 | Existing Compose, Android and Flutter manifests/leases work unchanged without using UI commands. | Pending |
-| U2 | UI commands resolve only a selected confirmed lease-owned Android runtime; no first-device fallback exists. | Pending |
-| U3 | A semantic snapshot returns deterministic structured JSON and compact text with lease/runtime/snapshot identity. | Pending |
-| U4 | Raw/normalized snapshot evidence is bounded, atomically published and auditable. | Pending |
-| U5 | Flutter semantic labels/text/editable controls appear through the documented Android accessibility surface in real integration. | Pending |
-| U6 | Screenshot capture produces a valid PNG artifact with digest and exact device identity. | Pending |
-| U7 | Semantic tap using a fresh snapshot acts on the intended node. | Pending |
-| U8 | A stale or ambiguous node reference fails before input and never falls back to an old coordinate. | Pending |
-| U9 | Explicit coordinate tap is available and recorded distinctly from semantic tap. | Pending |
-| U10 | Editable-node text replacement handles defined Unicode test cases without shell-escaping corruption. | Pending |
-| U11 | Back, Home and swipe affect only the selected owned serial. | Pending |
-| U12 | Wait/poll operations are bounded and report timeout without hidden continued effects. | Pending |
-| U13 | Bounded logcat records package/PID scoping or labels broader scope honestly and redacts configured secrets. | Pending |
-| U14 | UI operations participate in the lease operation fence; destroy cannot race past an in-flight mutating action. | Pending |
-| U15 | A snapshot/node reference from one lease cannot be used against another lease. | Pending |
-| U16 | Two concurrent mobile leases remain independently observable and operable; destroying one leaves the sibling usable. | Pending |
-| U17 | Ambiguous Android identity never permits observation/action through force or fallback selection. | Pending |
-| U18 | The target Flutter/application repository requires no UI-test dependency or source modification for observer use. | Pending |
-| U19 | If a companion helper is used, its artifact/version/digest and lifecycle are recorded and target-project instrumentation is not required. | Pending |
-| U20 | Observer docs and ExecPlans exist in English and Japanese and pass translation checks. | Pending |
-| U21 | Architecture/docs/schema checks and the full repository harness pass on final implementation. | Pending |
-| U22 | Go race validation and native Windows/macOS/Linux fake/backend tests pass. | Pending |
-| U23 | At least one real Flutter + Emulator observer run exercises snapshot, screenshot, Unicode input, stale rejection, action, logcat and cleanup, or a concrete external infrastructure blocker is recorded without substituting fake evidence. | Pending |
+| U1 | Existing Compose, Android and Flutter manifests/leases work unchanged without using UI commands. | 2026-09-08: `repoctl check` at `867a862` passed existing unit regressions; `repoctl test-integration` passed real Docker/Compose. Both real Flutter leases reached application launch in attempt 2; observer end-to-end passed in real run 6. |
+| U2 | UI commands resolve only a selected confirmed lease-owned Android runtime; no first-device fallback exists. | 2026-09-08 Linux PASS: `TestUIRejectsInvalidStateAndSelectionBeforeDevice`, `TestUIDegradedDiagnosticsAndApplicationScope`, `TestUIOwnershipFailureCannotDispatchInput` in full `repoctl check`. |
+| U3 | A semantic snapshot returns deterministic structured JSON and compact text with lease/runtime/snapshot identity. | 2026-09-08 Linux PASS: `TestUISnapshotAndSemanticScope`, protocol tests and actual single-Emulator snapshot smoke; compact rendering implemented. The full observer workflow passed in real run 6. |
+| U4 | Raw/normalized snapshot evidence is bounded, atomically published and auditable. | 2026-09-08 Linux PASS: snapshot tampering/symlink, protocol bounds, evidence failure and atomic-write regressions in `repoctl check`; actual single-Emulator snapshot artifacts retained. |
+| U5 | Flutter semantic labels/text/editable controls appear through the documented Android accessibility surface in real integration. | 2026-09-08: owned API 35 spike exposed Flutter labels, text and editable controls; attempt 2 captured rich-fixture Count0/Increment0 nodes before failing on ephemeral window-ID matching. |
+| U6 | Screenshot capture produces a valid PNG artifact with digest and exact device identity. | 2026-09-08 Linux PASS: `TestUIPNGValidation`, `TestUIInvalidCompletedCaptureFinalizesFailed`; actual single-owned-Emulator PNG/artifact smoke succeeded. |
+| U7 | Semantic tap using a fresh snapshot acts on the intended node. | 2026-09-08 real run 6 PASS (217.34s): fresh semantic tap changed Count0 to Count1; stale reuse caused no extra increment. |
+| U8 | A stale or ambiguous node reference fails before input and never falls back to an old coordinate. | 2026-09-08 Linux PASS: `TestUIRejectsSnapshotTamperingAndAmbiguity`, `TestUIBackendRefusalsRetainStableDiagnostics`, backend-provenance regression; actual older-snapshot smoke refused stale input. |
+| U9 | Explicit coordinate tap is available and recorded distinctly from semantic tap. | 2026-09-08 real run 6 PASS: explicit coordinate tap and bounded-viewport swipe exercised; coordinate-range negative tests also pass. |
+| U10 | Editable-node text replacement handles defined Unicode test cases without shell-escaping corruption. | 2026-09-08 real run 6 PASS: ASCII and Japanese/emoji/Greek replacements confirmed read-back equality; editable/password evidence stayed redacted. |
+| U11 | Back, Home and swipe affect only the selected owned serial. | 2026-09-08 real run 6 PASS: dialog visible before Back and absent afterward with Count1 restored; Home left no visible app nodes; swipe exposed a previously unseen visible label. |
+| U12 | Wait/poll operations are bounded and report timeout without hidden continued effects. | 2026-09-08 real run 6 PASS: bounded missing-predicate wait failed as expected; both normal cleanups passed. Unit timeout/recovery/fence regressions also pass. |
+| U13 | Bounded logcat records package/PID scoping or labels broader scope honestly and redacts configured secrets. | 2026-09-08 Linux PASS: `TestUILogPIDAttributionAndBounds`, `TestUILogcatReturnsBoundedRedactedInlineEvidence`, nonfinite-timestamp and CLI inline-log tests. Numeric-PID history limits documented. |
+| U14 | UI operations participate in the lease operation fence; destroy cannot race past an in-flight mutating action. | 2026-09-08 Linux PASS: `TestUIOperationFencePreventsDestroyRace` plus recovery/host-unconfirmed barrier tests; `go test -race ./...` passed. |
+| U15 | A snapshot/node reference from one lease cannot be used against another lease. | 2026-09-08 Linux PASS: `TestUISnapshotAndSemanticScope` cross-lease refusal; real attempt 2 rejected cross-lease reference before the later fresh-tap failure. |
+| U16 | Two concurrent mobile leases remain independently observable and operable; destroying one leaves the sibling usable. | 2026-09-08 real run 6 PASS: two isolated leases; after first destroy sibling snapshot retained Count0 and backend HTTP stayed alive; both released normally. |
+| U17 | Ambiguous Android identity never permits observation/action through force or fallback selection. | 2026-09-08 Linux PASS: `TestUIOwnershipFailureCannotDispatchInput`, state/selection tests and existing Android ownership suite; no force or serial override exposed. |
+| U18 | The target Flutter/application repository requires no UI-test dependency or source modification for observer use. | 2026-09-08: standalone companion build and API 35 Flutter spike required no target-app instrumentation dependency. Real fixture uses standard Flutter widgets; no observer manifest section exists. |
+| U19 | If a companion helper is used, its artifact/version/digest and lifecycle are recorded and target-project instrumentation is not required. | 2026-09-08 Linux PASS: helper provenance/source/version/digest and backend-change tests. Three explicit companion builds and single-Emulator install/observation/recovery smoke recorded. |
+| U20 | Observer docs and ExecPlans exist in English and Japanese and pass translation checks. | 2026-09-08 PASS: bilingual product/design/index/README/CLI/architecture/plan updates; full `repoctl check` includes passing docs-check. Living-plan update rechecked separately. |
+| U21 | Architecture/docs/schema checks and the full repository harness pass on final implementation. | 2026-09-08 PASS at `867a862`: `repoctl doctor` and full `repoctl check` including formatting, unit tests, vet, docs, generated and architecture validation; real Docker integration also passed. |
+| U22 | Go race validation and native Windows/macOS/Linux fake/backend tests pass. | 2026-09-08 PASS: Linux `go test -race ./...`; all six Windows/macOS/Linux × supported-Go native CI jobs at `867a862`. Five cross-builds passed separately and are not SDK evidence. |
+| U23 | At least one real Flutter + Emulator observer run exercises snapshot, screenshot, Unicode input, stale rejection, action, logcat and cleanup, or a concrete external infrastructure blocker is recorded without substituting fake evidence. | 2026-09-08 real run 6 PASS, 217.34s, Linux amd64 / Go 1.27.1 / Flutter 3.47.2 / API 35 / companion build 3. All requested real CLI observer checks and both normal cleanups passed; attempts 1–5 remain recorded failures. |
 
 Every accepted item requires direct recorded evidence. Test names alone are not evidence until a successful run is recorded.
 
@@ -623,6 +666,17 @@ No UI recovery path may:
 - use `--force` to bypass device ownership proof.
 
 ## Artifacts and Notes
+
+Final real evidence (2026-09-08): `go test -tags flutterintegration ./internal/cli -run
+'^TestRealAndroidUIObserver$' -count=1 -v -timeout=35m` PASS, 217.34s.
+Lease IDs: `01M1Z9KEH18ZTC8AHQSQ06MHT9` and `01M1Z9KEJE3EZDVT8Y5RBXT9MS`;
+fixture source: `be35f3179692baf0c3c160715d7c6f5987889de9`. Linux amd64,
+Go 1.27.1, Flutter 3.47.2, Android API 35, third verified companion build, explicit
+cached fixture creation. The final test exercises actual CLI actions, Unicode
+read-back, stale/cross-lease refusal, privacy and PNG/digests, viewport swipe,
+Back/Home, current-PID logs and bounded wait. After the first destroy the sibling
+still showed Count0 and served fresh backend HTTP; both normal cleanups passed.
+
 
 Suggested per-operation artifact grouping:
 
@@ -691,17 +745,17 @@ The target application must not need AndroidX UI Automator or an instrumentation
 
 No Bash, POSIX shell, PowerShell, Make, implicit first-device selection, CGO or fixed host port may become a core requirement.
 
-Unresolved issues to settle during Milestone 1:
+Milestone 1 decisions (settled; validation evidence is in the acceptance table):
 
-1. Concrete backend: platform shell primitives versus an `agent-env` companion instrumentation APK.
-2. If a helper is used, stable AndroidX UI Automator API versus a newer pre-release API and how that choice is compatibility-tested.
-3. Helper packaging: embedded release artifact, adjacent release asset, generated development artifact or another design that does not burden unrelated Go builds.
-4. Exact normalized node fingerprint used for stale re-resolution, especially when Flutter nodes lack resource IDs.
-5. Whether a snapshot covers all visible accessibility windows by default or defaults to the selected application with an explicit system-UI option.
-6. Exact privacy/redaction policy for visible text, entered text and screenshots.
-7. Whether logcat initially belongs under `agent-env ui logcat` or a future generic observation surface.
-8. Action behavior on DEGRADED and QUARANTINED leases when device ownership is still provable.
-9. Snapshot node/byte limits and deterministic truncation behavior.
-10. Android API-level compatibility floor for the selected backend.
+1. Backend: self-targeting agent-env companion for semantic snapshots/actions; exact-owned-serial platform commands for PNG, navigation, coordinates and logcat.
+2. API: stable platform `UiAutomation`/`AccessibilityNodeInfo`; no AndroidX or prerelease dependency. API 35 has real spike evidence; broader API validation is not claimed.
+3. Packaging: embedded companion source, explicit native Go SDK/JDK build into a new directory, local APK/metadata distribution via `AGENT_ENV_UI_HELPER`. Version/source/APK digests are verified; ordinary Go builds remain SDK/JDK independent.
+4. Fingerprint: semantic window type/title/bounds/root package/class/active state plus semantic ancestry, node class/package/resource ID/noneditable label/text/bounds/action/state flags. Exclude ephemeral window IDs/ordinals/layers and editable/password values. Require unique matches and matching backend provenance.
+5. Scope: application snapshots default to the recorded package; runtime-only and explicit `--all-windows` include accessible system windows.
+6. Privacy: fully redact entered/editable/password text and associated editable description/hint. Redact configured secrets in ordinary labels/logs. PNG pixels cannot be text-redacted; arbitrary displayed text may still be sensitive.
+7. Logs: `ui logcat`, current numeric PID only, device-time lower bound, no silent device-wide fallback, no global clearing. Report PID reuse/history limitations and bounded inline/artifact output.
+8. State: read diagnostics allow active unexpired ready/degraded leases with proven owned live Android. Mutations require ready. Quarantined/expired/released/cleanup leases refuse normal UI commands; narrowly eligible explicit helper recovery uses its separately documented fence/evidence policy.
+9. Limits: 1000 nodes, depth 64, 4096 characters per snapshot field, 1 MiB backend response, explicit truncation. Partial trees cannot authorize semantic mutation; PNG and log bounds are defined in the product contract.
+10. Compatibility: API 26 floor; native argv/filesystem support for Windows/macOS/Linux. Only recorded actual SDK/native executions count as platform evidence.
 
-Resolve these in the Decision Log before the corresponding public contract is treated as stable.
+The Decision Log and bilingual product/design contracts record the rationale and recovery details.

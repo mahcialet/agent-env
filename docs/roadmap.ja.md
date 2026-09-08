@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/roadmap.md
-source_sha256: efc12d1d41590f5aa6dacbce63eec28840029f149c746eca86470efcaad13728
+source_sha256: 2d22cc5bdf72165cd308e9cdfa7e8c8f50e78ded0ae39072a438e8aefc2d2283
 ---
 
 [英語版（翻訳元）](roadmap.md)
@@ -32,7 +32,7 @@ iOS、browser/CDPの自動操作・snapshot、汎用の永続ホストプロセ�
 上限付きの意味情報 snapshot、PNG、Unicode 置換、navigation、現在の PID の log を提供します。
 独立した任意の platform companion を使い、対象アプリへの instrumentation 追加は不要です。
 OCR、visual regression、より豊富な gesture、物理デバイス、remote Emulator host は引き続き延期しています。
-observer の最終受け入れ確認と platform 別の証拠は[進行中の計画](exec-plans/active/android-ui-observer.ja.md)で管理します。
+observer の最終受け入れ確認と platform 別の証拠は[完了した計画](exec-plans/completed/android-ui-observer.ja.md)で管理します。
 
 ## 成果物とリリース
 

@@ -1,9 +1,9 @@
 ---
-status: active
+status: completed
 owner: maintainers
 last_verified: 2026-09-08
-translation_of: docs/exec-plans/active/android-ui-observer.md
-source_sha256: d6707f35372f52faee596599698519edf851ff13863849934d5fb46b7eff7ba2
+translation_of: docs/exec-plans/completed/android-ui-observer.md
+source_sha256: 2e032e25bcc95d3054680f21c2f7fb46a2c3e156428a1229170db5d26e90f426
 ---
 
 # Lease が所有する Android UI の観測と操作
@@ -64,38 +64,43 @@ observer は Flutter 専用ではない。Flutter の標準 widget は Android �
 - [x] 2026-09-08: public CLI の実装前に observer の英日 product contract を作成。初回翻訳後の `repoctl docs-check` が成功した。
 - [x] 2026-09-08: observer の英日 design doc と索引を作成。既存の adapter と SQL の境界を維持した。
 - [x] 2026-09-08: version 1 の snapshot/node/window 型と一定順序の簡潔な text 表示を product contract、`internal/domain/ui.go`、`internal/cli/ui.go` に定義した。
-- [x] 2026-09-08: `AGENTENV-UI-STALE`、`AGENTENV-UI-AMBIGUOUS`、`AGENTENV-UI-UNAVAILABLE` を英日 product contract に定義。backend status の対応付けには専用の回帰テストを追加しており、最終検証は未完了。
-- [ ] owned runtime/application の選択と identity proof を実装する。
-- [ ] semantic snapshot capture と normalization を実装する。
-- [ ] snapshot evidence 保存と compact rendering を実装する。
-- [ ] screenshot capture と digest evidence を実装する。
-- [ ] stale-safe semantic-node tap を実装する。
-- [ ] 明示 coordinate tap を実装する。
-- [ ] Unicode 対応 editable-node text replacement を実装する。
-- [ ] Back / Home / swipe を実装する。
-- [ ] bounded wait/poll を実装する。
-- [ ] bounded package-scoped logcat を実装する。
-- [ ] operation lock / heartbeat と統合する。
-- [ ] CLI JSON/text contract と negative fixture を追加する。
-- [ ] multi-runtime / multi-application selection test を追加する。
-- [ ] stale snapshot / ambiguous node regression を追加する。
-- [ ] evidence redaction / size-bound test を追加する。
-- [ ] sibling lease が相互の device を観測・操作できないことを証明する。
-- [ ] repository harness と Go race validation を完走する。
-- [ ] Windows/macOS/Linux native evidence と real SDK evidence を区別して記録する。
-- [ ] 条件が整えば real Flutter + Emulator observer integration を実行する。
-- [ ] acceptance evidence と retrospective を完成させる。
-- [ ] 英日双方の plan を `docs/exec-plans/completed/` へ移動する。
+- [x] 2026-09-08: `AGENTENV-UI-STALE`、`AGENTENV-UI-AMBIGUOUS`、`AGENTENV-UI-UNAVAILABLE` を英日 product contract に定義。backend status の対応付けに対する回帰テストは、最新の Linux 全単体テストで成功した。
+- [x] 2026-09-08: owned runtime/application の選択と identity proof を実装する。 `867a862` の `repoctl check` で Linux 単体検証が成功。最終の実機・native の結果は後述。
+- [x] 2026-09-08: semantic snapshot capture と normalization を実装する。 `867a862` の `repoctl check` で Linux 単体検証が成功。最終の実機・native の結果は後述。
+- [x] 2026-09-08: snapshot evidence 保存と compact rendering を実装する。 `867a862` の `repoctl check` で Linux 単体検証が成功。最終の実機・native の結果は後述。
+- [x] 2026-09-08: screenshot capture と digest evidence を実装する。 `867a862` の `repoctl check` で Linux 単体検証が成功。最終の実機・native の結果は後述。
+- [x] 2026-09-08: stale-safe semantic-node tap を実装する。 `867a862` の `repoctl check` で Linux 単体検証が成功。最終の実機・native の結果は後述。
+- [x] 2026-09-08: 明示 coordinate tap を実装する。 `867a862` の `repoctl check` で Linux 単体検証が成功。最終の実機・native の結果は後述。
+- [x] 2026-09-08: Unicode 対応 editable-node text replacement を実装する。 `867a862` の `repoctl check` で Linux 単体検証が成功。最終の実機・native の結果は後述。
+- [x] 2026-09-08: Back / Home / swipe を実装する。 `867a862` の `repoctl check` で Linux 単体検証が成功。最終の実機・native の結果は後述。
+- [x] 2026-09-08: bounded wait/poll を実装する。 `867a862` の `repoctl check` で Linux 単体検証が成功。最終の実機・native の結果は後述。
+- [x] 2026-09-08: bounded package-scoped logcat を実装する。 `867a862` の `repoctl check` で Linux 単体検証が成功。最終の実機・native の結果は後述。
+- [x] 2026-09-08: operation lock / heartbeat と統合する。 `867a862` の `repoctl check` で Linux 単体検証が成功。最終の実機・native の結果は後述。
+- [x] 2026-09-08: CLI JSON/text contract と negative fixture を追加する。 `867a862` の `repoctl check` で Linux 単体検証が成功。最終の実機・native の結果は後述。
+- [x] 2026-09-08: multi-runtime / multi-application selection test を追加する。 `867a862` の `repoctl check` で Linux 単体検証が成功。最終の実機・native の結果は後述。
+- [x] 2026-09-08: stale snapshot / ambiguous node regression を追加する。 `867a862` の `repoctl check` で Linux 単体検証が成功。最終の実機・native の結果は後述。
+- [x] 2026-09-08: evidence redaction / size-bound test を追加する。 `867a862` の `repoctl check` で Linux 単体検証が成功。最終の実機・native の結果は後述。
+- [x] 2026-09-08: 実六回目で別 lease の参照拒否、一方の destroy 後の兄弟 Count0/UI と backend HTTP、両 lease の通常 cleanup を確認した。
+- [x] 2026-09-08: repository harness と Go race validation を完走する。 `867a862` の `repoctl check` で Linux 単体検証が成功。最終の実機・native の結果は後述。
+- [x] 2026-09-08: `867a862` の OS/Go 全 6 native CI job と、別途 5 cross-build が成功。実 SDK の証拠と区別して記録した。
+- [x] 2026-09-08: 最終の dialog/Home/viewport assertion を含む `TestRealAndroidUIObserver` 六回目が 217.34 秒で成功した。
+- [x] 2026-09-08: native CI と Linux SDK の証拠を区別し、U1–U23 の証拠と振り返りを完成させた。
+- [x] 2026-09-08: 英日双方を `docs/exec-plans/completed/` に移動し、参照リンクを更新した。
 
-実装 checkpoint（2026-09-08）: snapshot、PNG、意味情報と native input、wait/logcat、fencing、
-証拠のための app/domain/Android adapter/companion/CLI コードと専用の負例 fixture を追加済み。
-最終検証とレビュー指摘の対応が終わるまで、これらの実装項目の checkbox は未完了のまま維持する。
-復旧は文書化した仕様の下で実装中であり、最終受け入れ済みとはしない。
-新しい実 observer fixture に対する `go test -tags flutterintegration ./internal/cli -run '^$'` は成功した。
-これは compile-only の証拠であり、Emulator の実行証拠ではない。
-`go test ./internal/runtime/android/uihelper ./internal/execx -run
-'TestVerify|TestBuildRejects|TestEmbedded|TestLoad|TestCapture' -count=1` は Linux / Go 1.27.1 で成功した。
-Windows/macOS の native 証拠、最終 harness/race 検査、二つの実リースを使う observer の全体検証は未完了。
+実装 checkpoint（2026-09-08）: 文書 milestone `a717d59` と実装 `867a862` を
+`feat/android-ui-observer` に commit・push 済み。app/domain/Android adapter/companion/CLI、
+復旧、専用の負例 fixture は Linux の単体テストで確認できる範囲まで完了した。
+`go run ./tools/repoctl check` は整形、全単体テスト、vet、文書、生成物、architecture の検査に成功した。
+Go 1.27.1 で `go run ./tools/repoctl doctor` と `go test -race ./...` も成功した。
+`go run ./tools/repoctl test-integration` は既存の実 Docker/Compose 統合試験に成功したが、SDK の証拠ではない。
+`go test -tags flutterintegration ./internal/cli -run '^$'` による observer fixture の compile は既に成功している。
+六回目の実二台 Emulator `TestRealAndroidUIObserver` は、Linux amd64、Go 1.27.1、Flutter 3.47.2、
+API 35、三回目の companion build で 217.34 秒で成功した。最終 fixture は dialog の Back 前後の表示、
+Home 後に可視アプリ node がないこと、現在の表示 viewport 内の scroll を検証する。
+両 lease が通常 cleanup に成功し、一方の destroy 後も兄弟 UI と backend HTTP が維持された。
+`867a862` の CI run `34175369767` は全 12 job（native OS/Go 6、cross-build 5、integration）が成功した。
+全受け入れ要件の直接の証拠を後述する。archive 後の full `repoctl check` は、整形、単体、vet、文書、生成物、architecture の
+全検査に終了コード 0 で成功した。
 
 追加の local 証拠（2026-09-08）: 実装担当が一つの所有 Emulator で snapshot、screenshot、
 明示的な復旧、通常 destroy を実行し、成功した。keyboard 表示後に古い意味情報 snapshot を再使用すると、
@@ -108,11 +113,20 @@ checkbox は意図ではなく観測済みの完了を表す。チェック時�
 
 ## 想定外の発見
 
-- 2026-09-08、二回目の実二台 Emulator 試験: `TestRealAndroidUIObserver` は 276.86 秒実行され、両アプリの起動に成功した後、新しい snapshot を使った意味情報 tap を stale として拒否した。保持した前後の証拠は、Android window ID が 8 から 11 に変わったことと、それに由来する fingerprint 以外は一致していた。window ID は UiAutomation の再接続をまたぐと変わるため、継続的な意味情報の識別要素にはできない。helper を window の意味情報に基づく metadata を使うよう修正し、三回目の実装版 build を生成した。実際の回帰再試行は未完了。
-- 2026-09-08、追加検査: 全単体テストと vet が再び成功した。CLI の検証には log 内容の直接出力、明示的な duration 0 の拒否、存在しない lease の終了コード 2、壊れた registry の終了コード 7 を含めた。今回の翻訳同期後、単独の `go run ./tools/repoctl docs-check` が成功した。Go race 検証は実行中である。native または実 observer の最終受け入れ済みとはしない。
+- 2026-09-08、五回目の実試験: 177.24 秒後、swipe の assertion で失敗した。Back は Count1 を正しく復元していた。IME が viewport を縮めていたため、表示中 ScrollView の bounds は `[0,80,320,346]` だったが、固定の screenshot 基準の swipe 開始点 y=480 はその外にあった。fixture は、現在表示されている一意な scrollable node の bounds から八分の一だけ内側に入った明示座標を求めるよう修正した。scroll 後に、それまで見えていなかった label が可視になる assertion は維持している。さらに dialog が Back 前に表示され、Back 後には存在しないことと、Home 後に可視のアプリ node がないことを、それぞれ独立に検証するよう強化した。これらをすべて含む六回目はその後成功し、最終証拠を前述した。
 
-- 2026-09-08、実統合試験: `TestRealAndroidUIObserver` は Android activity の起動中、`am start -W` の `Status: timeout` により 222.41 秒で失敗し、observer の assertion には到達しなかった。registry の確認と通常の保守的 cleanup により、両 lease の released を確認した。readiness、所有権、timeout の検査は緩めていない。独立した再試行は別項に記録し、この失敗を observer の受け入れ証拠とはしない。
-- 2026-09-08、app/復旧の独立レビュー: 元の結果を登録した後に最終分類の `SaveRun` が失敗すると、分類のない run が残る場合があった。従来の復旧は明示的な禁止分類だけを拒否していたため、分類の欠落によって host-process/evidence barrier を回避できた。現在は明示的に永続化された `termination-unconfirmed` の分類と、検証済みの元の結果証拠を要求する。`TestUIRecoverRefusesUnpersistedFailureClassification` で分類の書き込み失敗を検証する。復旧・fence・backend 診断の focused test は Linux / Go 1.27.1 で成功し、最終受け入れは引き続き未完了。
+- 2026-09-08、四回目の実試験: 144.49 秒後、swipe の assertion で失敗した。Back がアプリを終了させたため、swipe 前後の accessibility tree が両方とも空だった。fixture が Back で IME を閉じられると仮定したのが誤りだった。試行後、両 lease の released を確認した。fixture は dialog を明示的に開いて待ち、Back を送って Count1 を待ってから swipe するよう修正した。swipe の検証を緩めず、Back の対象を確定するための変更である。五回目の結果は別項に記録し、この checkpoint では最終の実受け入れは未完了だったが、その後成功した。最終証拠を参照。
+- 2026-09-08、証拠の訂正: 一回目と二回目の試験時間はそれぞれ 104.97 秒と 127.31 秒である。以前の 222.41 秒 / 276.86 秒は不正確な経過時間の要約だったため、この計画全体で訂正した。失敗原因と保持する証拠は変わらない。
+
+- 2026-09-08、三回目の実試験: Flutter の依存解決中に fixture 作成が 342.98 秒で終了し、lease の割り当てには到達しなかった。pub.dev への直接 HTTPS probe も 10 秒で timeout した。失敗した試行を終えるため、所有する fixture の pub 子 process だけを明示的に終了した。lease は一つも割り当てられておらず、observer の受け入れは実行していない。
+- 2026-09-08: fixture 専用の明示設定 `AGENT_ENV_FLUTTER_OFFLINE_FIXTURE=1` を追加した。Flutter 標準の `flutter create --offline` を付加し、既存 cache を利用する。不足があれば失敗する。core の通常 build/runtime とすべての受け入れ検査は変更していない。四回目はこの設定と三回目の helper build を使い、その結果は別項に記録した。
+- 2026-09-08、native 証拠: head `867a862` の Windows/macOS/Linux × 対応 Go の全 6 native CI job と全 5 cross-build job が成功した。native fake/backend と build の証拠であり、実 Android SDK の証拠ではない。CI integration job も成功した。`867a862` の CI run `34175369767` は全 12 job が成功した。
+
+- 2026-09-08、二回目の実二台 Emulator 試験: `TestRealAndroidUIObserver` は 127.31 秒実行され、両アプリの起動に成功した後、新しい snapshot を使った意味情報 tap を stale として拒否した。保持した前後の証拠は、Android window ID が 8 から 11 に変わったことと、それに由来する fingerprint 以外は一致していた。window ID は UiAutomation の再接続をまたぐと変わるため、継続的な意味情報の識別要素にはできない。helper を window の意味情報に基づく metadata を使うよう修正し、三回目の実装版 build を生成した。この checkpoint では実際の回帰再試行は未完了だったが、その後成功した。最終証拠を参照。
+- 2026-09-08、追加検査: 全単体テストと vet が再び成功した。CLI の検証には log 内容の直接出力、明示的な duration 0 の拒否、存在しない lease の終了コード 2、壊れた registry の終了コード 7 を含めた。今回の翻訳同期後、単独の `go run ./tools/repoctl docs-check` が成功した。この checkpoint では Go race と native/実試験は未完了だったが、その後成功した。最終証拠を参照。
+
+- 2026-09-08、実統合試験: `TestRealAndroidUIObserver` は Android activity の起動中、`am start -W` の `Status: timeout` により 104.97 秒で失敗し、observer の assertion には到達しなかった。registry の確認と通常の保守的 cleanup により、両 lease の released を確認した。readiness、所有権、timeout の検査は緩めていない。独立した再試行は別項に記録し、この失敗を observer の受け入れ証拠とはしない。
+- 2026-09-08、app/復旧の独立レビュー: 元の結果を登録した後に最終分類の `SaveRun` が失敗すると、分類のない run が残る場合があった。従来の復旧は明示的な禁止分類だけを拒否していたため、分類の欠落によって host-process/evidence barrier を回避できた。現在は明示的に永続化された `termination-unconfirmed` の分類と、検証済みの元の結果証拠を要求する。`TestUIRecoverRefusesUnpersistedFailureClassification` で分類の書き込み失敗を検証する。復旧・fence・backend 診断の focused test は Linux / Go 1.27.1 で成功し、この checkpoint では最終受け入れは未完了だったが、その後完了した。最終証拠を参照。
 - 2026-09-08、CLI の独立レビュー: 以前の UI error は分類されず、tool の不足や registry 障害も既定の終了コード 2 になっていた。型による error 分類の伝播と CLI の対応付けにより、前提条件不足は 3、無効な option・対象選択・存在しない lease・stale/ambiguous は 2、registry/観測障害は 7 と区別する。診断 error に秘密情報を露出させない。
 
 - 2026-09-08: 所有確認済み API 35 Emulator と一時 Flutter アプリで、`uiautomator dump` と自己対象の UiAutomation APK が Flutter の accessibility を取得できた。意味的クリックで Count 0 から Count 1 に変化。フォーカスした欄への `日本語 🙂 café` の入力後、新しいノード参照で `置換済み 🚀` への置換を行い、取得した accessibility text で確認した。対象アプリに instrumentation 依存は追加していない。
@@ -120,7 +134,7 @@ checkbox は意図ではなく観測済みの完了を表す。チェック時�
 
 - 2026-09-08: 初回の `go run ./tools/repoctl check` は単体テストと vet に成功した後、提供された日本語計画の `translation_of` と `source_sha256` 欠落で失敗した（AGENTENV-DOC-008）。検査を変更せず必須 metadata を補い、`repoctl docs-check` が成功した。
 
-- 2026-09-08、独立レビュー: adapter と app の logcat データ受け渡し（`Raw` と `Binary`）の不一致、backend status の診断コードへの対応付け漏れ、操作後 fingerprint の欠落、不完全な階層取得の扱いを発見した。修正と回帰テストは本実装に含め、最終レビューと検証は引き続き未完了とする。app の fake だけでは具体的な adapter と証拠保存の境界を証明できないことが明らかになった。
+- 2026-09-08、独立レビュー: adapter と app の logcat データ受け渡し（`Raw` と `Binary`）の不一致、backend status の診断コードへの対応付け漏れ、操作後 fingerprint の欠落、不完全な階層取得の扱いを発見した。修正と回帰テストは本実装に含め、この checkpoint では最終レビューと検証は未完了だったが、その後完了した。最終証拠を参照。app の fake だけでは具体的な adapter と証拠保存の境界を証明できないことが明らかになった。
 - 2026-09-08、復旧設計の発見: ローカル ADB の timeout だけでは remote instrumentation の停止を証明できない。実行中 barrier だけを残して対応する復旧手段がないと、通常 destroy を進められなくなる。所有権を検証した helper だけの停止・静止確認を有効な fence の下で行い、登録済み helper run の明示的な復旧を追加する。入力の再実行や任意コマンドの復旧は行わない。
 
 少なくとも以下は発見時に記録する。
@@ -140,6 +154,8 @@ checkbox は意図ではなく観測済みの完了を表す。チェック時�
 設計に影響した失敗した試行は削除せず保持する。
 
 ## 判断の記録
+
+- 2026-09-08、実装担当: 編集可能な node/password node のフィールドは引き続き伏せ、set-text 入力値はそのコマンド自身の証拠から伏せる。入力値を将来の秘密値照合データとして永続化しない。後の編集可能でない表示へのアプリの出力や、明示的に要求したアプリの logcat には値が含まれ得るが、設定済み秘密値の redaction は継続する。理由: コマンド自身の秘匿を維持しつつ、意図的に保持しない入力を後から認識できると約束しないため。
 
 - 2026-09-08、実装担当: window の識別には type、title、bounds、root package/class、active 状態を使い、一時的な Android window ID、走査順番号、layer を除外する。生の ID は観測証拠として保持し、曖昧な一致は引き続き拒否する。理由: UiAutomation の再接続後も変化していない Flutter UI を操作できるようにしつつ、意味情報が重複する window を一意とは扱わないため。
 - 2026-09-08、実装担当: 意味情報に基づく action は登録済み snapshot の `ExpectedBackend` を引き継ぐ。backend の provenance が一致しない場合は意味情報 action の dispatch 前に拒否し、別の helper build で得た snapshot で現在の backend を操作できないようにする。理由: fingerprint の規則は特定の検証済み helper 実装に属し、既存の参照が使う規則を暗黙に変更してはいけないため。
@@ -178,23 +194,38 @@ checkbox は意図ではなく観測済みの完了を表す。チェック時�
   理由: bilingual documentation policy を継続するため。
   日付/担当: 2026-09-08 / maintainers.
 
+最終検証 checkpoint（2026-09-08）: tagged CLI `TestUI` の対象検証と `repoctl doctor` が成功した。
+最終の `go test -race ./...` も成功した（app 32.784 秒）。最終 fixture 変更は `2001eac` として commit・push 済み。
+この head の CI `34176592070` は 10 job が成功し、integration と macOS Go 1.27 が未完了である。
+production code は変更しておらず、`867a862` で native/integration CI 全体の証拠がある。
+archive 後の full `repoctl check` は、整形/単体/vet/docs/generated/architecture の全検査に終了コード 0 で成功した。
+
 ## 成果と振り返り
 
-未完了。
+2026-09-08 完了。version と上限を持つ accessibility snapshot、一時的な node 参照、検証済み PNG、
+古い参照を拒否する意味情報 tap、focus と読み戻し確認を伴う Unicode 置換、明示的な座標 tap、
+Back/Home/swipe、上限付き wait、帰属と上限を示す logcat を実装した。独立して build する自己対象の
+platform UiAutomation companion により、対象アプリへの instrumentation と AndroidX 依存を不要にした。
+検証済み version/source/APK provenance で snapshot と backend を結び付ける。app の制御、Android 資源管理、
+Flutter build は分離したままとし、既存 registry の run/artifact で操作意図、保守的 cleanup barrier、
+証拠に基づく限定的な復旧を実現した。schema の変更はない。
 
-完了時には以下をまとめる。
+実 Flutter 試験では、platform action の成功だけでは focus/読み戻しなしの text 置換を保証できないことと、
+Android window ID が instrumentation 再接続で変化することを確認した。window の意味情報に基づく識別で
+有効な参照を維持し、一意な照合で古い・曖昧な入力を拒否する。IME で縮む viewport や Back の遷移は、
+画面サイズや keyboard の存在を仮定せず、観測可能な fixture 状態で検証する必要があった。
+最終 fixture はその assertion を強化している。五回の失敗は以下に保持し、テストや所有権検査は緩めていない。
 
-- 採用した Android UI backend と選定理由
-- helper を用いた場合の artifact/versioning model
-- normalized snapshot contract
-- stale-node semantics
-- 実装した action と意図的に除外した action
-- evidence/retention behavior
-- Flutter semantics で得た知見
-- native platform evidence
-- real Android/Flutter validation
-- API level / Unicode の既知制約
-- richer gesture、visual regression、browser/CDPとの共通化等の follow-up
+実六回目は Linux amd64 / Go 1.27.1 / Flutter 3.47.2 / API 35 で 217.34 秒で成功し、二つの同時 lease、
+要求された observer 操作、Unicode/秘匿/PNG、兄弟分離、通常 cleanup を確認した。
+Linux full harness、race、実 Docker 検査も成功し、`867a862` の CI `34175369767` は全 12 job が成功した。
+Windows/macOS の native fake/backend と cross-build は、それらの OS で実 SDK を検証した証拠ではない。
+対応下限は API 26 だが、実 SDK の証拠は API 35 であり、他の API image は未検証である。
+より豊富な gesture、OCR、visual regression、物理 device、remote host、browser/CDP との対称性は今後の課題とする。
+
+編集可能な field/password field と set-text 自身の証拠は伏せるが、将来の任意のアプリ表示/logcat と PNG の
+ピクセルには機密情報が残り得る。分類のない crash、host process や証拠の不確実性は意図的に cleanup barrier とする。
+archive 後の最終 harness 再実行は全検査に終了コード 0 で成功し、未完了の機能受け入れはない。
 
 ## 背景と構成
 
@@ -439,29 +470,29 @@ Windows/macOS/Linuxのfake/native portability testとreal Android validationは�
 
 | ID | 必須動作 | 証拠 |
 | --- | --- | --- |
-| U1 | UI機能を使わない既存Compose/Android/Flutter manifestとleaseが無変更で動く。 | Pending |
-| U2 | UI commandはselected confirmed owned Android runtimeだけを解決しfirst-device fallbackを持たない。 | Pending |
-| U3 | semantic snapshotがlease/runtime/snapshot identity付きdeterministic JSON/textを返す。 | Pending |
-| U4 | raw/normalized snapshot evidenceがboundedかつatomicにpublishされる。 | Pending |
-| U5 | real integrationでFlutter semantic label/text/editable controlがdocumented Android accessibility surfaceに現れる。 | Pending |
-| U6 | screenshotがvalid PNG artifact、digest、exact device identityを持つ。 | Pending |
-| U7 | fresh snapshot nodeのsemantic tapが意図したnodeを操作する。 | Pending |
-| U8 | stale/ambiguous nodeはinput前に失敗しold coordinateへfallbackしない。 | Pending |
-| U9 | explicit coordinate tapをsemantic tapと別に記録する。 | Pending |
-| U10 | editable-node text replacementが定義したUnicode caseをshell escaping破損なしで扱う。 | Pending |
-| U11 | Back/Home/swipeがselected serialだけに作用する。 | Pending |
-| U12 | wait/pollはboundedでtimeout後にhidden effectを残さない。 | Pending |
-| U13 | bounded logcatがpackage/PID scopeまたはbroader scopeを正直に記録しsecret redactionする。 | Pending |
-| U14 | UI operationがlease fenceに参加しdestroyがin-flight mutating actionを追い越さない。 | Pending |
-| U15 | 一方のleaseのsnapshot/node refを他方leaseに使えない。 | Pending |
-| U16 | concurrent mobile leaseを独立観測・操作でき、一方destroy後も他方が利用可能。 | Pending |
-| U17 | ambiguous Android identityをforce/fallbackで観測・操作しない。 | Pending |
-| U18 | target Flutter/app repoへUI-test dependencyやsource変更を要求しない。 | Pending |
-| U19 | helper使用時、そのartifact/version/digest/lifecycleを記録しtarget instrumentationを要求しない。 | Pending |
-| U20 | observer docs/ExecPlanが英日双方に存在しtranslation checkを通る。 | Pending |
-| U21 | architecture/docs/schema/full repository harnessがfinal implementationでpass。 | Pending |
-| U22 | Go raceとWindows/macOS/Linux native fake/backend testがpass。 | Pending |
-| U23 | real Flutter+Emulatorでsnapshot/screenshot/Unicode/stale rejection/action/logcat/cleanupを実証するか、具体的外部blockerをfake evidenceで代替せず記録する。 | Pending |
+| U1 | UI機能を使わない既存Compose/Android/Flutter manifestとleaseが無変更で動く。 | 2026-09-08: `867a862` の `repoctl check` で既存単体回帰が成功。`repoctl test-integration` で実 Docker/Compose が成功。二回目の実 Flutter 試験で両 lease がアプリ起動に到達した。observer 全体は実六回目で成功した。 |
+| U2 | UI commandはselected confirmed owned Android runtimeだけを解決しfirst-device fallbackを持たない。 | 2026-09-08 Linux 成功: full `repoctl check` 内の `TestUIRejectsInvalidStateAndSelectionBeforeDevice`、`TestUIDegradedDiagnosticsAndApplicationScope`、`TestUIOwnershipFailureCannotDispatchInput`。 |
+| U3 | semantic snapshotがlease/runtime/snapshot identity付きdeterministic JSON/textを返す。 | 2026-09-08 Linux 成功: `TestUISnapshotAndSemanticScope`、protocol test、単一実 Emulator の snapshot smoke。簡潔な表示を実装済み。最終実 observer workflow は実六回目で成功した。 |
+| U4 | raw/normalized snapshot evidenceがboundedかつatomicにpublishされる。 | 2026-09-08 Linux 成功: `repoctl check` の snapshot 改ざん/symlink、protocol 上限、証拠失敗、atomic-write 回帰。単一実 Emulator の snapshot artifact も保持。 |
+| U5 | real integrationでFlutter semantic label/text/editable controlがdocumented Android accessibility surfaceに現れる。 | 2026-09-08: 所有 API 35 spike で Flutter label、text、編集可能な control を取得。二回目の実試験でも Count0/Increment0 を取得した後、一時的 window ID の照合で失敗した。 |
+| U6 | screenshotがvalid PNG artifact、digest、exact device identityを持つ。 | 2026-09-08 Linux 成功: `TestUIPNGValidation`、`TestUIInvalidCompletedCaptureFinalizesFailed`。単一の所有実 Emulator の PNG/artifact smoke も成功。 |
+| U7 | fresh snapshot nodeのsemantic tapが意図したnodeを操作する。 | 2026-09-08 実六回目成功（217.34 秒）: 新しい意味情報 tap で Count0 から Count1 に変化し、古い参照の再使用で追加 increment は起きなかった。 |
+| U8 | stale/ambiguous nodeはinput前に失敗しold coordinateへfallbackしない。 | 2026-09-08 Linux 成功: `TestUIRejectsSnapshotTamperingAndAmbiguity`、`TestUIBackendRefusalsRetainStableDiagnostics`、backend provenance 回帰。実 smoke でも古い snapshot の入力を stale として拒否。 |
+| U9 | explicit coordinate tapをsemantic tapと別に記録する。 | 2026-09-08 実六回目成功: 明示的な座標 tap と表示 viewport 内の swipe を実施。座標範囲の負例テストも成功。 |
+| U10 | editable-node text replacementが定義したUnicode caseをshell escaping破損なしで扱う。 | 2026-09-08 実六回目成功: ASCII と日本語/emoji/Greek の置換が読み戻しと一致し、編集可能な値/password の証拠は伏せられた。 |
+| U11 | Back/Home/swipeがselected serialだけに作用する。 | 2026-09-08 実六回目成功: dialog は Back 前に表示され、Back 後は消えて Count1 が復元された。Home 後は可視アプリ node がなく、swipe は以前見えなかった label を表示した。 |
+| U12 | wait/pollはboundedでtimeout後にhidden effectを残さない。 | 2026-09-08 実六回目成功: 存在しない条件の wait は上限内に期待どおり失敗し、両 lease の通常 cleanup が成功。単体の timeout/復旧/fence 回帰も成功。 |
+| U13 | bounded logcatがpackage/PID scopeまたはbroader scopeを正直に記録しsecret redactionする。 | 2026-09-08 Linux 成功: `TestUILogPIDAttributionAndBounds`、`TestUILogcatReturnsBoundedRedactedInlineEvidence`、非有限 timestamp、CLI log 表示テスト。数値 PID の履歴の限界を文書化。 |
+| U14 | UI operationがlease fenceに参加しdestroyがin-flight mutating actionを追い越さない。 | 2026-09-08 Linux 成功: `TestUIOperationFencePreventsDestroyRace` と復旧/host 完了未確認 barrier テスト。`go test -race ./...` も成功。 |
+| U15 | 一方のleaseのsnapshot/node refを他方leaseに使えない。 | 2026-09-08 Linux 成功: `TestUISnapshotAndSemanticScope` の別 lease 拒否。二回目の実試験でも新しい tap が失敗する前に別 lease の参照を拒否。 |
+| U16 | concurrent mobile leaseを独立観測・操作でき、一方destroy後も他方が利用可能。 | 2026-09-08 実六回目成功: 二つの独立 lease の一方を destroy 後、兄弟 snapshot の Count0 と backend HTTP が維持され、両方が通常 released になった。 |
+| U17 | ambiguous Android identityをforce/fallbackで観測・操作しない。 | 2026-09-08 Linux 成功: `TestUIOwnershipFailureCannotDispatchInput`、状態/選択テスト、既存 Android 所有権 suite。force や serial 上書きは公開しない。 |
+| U18 | target Flutter/app repoへUI-test dependencyやsource変更を要求しない。 | 2026-09-08: 独立 companion build と API 35 Flutter spike で対象アプリへの instrumentation 依存は不要だった。実 fixture は標準 Flutter widget を使い、observer manifest section は存在しない。 |
+| U19 | helper使用時、そのartifact/version/digest/lifecycleを記録しtarget instrumentationを要求しない。 | 2026-09-08 Linux 成功: helper の provenance/source/version/digest と backend 変更テスト。三回の明示 companion build、単一実 Emulator の install/観測/復旧 smoke を記録。 |
+| U20 | observer docs/ExecPlanが英日双方に存在しtranslation checkを通る。 | 2026-09-08 成功: product/design/index/README/CLI/architecture/plan を英日更新。full `repoctl check` の docs-check が成功し、今回の living plan 更新も別途再検査。 |
+| U21 | architecture/docs/schema/full repository harnessがfinal implementationでpass。 | 2026-09-08、`867a862` で成功: `repoctl doctor`、整形/単体/vet/docs/generated/architecture を含む full `repoctl check`。実 Docker 統合も成功。 |
+| U22 | Go raceとWindows/macOS/Linux native fake/backend testがpass。 | 2026-09-08 成功: Linux の `go test -race ./...`、`867a862` の Windows/macOS/Linux × 対応 Go の全 6 native CI job。5 cross-build も別途成功し、SDK 証拠とはしない。 |
+| U23 | real Flutter+Emulatorでsnapshot/screenshot/Unicode/stale rejection/action/logcat/cleanupを実証するか、具体的外部blockerをfake evidenceで代替せず記録する。 | 2026-09-08 実六回目成功、217.34 秒、Linux amd64 / Go 1.27.1 / Flutter 3.47.2 / API 35 / companion build 3。要求された実 CLI observer 検査と両 lease の通常 cleanup が成功。一〜五回目の失敗は保持。 |
 
 acceptanceは直接の成功証拠を必要とする。test名だけでは実行成功の証拠にならない。
 
@@ -492,6 +523,16 @@ helper installが不確実ならunproven deviceのpackageをuninstallしない�
 - `--force`によるdevice ownership proof bypass
 
 ## 成果物と注記
+
+最終の実証拠（2026-09-08）: `go test -tags flutterintegration ./internal/cli -run
+'^TestRealAndroidUIObserver$' -count=1 -v -timeout=35m` が 217.34 秒で成功した。
+Lease ID: `01M1Z9KEH18ZTC8AHQSQ06MHT9` と `01M1Z9KEJE3EZDVT8Y5RBXT9MS`。
+fixture source: `be35f3179692baf0c3c160715d7c6f5987889de9`。Linux amd64、Go 1.27.1、
+Flutter 3.47.2、Android API 35、三回目の検証済み companion build、明示的な cache 利用の fixture 作成で実施した。
+実 CLI の操作、Unicode 読み戻し、stale/別 lease 拒否、秘匿と PNG/digest、viewport 内の swipe、
+Back/Home、現在 PID の log、上限付き wait を検証した。一方の destroy 後も兄弟は Count0 を保持し、
+新たな backend HTTP 要求に応答した。両 lease の通常 cleanup が成功した。
+
 
 操作ごとのartifact例:
 
@@ -562,17 +603,17 @@ target applicationは `agent-env ui` のためにAndroidX UI Automatorやinstrum
 
 Bash/POSIX shell/PowerShell/Make/implicit first-device selection/CGO/fixed host portをcore requirementにしない。
 
-Milestone 1で解決する未確定事項:
+Milestone 1 の決定事項（解決済み。検証証拠は受け入れ表に記録）:
 
-1. platform shell primitive vs companion instrumentation APK
-2. helper使用時のAndroidX stable/pre-release API選択
-3. helper packaging/build/release方式
-4. Flutter nodeにresource IDがない場合のstale fingerprint
-5. snapshot defaultを全visible windowにするかselected app中心にするか
-6. visible text / entered text / screenshot privacy policy
-7. logcatを`ui logcat`に置くかfuture generic observationへ分離するか
-8. identityが確実なDEGRADED/QUARANTINED lease上action policy
-9. node/byte limitとtruncation
-10. backendのAndroid API compatibility floor
+1. Backend: 意味情報 snapshot/action は agent-env の自己対象 companion を使う。PNG、navigation、座標、logcat は所有 serial を明示した platform command を使う。
+2. API: 安定した platform `UiAutomation` / `AccessibilityNodeInfo` を使い、AndroidX や prerelease には依存しない。API 35 の実 spike 証拠はあるが、他の API で検証済みとはしない。
+3. Packaging: companion source を埋め込み、native Go から SDK/JDK を明示的に呼んで新しい directory に build する。APK/metadata は `AGENT_ENV_UI_HELPER` で local 配布し、version/source/APK digest を検証する。通常の Go build は SDK/JDK から独立させる。
+4. Fingerprint: window の意味情報を示す type/title/bounds/root package/class/active 状態と、祖先の意味情報、node の class/package/resource ID/編集可能でない label・text/bounds/action・state flag を使う。一時的な window ID・走査順番号・layer と、編集可能な値・password 値を除外する。一意な一致と backend provenance の一致を要求する。
+5. Scope: application snapshot は記録済み package を既定の対象とし、runtime-only と明示的な `--all-windows` はアクセス可能な system window も含める。
+6. Privacy: 入力値・編集可能な値・password text と、編集可能な node の description/hint を完全に伏せる。通常の label/log は設定済み秘密値を伏せる。PNG のピクセルには text redaction を適用できず、任意の表示 text には機密情報が残り得る。
+7. Logs: `ui logcat` とし、現在の数値 PID とデバイス時刻の下限で取得する。device 全体への暗黙 fallback や global log の消去は行わない。PID 再利用と履歴の限界を報告し、直接出力と artifact の両方に上限を設ける。
+8. State: 読み取り診断は active かつ期限内の ready/degraded lease で、稼働する Android の所有権を証明できる場合に許可する。変更には ready を要求する。quarantined・期限切れ・released・cleanup 中の通常 UI 操作は拒否し、対象を限定した明示的 helper 復旧には別途文書化した fence/証拠方針を適用する。
+9. Limits: node 数 1000、深さ 64、snapshot の各 field 4096 文字、backend 応答 1 MiB とし、切り詰めを明示する。不完全な tree では意味情報による変更を許可しない。PNG と log の上限は product contract に定義する。
+10. Compatibility: API 26 を下限とし、Windows/macOS/Linux の native argv/filesystem をサポートする。platform の証拠には、記録した実 SDK/native 実行だけを使用する。
 
-public contract固定前にDecision Logへ記録する。
+理由と復旧の詳細は、判断の記録と英日 product/design contract に記録する。
