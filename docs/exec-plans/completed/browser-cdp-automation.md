@@ -1,5 +1,5 @@
 ---
-status: active
+status: completed
 owner: maintainers
 last_verified: 2026-09-09
 ---
@@ -139,15 +139,18 @@ Out of scope:
 
 ## Progress
 
-- [x] 2026-09-09: Added page activation/document-focus checks and post-activation target revalidation. Inactive-document and activation-mutation regressions fail before the repair. Strengthened native fixture explicitly opens a foreground tab before each guarded input. Final CDP race passed (2.833s), Linux native race passed (10.791s), repoctl check passed, and independent review found no further issues. macOS/Windows acceptance is pending fresh CI.
+- [x] 2026-09-09: Final implementation cdcec91807a27b6215d2aeb0f6533ed8c96437cd passed all fresh gates: PR Verify 34252382308 (12 jobs), PR Browser native 34252379866 (Linux 11.50s, macOS 14.04s, Windows 30.98s), Release preview 34252379587 (build and three smoke jobs), push Verify 34252373749 and push Browser native 34252373761. All eight second-review threads received substantive replies; final CI confirmation and Resolve accompany archival.
 
-- [x] 2026-09-09: Final integrated repoctl check and full race passed. Final CDP race passed (2.509s); sandbox-enabled Linux native passed (8.491s), including redirected focus refusal, query/fragment matching, ordinary input/shadow behavior and frame boundaries. Independent review passed after the readback fix. Fresh cross-platform CI remains pending.
+
+- [x] 2026-09-09: Added page activation/document-focus checks and post-activation target revalidation. Inactive-document and activation-mutation regressions fail before the repair. Strengthened native fixture explicitly opens a foreground tab before each guarded input. Final CDP race passed (2.833s), Linux native race passed (10.791s), repoctl check passed, and independent review found no further issues. macOS/Windows acceptance was pending at that checkpoint and is closed by the final CI evidence above.
+
+- [x] 2026-09-09: Final integrated repoctl check and full race passed. Final CDP race passed (2.509s); sandbox-enabled Linux native passed (8.491s), including redirected focus refusal, query/fragment matching, ordinary input/shadow behavior and frame boundaries. Independent review passed after the readback fix. Cross-platform CI was pending at that checkpoint and is closed by the final evidence above.
 
 - [x] 2026-09-09: Added fail-before regressions for stored-manifest substitution, post-redaction expansion, silent queued-event omission, unsafe DOM frame evidence, unrelated-tab refusal, focus redirection, post-effect errors and raw query/fragment URL waits.
 - [x] 2026-09-09: Implemented eight review repairs. App targeted race passed (2.656s); capture/transport isolated race x10 passed (4.600s); CDP race passed (2.439s); sandbox-enabled Linux native with strengthened frame fixtures passed (8.633s, Chrome 152.0.7977.64/CDP 1.3).
 
 
-- [ ] 2026-09-09: Address the second PR #10 review (eight findings), demonstrate regressions, and obtain fresh harness and three-OS CI evidence before re-archiving.
+- [x] 2026-09-09: Address the second PR #10 review (eight findings), demonstrate regressions, and obtain fresh harness and three-OS CI evidence before re-archiving.
 
 ### PR #10 review follow-up (2026-09-09)
 
@@ -582,7 +585,10 @@ the same published commit; no timeout or readiness assertion has been relaxed.
 
 ## Outcomes & Retrospective
 
-Second-review status (2026-09-09): the following first-review completion evidence is historical. Eight newly reported findings are under repair; this plan remains active until the fresh acceptance checks pass.
+Second-review completion (2026-09-09): all eight findings are repaired in 859ca74 and cdcec91. Post-effect errors preserve uncertainty; active-document/target focus is proved after activation and selection; DOM origin/topology and unrelated-tab boundaries are enforced; capture remains bounded after redaction and marks queued omissions; URL matching includes transient query/fragment while saved evidence is scrubbed; stored manifest digest is checked. Fresh CI at cdcec91 passed every gate listed above. The macOS/Windows native focus failure at 859ca74 is retained as historical evidence, not counted as success. Activating and revalidating the page fixed the strengthened native scenario on all three OSes; the precise OS/browser event-delivery mechanism was not instrumented, so its original explanation remains a hypothesis. Regression tests, independent review and real multi-OS browser tests all contributed; mock URL shape and Linux-only native evidence were insufficient by themselves.
+
+
+Historical first-review outcomes follow; current second-review completion is recorded above.
 
 PR #10 review completed on 2026-09-09. Commit `3d3fce5` repairs origin proof,
 wait predicates, truncation/byte budgets, event subscriptions and durable input

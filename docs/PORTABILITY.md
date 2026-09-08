@@ -120,7 +120,7 @@ The Go WebSocket transport adds no Node, Python, browser driver, CGO or shell
 requirement to core commands. Chrome is not bundled. The selected native matrix is
 Chrome for Testing 152.0.7977.82, Go 1.27, Windows/macOS/Linux. Actual browser and
 protocol versions and native pass/failure evidence belong in the
-[completed browser plan](exec-plans/active/browser-cdp-automation.md). All three
+[completed browser plan](exec-plans/completed/browser-cdp-automation.md). All three
 native jobs passed at `391288c` (Browser native 34247636411), reporting CDP 1.3;
 these direct results are separate from cross-build evidence.
 

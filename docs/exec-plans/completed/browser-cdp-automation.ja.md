@@ -1,7 +1,7 @@
 ---
-source_sha256: e996fa1f3022d5f7f0c638ba4b6fafaeea8022c6bb3e69e4540ff10b213a6156
-translation_of: docs/exec-plans/active/browser-cdp-automation.md
-status: active
+source_sha256: fa84d5114bd7488993a93f48c0a770ddb487d7a314191f887e1ffdfa00c3d7d8
+translation_of: docs/exec-plans/completed/browser-cdp-automation.md
+status: completed
 owner: maintainers
 last_verified: 2026-09-09
 ---
@@ -77,15 +77,18 @@ port名だけからbrowserをimplicit推測しない。
 
 ## 進捗
 
-- [x] 2026-09-09: page前面化・document focus確認・前面化後の対象再検証を追加した。inactive documentと前面化時の対象変更を修正前に再現した。native fixtureは各入力前に別の前面tabを開く。最終CDP race成功（2.833秒）、Linux native race成功（10.791秒）、repoctl check成功、独立レビューで追加指摘なし。macOS/Windowsの受け入れは新しいCI待ち。
+- [x] 2026-09-09: 最終実装cdcec91807a27b6215d2aeb0f6533ed8c96437cdで全検証が成功した。PR Verify 34252382308（12 jobs）、PR Browser native 34252379866（Linux 11.50秒、macOS 14.04秒、Windows 30.98秒）、Release preview 34252379587（buildと3 smoke jobs）、push Verify 34252373749、push Browser native 34252373761。第2回8件すべてに対応内容を返信済みで、archiveとともに最終CI確認とResolveを行う。
 
-- [x] 2026-09-09: 最終統合repoctl checkとfull raceが成功した。最終CDP race成功（2.509秒）、sandbox有効Linux native成功（8.491秒）。focus転送時の拒否、query/fragment条件、通常入力・shadow動作、frame境界を検証した。readback修正後の独立レビューも成功した。新しいcross-platform CIは未完。
+
+- [x] 2026-09-09: page前面化・document focus確認・前面化後の対象再検証を追加した。inactive documentと前面化時の対象変更を修正前に再現した。native fixtureは各入力前に別の前面tabを開く。最終CDP race成功（2.833秒）、Linux native race成功（10.791秒）、repoctl check成功、独立レビューで追加指摘なし。この時点ではmacOS/Windowsの受け入れはCI待ちだったが、上記の最終CI証拠で完了した。
+
+- [x] 2026-09-09: 最終統合repoctl checkとfull raceが成功した。最終CDP race成功（2.509秒）、sandbox有効Linux native成功（8.491秒）。focus転送時の拒否、query/fragment条件、通常入力・shadow動作、frame境界を検証した。readback修正後の独立レビューも成功した。この時点ではcross-platform CIは未完だったが、上記の最終証拠で完了した。
 
 - [x] 2026-09-09: 保存manifestの差し替え、redaction後の膨張、capture queueの無表示省略、不正DOM frame証拠、別tabによる拒否、focus転送、effect後のエラー、query/fragment URL waitを修正前に再現するテストを追加した。
 - [x] 2026-09-09: レビュー8件の修正を実装した。app targeted race成功（2.656秒）、capture/transport isolated race 10回成功（4.600秒）、CDP race成功（2.439秒）、frame fixtureを強化したsandbox有効Linux native成功（8.633秒、Chrome 152.0.7977.64/CDP 1.3）。
 
 
-- [ ] 2026-09-09: PR #10の第2回レビュー8件に対応し、回帰テストとharness・3 OS CIの新しい証拠を確認してから再度完了へ移動する。
+- [x] 2026-09-09: PR #10の第2回レビュー8件に対応し、回帰テストとharness・3 OS CIの新しい証拠を確認してから再度完了へ移動する。
 
 ### PR #10 review対応（2026-09-09）
 
@@ -437,7 +440,10 @@ macOS/WindowsおよびLinuxのnative CIは未完了。既存のmacOS readiness t
 
 ## 成果と振り返り
 
-第2回レビューの状況（2026-09-09）: 以下の第1回レビュー完了証拠は過去の記録である。新規8件を修正中であり、新しい受け入れ検証が成功するまで本Planをactiveに保つ。
+第2回レビュー完了（2026-09-09）: 8件すべてを859ca74とcdcec91で修正した。effect後のエラーで不確定状態を保持し、前面化・選択後のdocument/target focusを証明する。DOM origin/topologyと別tab境界を検証し、redaction後もcapture上限を維持してqueue省略を明示する。query/fragmentを一時URL条件へ含めつつ保存証拠を秘匿化し、保存manifest digestを検証する。cdcec91の新しいCIは上記全gateで成功した。859ca74のmacOS/Windows native focus失敗は過去の失敗として残し、成功には数えない。page前面化と再検証により強化nativeシナリオは3 OSすべて成功したが、OS/browserのevent配送機構自体は計測しておらず、当初の原因説明は仮説として扱う。回帰テスト・独立レビュー・実ブラウザの複数OS検証を組み合わせた。URL mockとLinuxだけのnative証拠では不十分だった。
+
+
+以下は過去の第1回レビュー完了記録であり、今回の第2回レビュー完了は上記に記録した。
 
 2026-09-09、PR #10 review対応を完了した。`3d3fce5`でoriginの証明、wait条件、
 省略・byte予算、event購読、永続的な入力対象の根拠を修正し、`391288c`でnative不在証明後の
