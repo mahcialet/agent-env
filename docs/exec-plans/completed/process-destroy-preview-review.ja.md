@@ -1,9 +1,9 @@
 ---
-status: active
+status: completed
 owner: maintainers
 last_verified: 2026-09-08
-translation_of: docs/exec-plans/active/process-destroy-preview-review.md
-source_sha256: dd95404b8e946983bb5a70cf1c042b52484ecf14dedab0ffc1db656ab6351520
+translation_of: docs/exec-plans/completed/process-destroy-preview-review.md
+source_sha256: 94fa2713245d91c69dc4be1f60159920c91b8223746d3f80f98f529cd2c40e70
 ---
 
 # Process destroyプレビューのレビュー対応
@@ -18,7 +18,7 @@ source_sha256: dd95404b8e946983bb5a70cf1c042b52484ecf14dedab0ffc1db656ab6351520
 
 - [x] (2026-09-08) レビュー、architecture、cleanup契約を確認。
 - [x] (2026-09-08) processプレビューを再現・修正・検証。
-- [ ] 修正をpushし、レビューThreadへ返信してResolve。
+- [x] (2026-09-08) 修正`45175dc`をpushし、レビューThreadへ返信してResolve。
 
 ## Surprises & Discoveries
 
@@ -31,6 +31,9 @@ processの観測経路は正しかったが、稼働中processのプレビュー
 ## Outcomes & Retrospective
 
 process専用分岐でnative識別情報確認、稼働中なら停止、log保持、tree全体の不在確認、専用状態削除を説明する。修正前に稼働中と終了済みのプレビューが失敗し、修正後は状態/forceの全6ケースが成功した。既存Androidプレビューの回帰も成功。
+
+
+修正`45175dc`をpushし、指摘1件のThreadに返信してResolveした。未解決の指摘はない。commit後の空白検査で新規Plan両方の末尾に余分な空行を検出したため、このarchive更新で履歴を書き換えず除去する。
 
 ## Context and Orientation
 
@@ -59,4 +62,3 @@ dry-runは安全に繰り返せる。公開履歴と実cleanupの意味を変更
 ## Interfaces and Dependencies
 
 新しいinterface、依存、OS固有動作、shell呼出は追加しない。
-

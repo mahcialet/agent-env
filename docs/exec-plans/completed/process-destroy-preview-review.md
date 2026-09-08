@@ -1,5 +1,5 @@
 ---
-status: active
+status: completed
 owner: maintainers
 last_verified: 2026-09-08
 ---
@@ -16,7 +16,7 @@ Correct PR #9 destroy previews for persistent processes on `feat/persistent-proc
 
 - [x] (2026-09-08) Inspect the review, architecture and cleanup contracts.
 - [x] (2026-09-08) Reproduce, fix and validate process preview behavior.
-- [ ] Push the correction and reply to and resolve the review thread.
+- [x] (2026-09-08) Push correction `45175dc`, reply to the review thread and resolve it.
 
 ## Surprises & Discoveries
 
@@ -29,6 +29,9 @@ Process inspection was routed correctly, but preview formatting fell through to 
 ## Outcomes & Retrospective
 
 The process case now reports native identity validation, termination if running, retained logs, whole-tree absence and private-state removal. Live and exited previews failed before the fix; all six state/force cases pass after it. Existing Android preview regression also passes.
+
+
+Correction `45175dc` is pushed; the sole review thread was replied to and resolved. No review findings remain open. A post-commit whitespace check found extra blank EOF lines in the new plan pair; this archive update removes them without rewriting history.
 
 ## Context and Orientation
 
@@ -57,4 +60,3 @@ Review: https://github.com/mahcialet/agent-env/pull/9#discussion_r3958123366
 ## Interfaces and Dependencies
 
 No new interfaces, dependencies, OS-specific behavior or shell invocation.
-
