@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/design-docs/standalone-distribution.md
-source_sha256: 5e07b4aaccbb927ab7e76292fb62ae64c4caa6f8010bdc220d22e9b54c12d811
+source_sha256: fdf53733afa90f5855359a46b4069b6c8c3ba961b81524eabd4f4b6f6054e706
 ---
 
 # スタンドアロン配布の設計
@@ -59,3 +59,8 @@ ZIP の UTC 拡張 timestamp は DOS フィールドで表現できない秒を�
 checksum 一覧はアーカイブのファイル名順とする。preview 検証は専用領域の `v0.1.0` tag を使い、
 呼び出し元や公開 ref を変更しない。実リリースの繰り返し検証は要求された実際の tag 識別情報を維持する。
 CI は tag をシェルへ展開せず、`AGENT_ENV_RELEASE_TAG` と `--tag-env` で渡す。
+
+release用Gitコマンドは子プロセス環境でglobal/systemのGit設定と外部属性を無効化し、
+専用cloneには空のGit templateを使う。外部のsmudge/process filterがコンパイラ入力を
+書き換え、clean filterがその変更を隠すことを防ぐ。ユーザーのGit設定自体は変更せず、
+releaseコマンドはglobal設定のcheckout filterに依存しない。

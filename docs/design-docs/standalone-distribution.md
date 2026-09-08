@@ -62,3 +62,9 @@ source tree clean for those commands. The checksum list is ordered by archive fi
 uses a private `v0.1.0` tag without modifying caller or public refs; production
 repeat verification retains the requested real tag identity. CI passes release
 tags through `AGENT_ENV_RELEASE_TAG` and `--tag-env`, not shell interpolation.
+
+Release Git commands disable global/system Git configuration and external
+attributes in their child-process environment. The private clone uses an empty
+Git template. This prevents ambient smudge/process filters from changing compiler
+inputs while clean filters conceal those changes. User Git configuration is never
+modified; no release command relies on a globally configured checkout filter.

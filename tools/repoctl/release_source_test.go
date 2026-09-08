@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -203,5 +204,77 @@ func TestReleaseGitIgnoresAmbientRepositoryRouting(t *testing.T) {
 	got, err = gitOut(clone, "rev-parse", "HEAD")
 	if err != nil || got != want {
 		t.Fatalf("ambient routing affected snapshot: %s %v", got, err)
+	}
+}
+
+func TestReleaseCheckoutFilterHelper(t *testing.T) {
+	mode := os.Getenv("AGENT_ENV_TEST_CHECKOUT_FILTER")
+	if mode == "" {
+		return
+	}
+	data, err := io.ReadAll(os.Stdin)
+	if err != nil {
+		os.Exit(2)
+	}
+	if len(os.Args) > 0 && os.Args[len(os.Args)-1] == "clean" {
+		data = []byte(strings.ReplaceAll(string(data), "filtered", "initial"))
+	} else {
+		data = []byte(strings.ReplaceAll(string(data), "initial", "filtered"))
+	}
+	if _, err = os.Stdout.Write(data); err != nil {
+		os.Exit(2)
+	}
+	os.Exit(0)
+}
+
+func TestPrivateReleaseSourceIgnoresAmbientCheckoutFilters(t *testing.T) {
+	for _, scope := range []string{"global", "system"} {
+		t.Run(scope, func(t *testing.T) {
+			root := sourceTestRepo(t)
+			commit := sourceTestGit(t, root, "rev-parse", "HEAD")
+			config := filepath.Join(t.TempDir(), "config")
+			attrs := filepath.Join(t.TempDir(), "attributes")
+			if err := os.WriteFile(attrs, []byte("tracked.txt filter=release-test\n"), 0644); err != nil {
+				t.Fatal(err)
+			}
+			executable, err := os.Executable()
+			if err != nil {
+				t.Fatal(err)
+			}
+			// Git filter commands use Git's shell interface; this fixture executes the
+			// native Go test binary, requiring no separate scripting runtime.
+			quoted := "'" + strings.ReplaceAll(filepath.ToSlash(executable), "'", "'\"'\"'") + "'"
+			for _, kv := range [][2]string{{"core.attributesFile", attrs}, {"filter.release-test.smudge", quoted + " -test.run=^TestReleaseCheckoutFilterHelper$ -- smudge"}, {"filter.release-test.clean", quoted + " -test.run=^TestReleaseCheckoutFilterHelper$ -- clean"}, {"filter.release-test.required", "true"}} {
+				sourceTestGit(t, root, "config", "--file", config, kv[0], kv[1])
+			}
+			t.Setenv("AGENT_ENV_TEST_CHECKOUT_FILTER", "1")
+			t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
+			t.Setenv("GIT_CONFIG_SYSTEM", os.DevNull)
+			t.Setenv("GIT_CONFIG_NOSYSTEM", "0")
+			if scope == "global" {
+				t.Setenv("GIT_CONFIG_GLOBAL", config)
+			} else {
+				t.Setenv("GIT_CONFIG_SYSTEM", config)
+			}
+			// Prove the external filter actually changes bytes while status stays clean.
+			control := filepath.Join(t.TempDir(), "control")
+			sourceTestGit(t, root, "clone", "--no-hardlinks", "--", root, control)
+			changed, err := os.ReadFile(filepath.Join(control, "tracked.txt"))
+			if err != nil || string(changed) != "filtered\n" {
+				t.Fatalf("inactive filter fixture: %q %v", changed, err)
+			}
+			if status := sourceTestGit(t, control, "status", "--porcelain"); status != "" {
+				t.Fatalf("filter fixture is dirty: %s", status)
+			}
+			clone, cleanup, err := privateReleaseSource(root, commit, "v0.1.0")
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer cleanup()
+			got, err := os.ReadFile(filepath.Join(clone, "tracked.txt"))
+			if err != nil || string(got) != "initial\n" {
+				t.Fatalf("release source transformed by ambient %s filter: %q %v", scope, got, err)
+			}
+		})
 	}
 }

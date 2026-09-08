@@ -14,7 +14,7 @@ import (
 var releaseTag = regexp.MustCompile(`^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$`)
 
 func gitOut(root string, args ...string) (string, error) {
-	cmd := exec.Command("git", append([]string{"--no-replace-objects"}, args...)...)
+	cmd := exec.Command("git", append([]string{"--no-replace-objects", "-c", "core.attributesFile=" + os.DevNull}, args...)...)
 	cmd.Dir = root
 	cmd.Env = releaseGitEnv()
 	b, err := cmd.Output()
@@ -24,9 +24,9 @@ func gitOut(root string, args ...string) (string, error) {
 	return strings.TrimSpace(string(b)), nil
 }
 
-// Keep normal executable lookup and authentication while preventing ambient Git
-// repository routing (including routing injected through config) from overriding
-// the explicitly selected repository.
+// Preserve executable lookup, but isolate release Git from ambient repository
+// routing, global/system configuration and external attributes. A clean filter
+// can otherwise conceal checkout transformations from source validation.
 func releaseGitEnv() []string {
 	blocked := map[string]bool{
 		"GIT_DIR": true, "GIT_COMMON_DIR": true, "GIT_WORK_TREE": true,
@@ -34,6 +34,8 @@ func releaseGitEnv() []string {
 		"GIT_ALTERNATE_OBJECT_DIRECTORIES": true, "GIT_NAMESPACE": true,
 		"GIT_CEILING_DIRECTORIES": true, "GIT_DISCOVERY_ACROSS_FILESYSTEM": true,
 		"GIT_CONFIG": true, "GIT_CONFIG_PARAMETERS": true, "GIT_CONFIG_COUNT": true,
+		"GIT_CONFIG_GLOBAL": true, "GIT_CONFIG_SYSTEM": true, "GIT_CONFIG_NOSYSTEM": true,
+		"GIT_ATTR_NOSYSTEM": true, "GIT_ATTR_SOURCE": true, "GIT_TEMPLATE_DIR": true,
 	}
 	env := []string{}
 	for _, variable := range os.Environ() {
@@ -43,7 +45,7 @@ func releaseGitEnv() []string {
 			env = append(env, variable)
 		}
 	}
-	return env
+	return append(env, "GIT_CONFIG_GLOBAL="+os.DevNull, "GIT_CONFIG_SYSTEM="+os.DevNull, "GIT_CONFIG_NOSYSTEM=1", "GIT_ATTR_NOSYSTEM=1")
 }
 
 // privateReleaseSource checks out committed objects into an owned clone. Ignored
@@ -71,7 +73,7 @@ func privateReleaseSource(root, commit, tag string) (string, func(), error) {
 	cleanup := func() { _ = os.RemoveAll(workspace) }
 	clone := filepath.Join(workspace, "source")
 	fail := func(err error) (string, func(), error) { cleanup(); return "", noop, err }
-	if _, err := gitOut(root, "clone", "--no-hardlinks", "--no-tags", "--no-checkout", "--", root, clone); err != nil {
+	if _, err := gitOut(root, "clone", "--template=", "--no-hardlinks", "--no-tags", "--no-checkout", "--", root, clone); err != nil {
 		return fail(err)
 	}
 	if _, err := gitOut(clone, "-c", "core.autocrlf=false", "checkout", "--detach", commit); err != nil {
