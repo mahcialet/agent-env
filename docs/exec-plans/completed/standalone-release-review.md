@@ -1,5 +1,5 @@
 ---
-status: active
+status: completed
 owner: maintainers
 last_verified: 2026-09-08
 ---
@@ -17,7 +17,7 @@ Address PR #7 thread PRRT_kwDOURHsR86gHJ1z: allow a new release output inside a 
 - [x] 2026-09-08: Inspected clean branch and the unresolved review thread.
 - [x] 2026-09-08: Real six-target regression failed before the fix with the clean-tree diagnostic.
 - [x] 2026-09-08: External construction and destination-local publication pass real-candidate, cleanup, source-guard, harness and repoctl race checks.
-- [ ] Push, reply and resolve the thread.
+- [x] 2026-09-08: Pushed fix 6912ec6, replied in discussion_r3954818214 and confirmed the thread resolved.
 
 ## Surprises & Discoveries
 
@@ -31,7 +31,7 @@ The first attempt reused an older candidate and correctly failed identity verifi
 
 ## Outcomes & Retrospective
 
-Not completed.
+Completed on 2026-09-08. Commit `6912ec6` fixes non-ignored worktree output without excluding source changes from cleanliness checks. The real regression fails before and passes after; existing bytes, source guards and owned cleanup remain covered. Independent read-only review found no confirmed material regression. The single reviewed thread was answered and resolved. Both language versions are archived; hosted CI is separate from the successful local evidence recorded below.
 
 ## Context and Orientation
 

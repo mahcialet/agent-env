@@ -1,9 +1,9 @@
 ---
-status: active
+status: completed
 owner: maintainers
 last_verified: 2026-09-08
-translation_of: docs/exec-plans/active/standalone-release-review.md
-source_sha256: 4c9ffcefb3952576275eb5adfd32a34abd8cac2f458a6cdfa006f8740e41c375
+translation_of: docs/exec-plans/completed/standalone-release-review.md
+source_sha256: 5732f6d58efec9c6823c35c43bc915bb75d53989b4849969103d4d6da1ee7bc0
 ---
 
 # PRレビュー後のリリース出力stagingを修正する
@@ -19,7 +19,7 @@ PR #7 の thread PRRT_kwDOURHsR86gHJ1z に対応する。dirty source の検査�
 - [x] 2026-09-08: cleanなブランチと未解決threadを確認。
 - [x] 2026-09-08: 6ターゲットの回帰テストが修正前にclean-tree診断で失敗した。
 - [x] 2026-09-08: ツリー外の生成と出力先隣での配置を実装し、実候補・cleanup・source guard・harness・repoctl raceが成功。
-- [ ] push・返信・Resolveを行う。
+- [x] 2026-09-08: 修正6912ec6をpushし、discussion_r3954818214へ返信してResolveを確認。
 
 ## Surprises & Discoveries
 
@@ -33,7 +33,7 @@ PR #7 の thread PRRT_kwDOURHsR86gHJ1z に対応する。dirty source の検査�
 
 ## Outcomes & Retrospective
 
-未完了。
+2026-09-08完了。commit `6912ec6` で、source変更をclean検査から除外せず、非ignoreの作業ツリー内へ出力できるようにした。実回帰テストは修正前に失敗し、修正後に成功。既存bytes、source guard、所有する一時領域のcleanupも検証した。独立した読み取りレビューで重大な問題は確認されなかった。対象1threadへ返信してResolve済み。英日版をarchivalし、hosted CIと下記の成功済みローカル証拠を区別する。
 
 ## Context and Orientation
 
