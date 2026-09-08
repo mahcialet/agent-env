@@ -125,3 +125,8 @@ On Windows, publication uses MoveFileEx without replacement. A losing writer
 verifies and reuses the winner; it never replaces a file another reader may have
 open. Unix uses atomic rename of identical content. Embedded fixture bytes are
 marked -text in Git attributes to prevent checkout newline conversion.
+
+Windows verification uses Go file reads (preserving long-path support) and retries
+only sharing/lock violations every 10 ms for at most two seconds. Other open errors and byte
+mismatches fail immediately. The limit avoids treating permanent interference as
+success and does not promise progress against a hostile state-directory writer.

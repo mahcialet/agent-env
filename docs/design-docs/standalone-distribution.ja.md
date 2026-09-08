@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/design-docs/standalone-distribution.md
-source_sha256: 6f6a168cfdc228cdbba9f2b9ed58eca3cffad222580b0c09141c205ab9fba24d
+source_sha256: 12c0adc8716420d5f3c51c351185b66fe30f8ad38bb35bff1bab0e3079bb4285
 ---
 
 # スタンドアロン配布の設計
@@ -123,3 +123,8 @@ Windowsでは置換フラグなしのMoveFileExで公開します。先行する
 完了していれば内容を検証して再利用し、別の読み取りが開いているファイルを
 置き換えません。Unixでは同一内容をatomic renameします。埋め込みfixtureは
 Git属性の-textを指定し、checkout時の改行変換を防ぎます。
+
+Windowsでの内容検証は長いパスに対応するGoのファイル読み取りを使い、
+共有/lock違反だけを10ms間隔、最大2秒で再試行します。他のopenエラーと内容不一致は直ちに失敗します。
+期限を設けることで永続的な干渉を成功と扱わず、状態ディレクトリに対する
+悪意ある書き込みがある状況での進行も保証しません。

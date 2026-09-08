@@ -9,3 +9,5 @@ import "os"
 func publishAsset(source, destination string) error {
 	return os.Rename(source, destination)
 }
+
+func readAsset(path string) ([]byte, error) { return os.ReadFile(path) }

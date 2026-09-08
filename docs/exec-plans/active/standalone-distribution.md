@@ -145,6 +145,8 @@ revision and outcome at each meaningful checkpoint.
 
 ## Surprises & Discoveries
 
+- 2026-09-08: The first Windows fix (`611da29`, native run 34196522199) eliminated fixture/replace errors but still reproduced transient read sharing violations from competing publication calls. No-replace alone is insufficient; add bounded handling of Windows sharing/lock violations with deterministic held-handle regressions. Permanent permissions, missing files and content mismatches must still fail.
+
 - 2026-09-08: Native Windows CI 34196175504 exposed two gaps hidden by Linux/macOS: Git autocrlf changed the embedded fixture from 17 to 18 bytes, and replacing an already published immutable file caused sharing/access-denied failures under stress. Preserve fixture bytes with a scoped -text attribute and publish without replacement on Windows; keep the same stress assertions. Native revalidation is required.
 
 - 2026-09-08: Resumption at merge `16afc83` found three gaps using new regressions: concurrent asset mkdir rejected legitimate EEXIST winners (five child failures), an absolute state override still needed HOME, and UI helper staging used OS temporary storage on both install success/error. Fixed each without weakening checks. Asset race stress passed ten repetitions: 120 children, 10,800 materializations, 300 fresh roots. Intermediate combined tests saw duplicate AssetInfo while files were being integrated and the intentionally failing staging test; final validation must use the integrated tree.
@@ -238,29 +240,44 @@ Preserve failed approaches when they influence the final design.
 
 ## Outcomes & Retrospective
 
-2026-09-08 child reconciliation: release engineering is complete at `641cb49`.
-The child acceptance evidence is mapped into S1/S2, S6–S10, S15–S24 below.
-This parent remains active: S3, the asset inventory portion of S4/S13, S11
-cross-process stress, S14's broader persistent-path audit and S25's future helper
-contract still require direct evidence. No completed child is a substitute for
-those remaining parent checks.
+Implementation and local validation finished on 2026-09-08 at `611da29`.
+Final native CI is pending before archival.
 
-Not completed.
+The completed child supplies strict Git-tag validation, isolated immutable build
+sources, static artifact validation and GitHub Release publication gates. The
+parent adds honest lazy prerequisite checks, explicit CLI inventory, deterministic
+embedded fixture/concurrent materialization evidence and the persistent-path audit.
 
-At completion summarize:
+All Windows/macOS/Linux amd64/arm64 archives contain a versioned top-level directory
+with the executable, LICENSE and README.txt. Git `v<major>.<minor>.<patch>` is the only
+release-version authority: HEAD must equal the unique canonical tag, tracked/index/
+untracked source must be clean, and requested version must equal the tag without v.
+Go 1.27.1 and tagged-commit timestamps produce eight byte-identical candidate files
+across two independent builds. Runtime linker identity and ReleaseRecord expose
+version/commit/dirty/platform/build provenance without needing the source tree.
 
-- final release target matrix;
-- artifact/archive naming and layout;
-- version/tag policy;
-- binary/build provenance model;
-- bundled-asset design;
-- state-root behavior;
-- deterministic/reproducibility evidence and limitations;
-- native smoke-test evidence;
-- GitHub Release workflow behavior;
-- platform distribution gaps;
-- follow-up work for signing/notarization/package managers/SBOM;
-- impact on the upcoming `android-ui-observer` plan.
+Production assets remain explicitly empty. The test-only go:embed fixture proves
+the generic Describe/Materialize path without a target app or downloader. Windows
+uses no-replace publication and verifies the winning bytes; Unix atomically renames
+identical content. Inventory remains state-free. Absolute AGENT_ENV_HOME works
+without home discovery, and owned temporary APKs now stay with the runtime. The
+design audit explicitly excludes external-tool-owned Git registration/caches.
+
+Native release smoke covers Linux/amd64, Windows/amd64 and macOS/arm64; the other
+three tuples have cross-build/static evidence only. It checks version/help/list
+outside source with empty PATH and Unicode/space paths. Release workflow publishes
+the already-validated candidate after native gates, without rebuilding. No public
+tag or Release was created by this work; preview v0.1.0 is private test input.
+
+The key lesson is that Linux race testing alone missed Windows replacement-sharing
+semantics and Git newline conversion. Native CI caught both; scoped byte attributes
+and no-replace Windows publication fixed them without relaxing the stress test.
+A separate reviewer found no confirmed production defect after both revisions.
+
+Signing, notarization, package managers, SBOM/attestations and additional native
+architectures remain explicitly future work. Android UI observation may consume
+embedded bytes through this contract, but actual helper embedding requires its own
+license/version/inventory change; no lifecycle responsibility moved into Flutter.
 
 ## Context and Orientation
 
@@ -609,23 +626,23 @@ assets come from the installed executable.
 
 ## Artifacts and Notes
 
-2026-09-08 parent validation at `8eb92d528c8d0f49f15b7a5c99e6a99f08c7c042`,
+2026-09-08 parent validation at `611da29b2661f94d7556137e727d8e443dab4cfc`,
 Go 1.27.1, private preview `v0.1.0` (no public tag):
-`go run ./tools/repoctl release-verify --out dist/parent-final-candidate` passed
+`go run ./tools/repoctl release-verify --out dist/parent-windows-candidate` passed
 all six builds twice, eight byte-identical files and Linux/amd64 native smoke.
-`AGENT_ENV_RELEASE_CANDIDATE=../../dist/parent-final-candidate go test ./tools/repoctl -run TestReleaseCandidate -count=1 -v`
+`AGENT_ENV_RELEASE_CANDIDATE=../../dist/parent-windows-candidate go test ./tools/repoctl -run TestReleaseCandidate -count=1 -v`
 passed all 18 cases. Manual archive inspection found exactly three regular members
 per versioned prefix: executable, LICENSE (1066 bytes), README.txt (666 bytes).
 Production bundled assets: 0, 0 bytes. Local preview artifact evidence:
 
 | Target | Archive bytes | Archive SHA-256 |
 | --- | --- | --- |
-| windows/amd64 | 5987108 | `9be4d04228ca32af770ad5670a0e2b09e3dd936a9c7ee83593841b610348583f` |
-| windows/arm64 | 5480060 | `3c2c1234eb76f5d98549b582e9b05c6d87ae8f466547d7cd521170d140e09cb0` |
-| darwin/amd64 | 5841444 | `2713340792056c9ff8da31a34fb7148ddfb42519eeaa71c0929cd42d6ab88433` |
-| darwin/arm64 | 5529771 | `4071f2711ad111a2a9b323f46f74129e715f3b520d50d3956e5cb695243a5ed1` |
-| linux/amd64 | 5776247 | `0e6cdb1fe1e2f948231743e7c373fec6293e2434826b76f0c4506f58ce1a8e09` |
-| linux/arm64 | 5354856 | `a5570300a648eb9668f4001ca87cc47c7f85079c82b2d79b2eb440d271f18045` |
+| windows/amd64 | 5987112 | `0ff631598dfc22c96c3a305832048b54b300eea7996ef4fbde7f032b75aec081` |
+| windows/arm64 | 5480061 | `f7b25a14b50100f060603a175088a33c4e871a39cbbc2e87e5d3f55ad4397efb` |
+| darwin/amd64 | 5841444 | `0032a9a3dba329d56cb5f3a27891791c4001abe0f2b7ba9da72d5da7135ec15f` |
+| darwin/arm64 | 5529774 | `7f2a3f2cf96e80066f071e5268c6383c64f0e44ca0a9e83b14283bd35292eb0d` |
+| linux/amd64 | 5776255 | `af0e7a1c43470d9d21db95b4e0d58e249e4fe5c707952a82c2c411d39f2c8bf9` |
+| linux/arm64 | 5354865 | `a5d8ebb075c20d46a560bbdf27b220e1b16c7dffc94302f052f0e316d3f7b9a9` |
 
 Development release output should be ignored by Git, for example:
 

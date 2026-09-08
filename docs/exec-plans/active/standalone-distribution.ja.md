@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/exec-plans/active/standalone-distribution.md
-source_sha256: 60725e66ffbea6531166801e64f4f367092b9ce10519e7d189a8c1b26041736c
+source_sha256: 9cd165330ba01c280543f9a06ba69540cb4f500d8d66c9a1cbc80f9e071bf1ae
 ---
 
 # agent-env をクロスプラットフォームのスタンドアロン配布物にする
@@ -129,6 +129,8 @@ compatibility burdenが小さい今の段階では、長期standalone contract�
 
 ## 想定外の発見
 
+- 2026-09-08: Windows初回修正（`611da29`、native run 34196522199）はfixture/置換エラーを解消したが、公開操作の競合による一時的な読み取り共有違反が残った。置換禁止だけでは不十分なため、Windowsの共有/lock違反だけを期限付きで扱い、handleを保持する回帰テストを追加する。永続的な権限エラー、ファイル不在、内容不一致は引き続き失敗させる。
+
 - 2026-09-08: Windows native CI 34196175504でLinux/macOSでは見えない2件を検出。Git autocrlfが埋め込みfixtureを17から18バイトへ変換し、公開済み不変ファイルの置換がstress時に共有/access deniedエラーを起こした。fixture限定の-text属性でバイト列を維持し、Windowsでは置換しない公開を使う。同じstress検証を維持し、nativeで再検証する。
 
 - 2026-09-08: merge `16afc83` からの再開時に回帰テストで3件を発見。同時asset mkdirが正常な先行作成を拒否し5子プロセスが失敗、絶対パスoverrideでもHOMEが必要、UI helperの一時コピーがinstall成功時・失敗時ともOS一時領域に作成されていた。検証条件を弱めず修正。asset race stressは10反復、120子プロセス、10,800展開、300新規rootで成功。統合途中のテストはAssetInfo重複宣言と意図したstaging回帰で失敗したため、統合後に最終検証する。
@@ -211,28 +213,45 @@ compatibility burdenが小さい今の段階では、長期standalone contract�
 
 ## 成果と振り返り
 
-2026-09-08 子との照合: `641cb49` でリリース工程を完了した。子の受け入れ証拠を
-下記の S1/S2、S6–S10、S15–S24 に対応付けた。親はactiveのままとし、S3、
-S4/S13のasset一覧、S11のcross-process stress、S14の広範な永続パスaudit、
-S25の将来helper契約は直接的な証拠を引き続き必要とする。子の完了をこれらの
-親の検証の代わりにしない。
+実装とlocal検証は2026-09-08の `611da29` で完了しました。
+archival前の最終native CIを待っています。
 
-未完了。
+完了した子Planは、厳密なGit tag検証、隔離した不変のbuild source、静的な
+成果物検証、GitHub Release公開のgateを提供します。親Planでは前提ツールの
+遅延チェック、CLIの明示的な一覧、deterministicな埋め込みfixtureと並行展開の
+証拠、永続パス監査を追加しました。
 
-完了時にまとめる。
+Windows/macOS/Linuxのamd64/arm64全archiveは、version付き最上位ディレクトリ
+に実行ファイル、LICENSE、README.txtを含みます。Gitの
+`v<major>.<minor>.<patch>` だけがrelease versionの根拠です。HEADは唯一の
+正式形式tagと一致し、tracked/index/untracked sourceはcleanで、指定versionは
+tagからvを除いた値と一致する必要があります。Go 1.27.1とtagged commitの時刻を
+使い、独立した2回のbuildでcandidateの8ファイルがバイト一致しました。
+linker識別情報とReleaseRecordにより、source treeなしでversion、commit、dirty、
+platform、buildの由来を確認できます。
 
-- release target matrix
-- archive naming/layout
-- version/tag policy
-- binary/build provenance
-- bundled asset design
-- state-root behavior
-- determinism/reproducibility evidenceと制約
-- native smoke evidence
-- GitHub Release workflow
-- platform distribution gap
-- signing/notarization/package manager/SBOM follow-up
-- `android-ui-observer`への影響
+製品の同梱アセットは明示的に空です。テスト専用go:embed fixtureで、対象appや
+ダウンローダーなしの汎用Describe/Materializeを検証しました。Windowsは置換なしで
+公開して先行保存の内容を検証し、Unixは同一内容をatomic renameします。
+一覧取得は状態を作成しません。絶対パスのAGENT_ENV_HOMEはhome探索なしで使え、
+所有する一時APKはruntime内に保存します。designの監査は、外部ツールが所有する
+Git登録情報やキャッシュを明確に区別しています。
+
+native release smokeはLinux/amd64、Windows/amd64、macOS/arm64を対象とし、
+残る3tupleはcross-buildと静的検証だけです。source外、空PATH、Unicodeと空白を
+含むパスでversion/help/listを確認します。release workflowはnative gateを通った
+candidateを再buildせず公開します。今回の作業では公開tagもReleaseも作成して
+いません。previewのv0.1.0はprivateなテスト入力です。
+
+主な教訓は、Linuxのrace検証だけではWindowsの置換時の共有制約とGit改行変換を
+検出できなかったことです。native CIで両方を検出し、fixture限定の属性とWindowsの
+置換なし公開で、stress条件を弱めず修正しました。別担当による両revisionの
+production変更レビューで、確認済み不具合はありません。
+
+署名、notarization、package manager、SBOM/attestation、追加native architectureは
+明示的な後続作業です。Android UI観測はこの契約で埋め込みを利用できますが、
+実際のhelper同梱にはライセンス・version・一覧を揃えた別変更が必要です。
+lifecycleの責務をFlutterへ移していません。
 
 ## 背景と構成
 
@@ -478,23 +497,23 @@ repoctlはtag作成/移動/削除/force updateしない。missing embedded asset
 
 ## 成果物と注記
 
-2026-09-08の親検証は `8eb92d528c8d0f49f15b7a5c99e6a99f08c7c042`、
+2026-09-08の親検証は `611da29b2661f94d7556137e727d8e443dab4cfc`、
 Go 1.27.1、private preview `v0.1.0` を使用（公開tagなし）。
-`go run ./tools/repoctl release-verify --out dist/parent-final-candidate` は
+`go run ./tools/repoctl release-verify --out dist/parent-windows-candidate` は
 6ターゲット各2回、8ファイルのバイト一致、Linux/amd64 native smokeに成功。
-`AGENT_ENV_RELEASE_CANDIDATE=../../dist/parent-final-candidate go test ./tools/repoctl -run TestReleaseCandidate -count=1 -v`
+`AGENT_ENV_RELEASE_CANDIDATE=../../dist/parent-windows-candidate go test ./tools/repoctl -run TestReleaseCandidate -count=1 -v`
 は全18ケース成功。archiveを直接確認し、version付きprefix内の通常ファイルが
 実行ファイル、LICENSE（1066バイト）、README.txt（666バイト）の3件と確認。
 製品の同梱アセットは0件・0バイト。local previewの成果物証拠:
 
 | Target | Archive bytes | Archive SHA-256 |
 | --- | --- | --- |
-| windows/amd64 | 5987108 | `9be4d04228ca32af770ad5670a0e2b09e3dd936a9c7ee83593841b610348583f` |
-| windows/arm64 | 5480060 | `3c2c1234eb76f5d98549b582e9b05c6d87ae8f466547d7cd521170d140e09cb0` |
-| darwin/amd64 | 5841444 | `2713340792056c9ff8da31a34fb7148ddfb42519eeaa71c0929cd42d6ab88433` |
-| darwin/arm64 | 5529771 | `4071f2711ad111a2a9b323f46f74129e715f3b520d50d3956e5cb695243a5ed1` |
-| linux/amd64 | 5776247 | `0e6cdb1fe1e2f948231743e7c373fec6293e2434826b76f0c4506f58ce1a8e09` |
-| linux/arm64 | 5354856 | `a5570300a648eb9668f4001ca87cc47c7f85079c82b2d79b2eb440d271f18045` |
+| windows/amd64 | 5987112 | `0ff631598dfc22c96c3a305832048b54b300eea7996ef4fbde7f032b75aec081` |
+| windows/arm64 | 5480061 | `f7b25a14b50100f060603a175088a33c4e871a39cbbc2e87e5d3f55ad4397efb` |
+| darwin/amd64 | 5841444 | `0032a9a3dba329d56cb5f3a27891791c4001abe0f2b7ba9da72d5da7135ec15f` |
+| darwin/arm64 | 5529774 | `7f2a3f2cf96e80066f071e5268c6383c64f0e44ca0a9e83b14283bd35292eb0d` |
+| linux/amd64 | 5776255 | `af0e7a1c43470d9d21db95b4e0d58e249e4fe5c707952a82c2c411d39f2c8bf9` |
+| linux/arm64 | 5354865 | `a5d8ebb075c20d46a560bbdf27b220e1b16c7dffc94302f052f0e316d3f7b9a9` |
 
 development output例:
 

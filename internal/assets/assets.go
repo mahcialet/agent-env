@@ -34,7 +34,7 @@ func Materialize(root string, info AssetInfo, data []byte) (string, error) {
 		if st.Mode()&os.ModeSymlink != 0 || !st.Mode().IsRegular() {
 			return "", fmt.Errorf("asset path is not regular")
 		}
-		got, err := os.ReadFile(path)
+		got, err := readAsset(path)
 		if err != nil {
 			return "", err
 		}
@@ -62,8 +62,11 @@ func Materialize(root string, info AssetInfo, data []byte) (string, error) {
 	}
 	if err = publishAsset(tmpPath, path); err != nil {
 		if st, statErr := os.Lstat(path); statErr == nil && st.Mode().IsRegular() {
-			got, readErr := os.ReadFile(path)
-			if readErr == nil && string(got) == string(data) {
+			got, readErr := readAsset(path)
+			if readErr != nil {
+				return "", readErr
+			}
+			if string(got) == string(data) {
 				return path, nil
 			}
 		}
