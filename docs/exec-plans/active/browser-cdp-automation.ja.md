@@ -1,5 +1,5 @@
 ---
-source_sha256: 2e17771726a8825507c5e1bd2cf917327d971e43a6ceee6aad2070237a3cb77c
+source_sha256: 700ead5706a561f1310bfeaf3adaa34b050b7466c724de75a761765f4340db41
 translation_of: docs/exec-plans/active/browser-cdp-automation.md
 status: active
 owner: maintainers
@@ -146,6 +146,17 @@ Windows/macOSのbrowser実行と公開最終CIは未完了のため、Planはact
 
 ## 想定外の発見
 
+- 2026-09-08 — 最初の公開CI（`506ed3286e66fe0602c3d68189cbca5a13164dc6`）では
+  3 OSともnative browser受け入れに失敗した
+  （[run 34233867023](https://github.com/mahcialet/agent-env/actions/runs/34233867023)）。
+  macOSはChrome 152.0.7977.82 / CDP 1.3まで到達したが、空文字列への置換の一致検証に失敗。
+  Windowsも同versionまで到達したが、保存console証拠のprivacy検査に失敗。
+  Linuxはbrowser HTTP readinessに失敗した。原因を調査中であり、platformの成功証拠ではない。
+- 最初のVerifyでも、macOS / Go 1.26.7の既存`TestHTTPReadinessAndObservedHealth`が失敗した。
+  成功応答を確認する段階で既存の20 ms probe timeoutを超えた。readiness実装とtestは
+  開始revisionから変更していない。local raceで30回反復成功したが、macOSでの成功証拠ではない。
+  失敗履歴を保持し、最終CIの成功を確認する。
+
 - 独立reviewのP1：lease fence喪失後、redaction前のprovider observationがerror resultに残り得た。
   この経路ではobservation出力を消去し、`TestBrowserLockLossDoesNotExposeObservation`でraw secretが出ないことを検証。
   fenceを失った所有者は状態を確定しない。
@@ -174,6 +185,23 @@ OS executable差、WebSocket teardown等を記録する。
 dynamic page対応のためidentity/stale checkを弱めない。
 
 ## 判断の記録
+
+- 2026-09-08 — 非公開の全選択keydownでCDPの明示的な`selectAll`編集commandを送る。
+  native Inputと入力後の一時的な一致検証を維持する。macOSではplatform shortcutだけでは
+  空でないtextを確実に全選択できなかった。Linux/macOS/Windowsのkeydownとkeyupの
+  protocol上の動作を回帰testで検証する。
+- Windowsのnative process birth proofには意図的にUnicode guardian pathが含まれる。
+  広い`日本語`部分文字列検査は、その信頼されたpathを入力textと誤認した。
+  固有の入力prefixを使用し、decodeしたJSON文字列から実際の入力Unicode文字列
+  （引用符とbackslashを含む）を検査する。escape済みsecretを検出し、正当なproof pathは
+  許容する回帰testを追加した。実装側のredactionと受け入れ要件は変更しない。
+- native test失敗時、lease cleanup前にprocess診断を取得してLinuxのChrome起動の証拠を残す。
+  readiness timeoutだけを根拠にsandboxを無効化したりhost policyを変えたりしない。
+
+CI修正checkpoint: adapter race test成功（1.415秒）。全選択修正後のLinux実browser
+受け入れは成功（8.762秒）。強化したprivacy検査と失敗時診断も成功（8.243秒）。
+macOS/WindowsおよびLinuxのnative CIは未完了。既存のmacOS readiness test失敗は、
+同じ公開commitで再実行中。timeoutやreadiness assertionは緩めていない。
 
 - 2026-09-08 — 実装判断：`browsers.<name>`に`type: chromium-cdp`、`runtime`、`cdp_port`を定義。
   既存process runtimeの名前付きTCP portへ結び付け、1 runtimeにつきbindingは1つ。

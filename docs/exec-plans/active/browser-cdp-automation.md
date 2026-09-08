@@ -217,6 +217,19 @@ browser execution and published final CI remain pending; this plan stays active.
 
 ## Surprises & Discoveries
 
+- 2026-09-08 — First published CI at `506ed3286e66fe0602c3d68189cbca5a13164dc6`
+  failed native browser acceptance on all three platforms
+  ([run 34233867023](https://github.com/mahcialet/agent-env/actions/runs/34233867023)).
+  macOS reached Chrome 152.0.7977.82 / CDP 1.3 but empty text replacement failed
+  equality readback; Windows reached the same version but the persisted-console
+  privacy assertion failed; Linux failed the browser HTTP readiness probe. These
+  failures are under investigation, not accepted platform evidence.
+- The first Verify run also failed unchanged `TestHTTPReadinessAndObservedHealth`
+  on macOS / Go 1.26.7: its successful-response phase exceeded the existing 20 ms
+  probe timeout. Neither readiness implementation nor that test differs from the
+  starting revision. Thirty local race repetitions passed; this does not establish
+  a native macOS pass. Keep the failure visible and require successful final CI.
+
 - Independent review found P1: after a lost lease fence, raw provider observation
   could remain in the error result before redaction. The app now clears observation
   output on this path; `TestBrowserLockLossDoesNotExposeObservation` verifies the
@@ -255,6 +268,26 @@ executable differences.
 Do not weaken identity or stale-reference checks to make dynamic pages easier.
 
 ## Decision Log
+
+- 2026-09-08 — Send CDP's explicit `selectAll` editing command on the private
+  selection keydown, retaining native Input events and transient equality readback.
+  A platform accelerator alone did not reliably select nonempty text on macOS.
+  Protocol regression covers Linux/macOS/Windows keydown and keyup semantics.
+- Windows native process birth proof intentionally includes a Unicode guardian
+  path. A broad `日本語` substring assertion confused that trusted path with entered
+  text. Use a distinct input prefix and scan decoded JSON string values for the
+  actual entered Unicode string (including quotes/backslashes), with regression
+  coverage proving escaped secrets are detected and legitimate proof paths accepted.
+  Production redaction and its acceptance requirement remain unchanged.
+- Add failed-native-test process diagnostics before lease cleanup to obtain Linux
+  Chrome startup evidence. Do not disable the sandbox or change host policy based
+  only on a readiness timeout.
+
+CI repair checkpoint: adapter race tests passed (1.415 s); real Linux browser
+acceptance after the selection change passed (8.762 s), and strengthened privacy
+checks plus failure diagnostics passed (8.243 s). Native macOS/Windows and Linux
+CI remain pending. The failed unchanged macOS readiness test is being rerun on
+the same published commit; no timeout or readiness assertion has been relaxed.
 
 - 2026-09-08 — Implementation: adopt `browsers.<name>` with `type: chromium-cdp`,
   `runtime` and `cdp_port`. Each binding owns one existing process runtime's named

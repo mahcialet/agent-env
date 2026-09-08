@@ -171,6 +171,10 @@ stacks:
 			return
 		}
 		for _, l := range leases {
+			if t.Failed() {
+				diagnostic, logErr := invoke("logs", l.ID)
+				t.Logf("fixture process diagnostics lease=%s error=%v: %s", l.ID, logErr, diagnostic)
+			}
 			if _, err := invoke("destroy", l.ID, "--force"); err != nil {
 				retain = true
 				t.Errorf("cleanup %s: %v", l.ID, err)
@@ -275,7 +279,7 @@ stacks:
 		t.Helper()
 		return call(op, append([]string{"--page", page, "--snapshot", s.ID, "--node", n.Ref}, args...)...)
 	}
-	unicode := "日本語 🧪 café ' \\\""
+	unicode := "入力秘匿 日本語 🧪 café ' \\\""
 	typed := action("set-text", s, find(s, "textbox", "Unicode text"), "--text", unicode)
 	if !typed.Observation.ReadbackEqual {
 		t.Fatalf("Unicode readback failed: %+v", typed)
@@ -426,8 +430,7 @@ stacks:
 		if err = json.Unmarshal(data, &body); err != nil {
 			t.Fatal(err)
 		}
-		normalized, _ := json.Marshal(body)
-		if bytes.Contains(normalized, []byte("日本語")) {
+		if browserEvidenceContainsText(body, unicode) || browserEvidenceContainsText(body, "入力秘匿") {
 			t.Fatal("prior text persisted in console evidence")
 		}
 	}
@@ -523,5 +526,45 @@ stacks:
 				t.Fatalf("profile/state retained after confirmed destroy: %s %v", r.Name, err)
 			}
 		}
+	}
+}
+
+// Inspect decoded JSON strings so escaped quotes, backslashes and Unicode cannot
+// hide the entered text. Native identities may legitimately include Unicode paths.
+func browserEvidenceContainsText(value any, text string) bool {
+	switch value := value.(type) {
+	case string:
+		return strings.Contains(value, text)
+	case []any:
+		for _, child := range value {
+			if browserEvidenceContainsText(child, text) {
+				return true
+			}
+		}
+	case map[string]any:
+		for key, child := range value {
+			if strings.Contains(key, text) || browserEvidenceContainsText(child, text) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func TestBrowserEvidenceSecretDetection(t *testing.T) {
+	secret := "入力秘匿 日本語 🧪 café ' \\\""
+	encoded, err := json.Marshal(map[string]any{"nested": []any{map[string]string{"text": secret}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var decoded any
+	if err := json.Unmarshal(encoded, &decoded); err != nil {
+		t.Fatal(err)
+	}
+	if !browserEvidenceContainsText(decoded, secret) {
+		t.Fatal("escaped Unicode input escaped evidence check")
+	}
+	if browserEvidenceContainsText(map[string]any{"birth": "job|1|name|birth|C:\\Temp\\agent-env-browser-日本語-fixture\\proof"}, secret) {
+		t.Fatal("Unicode native identity mistaken for input")
 	}
 }

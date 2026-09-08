@@ -24,6 +24,6 @@ jobs:
           install-dependencies: true
           install-chromedriver: false
       - name: Run real lease-owned Browser/CDP integration
-        run: go test -tags=browserintegration ./internal/cli -run '^TestBrowserNativeCLI$' -count=1 -v -timeout=12m
+        run: go test -tags=browserintegration ./internal/cli -run '^TestBrowser(NativeCLI|EvidenceSecretDetection)$' -count=1 -v -timeout=12m
         env:
           AGENT_ENV_BROWSER_EXECUTABLE: ${{ steps.chrome.outputs.chrome-path }}

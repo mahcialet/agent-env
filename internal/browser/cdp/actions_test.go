@@ -2,6 +2,7 @@ package cdp
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -205,5 +206,55 @@ func TestAXStatesRejectArbitraryText(t *testing.T) {
 		if _, ok := axState(good); !ok {
 			t.Fatal("missing boolean state")
 		}
+	}
+}
+
+func TestSelectAllUsesExplicitEditingCommandOnEveryPlatform(t *testing.T) {
+	for _, platform := range []string{"darwin", "windows", "linux"} {
+		t.Run(platform, func(t *testing.T) {
+			var calls atomic.Int32
+			c, done := mockBrowser(t, func(q envelope) any {
+				if q.Method != "Input.dispatchKeyEvent" {
+					t.Errorf("unexpected method %s", q.Method)
+				}
+				var p struct {
+					Type      string
+					Key       string
+					Code      string
+					Modifiers int
+					Commands  []string
+				}
+				if e := json.Unmarshal(q.Params, &p); e != nil {
+					t.Error(e)
+				}
+				modifier := 2
+				if platform == "darwin" {
+					modifier = 4
+				}
+				if p.Key != "a" || p.Code != "KeyA" || p.Modifiers != modifier {
+					t.Errorf("wrong selection event %+v", p)
+				}
+				switch calls.Add(1) {
+				case 1:
+					if p.Type != "rawKeyDown" || len(p.Commands) != 1 || p.Commands[0] != "selectAll" {
+						t.Errorf("selection relied on platform accelerator %+v", p)
+					}
+				case 2:
+					if p.Type != "keyUp" || len(p.Commands) != 0 {
+						t.Errorf("editing command repeated on release %+v", p)
+					}
+				default:
+					t.Error("unexpected repeated selection")
+				}
+				return map[string]any{}
+			})
+			defer done()
+			if e := selectAll(context.Background(), c, "s", platform); e != nil {
+				t.Fatal(e)
+			}
+			if calls.Load() != 2 {
+				t.Fatal("selection key release missing")
+			}
+		})
 	}
 }

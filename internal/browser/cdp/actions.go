@@ -111,11 +111,7 @@ func act(ctx context.Context, c *connection, s string, id domain.BrowserIdentity
 		if q.Operation == "key" {
 			e = key(ctx, c, s, q.Key, 0)
 		} else {
-			modifier := 2
-			if runtime.GOOS == "darwin" {
-				modifier = 4
-			}
-			e = key(ctx, c, s, "a", modifier)
+			e = selectAll(ctx, c, s, runtime.GOOS)
 			if e == nil {
 				if q.Text == "" {
 					e = key(ctx, c, s, "Backspace", 0)
@@ -142,6 +138,24 @@ func allowedKey(k string) bool {
 	}
 	return false
 }
+
+// Chromium on macOS does not reliably translate a synthetic Meta+A into a
+// native Cocoa editing command. CDP's explicit command keeps selection in the
+// browser input pipeline on every OS without a JavaScript value assignment.
+func selectAll(ctx context.Context, c *connection, s, platform string) error {
+	modifier := 2
+	if platform == "darwin" {
+		modifier = 4
+	}
+	p := map[string]any{"type": "rawKeyDown", "key": "a", "code": "KeyA", "windowsVirtualKeyCode": 65, "modifiers": modifier, "commands": []string{"selectAll"}}
+	if e := c.call(ctx, s, "Input.dispatchKeyEvent", p, nil); e != nil {
+		return e
+	}
+	delete(p, "commands")
+	p["type"] = "keyUp"
+	return c.call(ctx, s, "Input.dispatchKeyEvent", p, nil)
+}
+
 func key(ctx context.Context, c *connection, s, k string, mod int) error {
 	codes := map[string]int{"Enter": 13, "Tab": 9, "Escape": 27, "Backspace": 8, "Delete": 46, "ArrowLeft": 37, "ArrowRight": 39, "ArrowUp": 38, "ArrowDown": 40, "Home": 36, "End": 35, "PageUp": 33, "PageDown": 34, "Space": 32, "a": 65}
 	p := map[string]any{"type": "keyDown", "key": k, "windowsVirtualKeyCode": codes[k], "modifiers": mod}
