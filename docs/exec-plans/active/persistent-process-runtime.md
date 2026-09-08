@@ -431,6 +431,28 @@ commit/native CI success is not implied.
 - Native Windows/macOS execution and final native CI remain pending. Cross-builds
   are additional evidence only. This plan remains active until those gates pass.
 
+### First published native CI checkpoint (2026-09-08)
+
+Implementation commit `fb0d22ea9eb64798c8f70c57c69e0166aa90ccc7` was pushed.
+[Verify run 34225937603](https://github.com/mahcialet/agent-env/actions/runs/34225937603)
+completed with 11 of 12 jobs successful: native macOS and Ubuntu Go 1.26/1.27,
+Windows Go 1.27, all cross-build jobs and integration passed. Windows Go 1.26 job
+`102059952028` FAILED. The workflow is not an overall success.
+
+The failure was `TestPersistentProcessNativeCLI` line 329 while destroying the
+second manually exited process: `detached job root identity reused or ambiguous`.
+Inspection found historical root PID validation before exact named-Job completion
+evidence, and managed observation still inspecting the root after whole-tree
+absence was proven. A fix and native negative regression are in progress:
+completed owned Job evidence must take precedence over a recycled historical PID
+without weakening active Job identity checks. Preserve the failure as evidence;
+no successful retry or fixed-commit native result is claimed.
+
+Local `CGO_ENABLED=0` CLI cross-builds passed all six Windows/macOS/Linux amd64/arm64
+targets. These are compile-only results. Native macOS now has direct CI evidence;
+final acceptance still waits for the Windows fix and its native validation.
+This plan remains active; final retrospective and archival are not complete.
+
 ## Surprises & Discoveries
 
 - 2026-09-08: The supplied English plan did not have its required Japanese
@@ -479,6 +501,11 @@ pass.
 - 2026-09-08: Literal inherited secrets in process readiness could enter durable
   snapshots. Validation now rejects them before snapshot publication; explicit
   host references remain supported and their output redacted.
+
+- 2026-09-08: Published CI exposed a Windows Go 1.26 root-PID reuse/ambiguity
+  failure after Job completion despite Linux/macOS and Windows Go 1.27 success.
+  Completed-tree proof must precede historical root lookup; active ownership checks
+  must remain strict. The targeted platform fix/regression are in progress.
 
 ## Decision Log
 
@@ -576,6 +603,10 @@ pass.
   Date/Author: 2026-09-08 / maintainers.
 
 ## Outcomes & Retrospective
+
+Latest status: in progress after the first published CI. Native macOS and Windows
+Go 1.27 passed; Windows Go 1.26 failed on completed-Job/historical-PID ordering.
+The fix, native regression and final workflow evidence remain outstanding.
 
 In progress. Generic process lifecycle and Linux direct acceptance are delivered
 and locally validated. Native Windows/macOS execution and final native CI remain
@@ -731,7 +762,7 @@ roadmap after completion.
 | H4 | Process remains alive after launching create CLI exits. | Linux TestPersistentProcessNativeCLI PASS: create exits before independent later CLI observations. |
 | H5 | A later independent CLI inspects the exact process using durable native identity. | Linux native CLI PASS: persisted identity survives independent show and creator interruption. |
 | H6 | PID reuse/identity mismatch never makes an unrelated process owned. | TestManagedTermination and TestRecoveryUsesReceiptAndChecksMismatch PASS for simulated birth/receipt mismatch. Actual kernel PID reuse was not forced. |
-| H7 | stdout/stderr are file-backed and available through runtime logs. | TestProcessComponentLogsRouteAndRetainIsolatedArtifacts; TestLogsFailClosedWithoutLaunchSecretProof; TestLogsAcrossReadBoundaryAndOutputBound — PASS, Linux integrated working tree 2026-09-08. |
+| H7 | stdout/stderr are file-backed and available through runtime logs. | TestProcessComponentLogsRouteAndRetainIsolatedArtifacts; TestLogsRequireDurableRedactionVersion; TestBoundedLogsDoNotExposeSecretAcrossBoundary — PASS, Linux integrated working tree 2026-09-08. |
 | H8 | Each runtime has a private state directory under agent-env state root. | TestDestroyPreservesLogsAndReceipt; TestPersistentProcessNativeCLI — PASS, Linux integrated working tree 2026-09-08. |
 | H9 | Runtime-dir interpolation works with spaces/non-ASCII native paths. | Linux native CLI Japanese/spaced paths and symlink home PASS; native Windows/macOS pending. |
 | H10 | Named loopback TCP ports are dynamically allocated and persisted before launch. | TestProcessConcurrentReservationPortsAreDisjoint; TestProcessLifecyclePersistedIntentMixedRoutingAndIsolation — PASS, Linux integrated working tree 2026-09-08. |
@@ -743,20 +774,20 @@ roadmap after completion.
 | H16 | Manual death is DEGRADED and no automatic restart occurs. | TestProcessCrashDegradesWithoutRestartAndReleasedEffectsQuarantine; TestPersistentProcessNativeCLI — PASS, Linux integrated working tree 2026-09-08. |
 | H17 | Root exit with descendants is never false-clean without native proof. | Linux TestManagedRootGoneDescendant and TestExitedRootWithDescendantsIsNotReady PASS. Other native OS execution pending. |
 | H18 | Destroy revalidates native identity immediately before termination. | Linux TestManagedTermination mismatch/cancellation/live-root protection PASS. Native Unix observation-to-signal gap remains documented. |
-| H19 | Whole owned tree absence is confirmed before releasing ports/runtime state. | TestProcessUnknownOwnershipQuarantinesAndRecovers; TestProcessSaveLeaseCannotDropLiveRuntimeOrPort; TestPersistentProcessNativeCLI — PASS, Linux integrated working tree 2026-09-08. |
-| H20 | Ambiguous termination quarantines and retains recovery evidence/resources. | TestProcessUnknownOwnershipQuarantinesAndRecovers; TestProcessFenceLossRetainsLaunchForLaterRecovery; TestLaunchingWithoutReceiptIsUncertain — PASS, Linux integrated working tree 2026-09-08. |
-| H21 | Repeated destroy cannot kill a later PID/process-tree user. | TestManagedTermination; TestProcessTerminalLeaseCannotReopenAfterReservationsReleased; TestPersistentProcessNativeCLI — PASS, Linux integrated working tree 2026-09-08. |
+| H19 | Whole owned tree absence is confirmed before releasing ports/runtime state. | TestProcessUnknownOwnershipQuarantinesAndRecovers; TestProcessSaveRejectsImmutableSnapshotChanges; TestPersistentProcessNativeCLI — PASS, Linux integrated working tree 2026-09-08. |
+| H20 | Ambiguous termination quarantines and retains recovery evidence/resources. | TestProcessUnknownOwnershipQuarantinesAndRecovers; TestProcessFenceLossRetainsLaunchForLaterRecovery; TestMissingLaunchingReceiptIsUncertain — PASS, Linux integrated working tree 2026-09-08. |
+| H21 | Repeated destroy cannot kill a later PID/process-tree user. | TestManagedTermination; TestProcessReleasedReservationsCannotResurrect; TestPersistentProcessNativeCLI — PASS, Linux integrated working tree 2026-09-08. |
 | H22 | Destroying A preserves sibling B and unrelated host processes. | TestPersistentProcessNativeCLI (5.422s): sibling and separate direct host-helper PID/profile survive cleanup/refusal — PASS, Linux integrated working tree 2026-09-08. |
 | H23 | Process and Compose runtimes can coexist in a declared stack. | TestIntegrationPersistentProcessComposeCoexistence (55.965s) — PASS, Linux integrated working tree 2026-09-08. |
 | H24 | Source tracked-change protections remain intact while a process may reference its worktree. | TestPersistentProcessNativeCLI (5.422s): live tracked README refusal preserves bytes/process; force captures tracked-diff before release — PASS, Linux integrated working tree 2026-09-08. |
 | H25 | No shell/Python/Node/systemd/launchd/Windows Service becomes a core requirement. | Integrated arch-check/build/tests and Go-built CLI/helper PASS; no new core runtime/daemon. |
-| H26 | Real persistent-process integration passes natively on Windows. | Pending native Windows execution; cross-compilation is not sufficient. |
-| H27 | Real persistent-process integration passes natively on macOS. | Pending native macOS execution; cross-compilation is not sufficient. |
+| H26 | Real persistent-process integration passes natively on Windows. | First CI: Windows Go 1.27 PASS; Go 1.26 job 102059952028 FAILED on post-completion root identity. Fix/native regression pending. |
+| H27 | Real persistent-process integration passes natively on macOS. | Native macOS Go 1.26/1.27 PASS in Verify 34225937603 at fb0d22e. Final fixed-commit workflow required. |
 | H28 | Real persistent-process integration passes natively on Linux. | TestPersistentProcessNativeCLI (5.422s) — PASS, Linux integrated working tree 2026-09-08. |
 | H29 | Browser-shaped fixture proves state dir + CDP-like port + readiness + later observation + cleanup. | TestPersistentProcessNativeCLI: private profile, /json/version, readiness, independent show, cleanup — PASS, Linux integrated working tree 2026-09-08. |
-| H30 | Existing Android detached/guardian acceptance still passes after execx changes. | Existing Android/execx tests PASS in Linux full check/race; native Windows/macOS guardian CI pending. |
+| H30 | Existing Android detached/guardian acceptance still passes after execx changes. | Linux/macOS and Windows Go 1.27 native CI PASS; Windows Go 1.26 process failure needs a fix preserving Android/guardian checks. |
 | H31 | Bilingual durable docs describe the delivered contract. | English/Japanese durable contracts updated, docs-check PASS; native acceptance limitations explicit. |
-| H32 | Final harness/translation/race/native CI passes. | Local harness/translation/full race/full Docker and opt-in Podman integration PASS. Final native CI pending. |
+| H32 | Final harness/translation/race/native CI passes. | Local harness/race/integration PASS; first native CI completed 11/12 jobs PASS, Windows Go 1.26 FAILED. No overall workflow success. |
 | H33 | Both ExecPlans contain direct evidence and retrospective before archival. | In progress: both plans record direct local evidence and remaining native gates; final retrospective/archival pending. |
 
 Code existence alone is not acceptance. Record successful commands, native jobs,
@@ -775,6 +806,18 @@ them. GC uses the same proof and remains dry-run by default. Manual process deat
 is observed as degradation, not auto-repaired.
 
 ## Artifacts and Notes
+
+Windows correction checkpoint (2026-09-08): the exact same-session Job is now
+queried before historical PID validation. Empty/missing Jobs require matching
+synced guardian completion evidence; active Jobs retain birth and membership
+checks. A second census handles completion during PID observation. No historical
+PID is signaled after proven completion. The new native regression
+`TestManagedWindowsCompletedJobIgnoresReusedHistoricalPID` uses two real processes
+and retains the old Job handle to test both empty and missing Job cases, plus
+missing/wrong proof and active identity mismatch rejection. Linux harness and
+Windows amd64/arm64 test cross-compiles PASS; native CI is pending. Independent
+review found no weakening of active ownership or Android guardian conditions.
+
 
 Native primitive evidence (2026-09-08, working tree based on `01e3581`):
 
