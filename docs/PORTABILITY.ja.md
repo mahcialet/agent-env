@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/PORTABILITY.md
-source_sha256: f7f6668e83b187a9bcc43fcef1a753a041a9619371f18c115dce8f47884826a8
+source_sha256: 5796f99945780d92b107e0317433dcc2181ff072328486bccf2f38de2d23c08d
 ---
 
 [英語版（翻訳元）](PORTABILITY.md)
@@ -117,7 +117,7 @@ argvには`--enable-automation`と専用`${runtime_dir}/profile`などを必須�
 Node、Python、browser driver、CGO、shellの要件を追加しません。Chromeは同梱しません。
 選定したnative matrixはChrome for Testing 152.0.7977.82、Go 1.27、Windows/macOS/Linuxです。
 実測browser/protocol versionとnative成功・失敗の証拠は
-[完了browser plan](exec-plans/active/browser-cdp-automation.ja.md)に記録しています。
+[完了browser plan](exec-plans/completed/browser-cdp-automation.ja.md)に記録しています。
 `391288c`の3 native jobがすべて成功し（Browser native 34247636411）、CDP 1.3を報告しました。
 この実行結果はcross-buildの証拠と分けて扱います。
 

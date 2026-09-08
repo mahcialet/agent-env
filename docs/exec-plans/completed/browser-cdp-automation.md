@@ -1,5 +1,5 @@
 ---
-status: active
+status: completed
 owner: maintainers
 last_verified: 2026-09-09
 ---
@@ -139,12 +139,15 @@ Out of scope:
 
 ## Progress
 
-- [x] 2026-09-09: Final integrated repoctl check passed; full repository race passed; sandbox-enabled Linux native race passed (10.082s). Independent cross-review passed after restoring six mutation test callbacks (race x10, 1.582s). Post-redaction snapshot regressions passed (6.369s) including >2 MiB expansion, persisted 1 MiB artifact limit, retained target identity and completed durable run. Fresh multi-OS CI is the remaining gate.
-
-- [x] 2026-09-09: Implemented third-review five fixes with fail-before regressions. Closed-shadow native race passed (11.031s), actions/focus race x3 passed (1.245s), AX snapshot/gone boundary race x10 passed (15.425s), capture/network/transport race x10 passed (44.414s), final console/capture race x10 passed (3.091s). Integrated harness/full race and fresh native CI remain pending at this checkpoint.
+- [x] 2026-09-09: Final third-review implementation dda35cd435ffeea5679ab345b47d199e85cea546 passed PR Verify 34288757443 (12 jobs), PR Browser native 34288757444 (all three OSes), Release preview 34288757521 (build and all smoke jobs), push Verify 34288753918 and push Browser native 34288753905. All five findings received implementation and final-validation replies and are resolved with archival.
 
 
-- [ ] 2026-09-09: Complete the third PR #10 review: post-redaction semantic limits, closed-shadow input, capture subscription deadline, exact AX node boundary and omitted console arguments; require regression/harness/native CI evidence before archival.
+- [x] 2026-09-09: Final integrated repoctl check passed; full repository race passed; sandbox-enabled Linux native race passed (10.082s). Independent cross-review passed after restoring six mutation test callbacks (race x10, 1.582s). Post-redaction snapshot regressions passed (6.369s) including >2 MiB expansion, persisted 1 MiB artifact limit, retained target identity and completed durable run. Multi-OS CI was pending at this checkpoint and is closed by the final evidence above.
+
+- [x] 2026-09-09: Implemented third-review five fixes with fail-before regressions. Closed-shadow native race passed (11.031s), actions/focus race x3 passed (1.245s), AX snapshot/gone boundary race x10 passed (15.425s), capture/network/transport race x10 passed (44.414s), final console/capture race x10 passed (3.091s). Integrated harness/full race and fresh native CI were pending at this checkpoint and are closed by the final evidence above.
+
+
+- [x] 2026-09-09: Complete the third PR #10 review: post-redaction semantic limits, closed-shadow input, capture subscription deadline, exact AX node boundary and omitted console arguments; require regression/harness/native CI evidence before archival.
 
 - [x] 2026-09-09: Final implementation cdcec91807a27b6215d2aeb0f6533ed8c96437cd passed all fresh gates: PR Verify 34252382308 (12 jobs), PR Browser native 34252379866 (Linux 11.50s, macOS 14.04s, Windows 30.98s), Release preview 34252379587 (build and three smoke jobs), push Verify 34252373749 and push Browser native 34252373761. All eight second-review threads received substantive replies; final CI confirmation and Resolve accompany archival.
 
@@ -600,7 +603,10 @@ the same published commit; no timeout or readiness assertion has been relaxed.
 
 ## Outcomes & Retrospective
 
-Third-review checkpoint (2026-09-09): this plan is reopened for five new findings. Earlier completion and native results below are historical; current acceptance requires fresh integrated and native CI evidence.
+Third-review completion (2026-09-09): all five findings are fixed and fresh multi-OS CI at dda35cd passed. Registered semantic snapshots remain within their final encoded limits after redaction without losing target identity or leaving read-only cleanup barriers. Nested closed-shadow actions preserve hit/focus and overlay proof. Capture includes enable time and marks omitted arguments; AX cap truncation reflects actual omission. Independent review restored the stale-target mutation fixture so it cannot pass through an unrelated early refusal. The fail-before cases and older CI failures below remain historical evidence.
+
+
+Earlier review completion and native results below are historical; current third-review acceptance is recorded above.
 
 
 Second-review completion (2026-09-09): all eight findings are repaired in 859ca74 and cdcec91. Post-effect errors preserve uncertainty; active-document/target focus is proved after activation and selection; DOM origin/topology and unrelated-tab boundaries are enforced; capture remains bounded after redaction and marks queued omissions; URL matching includes transient query/fragment while saved evidence is scrubbed; stored manifest digest is checked. Fresh CI at cdcec91 passed every gate listed above. The macOS/Windows native focus failure at 859ca74 is retained as historical evidence, not counted as success. Activating and revalidating the page fixed the strengthened native scenario on all three OSes; the precise OS/browser event-delivery mechanism was not instrumented, so its original explanation remains a hypothesis. Regression tests, independent review and real multi-OS browser tests all contributed; mock URL shape and Linux-only native evidence were insufficient by themselves.

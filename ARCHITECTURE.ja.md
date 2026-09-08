@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: ARCHITECTURE.md
-source_sha256: ea2abf3fbb08095974415d54a94c550207c79c2c0bec27cd90d815adbe25248a
+source_sha256: 32ce58720ab1b74996c9b2fc6377dbc83b5d69e61ea618f6f122ad35b1d3bb5e
 ---
 
 [英語版（翻訳元）](ARCHITECTURE.md)
@@ -101,4 +101,4 @@ browser adapterはdiscovery、WebSocket target session、CDP identity、古いno
 具体的runtime adapterをimportせず、process/profile/portのlifecycleを所有しません。
 CLIが具体的な接続を担当します。transportはgorilla/websocketを使い、Node/Python helperは不要です。
 [browser設計](docs/design-docs/browser-cdp-automation.ja.md)と
-[完了の実装証拠](docs/exec-plans/active/browser-cdp-automation.ja.md)を参照してください。
+[完了の実装証拠](docs/exec-plans/completed/browser-cdp-automation.ja.md)を参照してください。

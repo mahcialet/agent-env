@@ -1,7 +1,7 @@
 ---
-source_sha256: 02c4f5c214cb79c33602a3d67c30cfe776b12c527fa75a39f35b261f3f80416f
-translation_of: docs/exec-plans/active/browser-cdp-automation.md
-status: active
+source_sha256: 4bdb8194e03133d17a36b47ee09ac929faaab3fe932ab18cc204ed445d071978
+translation_of: docs/exec-plans/completed/browser-cdp-automation.md
+status: completed
 owner: maintainers
 last_verified: 2026-09-09
 ---
@@ -77,12 +77,15 @@ port名だけからbrowserをimplicit推測しない。
 
 ## 進捗
 
-- [x] 2026-09-09: 最終統合repoctl check、全repository race、sandbox有効Linux native race（10.082秒）が成功した。6件のmutation callback検証を復旧後（race 10回、1.582秒）、独立相互レビューも成功した。redaction後のsnapshot回帰テスト成功（6.369秒）。2 MiB超の膨張、保存artifact 1 MiB上限、対象識別子保持、永続run完了を検証した。残るgateは新しい複数OS CI。
-
-- [x] 2026-09-09: 第3回5件を修正し、修正前に失敗する回帰テストを追加した。closed shadow native race成功（11.031秒）、actions/focus race 3回成功（1.245秒）、AX snapshot/gone境界race 10回成功（15.425秒）、capture/network/transport race 10回成功（44.414秒）、最終console/capture race 10回成功（3.091秒）。この時点では統合harness/full raceと新しいnative CIは未完。
+- [x] 2026-09-09: 第3回最終実装dda35cd435ffeea5679ab345b47d199e85cea546でPR Verify 34288757443（12 jobs）、PR Browser native 34288757444（3 OS）、Release preview 34288757521（buildと全smoke jobs）、push Verify 34288753918、push Browser native 34288753905が成功した。5件すべてに実装と最終検証を返信し、archiveとともにResolveした。
 
 
-- [ ] 2026-09-09: PR #10の第3回レビューに対応する。redaction後のsemantic上限、closed shadow入力、capture購読期限、AX node境界、console引数省略を修正し、回帰テスト・harness・native CIの証拠を確認してから完了へ移す。
+- [x] 2026-09-09: 最終統合repoctl check、全repository race、sandbox有効Linux native race（10.082秒）が成功した。6件のmutation callback検証を復旧後（race 10回、1.582秒）、独立相互レビューも成功した。redaction後のsnapshot回帰テスト成功（6.369秒）。2 MiB超の膨張、保存artifact 1 MiB上限、対象識別子保持、永続run完了を検証した。この時点では複数OS CIが未完だったが、上記の最終証拠で完了した。
+
+- [x] 2026-09-09: 第3回5件を修正し、修正前に失敗する回帰テストを追加した。closed shadow native race成功（11.031秒）、actions/focus race 3回成功（1.245秒）、AX snapshot/gone境界race 10回成功（15.425秒）、capture/network/transport race 10回成功（44.414秒）、最終console/capture race 10回成功（3.091秒）。この時点では統合harness/full raceとnative CIは未完だったが、上記の最終証拠で完了した。
+
+
+- [x] 2026-09-09: PR #10の第3回レビューに対応する。redaction後のsemantic上限、closed shadow入力、capture購読期限、AX node境界、console引数省略を修正し、回帰テスト・harness・native CIの証拠を確認してから完了へ移す。
 
 - [x] 2026-09-09: 最終実装cdcec91807a27b6215d2aeb0f6533ed8c96437cdで全検証が成功した。PR Verify 34252382308（12 jobs）、PR Browser native 34252379866（Linux 11.50秒、macOS 14.04秒、Windows 30.98秒）、Release preview 34252379587（buildと3 smoke jobs）、push Verify 34252373749、push Browser native 34252373761。第2回8件すべてに対応内容を返信済みで、archiveとともに最終CI確認とResolveを行う。
 
@@ -455,7 +458,10 @@ macOS/WindowsおよびLinuxのnative CIは未完了。既存のmacOS readiness t
 
 ## 成果と振り返り
 
-第3回レビューの時点（2026-09-09）: 新規5件のため本Planを再開した。以下の過去の完了・native結果を今回の受け入れ証拠として扱わず、新しい統合検証とnative CIの成功を必要とする。
+第3回レビュー完了（2026-09-09）: 5件すべてを修正し、dda35cdの新しい複数OS CIが成功した。登録semantic snapshotはredaction後も最終encoding上限を守り、対象識別子を維持してread-only cleanup barrierを残さない。nested closed shadow操作もhit/focusとoverlay検証を維持する。capture時間にenableを含め、省略引数を明示し、AX上限も実際の省略だけをtruncatedとする。独立レビューでstale target mutation fixtureを復旧し、無関係な早期拒否でテストが通らないようにした。以下の修正前失敗ケースと過去のCI失敗は履歴として残す。
+
+
+以下の過去の完了・native結果は履歴として残し、今回の第3回受け入れ完了は上記に記録した。
 
 
 第2回レビュー完了（2026-09-09）: 8件すべてを859ca74とcdcec91で修正した。effect後のエラーで不確定状態を保持し、前面化・選択後のdocument/target focusを証明する。DOM origin/topologyと別tab境界を検証し、redaction後もcapture上限を維持してqueue省略を明示する。query/fragmentを一時URL条件へ含めつつ保存証拠を秘匿化し、保存manifest digestを検証する。cdcec91の新しいCIは上記全gateで成功した。859ca74のmacOS/Windows native focus失敗は過去の失敗として残し、成功には数えない。page前面化と再検証により強化nativeシナリオは3 OSすべて成功したが、OS/browserのevent配送機構自体は計測しておらず、当初の原因説明は仮説として扱う。回帰テスト・独立レビュー・実ブラウザの複数OS検証を組み合わせた。URL mockとLinuxだけのnative証拠では不十分だった。
