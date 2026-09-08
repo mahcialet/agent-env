@@ -1,5 +1,5 @@
 ---
-status: active
+status: completed
 owner: maintainers
 last_verified: 2026-09-08
 ---
@@ -22,8 +22,8 @@ of previously delivered behavior, then reply and resolve each thread.
 - [x] 2026-09-08: Read harness, inspected clean branch and all review threads.
 - [x] 2026-09-08: Fixed asset names/size, VCS fallback, release path matching/index flags with regression tests.
 - [x] 2026-09-08: Corrected bilingual completed status and state.db audit; current JP milestones match English, archive checksums/manifest are release-set siblings, root symlink and first-write race regressions pass.
-- [ ] Run local harness/race and native CI, reply/resolve all threads.
-- [ ] Record outcomes and archive this bilingual plan.
+- [x] 2026-09-08: Local harness/race and Verify 34206038055 / Release preview 34206043365 passed at 23f19fd; replied to and resolved all eleven threads.
+- [x] 2026-09-08: Recorded outcomes and archived this bilingual plan.
 
 ## Surprises & Discoveries
 
@@ -46,7 +46,7 @@ registry.sqlite instead of the CLI's state.db.
 
 ## Outcomes & Retrospective
 
-In progress; no completion claimed before validation and thread operations.
+Completed at code revision `23f19fd`. All eleven reviewed findings have replies and resolved threads. Four were already fixed; seven received new code or documentation changes. Regression, full harness/race, native Windows/macOS/Linux and release preview passed. Independent review caught and prevented a string-pool path-check regression before publication. No public tags/releases or history rewrites were performed.
 
 ## Context and Orientation
 
@@ -80,6 +80,17 @@ Git fixtures own their index flags; do not modify flags in the user's repository
 Preserve failures and fix forward if CI reveals platform-specific behavior.
 
 ## Artifacts and Notes
+
+2026-09-08 code revision `23f19fd`: local `repoctl check`, full `go test -race ./...`,
+then final release-package race passed. `release-verify --out dist/pr6-review-candidate`
+produced eight byte-identical files across two six-target builds and passed Linux
+native smoke. `AGENT_ENV_RELEASE_CANDIDATE=../../dist/pr6-review-candidate go test ./tools/repoctl -run TestReleaseCandidate -count=1 -v`
+passed all 19 cases, including real module-path collision and preserved genuine
+path-leak negatives. Independent asset/buildinfo and final release reviews found
+no confirmed remaining defects. A harness attempt during document editing failed
+only stale translation hashes; both actual translations and hashes were updated,
+and full harness passed afterward. Four previously fixed threads were replied to
+and resolved after rechecking their evidence; all seven new fixes also passed native CI and received replies/resolution. Verify: https://github.com/mahcialet/agent-env/actions/runs/34206038055 . Release preview: https://github.com/mahcialet/agent-env/actions/runs/34206043365 .
 
 PR: https://github.com/mahcialet/agent-env/pull/6 . Evidence is recorded here and
 in thread replies, not in extra report files.

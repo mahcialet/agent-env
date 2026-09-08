@@ -1,9 +1,9 @@
 ---
-status: active
+status: completed
 owner: maintainers
 last_verified: 2026-09-08
-translation_of: docs/exec-plans/active/standalone-distribution-review.md
-source_sha256: d43100eb527c1ec6f30be8701d734c8f75072b7941f2374bd27db6d58463c774
+translation_of: docs/exec-plans/completed/standalone-distribution-review.md
+source_sha256: b36fe1e31d438cda23936e0d311bb3db11abb663a3debf3d28afc83e797a2678
 ---
 
 # PR 6のstandalone配布レビューへ対応する
@@ -22,8 +22,8 @@ source_sha256: d43100eb527c1ec6f30be8701d734c8f75072b7941f2374bd27db6d58463c774
 - [x] 2026-09-08: harness、cleanなブランチ、全review Threadを確認。
 - [x] 2026-09-08: asset名/サイズ、VCS fallback、releaseパス検査/index flagを回帰テスト付きで修正。
 - [x] 2026-09-08: 日英のcompleted statusとstate.db auditを修正。日本語の進捗は英語と一致し、checksums/manifestはarchiveの兄弟、root symlinkと初回並行保存の回帰も成功と確認。
-- [ ] local harness/raceとnative CIを確認し、全Threadへ返信・Resolve。
-- [ ] 成果を記録し本Planの日英をcompletedへ移動。
+- [x] 2026-09-08: 23f19fdでlocal harness/race、Verify 34206038055、Release preview 34206043365が成功。全11Threadへ返信・Resolve。
+- [x] 2026-09-08: 成果を記録し本Planの日英をcompletedへ移動。
 
 ## 想定外の発見
 
@@ -46,7 +46,7 @@ registry.sqliteとなっていました。
 
 ## 成果と振り返り
 
-作業中。検証とThread操作が終わる前に完了を主張しません。
+コードrevision `23f19fd` で完了。全11指摘へ返信しThreadをResolveしました。4件は既存修正、7件は新規の実装または文書修正です。回帰、full harness/race、Windows/macOS/Linux native、release previewが成功。独立レビューで文字列領域のパス検査の退行を検出し、公開前に修正しました。公開tag/releaseと履歴の書き換えは行っていません。
 
 ## 背景と構成
 
@@ -80,6 +80,17 @@ fixtureだけで操作し、ユーザーのrepositoryのflagを変更しませ�
 CIでOS固有の問題が出たら失敗を記録して修正を積みます。
 
 ## 成果物と注記
+
+2026-09-08のコードrevision `23f19fd` でlocal `repoctl check`、全体の
+`go test -race ./...`、最終release packageのraceが成功。
+`release-verify --out dist/pr6-review-candidate` は6ターゲット各2回のbuildで
+8ファイルのバイト一致とLinux native smokeに成功。
+`AGENT_ENV_RELEASE_CANDIDATE=../../dist/pr6-review-candidate go test ./tools/repoctl -run TestReleaseCandidate -count=1 -v`
+は全19ケース成功。実moduleパスの誤検知回避と実際のパス漏洩の拒否も含む。
+asset/buildinfoと最終releaseの独立レビューに確認済み残存不具合なし。
+文書編集中のharnessは翻訳hash未更新だけで失敗し、実際の翻訳とhashを同期して
+full harness再実行が成功。既存修正4Threadは証拠を確認して返信・Resolve済みで、
+新規修正7件もnative CI成功後に返信・Resolve済み。Verify: https://github.com/mahcialet/agent-env/actions/runs/34206038055 。Release preview: https://github.com/mahcialet/agent-env/actions/runs/34206043365 。
 
 PR: https://github.com/mahcialet/agent-env/pull/6 。証拠はここ及びThread返信に
 記録し、追加のreportファイルを作りません。
