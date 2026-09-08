@@ -3,14 +3,14 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/PORTABILITY.md
-source_sha256: 08c02cbfa3373fec9bafef6e5d58abdbea4d6335351120835fb442cc66a03ad3
+source_sha256: 713e69fde4e3373f2941f13514ddcb533451d027f27a68996fa02311d8a733ad
 ---
 
 [英語版（翻訳元）](PORTABILITY.md)
 
 # 移植性
 
-このmoduleはGo 1.26.xと1.27.x、ネイティブWindows・macOS・Linuxを対象とし、CGOを必要としません。GitとDocker Compose pluginは外部runtimeの前提条件です。cross-compilationが証明するのはビルド互換性であり、ネイティブのプロセス、パス、SQLite、Dockerの振る舞いではありません。
+このmoduleはGo 1.26.xと1.27.x、ネイティブWindows・macOS・Linuxを対象とし、CGOを必要としません。Gitと選択したCompose providerのツールは外部runtimeの前提条件です。cross-compilationが証明するのはビルド互換性であり、ネイティブのプロセス、パス、SQLite、Dockerの振る舞いではありません。
 
 ## 状態とパス
 
@@ -26,7 +26,7 @@ source_sha256: 08c02cbfa3373fec9bafef6e5d58abdbea4d6335351120835fb442cc66a03ad3
 
 ## ネイティブツールと取消
 
-コマンドは実行ファイルとargv、明示的な作業ディレクトリ、deadline、stream出力を使います。Git検査には機械可読出力を使い、Docker検査にはJSONと記録したcontext識別情報を使います。改行処理はCRLFを許容します。Go製のリポジトリharnessは標準ツールを直接呼び出し、shell script言語を必要としません。
+コマンドは実行ファイルとargv、明示的な作業ディレクトリ、deadline、stream出力を使います。Git検査には機械可読出力を使い、Compose engine検査には構造化出力と記録したprovider/engine識別情報を使います。改行処理はCRLFを許容します。Go製のリポジトリharnessは標準ツールを直接呼び出し、shell script言語を必要としません。
 
 Unixでは管理対象コマンドのprocess groupで子孫を取り消します。Windowsではコマンドの子プロセスを実行前にJob Objectへ割り当て、取消やtimeout時にはJobを終了します。これは時間を制限した名前付きテストとprobeを支えるもので、汎用の永続ホストプロセスruntimeではありません。OSの隔離機構から意図的に逃れるバックグラウンドプログラムは、信頼済みリポジトリモデルの範囲外です。終了を検証できない場合は、型で識別できるプロセスツリー未確認の結果として通知します。appはレジストリ記録をrunningに保ち、レビューした復旧により完了が確定するまでcleanupを拒否しなければなりません。
 
@@ -37,6 +37,20 @@ Windowsの`.cmd`と`.bat`の実行処理はWindowsアダプターに隔離しま
 WindowsとmacOSは通常Docker Desktopを使います。LinuxはComposeが動くDocker Engineまたはrootless Dockerを使えます。選択したDocker contextを割り当て前に取得し、その後ユーザーのactive contextが変わっても、観測、ログ、cleanupで使います。contextに接続できるだけでは、daemonがローカルworktreeのbindパスへアクセスできるとは限りません。リモートdaemonからのパス可用性はホストの前提条件です。
 
 WSLはLinuxとして扱います。リポジトリ、Git、Docker接続、パスを一貫してその境界の同じ側に置いてください。Windows/WSL混在リースと、WSLからWindowsホストのAndroid Emulatorを制御するworkflowは対応外です。
+
+## Podmanの前提条件と検証の限界
+
+Podman providerにはPodman 5.xと独立したpodman-compose >=1.6.0,<2.0.0が必要です。
+Pythonはproviderのホスト側導入に属し、agent-env coreの依存関係ではありません。
+現在の実行ファイルがnativeの子process bridgeとなり、生成shell scriptは不要です。
+local Linuxではlocal engineを固定し、remote/Machine呼出しでは可変の接続名ではなく
+解決済みendpointを保持します。remoteのbind pathはそのengineからアクセスできる必要が
+あります。remote loopback endpointを報告するにはhost側の到達性確認が必要です。
+
+Podman 5.4.2とpodman-compose 1.6.0で、Docker共存、動的endpoint、匿名volume cleanupを
+含む実Linux rootless integrationが成功しました。Windows/macOS/Linuxのnative provider CIは4a5de3d（run 34216579481）で成功です。
+実機のPodman Machine環境はなく、cross-buildやfake接続testではMachine証拠を代替できません。正確な証拠は
+[provider plan](exec-plans/completed/compose-provider-podman.ja.md)に記録します。
 
 ## 検証範囲
 

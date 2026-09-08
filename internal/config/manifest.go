@@ -35,6 +35,7 @@ type Source struct {
 }
 type Runtime struct {
 	Type             string   `yaml:"type" json:"type"`
+	Provider         string   `yaml:"provider,omitempty" json:"provider,omitempty"`
 	Source           string   `yaml:"source" json:"source"`
 	ProjectDirectory string   `yaml:"project_directory" json:"project_directory"`
 	Files            []string `yaml:"files" json:"files"`
@@ -107,6 +108,22 @@ func Parse(data []byte) (*Manifest, error) {
 	var extra any
 	if err := dec.Decode(&extra); err != io.EOF {
 		return nil, fmt.Errorf("manifest: use exactly one YAML document")
+	}
+	// A string's zero value preserves old canonical snapshots, but explicit
+	// empty/null providers are configuration errors rather than defaults.
+	var fields struct {
+		Runtimes map[string]map[string]any `yaml:"runtimes"`
+	}
+	if err := yaml.Unmarshal(data, &fields); err != nil {
+		return nil, fmt.Errorf("manifest: invalid YAML: %w", err)
+	}
+	for _, name := range keys(fields.Runtimes) {
+		if value, present := fields.Runtimes[name]["provider"]; present {
+			provider, ok := value.(string)
+			if !ok || provider == "" {
+				return nil, fmt.Errorf("manifest: runtime %s provider must be docker-compose or podman-compose", name)
+			}
+		}
 	}
 	if err := Validate(&m); err != nil {
 		return nil, err
@@ -241,6 +258,12 @@ func Validate(m *Manifest) error {
 		}
 		if _, ok := m.Sources[r.Source]; !ok {
 			return fmt.Errorf("manifest: runtime %s references unknown source %q", n, r.Source)
+		}
+		if r.Provider != "" && r.Type != "compose" {
+			return fmt.Errorf("manifest: runtime %s provider is only supported for compose", n)
+		}
+		if r.Type == "compose" && r.Provider != "" && r.Provider != "docker-compose" && r.Provider != "podman-compose" {
+			return fmt.Errorf("manifest: runtime %s provider %q is unsupported; use docker-compose or podman-compose", n, r.Provider)
 		}
 		if r.Type == "android-emulator" {
 			folded := strings.ToLower(n)

@@ -42,20 +42,40 @@ type Resource struct {
 	Metadata   map[string]string `json:"metadata"`
 }
 
+// ComposeProviderName identifies a fixed Compose implementation, never a host fallback.
+type ComposeProviderName string
+
+const (
+	ComposeProviderDocker ComposeProviderName = "docker-compose"
+	ComposeProviderPodman ComposeProviderName = "podman-compose"
+)
+
+// EffectiveComposeProvider preserves snapshots written before provider selection.
+// Unknown nonempty identities remain unchanged so callers can reject them.
+func EffectiveComposeProvider(name ComposeProviderName) ComposeProviderName {
+	if name == "" {
+		return ComposeProviderDocker
+	}
+	return name
+}
+
 type Runtime struct {
-	LeaseID      string           `json:"lease_id"`
-	Name         string           `json:"name"`
-	Type         string           `json:"type"`
-	Source       string           `json:"source"`
-	Project      string           `json:"project"`
-	Directory    string           `json:"directory"`
-	Files        []string         `json:"files"`
-	Services     []string         `json:"services"`
-	Context      string           `json:"docker_context"`
-	ConfigDigest string           `json:"config_digest"`
-	ConfigPath   string           `json:"config_path"`
-	Started      bool             `json:"started"`
-	Android      *AndroidEmulator `json:"android,omitempty"`
+	// CleanupEvidence survives container disappearance until residual cleanup is verified.
+	CleanupEvidence []Resource          `json:"cleanup_evidence,omitempty"`
+	Provider        ComposeProviderName `json:"provider,omitempty"`
+	LeaseID         string              `json:"lease_id"`
+	Name            string              `json:"name"`
+	Type            string              `json:"type"`
+	Source          string              `json:"source"`
+	Project         string              `json:"project"`
+	Directory       string              `json:"directory"`
+	Files           []string            `json:"files"`
+	Services        []string            `json:"services"`
+	Context         string              `json:"docker_context"`
+	ConfigDigest    string              `json:"config_digest"`
+	ConfigPath      string              `json:"config_path"`
+	Started         bool                `json:"started"`
+	Android         *AndroidEmulator    `json:"android,omitempty"`
 }
 
 // AndroidEmulator records a lease-owned slot, private writable AVD and process

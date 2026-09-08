@@ -24,7 +24,7 @@ Remote mirror/cache management, HTTPS/SSH authentication, provider-specific PR s
 
 ## Runtime extensions
 
-iOS, browser/CDP automation and snapshots, generic persistent host processes, Podman-specific support, and distributed/multi-host coordination are not implemented. Android Emulator leases own private AVD state and local SDK processes; additional real-device CI needs acceleration-capable runners. Browser resources need explicit ownership and cleanup rules.
+iOS, browser/CDP automation and snapshots, generic persistent host processes, and distributed/multi-host coordination are not implemented. Android Emulator leases own private AVD state and local SDK processes; additional real-device CI needs acceleration-capable runners. Browser resources need explicit ownership and cleanup rules.
 
 The [Android UI observer](product-specs/android-ui-observer.md) adds bounded semantic
 snapshots, PNGs, Unicode replacement, navigation and current-PID logs to existing
@@ -32,6 +32,14 @@ owned Emulators. Its separate optional platform companion requires no target-app
 instrumentation. OCR, visual regression, richer gestures, physical devices and remote
 Emulator hosts remain deferred. Final observer acceptance and platform evidence are
 tracked in the [completed plan](exec-plans/completed/android-ui-observer.md).
+
+Compose provider selection and the Podman adapter are implemented; evidence is in the
+[provider plan](exec-plans/completed/compose-provider-podman.md). Docker remains the
+default with no automatic fallback. Real Linux rootless acceptance passed with Podman 5.4.2 / podman-compose 1.6.0
+and Docker coexistence. Native Windows/macOS/Linux provider CI passed on 4a5de3d (run 34216579481); real Machine
+infrastructure is unavailable.
+`podman compose` wrappers, Quadlet/Kubernetes, pod creation and arbitrary provider
+executables remain outside this work.
 
 ## Artifacts and releases
 

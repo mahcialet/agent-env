@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/SECURITY.md
-source_sha256: 9b7de4908da3674ce85b663e960f025dcafc8b94086df8e18ffc32495bbe807e
+source_sha256: 1913baeb35ab4a612f3e4830d33a942a3a8790c3f55c2e781d8564a968454303
 ---
 
 [英語版（翻訳元）](SECURITY.md)
@@ -16,7 +16,7 @@ source_sha256: 9b7de4908da3674ce85b663e960f025dcafc8b94086df8e18ffc32495bbe807e
 
 planとcreateは、既定で制御用checkoutの`.agent-env.yaml`を読みます。`--manifest`は信頼するマニフェストパスを明示的に選択し、正規化スナップショットとdigestをリースに保存します。ソースrefが選ぶのは固定したruntime/テストのソース内容であり、対象revisionのマニフェストに黙って差し替えるものではありません。マニフェストと、それが実行するコードの両方の変更をレビューしてください。信頼したbase/PR overlayのマージとリモート認証情報管理は今後の課題です。
 
-ownerラベルと`--mine`は助言的なフィルターです。ローカル状態ディレクトリとDocker daemonにアクセスできる人は、対応するホスト権限を持ちます。分散認証や敵対的な複数ユーザーの隔離はありません。
+ownerラベルと`--mine`は助言的なフィルターです。ローカル状態ディレクトリと選択したcontainer engineにアクセスできる人は、対応するホスト権限を持ちます。分散認証や敵対的な複数ユーザーの隔離はありません。
 
 ## 組み込みホストポリシー
 
@@ -24,7 +24,19 @@ ownerラベルと`--mine`は助言的なフィルターです。ローカル状�
 
 起動前に正規化Compose設定を検査し、privileged container、host networking、固定コンテナー名、固定公開ホストポート、Docker socketへのアクセス、device passthrough、安全でないmountを確認します。bindパスはsymlink解決後も含め、割り当てたソースroot内に収まる必要があります。外部network/volume、選択したリソースのグローバル共有名、安全でない・カスタムのvolume driverやdriver optionは拒否します。これらの検査は偶発的なホストアクセスと衝突を減らしますが、Docker buildやリポジトリコマンドを信頼できるものにするわけではありません。
 
-不変の実行スナップショットに入るのは、選択したサービスと、そこから到達可能なリソース定義だけです。所有権ラベル、一意のプロジェクト、取得したDocker context、設定digestを保持します。実行とcleanupでは、保存設定と観測したリソース識別情報を検証します。未選択の名前付きリソースが、巻き添えでcleanup対象になることはありません。
+不変の実行スナップショットに入るのは、選択したサービスと、そこから到達可能なリソース定義だけです。所有権ラベル、一意のプロジェクト、記録したproviderとengineの識別情報、設定digestを保持します。実行とcleanupでは、保存設定と観測したリソース識別情報を検証します。未選択の名前付きリソースが、巻き添えでcleanup対象になることはありません。
+
+Podmanは、正規化YAMLをcanonical JSONへ変換して同じpolicyを適用します。
+pod作成と、どの階層にある`x-podman*`拡張も拒否します。
+対応するmount型は`bind`、`volume`、`tmpfs`です。Podman固有の`glob`や未model化の型は
+明示的に拒否します。対応する`network_mode`は省略・空文字列、`bridge`、`none`です。
+`host`は共通policyで拒否し、`ns:`、`pasta`、`slirp4netns`など未model化のmodeも、
+ホストへのアクセス範囲を広げず拒否します。projectの`.env`には、予約済みの
+`PODMAN_*`、`CONTAINER_*`、`AGENT_ENV_PODMAN_*`、`COMPOSE_*` keyを設定できません。
+継承したrouting制御を除去し、native bridgeが子の呼出しを記録済みengineへ固定します。
+Docker互換labelだけではPodmanの所有を証明できず、native project labelと正確なresource
+識別情報が必要です。engineの構成fingerprintでは、同じ構成を再作成するその場の初期化を
+検出できないため、resourceの所有確認は引き続き必要です。
 
 ## 認証情報と証拠
 
@@ -38,7 +50,7 @@ ownerラベルと`--mine`は助言的なフィルターです。ローカル状�
 
 cleanupは削除前に、固定ソースとruntimeの所有権を検証します。追跡対象が変更されたworktree、リソース識別情報の不一致、不確定なcleanupは、リースをquarantinedにします。`destroy --force`はbinary diffを保持した後に限り追跡対象の編集破棄を許可し、曖昧な所有権は上書きしません。管理対象worktree内の追跡対象外のbuild/test出力は、通常のcleanupで破棄可能です。
 
-`gc`は既定でdry-runです。`gc --apply`は明示的な適用であり、quarantinedまたは処理中のリースを除外します。孤立リソースの観測は、一括Docker/Git cleanupの許可にはなりません。記録された操作lockは、協調するagent-envプロセス間のライフサイクル操作の競合を防ぎますが、ユーザーや無関係なプロセスによるGit、Docker、ファイルシステムの直接変更は防ぎません。
+`gc`は既定でdry-runです。`gc --apply`は明示的な適用であり、quarantinedまたは処理中のリースを除外します。孤立リソースの観測は、一括Docker/Podman/Git cleanupの許可にはなりません。記録された操作lockは、協調するagent-envプロセス間のライフサイクル操作の競合を防ぎますが、ユーザーや無関係なプロセスによるGit、container engine、ファイルシステムの直接変更は防ぎません。
 
 ## Androidホストの信頼
 

@@ -51,6 +51,18 @@ type RuntimeObservation struct {
 	Diagnostics   []string
 	Endpoints     map[string]string
 }
+
+// ComposeProviderDoctor validates an explicitly selected provider before allocation.
+// Legacy test/embedding providers remain Docker-only when this interface is absent.
+type ComposeProviderDoctor interface {
+	DoctorFor(context.Context, domain.ComposeProviderName) (map[string]string, error)
+}
+
+// RuntimeCleanupPreparation captures ownership proof that must survive resource deletion.
+type RuntimeCleanupPreparation interface {
+	PrepareCleanup(context.Context, domain.Runtime) (domain.Runtime, error)
+}
+
 type RuntimeProvider interface {
 	Doctor(context.Context) (map[string]string, error)
 	Render(context.Context, domain.Runtime, []string) (Rendered, error)
@@ -135,7 +147,7 @@ func (s *Service) Create(ctx context.Context, o PlanOptions, options CreateOptio
 			return lease, fmt.Errorf("%w: application %s: %v", ErrPrerequisite, a.Name, e)
 		}
 	}
-	doctor := map[string]string{}
+	doctors := map[domain.ComposeProviderName]map[string]string{}
 	for i := range plan.Runtimes {
 		r := &plan.Runtimes[i]
 		if r.Type == "android-emulator" {
@@ -152,15 +164,25 @@ func (s *Service) Create(ctx context.Context, o PlanOptions, options CreateOptio
 		if s.Runtime == nil {
 			return lease, fmt.Errorf("%w: Compose provider unavailable", ErrPrerequisite)
 		}
-		if doctor["context"] == "" {
-			doctor, err = s.Runtime.Doctor(ctx)
+		provider := domain.EffectiveComposeProvider(r.Provider)
+		doctor, ok := doctors[provider]
+		if !ok {
+			if selected, supported := s.Runtime.(ComposeProviderDoctor); supported {
+				doctor, err = selected.DoctorFor(ctx, provider)
+			} else if provider == domain.ComposeProviderDocker {
+				doctor, err = s.Runtime.Doctor(ctx)
+			} else {
+				err = fmt.Errorf("unsupported Compose provider %q", provider)
+			}
 			if err != nil {
-				return lease, fmt.Errorf("%w: %v", ErrPrerequisite, err)
+				return lease, fmt.Errorf("%w: runtime %s provider %s: %v", ErrPrerequisite, r.Name, provider, err)
 			}
 			if doctor["context"] == "" {
-				return lease, errors.New("Docker context identity is missing")
+				return lease, fmt.Errorf("%w: provider %s connection identity is missing", ErrPrerequisite, provider)
 			}
+			doctors[provider] = doctor
 		}
+		r.Provider, r.Context = provider, doctor["context"]
 	}
 	home, err := filepath.Abs(s.Home)
 	if err != nil || s.Home == "" {
@@ -194,7 +216,6 @@ func (s *Service) Create(ctx context.Context, o PlanOptions, options CreateOptio
 			r.Android.AVDPath = filepath.Join(r.Android.AVDHome, r.Android.AVDName+".avd")
 			continue
 		}
-		r.Context = doctor["context"]
 		r.Directory = filepath.Join(root, filepath.FromSlash(r.Directory))
 		for j, p := range r.Files {
 			r.Files[j] = filepath.Join(root, filepath.FromSlash(p))
@@ -222,12 +243,16 @@ func (s *Service) Create(ctx context.Context, o PlanOptions, options CreateOptio
 	if err = s.persist(ctx, lease); err != nil {
 		return lease, err
 	}
-	if len(doctor) > 0 {
+	for provider, doctor := range doctors {
 		doctorData, e := json.MarshalIndent(doctor, "", "  ")
 		if e != nil {
 			return lease, e
 		}
-		if err = s.saveTextArtifact(ctx, lease, "docker-info", "docker-info.json", string(doctorData)); err != nil {
+		kind := "docker-info"
+		if provider == domain.ComposeProviderPodman {
+			kind = "podman-info"
+		}
+		if err = s.saveTextArtifact(ctx, lease, kind, kind+".json", string(doctorData)); err != nil {
 			return lease, err
 		}
 	}
@@ -729,6 +754,16 @@ func (s *Service) cleanup(ctx context.Context, l *domain.Lease, force bool) erro
 			}
 			return false, nil
 		}
+		if preparer, ok := s.Runtime.(RuntimeCleanupPreparation); ok {
+			prepared, err := preparer.PrepareCleanup(ctx, *r)
+			if err != nil {
+				return false, err
+			}
+			r.CleanupEvidence = prepared.CleanupEvidence
+			if err := s.persist(ctx, *l); err != nil {
+				return true, err
+			}
+		}
 		o, err := s.inspectRuntime(ctx, *r)
 		if err != nil {
 			return false, err
@@ -736,11 +771,14 @@ func (s *Service) cleanup(ctx context.Context, l *domain.Lease, force bool) erro
 		if err := ownedResources(l.ID, o.Resources); err != nil {
 			return false, err
 		}
-		if o.Exists {
+		if o.Exists || len(r.CleanupEvidence) > 0 {
 			if err := s.event(ctx, l.ID, "runtime_logs_requested", r.Name); err != nil {
 				return true, err
 			}
 			for _, service := range r.Services {
+				if !o.Exists {
+					break
+				}
 				scoped := *r
 				scoped.Services = []string{service}
 				logs, err := s.Runtime.Logs(ctx, scoped)
@@ -765,6 +803,7 @@ func (s *Service) cleanup(ctx context.Context, l *domain.Lease, force bool) erro
 				return false, err
 			}
 		}
+		r.CleanupEvidence = nil
 		r.Started = false
 		if err := s.persist(ctx, *l); err != nil {
 			return true, err

@@ -1,6 +1,8 @@
 package domain
 
 import (
+	"encoding/json"
+	"reflect"
 	"testing"
 	"time"
 )
@@ -72,5 +74,38 @@ func TestGCGraceBoundaries(t *testing.T) {
 	l.ExpiresAt = time.Time{}
 	if GCEligible(l, now) {
 		t.Fatal("missing expiry cannot prove collection eligibility")
+	}
+}
+
+func TestComposeProviderSnapshotCompatibility(t *testing.T) {
+	for _, provider := range []ComposeProviderName{"", ComposeProviderDocker, ComposeProviderPodman, "future-provider"} {
+		t.Run(string(provider), func(t *testing.T) {
+			original := Lease{Manifest: json.RawMessage(`{}`), Runtimes: []Runtime{{Name: "backend", Type: "compose", Provider: provider}}}
+			data, err := json.Marshal(original)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var restored Lease
+			if err := json.Unmarshal(data, &restored); err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(original, restored) {
+				t.Fatalf("provider changed on roundtrip: %+v", restored)
+			}
+			want := provider
+			if want == "" {
+				want = ComposeProviderDocker
+			}
+			if got := EffectiveComposeProvider(restored.Runtimes[0].Provider); got != want {
+				t.Fatalf("effective provider %q, want %q", got, want)
+			}
+		})
+	}
+	var legacy Lease
+	if err := json.Unmarshal([]byte(`{"runtimes":[{"name":"backend","type":"compose","docker_context":"recorded-context"}]}`), &legacy); err != nil {
+		t.Fatal(err)
+	}
+	if legacy.Runtimes[0].Provider != "" || EffectiveComposeProvider(legacy.Runtimes[0].Provider) != ComposeProviderDocker || legacy.Runtimes[0].Context != "recorded-context" {
+		t.Fatalf("legacy snapshot changed: %+v", legacy)
 	}
 }

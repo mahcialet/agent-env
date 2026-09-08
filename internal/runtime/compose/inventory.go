@@ -12,7 +12,7 @@ import (
 
 // Inventory observes labelled resources in an explicit Docker context. It never
 // changes projects or adopts resources whose ownership is not established.
-func (c Client) Inventory(ctx context.Context, contextName string) ([]domain.Resource, error) {
+func (c dockerClient) Inventory(ctx context.Context, contextName string) ([]domain.Resource, error) {
 	result := []domain.Resource{}
 	if contextName == "" || strings.ContainsAny(contextName, "\x00\r\n") {
 		return result, fmt.Errorf("inventory requires a recorded Docker context")
@@ -32,6 +32,12 @@ func (c Client) Inventory(ctx context.Context, contextName string) ([]domain.Res
 		}
 		result = append(result, domain.Resource{ID: contextName + ":project:" + p.Name, Kind: "compose-project", ExternalID: p.Name, Metadata: map[string]string{"context": contextName, "project": p.Name, "observed_status": p.Status, "config_files": p.ConfigFiles, "ownership": "unknown"}})
 	}
+	return c.inventoryResources(ctx, contextName, result)
+}
+
+// inventoryResources observes labelled native resources independently of Compose.
+func (c dockerClient) inventoryResources(ctx context.Context, contextName string, result []domain.Resource) ([]domain.Resource, error) {
+	base := []string{"--context", contextName}
 	for _, kind := range []string{"container", "network", "volume"} {
 		set := map[string]bool{}
 		for _, label := range []string{leaseLabel, projectLabel} {
@@ -42,7 +48,7 @@ func (c Client) Inventory(ctx context.Context, contextName string) ([]domain.Res
 				args = append(args, kind, "ls", "--quiet")
 			}
 			args = append(args, "--filter", "label="+label)
-			out, err = c.run(ctx, "", args...)
+			out, err := c.run(ctx, "", args...)
 			if err != nil {
 				return result, err
 			}
@@ -65,7 +71,7 @@ func (c Client) Inventory(ctx context.Context, contextName string) ([]domain.Res
 			args = append(args, kind, "inspect")
 		}
 		args = append(args, all...)
-		out, err = c.run(ctx, "", args...)
+		out, err := c.run(ctx, "", args...)
 		if err != nil {
 			return result, err
 		}

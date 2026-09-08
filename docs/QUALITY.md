@@ -43,6 +43,42 @@ The suite verifies simultaneous API/Dashboard leases, selected closure, manifest
 
 The final local Linux CLI integration run passed in 109.95 seconds, including generated endpoints, diagnostic descriptors, and component-scoped live and archived logs. This establishes real Docker behavior for that tested revision, not completion of later edits or every native platform. All fixture resources have unique tracked identities and lease-specific cleanup; the suite never runs a general Docker prune.
 
+## Real Podman fixtures
+
+Set `AGENT_ENV_PODMAN_INTEGRATION=1` using your platform’s native environment
+configuration, then run:
+
+```text
+go test -tags=integration ./internal/cli -run TestPodmanIntegration -count=1 -v
+```
+
+Also set `AGENT_ENV_PODMAN_DOCKER_COEXISTENCE=1` to require Docker coexistence
+and run the same named test fixture against both engines. The suite builds and
+executes the actual CLI to exercise its native Podman child bridge. It requires
+Linux rootless Podman 5.x and podman-compose >=1.6.0,<2.0.0; opting in with missing
+or unsupported prerequisites fails rather than skips. Ordinary tests start neither
+engine. The fixture checks concurrent leases, HTTP endpoints, redacted named-test
+evidence, logs, sibling/foreign-resource survival and residual cleanup. It makes
+lease-scoped engine changes and uses owned cleanup, never global prune.
+
+On 2026-09-08, `TestPodmanIntegrationConcurrentLeasesAndEvidence` passed in
+110.13 seconds with both opt-ins enabled, using Linux rootless Podman 5.4.2 and
+podman-compose 1.6.0 alongside Docker. Both Podman leases reached ready with the
+selected service closure and reachable HTTP endpoints. Component logs, named
+pass/fail tests, redaction and retained artifacts passed. Image-declared volumes
+were natively anonymous and unlabelled, then absent after destroy. Destroy
+preserved the sibling lease, foreign volume and live Docker lease; the same named
+tests also passed/failed as expected on Docker. Native Windows/macOS/Linux provider CI passed on 4a5de3d
+(run 34216579481), and real Machine infrastructure is unavailable. Exact evidence remains
+in the
+[provider plan](exec-plans/completed/compose-provider-podman.md).
+
+Run [34216579481](https://github.com/mahcialet/agent-env/actions/runs/34216579481)
+on 4a5de3d passed all six native Windows/macOS/Linux jobs across Go 1.26/1.27,
+all five CGO-disabled cross-builds, and the Linux race/Docker integration job.
+All 12 jobs succeeded. The local Docker and Podman/Docker coexistence runs above
+also passed.
+
 ## CI and completion evidence
 
 CI runs the harness and CLI build natively on Windows, macOS, and Linux for Go 1.26.x and 1.27.x. Linux runs `go test -race ./...` and explicit Docker integration. Separate cross-build jobs cover five targets with `CGO_ENABLED=0`.

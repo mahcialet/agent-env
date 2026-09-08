@@ -16,6 +16,14 @@ A failure triggers bounded reverse compensation using a cleanup context that sur
 
 Before deleting resources, cleanup inspects pinned source identity and tracked changes. Final runtime logs are saved before down; clean worktrees are removed only after runtime cleanup. Explicit force requires tracked-diff evidence and still refuses identity mismatches. Untracked files in a managed review worktree are disposable. Repeated cleanup is idempotent when the recorded resources are already absent.
 
+Compose cleanup uses the provider and engine stored in the runtime snapshot.
+Before Podman down, app persists `Runtime.cleanup_evidence`, including native
+anonymous-volume identity and attachment proof. This survives interruption after
+containers disappear. Recovery revalidates volume identity and current references;
+only a proven residual with no external/sibling reference can be removed. Changed
+identity, unavailable observation or incomplete cleanup quarantines the lease.
+Provider down succeeding is not proof of absence; actual resources are reinspected.
+
 ## Registry and concurrent operations
 
 SQLite uses embedded numbered migrations, verified WAL, foreign keys, and a busy timeout on connections. Immediate transactions enforce capacity and unique runtime project reservations. Normalized rows and the corresponding lease snapshot update together. A versioned `leases/<id>/environment.json` descriptor provides secondary diagnostic evidence and is refreshed during persisted lifecycle changes; SQLite remains authoritative if descriptor writing fails. The registry remains local to one host; do not place it on an unsupported network filesystem or treat it as multi-host coordination.
@@ -45,11 +53,11 @@ The policy model supports `GCGrace` and `HeartbeatGrace`; the CLI currently uses
 ## Recovery workflow
 
 1. Use `show`, `reconcile`, and retained logs to identify what is known, missing, dirty, or ambiguous.
-2. Restore the recorded Docker context/daemon or other prerequisite before retrying observation.
+2. Restore the recorded provider/engine or other prerequisite before retrying observation.
 3. Preserve wanted tracked changes outside the managed lease. Use ordinary destroy for clean resources; use explicit force only when discarding tracked edits is intended and diff evidence can be retained.
 4. Reconcile again and require absence of the lease's runtime/worktree resources before considering cleanup complete.
 
-Do not infer that work stopped from a stale plan, lock record, or observation timeout. Inspect the actual process and resource identities. Never repair an ambiguous lease with blanket Docker cleanup or Git worktree pruning across unrelated repositories.
+Do not infer that work stopped from a stale plan, lock record, or observation timeout. Inspect the actual process and resource identities. Never repair an ambiguous lease with blanket Docker/Podman cleanup or Git worktree pruning across unrelated repositories.
 
 ## Pinned manifest provenance
 
@@ -59,7 +67,7 @@ Plans and leases record the selected absolute, symlink-resolved `manifest_path`,
 
 SQLite reserves private AVD identities and even/odd console/ADB port pairs before startup. An ownership marker records launch intent and native process birth identity outside disposable AVD state. Cleanup verifies AVD identity and sends kill on the same authenticated console connection, then requires process-tree and port absence before deleting private writable state. Logs and markers remain evidence. A missing launch identity, recycled resource, or uncertain descendant observation quarantines the lease and retains reservations; force cannot override it.
 
-Reconciliation of an individual Android-only lease does not require Docker. Global inventory always checks Compose orphan resources, even when only Android lease rows remain; Android inspection is scoped to recorded identities. Reconcile observes manual termination but never adopts or restarts an Emulator.
+Reconciliation of an individual Android-only lease does not require Docker. Global Compose orphan inventory examines the union of installed provider executables and recorded provider/engine identities, even when only Android lease rows remain. An installed but unavailable engine produces a visible partial error, not an empty successful inventory; resource IDs are provider-scoped. Android inspection is scoped to recorded identities. Reconcile observes manual termination but never adopts or restarts an Emulator.
 
 The shared local ADB server has a separate lifetime from each lease. Creation
 establishes protocol compatibility at `127.0.0.1:5037` with a direct read-only

@@ -36,10 +36,10 @@ agent-env renew <lease-id> [--ttl <duration>]
 agent-env destroy <lease-id> [--dry-run] [--force]
 agent-env reconcile [lease-id]
 agent-env gc [--apply]
-agent-env doctor [repository|lease-id] [--runtime compose|android-emulator|flutter-android]
+agent-env doctor [repository|lease-id] [--runtime compose|android-emulator|flutter-android] [--provider docker-compose|podman-compose]
 ```
 
-An omitted repository means the current directory. `init` requires one recognizable root Compose file, creates `.agent-env.yaml` exclusively, and reports that review is required; it does not start anything. `validate` checks schema and references without Docker. `plan` additionally resolves local Git commits and the deterministic component closure without creating state or worktrees. `--ref` requires a single source; use alias-specific `--source` overrides for multiple sources. Neither form fetches remote refs.
+An omitted repository means the current directory. `init` requires one recognizable root Compose file, creates `.agent-env.yaml` exclusively, and reports that review is required; it does not start anything. `validate` checks schema and references without Docker or Podman. `plan` additionally resolves local Git commits and the deterministic component closure without creating state or worktrees. `--ref` requires a single source; use alias-specific `--source` overrides for multiple sources. Neither form fetches remote refs.
 
 The manifest defaults to the supplied control checkout. `--manifest` on plan/create selects another trusted manifest explicitly; its digest and canonical snapshot are retained. Review mode creates detached, non-writable-by-contract source worktrees. There is no writable fix mode.
 
@@ -47,9 +47,9 @@ The manifest defaults to the supplied control checkout. `--manifest` on plan/cre
 
 `--owner <text>` is a global advisory owner selector. `AGENT_ENV_OWNER` supplies an explicit default. Otherwise a local user/host identity and unique suffix identify allocations; `list --mine` matches that local identity across invocations. Owner labels are filters, not authorization boundaries.
 
-`list` and `show` inspect recorded sources and Docker projects; `--cached` is the explicit registry-only list. `show` includes the lease, events, command runs, artifacts, and endpoint observations. `capabilities` reports capabilities declared by selected components, the observed state, and an endpoint address map. Declared endpoints generate dynamic loopback publishing in the saved runtime configuration. `reconcile <lease-id>` returns that observed lease. Full `reconcile` returns an object containing `leases` and `inventory`, including resources with no matching recorded owner; it never deletes them.
+`list` and `show` inspect recorded sources and provider-pinned Compose projects; `--cached` is the explicit registry-only list. `show` includes the lease, events, command runs, artifacts, and endpoint observations. `capabilities` reports capabilities declared by selected components, the observed state, and an endpoint address map. Declared endpoints generate dynamic loopback publishing in the saved runtime configuration. `reconcile <lease-id>` returns that observed lease. Full `reconcile` returns an object containing `leases` and `inventory`, including resources with no matching recorded owner; it never deletes them. Discovery examines installed provider executables and recorded provider/engine identities together, with provider-scoped resource IDs. An installed but unavailable engine returns partial inventory and a visible error.
 
-Desired state is `active` or `released`. Observed state can be `requested`, `allocating`, `starting`, `ready`, `degraded`, `failed`, `releasing`, `released`, `quarantined`, or `unknown`. A stored ready row is not proof of live health. Missing Docker resources degrade an active lease; inspection failures remain visible as uncertainty. Expired or quarantined leases cannot become an unqualified ready result.
+Desired state is `active` or `released`. Observed state can be `requested`, `allocating`, `starting`, `ready`, `degraded`, `failed`, `releasing`, `released`, `quarantined`, or `unknown`. A stored ready row is not proof of live health. Missing Compose resources degrade an active lease; inspection failures remain visible as uncertainty. Expired or quarantined leases cannot become an unqualified ready result.
 
 Runtime/container and bounded HTTP readiness can be re-observed. Arbitrary command probes run during create; list/show do not rerun repository commands. A healthy live observation therefore does not prove that a previously successful command probe would still pass.
 
@@ -77,7 +77,7 @@ The data shape depends on the command: plan/create return an object, list return
 | 6 | Cleanup could not finish safely, including quarantine |
 | 7 | Internal, registry, or observation failure |
 
-These are CLI exit codes; a named command's own exit code is recorded separately in its run record. `doctor` defaults to executable availability, active Docker context, daemon reachability, Compose plugin version and an optional manifest. `--runtime android-emulator` checks local SDK tools and AVD templates instead of Docker. `--runtime flutter-android` checks the default Flutter executable and Android SDK/AVD prerequisites without Docker; with a repository, it checks configured executables, projects and Android prerequisites for all declared applications. See the [Flutter contract](flutter-android-runtime.md). A lease ID selects live lease diagnostics; a non-ready lease returns exit 3. See the [Android contract](android-emulator.md).
+These are CLI exit codes; a named command's own exit code is recorded separately in its run record. `doctor` without a repository or explicit provider checks Docker by default. With a repository it checks all manifest-declared Compose providers; `--provider` selects one provider for diagnosis without overriding lease execution. Reports retain provider identity, versions and engine prerequisites. Podman requires Podman 5.x and standalone podman-compose >=1.6.0,<2.0.0; no fallback is attempted. `--provider` applies only to Compose prerequisite diagnosis, not another runtime or a lease ID. `--runtime android-emulator` checks local SDK tools and AVD templates instead of Docker. `--runtime flutter-android` checks the default Flutter executable and Android SDK/AVD prerequisites without Docker; with a repository, it checks configured executables, projects and Android prerequisites for all declared applications. See the [Flutter contract](flutter-android-runtime.md). A lease ID selects live lease diagnostics; a non-ready lease returns exit 3. See the [Android contract](android-emulator.md).
 
 ## Cleanup and renewal
 

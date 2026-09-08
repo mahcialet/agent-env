@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/roadmap.md
-source_sha256: 454cc0214606a88d3680e62311458c3fbadc225077fa5ef97e3563ddb723bee4
+source_sha256: f2cd054c170afa1c42dd67bd05d27519c30b13237a574495e568a4c507c8b84b
 ---
 
 [英語版（翻訳元）](roadmap.md)
@@ -26,13 +26,21 @@ moduleは`github.com/mahcialet/agent-env`で、既存のMITライセンスを保
 
 ## runtimeの拡張
 
-iOS、browser/CDPの自動操作・snapshot、汎用の永続ホストプロセス、Podman固有対応、分散・複数ホストの調整は未実装です。Android Emulatorリースは専用AVD状態とローカルSDKプロセスを所有します。追加の実機CIにはアクセラレーションを利用できるrunnerが必要です。ブラウザーリソースには明示的な所有権とcleanupルールが必要です。
+iOS、browser/CDPの自動操作・snapshot、汎用の永続ホストプロセス、分散・複数ホストの調整は未実装です。Android Emulatorリースは専用AVD状態とローカルSDKプロセスを所有します。追加の実機CIにはアクセラレーションを利用できるrunnerが必要です。ブラウザーリソースには明示的な所有権とcleanupルールが必要です。
 
 [Android UI observer](product-specs/android-ui-observer.ja.md) は、既存の所有 Emulator に対し、
 上限付きの意味情報 snapshot、PNG、Unicode 置換、navigation、現在の PID の log を提供します。
 独立した任意の platform companion を使い、対象アプリへの instrumentation 追加は不要です。
 OCR、visual regression、より豊富な gesture、物理デバイス、remote Emulator host は引き続き延期しています。
 observer の最終受け入れ確認と platform 別の証拠は[完了した計画](exec-plans/completed/android-ui-observer.ja.md)で管理します。
+
+Compose provider選択とPodman adapterは
+実装済みであり、証拠は[provider plan](exec-plans/completed/compose-provider-podman.ja.md)に
+記録しています。
+既定はDockerのままで、自動fallbackはありません。Podman 5.4.2 / podman-compose
+1.6.0で、Docker共存を含む実Linux rootless受け入れが成功しました。Windows/macOS/Linuxのnative provider CIは
+4a5de3d（run 34216579481）で成功であり、実機のMachine環境はありません。`podman compose` wrapper、
+Quadlet/Kubernetes、pod作成、任意のprovider実行ファイルは今回の対象外です。
 
 ## 成果物とリリース
 

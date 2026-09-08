@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/product-specs/cli-contract.md
-source_sha256: b5feab71c9b9defcd3d55617869cf30137435f653aec8d7f7f3ca9b115caaed2
+source_sha256: 7fa565d69b622b25c520c527a7ed3158661b2ccb733b33cbe6881d27926cd762
 ---
 
 [English（翻訳元）](cli-contract.md)
@@ -38,12 +38,12 @@ agent-env renew <lease-id> [--ttl <duration>]
 agent-env destroy <lease-id> [--dry-run] [--force]
 agent-env reconcile [lease-id]
 agent-env gc [--apply]
-agent-env doctor [repository|lease-id] [--runtime compose|android-emulator|flutter-android]
+agent-env doctor [repository|lease-id] [--runtime compose|android-emulator|flutter-android] [--provider docker-compose|podman-compose]
 ```
 
 リポジトリ省略時は現在のディレクトリを使います。`init` は認識可能なルート Compose file が 1 つあることを要求し、`.agent-env.yaml` を排他的に新規作成して review が必要と報告します。何も起動しません。
 
-`validate` は Docker なしで schema と参照を確認します。`plan` はさらにローカル Git commit と決定的なコンポーネント閉包を解決し、状態や worktree は作成しません。
+`validate` は Docker や Podman なしで schema と参照を確認します。`plan` はさらにローカル Git commit と決定的なコンポーネント閉包を解決し、状態や worktree は作成しません。
 
 `--ref` は source が 1 つの場合に限ります。複数 source には alias ごとの `--source` override を使います。どちらもリモート ref を fetch しません。
 
@@ -53,17 +53,21 @@ manifest は既定で指定した control checkout から取得します。plan/
 
 `--owner <text>` はグローバルな参考所有者 selector です。`AGENT_ENV_OWNER` が明示的な既定値を与えます。指定しない場合はローカル user/host の識別情報と一意の接尾辞で割り当てを識別し、`list --mine` は別の呼び出しでもそのローカル識別情報に一致させます。owner label は filter であり、認可境界ではありません。
 
-`list` と `show` は記録した source と Docker project を検査します。`--cached` はレジストリのみを読む明示的な list です。`show` は lease、event、command run、artifact、endpoint の観測を含みます。
+`list` と `show` は記録した source とproviderを固定したCompose project を検査します。`--cached` はレジストリのみを読む明示的な list です。`show` は lease、event、command run、artifact、endpoint の観測を含みます。
 
 `capabilities` は選択コンポーネントが宣言する capability、観測状態、endpoint のアドレス map を報告します。宣言された endpoint は、保存したランタイム設定に動的 loopback 公開を生成します。
 
 `reconcile <lease-id>` は観測した lease を返します。全体の `reconcile` は `leases` と `inventory` を含む object を返し、一致する所有者記録のないリソースも含めます。削除はしません。
 
-desired state は `active` または `released` です。observed state は `requested`、`allocating`、`starting`、`ready`、`degraded`、`failed`、`releasing`、`released`、`quarantined`、`unknown` です。保存済みの ready 行は実際の健全性の証明ではありません。Docker リソースの不在は active lease を degraded にし、検査失敗は不確定として見える状態を保ちます。期限切れまたは隔離中の lease を、留保のない ready 結果にはできません。
+desired state は `active` または `released` です。observed state は `requested`、`allocating`、`starting`、`ready`、`degraded`、`failed`、`releasing`、`released`、`quarantined`、`unknown` です。保存済みの ready 行は実際の健全性の証明ではありません。Compose リソースの不在は active lease を degraded にし、検査失敗は不確定として見える状態を保ちます。期限切れまたは隔離中の lease を、留保のない ready 結果にはできません。
 
 ランタイム/コンテナと時間制限付き HTTP readiness は再観測できます。任意の command probe は create 中に実行し、list/show はリポジトリコマンドを再実行しません。したがって実リソースの健全な観測は、以前成功した command probe が現在も成功する証明にはなりません。
 
 `logs --run` は記録した 1 つの command run の stdout/stderr を読みます。`logs --component` は、その Compose project を共有する全サービスを返すのではなく、コンポーネントが持つランタイム内サービスを選びます。filter がなければ、利用可能なランタイムのログと保持済みの削除証拠を含めます。
+
+グローバルinventoryは、導入済みprovider実行ファイルと記録済みprovider/engine識別情報を
+併せて探索し、resource IDをprovider単位に区別します。導入済みでもengineが利用不能なら、
+部分的なinventoryと明示的なエラーを返します。
 
 ## 出力と終了 status
 
@@ -87,7 +91,7 @@ data の形はコマンドごとに異なります。plan/create は object、li
 | 6 | 隔離を含め、安全に削除を完了できなかった |
 | 7 | 内部、レジストリ、観測の失敗 |
 
-これは CLI の終了 code です。named command 自身の終了 code は run 記録に別途保存します。`doctor` は既定で実行ファイルの利用可否、active Docker context、daemon への到達性、Compose plugin 版、任意指定の manifest を確認します。`--runtime android-emulator` は Docker の代わりにローカル SDK tool と AVD template を確認します。`--runtime flutter-android` は Docker なしで既定の Flutter 実行ファイルと Android SDK/AVD の前提条件を検査します。リポジトリを指定すると、宣言した全アプリの設定済み実行ファイル、プロジェクト、Android の前提条件を検査します。[Flutter 契約](flutter-android-runtime.ja.md)を参照してください。lease ID は実際の lease の診断を選び、ready でない lease は exit 3 を返します。[Android 契約](android-emulator.ja.md)を参照してください。
+これは CLI の終了 code です。named command 自身の終了 code は run 記録に別途保存します。`doctor`はrepositoryもproviderも明示しない場合、既定でDockerを検査します。repository指定時はmanifestで宣言した全Compose providerを検査します。`--provider`は診断対象を1つ選択し、leaseの実行設定は上書きしません。診断はprovider情報、バージョン、engineの前提条件を保持します。PodmanにはPodman 5.xと独立したpodman-compose >=1.6.0,<2.0.0が必要であり、fallbackしません。`--provider`はCompose前提条件の診断専用で、別runtimeやlease IDには適用できません。`--runtime android-emulator` は Docker の代わりにローカル SDK tool と AVD template を確認します。`--runtime flutter-android` は Docker や Podman なしで既定の Flutter 実行ファイルと Android SDK/AVD の前提条件を検査します。リポジトリを指定すると、宣言した全アプリの設定済み実行ファイル、プロジェクト、Android の前提条件を検査します。[Flutter 契約](flutter-android-runtime.ja.md)を参照してください。lease ID は実際の lease の診断を選び、ready でない lease は exit 3 を返します。[Android 契約](android-emulator.ja.md)を参照してください。
 
 ## 削除と更新
 

@@ -25,7 +25,7 @@ const projectLabel = "com.docker.compose.project"
 const leaseLabel = "io.agent-env.lease"
 const runtimeLabel = "io.agent-env.runtime"
 
-type Client struct {
+type dockerClient struct {
 	Runner execx.Runner
 	Policy policy.Policy
 }
@@ -45,7 +45,7 @@ type Observation struct {
 var projectPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]{0,62}$`)
 var versionPattern = regexp.MustCompile(`^v?([0-9]+)\.`)
 
-func (c Client) run(ctx context.Context, directory string, args ...string) (execx.Result, error) {
+func (c dockerClient) run(ctx context.Context, directory string, args ...string) (execx.Result, error) {
 	if c.Runner == nil {
 		return execx.Result{}, fmt.Errorf("Compose runner is not configured")
 	}
@@ -61,7 +61,7 @@ func (c Client) run(ctx context.Context, directory string, args ...string) (exec
 
 // Doctor captures the selected context before checking the plugin and daemon.
 // Persist context and use it for every later operation on the runtime.
-func (c Client) Doctor(ctx context.Context) (map[string]string, error) {
+func (c dockerClient) Doctor(ctx context.Context) (map[string]string, error) {
 	result := map[string]string{}
 	r, err := c.run(ctx, "", "context", "show")
 	if err != nil {
@@ -142,7 +142,7 @@ func composeArgs(r domain.Runtime) ([]string, error) {
 	return args, nil
 }
 
-func (c Client) Render(ctx context.Context, r domain.Runtime, sourceRoots []string) (Rendered, error) {
+func (c dockerClient) Render(ctx context.Context, r domain.Runtime, sourceRoots []string) (Rendered, error) {
 	args, err := composeArgs(r)
 	if err != nil {
 		return Rendered{}, err
@@ -152,12 +152,16 @@ func (c Client) Render(ctx context.Context, r domain.Runtime, sourceRoots []stri
 	if err != nil {
 		return Rendered{}, fmt.Errorf("render Compose configuration: %w", err)
 	}
+	return validateRendered([]byte(out.Stdout), r, sourceRoots, c.Policy)
+}
+
+func validateRendered(data []byte, r domain.Runtime, sourceRoots []string, hostPolicy policy.Policy) (Rendered, error) {
 	var raw map[string]any
-	if err := json.Unmarshal([]byte(out.Stdout), &raw); err != nil {
+	if err := json.Unmarshal(data, &raw); err != nil {
 		return Rendered{}, fmt.Errorf("invalid rendered Compose JSON: %w", err)
 	}
 	var cfg policy.Config
-	if err := json.Unmarshal([]byte(out.Stdout), &cfg); err != nil {
+	if err := json.Unmarshal(data, &cfg); err != nil {
 		return Rendered{}, fmt.Errorf("invalid rendered Compose policy data: %w", err)
 	}
 	if len(r.Services) == 0 {
@@ -167,7 +171,7 @@ func (c Client) Render(ctx context.Context, r domain.Runtime, sourceRoots []stri
 	if err != nil {
 		return Rendered{}, err
 	}
-	diagnostics, err := c.Policy.Evaluate(cfg, services, sourceRoots)
+	diagnostics, err := hostPolicy.Evaluate(cfg, services, sourceRoots)
 	if err != nil {
 		return Rendered{}, err
 	}
@@ -204,7 +208,7 @@ func (c Client) Render(ctx context.Context, r domain.Runtime, sourceRoots []stri
 	// Compose down --volumes acts on every volume in its project definition.
 	// Keep only the selected service closure and its reachable resource graph.
 	pruneConfig(raw, services)
-	data, err := json.MarshalIndent(raw, "", "  ")
+	data, err = json.MarshalIndent(raw, "", "  ")
 	if err != nil {
 		return Rendered{}, err
 	}
@@ -213,7 +217,7 @@ func (c Client) Render(ctx context.Context, r domain.Runtime, sourceRoots []stri
 	return Rendered{JSON: data, Digest: hex.EncodeToString(sum[:]), Services: services}, nil
 }
 
-func (c Client) Up(ctx context.Context, r domain.Runtime) error {
+func (c dockerClient) Up(ctx context.Context, r domain.Runtime) error {
 	args, err := composeArgs(r)
 	if err != nil {
 		return err
@@ -230,7 +234,7 @@ func (c Client) Up(ctx context.Context, r domain.Runtime) error {
 	return err
 }
 
-func (c Client) Logs(ctx context.Context, r domain.Runtime) (string, error) {
+func (c dockerClient) Logs(ctx context.Context, r domain.Runtime) (string, error) {
 	args, err := composeArgs(r)
 	if err != nil {
 		return "", err
@@ -318,7 +322,7 @@ func verifyLabels(r domain.Runtime, labels map[string]string) error {
 	return nil
 }
 
-func (c Client) Inspect(ctx context.Context, r domain.Runtime) (Observation, error) {
+func (c dockerClient) Inspect(ctx context.Context, r domain.Runtime) (Observation, error) {
 	o := Observation{Ready: true, Endpoints: map[string]string{}, Resources: []domain.Resource{}, Diagnostics: []string{}}
 	if err := identity(r); err != nil {
 		return o, err
@@ -430,7 +434,7 @@ func (c Client) Inspect(ctx context.Context, r domain.Runtime) (Observation, err
 	return o, nil
 }
 
-func (c Client) Down(ctx context.Context, r domain.Runtime) error {
+func (c dockerClient) Down(ctx context.Context, r domain.Runtime) error {
 	if _, err := c.Inspect(ctx, r); err != nil {
 		return fmt.Errorf("cannot verify project resource identity before cleanup: %w", err)
 	}
@@ -458,7 +462,7 @@ func (c Client) Down(ctx context.Context, r domain.Runtime) error {
 // Project-label discovery cannot see a same-name resource created outside this
 // lease. Compose can nevertheless reuse or remove it by its configured name.
 // Resolve each name independently and reject unknown ownership before any effect.
-func (c Client) verifyDeclaredResourceOwnership(ctx context.Context, r domain.Runtime) error {
+func (c dockerClient) verifyDeclaredResourceOwnership(ctx context.Context, r domain.Runtime) error {
 	if r.ConfigPath == "" {
 		if r.LeaseID != "" {
 			return fmt.Errorf("managed runtime requires an immutable configuration snapshot")

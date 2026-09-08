@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/QUALITY.md
-source_sha256: 60ec1a8cddfbf2b7bb04a9f6a4a1cf436749415a37fb8a4943f160f6cf09d8a1
+source_sha256: ffd05dff38af22b283bc62a1b0aa055c09e9e6d321e4c84ee8393fe18facb973
 ---
 
 # 品質と検証
@@ -48,6 +48,38 @@ SQLiteテストは実際の一時DBを使い、Unicodeパス、再オープン�
 名前付きテストが伏字化されたstdout／stderr／artifactと非ゼロ終了状態を保存すること、readiness失敗が実リソースをrollbackすること、変更済みの追跡対象worktreeはdiff証拠を伴う明示的なforceまでGCで削除されないことも検証する。
 
 最後のローカルLinux CLI統合テストは109.95秒で成功し、生成endpoint、診断descriptor、component単位の実行中／アーカイブログを確認した。これはそのリビジョンでの実Docker動作の証拠であり、後続の変更や全ネイティブプラットフォームの完了を示すものではない。fixtureの全リソースは固有の追跡可能な識別子とlease単位の清掃を使い、一般的なDocker pruneは実行しない。
+
+## 実Podmanのfixture
+
+プラットフォームのnativeな環境設定で`AGENT_ENV_PODMAN_INTEGRATION=1`を設定し、
+次を実行する。
+
+```text
+go test -tags=integration ./internal/cli -run TestPodmanIntegration -count=1 -v
+```
+
+`AGENT_ENV_PODMAN_DOCKER_COEXISTENCE=1`も設定すると、Docker共存と、両engineでの
+同じnamed test fixtureを要求する。suiteは実CLIをビルド・実行してnativeのPodman
+子process bridgeを検証する。Linux rootless Podman 5.xとpodman-compose
+>=1.6.0,<2.0.0が必要であり、opt-in時に前提条件が不足・非対応ならskipせず失敗する。
+通常のtestはどちらのengineも起動しない。fixtureは並行lease、HTTP endpoint、
+伏字化したnamed-test証拠、logs、兄弟・外部resourceの存続、残存resourceのcleanupを
+検査する。engineへの変更はlease単位で行い、所有を確認したcleanupを使う。
+global pruneは実行しない。
+
+2026-09-08に、両opt-inを有効にした`TestPodmanIntegrationConcurrentLeasesAndEvidence`が
+110.13秒で成功した。Linux rootless Podman 5.4.2、podman-compose 1.6.0とDockerを併用した。
+両Podman leaseが選択したservice閉包でreadyとなり、HTTP endpointに到達できた。
+component logs、named pass/fail test、伏字化、artifact保持を確認した。image宣言のvolumeは
+nativeの匿名かつlabelなしであり、destroy後の不在を確認した。destroyは兄弟lease、外部volume、
+稼働中のDocker leaseを保持した。Dockerでも同じnamed testが期待どおり成功・失敗した。
+Windows/macOS/Linuxのnative provider CIは4a5de3d（run 34216579481）で成功した。実機のMachine環境はない。正確な証拠は
+[provider plan](exec-plans/completed/compose-provider-podman.ja.md)に記録する。
+
+4a5de3dのrun [34216579481](https://github.com/mahcialet/agent-env/actions/runs/34216579481)
+では、Go 1.26/1.27のWindows/macOS/Linux native job全6件、CGO無効cross-build全5件、
+Linuxのrace／Docker integration jobが成功し、全12 jobが成功した。
+前述のlocal DockerおよびPodman/Docker共存runも成功した。
 
 ## CIと完了の証拠
 

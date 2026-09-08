@@ -20,6 +20,7 @@ func TestStrictManifest(t *testing.T) {
 	base := strings.ReplaceAll(string(fixture(t)), "\r\n", "\n")
 	for _, tc := range []struct{ name, body, want string }{
 		{"unknown", base + "typo: true\n", "field typo not found"},
+		{"provider on probe", strings.Replace(base, "    provides:", "    readiness: [{type: compose, provider: docker-compose}]\n    provides:", 1), "field provider not found"},
 		{"nested unknown", strings.Replace(base, "default_ref: HEAD", "default_ref: HEAD\n    typo: bad", 1), "field typo not found"},
 		{"duplicate", strings.Replace(base, "default_ref: HEAD", "default_ref: HEAD\n    default_ref: main", 1), "already defined"},
 		{"version", strings.Replace(base, "version: 1", "version: 2", 1), "unsupported version"},
@@ -136,6 +137,81 @@ func TestRelativePath(t *testing.T) {
 	for _, p := range []string{"../escape", "a/../../escape", "/root", "C:/root", `C:\root`, `\\server\share`, `..\escape`, "a\x00b"} {
 		if e := RelativePath(p); e == nil {
 			t.Errorf("accepted %q", p)
+		}
+	}
+}
+
+func TestComposeProviderValidation(t *testing.T) {
+	base := strings.ReplaceAll(string(fixture(t)), "\r\n", "\n")
+	for _, provider := range []string{"docker-compose", "podman-compose"} {
+		t.Run(provider, func(t *testing.T) {
+			m, err := Parse([]byte(strings.Replace(base, "type: compose", "type: compose\n    provider: "+provider, 1)))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if m.Runtimes["backend"].Provider != provider {
+				t.Fatalf("provider lost: %+v", m.Runtimes)
+			}
+		})
+	}
+	for _, provider := range []string{"docker", "podman", "Docker-compose", "' docker-compose'", "''", "null", "false", "12"} {
+		t.Run("reject "+provider, func(t *testing.T) {
+			_, err := Parse([]byte(strings.Replace(base, "type: compose", "type: compose\n    provider: "+provider, 1)))
+			if err == nil || !strings.Contains(err.Error(), "provider") {
+				t.Fatalf("accepted invalid provider %q: %v", provider, err)
+			}
+		})
+	}
+	for _, provider := range []string{"docker-compose", "podman-compose", "unknown"} {
+		m, err := Parse([]byte(base))
+		if err != nil {
+			t.Fatal(err)
+		}
+		r := m.Runtimes["backend"]
+		r.Type, r.Provider = "android-emulator", provider
+		m.Runtimes["backend"] = r
+		if err := Validate(m); err == nil || !strings.Contains(err.Error(), "provider is only supported for compose") {
+			t.Fatalf("non-Compose provider %q: %v", provider, err)
+		}
+	}
+	m, err := Parse([]byte(base))
+	if err != nil {
+		t.Fatal(err)
+	}
+	canonical, err := CanonicalJSON(m)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if m.Runtimes["backend"].Provider != "" || strings.Contains(string(canonical), `"provider"`) {
+		t.Fatalf("omitted provider changed canonical manifest: %s", canonical)
+	}
+}
+
+func TestNonComposeProviderRejectedDuringParse(t *testing.T) {
+	for _, provider := range []string{"docker-compose", "podman-compose", "unknown", "''", "null"} {
+		body := `version: 1
+sources:
+  mobile: {repository: ., default_ref: HEAD}
+runtimes:
+  emulator: {type: android-emulator, source: mobile, avd: Pixel, provider: ` + provider + `}
+components:
+  mobile: {runtime: emulator}
+stacks:
+  mobile: {roots: [mobile]}
+`
+		if _, err := Parse([]byte(body)); err == nil || !strings.Contains(err.Error(), "provider") {
+			t.Fatalf("Android provider %q accepted: %v", provider, err)
+		}
+	}
+}
+
+func TestComposeProviderEmptyAliasRejected(t *testing.T) {
+	base := strings.ReplaceAll(string(fixture(t)), "\r\n", "\n")
+	for _, empty := range []string{"''", "null"} {
+		body := strings.Replace(base, "default_ref: HEAD", "default_ref: &empty "+empty, 1)
+		body = strings.Replace(body, "type: compose", "type: compose\n    provider: *empty", 1)
+		if _, err := Parse([]byte(body)); err == nil || !strings.Contains(err.Error(), "provider") {
+			t.Fatalf("empty alias %q accepted: %v", empty, err)
 		}
 	}
 }

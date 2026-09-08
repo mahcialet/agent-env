@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/RELIABILITY.md
-source_sha256: c0d15850d9d27d7834d8ae8fee88d29b0ae0b4961d851e263eabcd2ef3948e85
+source_sha256: 6d28a3504ad99ca2a85511742e34096c8337c519ced1ea870d97b60ef89b46b7
 ---
 
 [英語版（翻訳元）](RELIABILITY.md)
@@ -17,6 +17,13 @@ source_sha256: c0d15850d9d27d7834d8ae8fee88d29b0ae0b4961d851e263eabcd2ef3948e85
 失敗時には、通常の要求取消後も有効なcleanup contextを使い、時間制限付きの逆順補償を実行します。完全に片付いた割り当て失敗は、失敗イベントと成果物を伴うreleasedとして記録に残ります。所有権が不確定、またはcleanupが不完全な場合は、復旧できるようにquarantinedの予約が見える状態を保ちます。再試行が成功したように見せるために証拠を消すことはありません。
 
 リソースを削除する前に、固定したソースの識別情報と追跡対象の変更を検査します。downの前に最終runtimeログを保存し、変更のないworktreeはruntimeのcleanup後にのみ削除します。明示的なforceでも追跡対象の差分証拠が必要であり、識別情報の不一致は拒否します。管理されたreview worktree内の追跡対象外ファイルは破棄可能です。記録されたリソースが既に存在しない場合、cleanupを繰り返しても結果は変わりません。
+
+Compose cleanupはruntime snapshotに保存したproviderとengineを使います。
+Podman down前に、appはnativeの匿名volume識別情報と接続証拠を含む
+`Runtime.cleanup_evidence`を永続化します。container消失後に中断しても証拠は残ります。
+復旧ではvolumeの識別情報と現在の参照を再確認し、外部・兄弟からの参照がないと証明できる
+残存volumeだけを削除します。識別情報の変化、観測不能、不完全なcleanupはquarantineと
+します。provider downの成功だけでは不在の証明とせず、実resourceを再検査します。
 
 ## レジストリと並行操作
 
@@ -49,11 +56,11 @@ list/showは、レジストリの意図を、登録済みGit worktree、固定�
 ## 復旧手順
 
 1. `show`、`reconcile`、保持したログで、判明しているもの、欠落、変更、不確定なものを特定します。
-2. 観測を再試行する前に、記録されたDocker context/daemonやその他の前提条件を復旧します。
+2. 観測を再試行する前に、記録されたprovider/engineやその他の前提条件を復旧します。
 3. 残したい追跡対象の変更は管理対象リースの外へ保存します。変更のないリソースには通常のdestroyを使います。追跡対象の編集を意図的に破棄し、差分証拠を保持できる場合にのみ明示的なforceを使います。
 4. 再度reconcileを行い、リースのruntime/worktreeリソースが存在しないことを確認してからcleanup完了と判断します。
 
-古い計画、lock記録、観測timeoutから作業の停止を推測しないでください。実際のプロセスとリソースの識別情報を確認します。無関係なリポジトリを巻き込む一括Docker cleanupやGit worktree pruneで、不確定なリースを修復してはいけません。
+古い計画、lock記録、観測timeoutから作業の停止を推測しないでください。実際のプロセスとリソースの識別情報を確認します。無関係なリポジトリを巻き込む一括Docker/Podman cleanupやGit worktree pruneで、不確定なリースを修復してはいけません。
 
 ## 固定マニフェストの由来
 
@@ -63,7 +70,7 @@ list/showは、レジストリの意図を、登録済みGit worktree、固定�
 
 SQLiteは起動前に専用AVDの識別情報と、偶数・奇数のconsole/ADBポートペアを予約します。所有権markerは、起動の意図とネイティブプロセスの生成時識別情報を、破棄可能なAVD状態の外に記録します。cleanupはAVDの識別情報を検証し、同じ認証済みconsole接続でkillを送り、プロセスツリーとポートの不在を確認してから専用の書き込み可能状態を削除します。ログとmarkerは証拠として残ります。起動識別情報の欠落、リソースの再利用、子孫の観測が不確定な場合は、リースをquarantinedにして予約を保持します。forceでもこの制限を上書きできません。
 
-個別のAndroidのみのリースのreconcileにはDockerは不要です。グローバルinventoryは、Androidリースだけが登録されている場合もComposeの孤立リソースを探索します。Androidの検査は記録された識別情報に限定します。reconcileは手動終了を観測しますが、Emulatorを取り込んだり再起動したりしません。
+個別のAndroidのみのリースのreconcileにはDockerは不要です。グローバルなCompose孤立resourceのinventoryは、Androidリースだけが登録されている場合も、導入済みprovider実行ファイルと記録済みprovider/engine識別情報の和集合を探索します。導入済みでもengineが利用不能なら、空の成功結果ではなく部分的なエラーを明示します。resource IDはprovider単位に区別します。Androidの検査は記録された識別情報に限定します。reconcileは手動終了を観測しますが、Emulatorを取り込んだり再起動したりしません。
 
 共有ローカルADBサーバーの寿命は各リースとは別です。作成時にはEmulatorを起動する前に、`127.0.0.1:5037`へ直接送る読み取り専用の`host:version` probeでプロトコル互換性を確立します。サーバーがなければdetached-process APIを通じて別途起動します。既存サーバーのバージョン不一致、不正な応答、観測不能は、置き換えを行わず前提条件の失敗とします。bootの観測ではSDKクライアントを実行する前に互換性確認を繰り返します。共有前提条件が欠けていれば、起動や置き換えをせず報告します。
 
