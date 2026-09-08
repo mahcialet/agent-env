@@ -40,9 +40,9 @@ from `master`. If a stacked PR is intentionally used instead, record the exact
 base branch and base commit in this plan and do not misrepresent stacked evidence
 as merged-master evidence.
 
-Starting revision: `TO_BE_RECORDED_AT_START`
+Starting revision: `e37242a312c090c51430d519ea623e1bb41d2941`
 
-Starting base branch: `TO_BE_RECORDED_AT_START`
+Starting base branch: `feat/standalone-distribution`
 
 ## Purpose / Big Picture
 
@@ -227,6 +227,8 @@ It must not contain host paths, temporary directories, worktree paths,
 credentials or environment secrets.
 
 ## Progress
+
+- [x] 2026-09-08: Created `feat/standalone-release-finalization` from `e37242a`; baseline `repoctl check` passed with Go 1.27.1.
 
 - [ ] Record exact starting base branch/revision and verify foundation prerequisites.
 - [ ] Run baseline `repoctl check` and documented race suite.
