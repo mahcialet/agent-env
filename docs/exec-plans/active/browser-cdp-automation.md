@@ -288,6 +288,17 @@ Do not weaken identity or stale-reference checks to make dynamic pages easier.
 
 ## Decision Log
 
+- 2026-09-08 — Limit the browser fixture's inherited 50 ms readiness deadline
+  to the operations whose behavior it tests: permit five seconds only during
+  fixture `Create`, then restore the original setting before every browser
+  assertion. `waitReady` persists the lease with its readiness context, and an
+  asynchronous SQLite rollback on deadline expiry can surface as `ErrTxDone`.
+  CI failed during fixture construction, before marking the process dead.
+  This supports a setup-deadline explanation; exact scheduler timing was not
+  captured. Ten unmodified local race repetitions passed (20.980s), so it was
+  not locally reproduced. Production readiness/locks and dedicated timeout,
+  death, contention, cancellation, and fence-loss assertions are unchanged.
+
 - 2026-09-08 — Provision an exact-path AppArmor profile for the pinned downloaded
   Chrome executable in the disposable Ubuntu CI runner, using Chromium's documented
   user-namespace allowance. This enables Chrome's sandbox while retaining the
@@ -865,3 +876,9 @@ acceptance traceability.
     abstraction.
 
 Resolve these in Decision Log before dependent behavior is declared stable.
+
+2026-09-08 CI checkpoint: all three real-browser jobs passed at `a37f11f`
+([Browser native 34235169459](https://github.com/mahcialet/agent-env/actions/runs/34235169459)),
+including Ubuntu's scoped AppArmor allowance with sandbox and global restriction
+still enabled. The browser-fixture-only readiness preparation change passed ten
+local race repetitions of every `TestBrowser*` (20.222s). Full Verify is pending.

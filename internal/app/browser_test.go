@@ -40,7 +40,13 @@ func browserFixture(t *testing.T) (*Service, domain.Lease, *fixtureBrowser, *lif
 	if e = os.WriteFile(filepath.Join(o.Repository, ".agent-env.yaml"), []byte(manifest), 0600); e != nil {
 		t.Fatal(e)
 	}
+	// Fixture creation is not a readiness-deadline test. The lifecycle helper's
+	// 50 ms deadline can cancel SQLite setup on loaded race runners before any
+	// browser assertion; retain that setting for all subsequent operations.
+	readinessTimeout := s.ReadinessTimeout
+	s.ReadinessTimeout = 5 * time.Second
 	l, e := s.Create(context.Background(), o, CreateOptions{Owner: "tester"})
+	s.ReadinessTimeout = readinessTimeout
 	if e != nil {
 		t.Fatal(e)
 	}

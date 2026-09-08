@@ -1,5 +1,5 @@
 ---
-source_sha256: 178d68cd5f6a5c03781295864b6f1612ac225a4aab03e5425119a38d76d7cbd2
+source_sha256: 3ed16574f8fa51ceb6601c1de8feacae19a21bfe385fcdefc5bc062aea2c50ac
 translation_of: docs/exec-plans/active/browser-cdp-automation.md
 status: active
 owner: maintainers
@@ -204,6 +204,15 @@ OS executable差、WebSocket teardown等を記録する。
 dynamic page対応のためidentity/stale checkを弱めない。
 
 ## 判断の記録
+
+- 2026-09-08 — browser fixtureが継承する50 ms readiness期限を、検査対象の操作に
+  限定する。fixtureの`Create`時だけ5秒を許可し、browserのassertion前に元の設定へ戻す。
+  `waitReady`はreadiness contextでleaseを保存するため、期限切れによるSQLiteの非同期
+  rollbackが`ErrTxDone`として現れる経路がある。CIはprocessをdeadにする前のfixture
+  作成中に失敗した。このため準備用期限による失敗が考えられるが、正確なscheduler timingは
+  取得できていない。変更前のlocal race 10回反復は成功（20.980秒）し、local再現は
+  できなかった。製品のreadiness/lockや、timeout・death・contention・cancellation・
+  fence lossの専用assertionは変更しない。
 
 - 2026-09-08 — 使い捨てのUbuntu CI runnerで、固定versionのdownload済みChrome
   実行ファイルのpathだけに適用するAppArmor profileを用意する。Chromiumが文書化した
@@ -612,3 +621,9 @@ Milestone 1の初期論点は判断の記録で解決済み。受け入れ時の
 16. Android/Browser shared UI abstraction時期
 
 現行app portは`BrowserProvider.Observe(context.Context, domain.Runtime, domain.BrowserBinding, domain.BrowserRequest, func(context.Context) error) (domain.BrowserObservation, error)`、adapterは`internal/browser/cdp`。console/network配列は`run.json`に保存し、個別collection fileは作らない。set-text前にはfingerprintのみの`redaction.json`を登録する。
+
+2026-09-08 CI checkpoint: `a37f11f`で3 OSすべての実browser jobが成功
+（[Browser native 34235169459](https://github.com/mahcialet/agent-env/actions/runs/34235169459)）。
+Ubuntuの限定したAppArmor許可を含め、sandboxとhost全体の制限は有効。
+browser fixture準備時だけreadiness期限を変更した状態で、全`TestBrowser*`の
+local race 10回反復も成功（20.222秒）。全Verifyは未完了。
