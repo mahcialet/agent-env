@@ -33,9 +33,10 @@ type envelope struct {
 	} `json:"error,omitempty"`
 }
 type eventSubscription struct {
-	session string
-	methods map[string]bool
-	events  chan envelope
+	session  string
+	methods  map[string]bool
+	events   chan envelope
+	overflow bool
 }
 
 type connection struct {
@@ -89,6 +90,7 @@ func (c *connection) read() {
 				case subscription.events <- m:
 				default:
 					overflow = true
+					subscription.overflow = true
 				}
 			}
 			c.mu.Unlock()
@@ -101,7 +103,7 @@ func (c *connection) read() {
 
 // subscribe installs the sole operation-local capture before its CDP domain is
 // enabled. Ordinary commands and unrelated sessions never accumulate events.
-func (c *connection) subscribe(session string, methods ...string) (<-chan envelope, func(), error) {
+func (c *connection) subscribe(session string, methods ...string) (<-chan envelope, func() (bool, error), error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.capture != nil {
@@ -117,12 +119,24 @@ func (c *connection) subscribe(session string, methods ...string) (<-chan envelo
 		subscription.methods[method] = true
 	}
 	c.capture = subscription
-	cancel := func() {
+	cancel := func() (bool, error) {
 		c.mu.Lock()
 		defer c.mu.Unlock()
 		if c.capture == subscription {
 			c.capture = nil
 		}
+		// Stop admission and inspect pending evidence under the dispatch lock.
+		// An overflow must remain an error even if deadline selection wins the
+		// race with the reader closing the connection.
+		if subscription.overflow {
+			return false, errors.New("CDP capture event queue overflow")
+		}
+		select {
+		case <-c.done:
+			return false, errors.New("browser disconnected during capture")
+		default:
+		}
+		return len(subscription.events) > 0, nil
 	}
 	return subscription.events, cancel, nil
 }
@@ -164,7 +178,7 @@ func (c *connection) call(ctx context.Context, session, method string, p any, ou
 		return errors.New("CDP disconnected; effect may be uncertain")
 	case m := <-ch:
 		if m.Error != nil {
-			return confirmedError{fmt.Errorf("CDP %s failed (%d)", method, m.Error.Code)}
+			return fmt.Errorf("CDP %s failed (%d)", method, m.Error.Code)
 		}
 		if out != nil {
 			return json.Unmarshal(m.Result, out)

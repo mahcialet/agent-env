@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/index.md
-source_sha256: ac011a2e4bf26a8404c13b5be5c69cb65ab7392087eb0e9e2ec0ee8d08d2088d
+source_sha256: 55eee14319409424cb08b8627804d784b07feb6a2d363d462257bc0390ca6dc8
 ---
 
 # リポジトリの知識
@@ -33,4 +33,4 @@ source_sha256: ac011a2e4bf26a8404c13b5be5c69cb65ab7392087eb0e9e2ec0ee8d08d2088d
 
 - [言語の方針](design-docs/bilingual-documentation.ja.md)：英語版を内容の基準にする方針、日本語訳の保守、明示的な例外。
 
-Browser/CDP: [製品契約](product-specs/browser-cdp-automation.ja.md)、[設計](design-docs/browser-cdp-automation.ja.md)、[完了の検証記録](exec-plans/completed/browser-cdp-automation.ja.md)。
+Browser/CDP: [製品契約](product-specs/browser-cdp-automation.ja.md)、[設計](design-docs/browser-cdp-automation.ja.md)、[完了の検証記録](exec-plans/active/browser-cdp-automation.ja.md)。

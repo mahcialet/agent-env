@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/product-specs/browser-cdp-automation.md
-source_sha256: 6356a1edb2cf3ed509c181f0dc567208a0a5c8f068862ca8cf554f5b8bcc315b
+source_sha256: 7d7e915d5cab121d45b3aa57d60a6c090e9bcef79fb687823d6137570e16f949
 ---
 
 # Browser/CDP自動操作
@@ -12,7 +12,7 @@ source_sha256: 6356a1edb2cf3ed509c181f0dc567208a0a5c8f068862ca8cf554f5b8bcc315b
 
 browserコマンドは、persistent process leaseが所有する明示的なChromium系ブラウザーを
 観測・操作します。別のブラウザーの起動、外部ブラウザーへの接続、個人用profileの再利用は
-行いません。実装とnative環境での受け入れ状況は[完了ExecPlan](../exec-plans/completed/browser-cdp-automation.ja.md)に記録します。
+行いません。実装とnative環境での受け入れ状況は[完了ExecPlan](../exec-plans/active/browser-cdp-automation.ja.md)に記録します。
 
 ## manifestと前提条件
 

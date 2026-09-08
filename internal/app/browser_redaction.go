@@ -98,3 +98,47 @@ func appendBrowserFingerprint(values []evidence.SecretFingerprint, value evidenc
 	}
 	return append(values, value)
 }
+
+// Redaction can expand strings, so the persisted representation must satisfy
+// the capture limits independently of the provider's pre-redaction limits.
+func boundRedactedBrowserCapture(o *domain.BrowserObservation) {
+	total := 0
+	retain := func(fields ...*string) bool {
+		size := 0
+		for _, field := range fields {
+			if len(*field) > 4096 {
+				*field = "[TRUNCATED]"
+				o.Truncated = true
+			}
+			size += len(*field)
+		}
+		if total+size > 65536 {
+			o.Truncated = true
+			return false
+		}
+		total += size
+		return true
+	}
+	console := o.Console[:0]
+	for _, v := range o.Console {
+		if len(console) >= 256 {
+			o.Truncated = true
+			continue
+		}
+		if retain(&v.Type, &v.Text) {
+			console = append(console, v)
+		}
+	}
+	o.Console = console
+	network := o.Network[:0]
+	for _, v := range o.Network {
+		if len(network) >= 256 {
+			o.Truncated = true
+			continue
+		}
+		if retain(&v.ID, &v.URL, &v.Method, &v.Type, &v.Failure) {
+			network = append(network, v)
+		}
+	}
+	o.Network = network
+}

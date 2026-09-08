@@ -99,8 +99,14 @@ func TestTransportCancellationAndDisconnect(t *testing.T) {
 	}
 }
 func TestDOMSnapshotSuppressesSensitiveStrings(t *testing.T) {
-	c, done := mockBrowser(t, func(envelope) any {
-		return map[string]any{"strings": []string{"INPUT", "password-secret", "value", "cookie-secret"}, "documents": []any{map[string]any{"nodes": map[string]any{"nodeType": []int{1}, "nodeName": []int{0}, "parentIndex": []int{-1}, "backendNodeId": []int{42}, "nodeValue": []int{1}, "attributes": [][]int{{2, 3}}, "inputValue": map[string]any{"index": []int{0}, "value": []int{1}}}, "layout": map[string]any{"nodeIndex": []int{0}, "bounds": [][]int{{1, 2, 3, 4}}}}}}
+	c, done := mockBrowser(t, func(q envelope) any {
+		if q.Method == "Page.getFrameTree" {
+			return map[string]any{"frameTree": map[string]any{"frame": map[string]any{"id": "main"}}}
+		}
+		if q.Method != "DOMSnapshot.captureSnapshot" {
+			return map[string]any{}
+		}
+		return map[string]any{"strings": []string{"INPUT", "password-secret", "value", "cookie-secret", "main"}, "documents": []any{map[string]any{"frameId": 4, "nodes": map[string]any{"nodeType": []int{1}, "nodeName": []int{0}, "parentIndex": []int{-1}, "backendNodeId": []int{42}, "nodeValue": []int{1}, "attributes": [][]int{{2, 3}}, "inputValue": map[string]any{"index": []int{0}, "value": []int{1}}}, "layout": map[string]any{"nodeIndex": []int{0}, "bounds": [][]int{{1, 2, 3, 4}}}}}}
 	})
 	defer done()
 	raw, tr, e := domSnapshot(context.Background(), c, "s")

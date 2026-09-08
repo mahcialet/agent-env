@@ -1,7 +1,7 @@
 ---
-source_sha256: cd6d5b4f0b068c9072f9a1037e99909b9f75d235a37670ed2a6ded245655b7e0
-translation_of: docs/exec-plans/completed/browser-cdp-automation.md
-status: completed
+source_sha256: b37a73bd4b1ebcfe1d593f7403273f002a3f63d3454ed2e2b01baa41bcdb2259
+translation_of: docs/exec-plans/active/browser-cdp-automation.md
+status: active
 owner: maintainers
 last_verified: 2026-09-09
 ---
@@ -76,6 +76,14 @@ browsers:
 port名だけからbrowserをimplicit推測しない。
 
 ## 進捗
+
+- [x] 2026-09-09: 最終統合repoctl checkとfull raceが成功した。最終CDP race成功（2.509秒）、sandbox有効Linux native成功（8.491秒）。focus転送時の拒否、query/fragment条件、通常入力・shadow動作、frame境界を検証した。readback修正後の独立レビューも成功した。新しいcross-platform CIは未完。
+
+- [x] 2026-09-09: 保存manifestの差し替え、redaction後の膨張、capture queueの無表示省略、不正DOM frame証拠、別tabによる拒否、focus転送、effect後のエラー、query/fragment URL waitを修正前に再現するテストを追加した。
+- [x] 2026-09-09: レビュー8件の修正を実装した。app targeted race成功（2.656秒）、capture/transport isolated race 10回成功（4.600秒）、CDP race成功（2.439秒）、frame fixtureを強化したsandbox有効Linux native成功（8.633秒、Chrome 152.0.7977.64/CDP 1.3）。
+
+
+- [ ] 2026-09-09: PR #10の第2回レビュー8件に対応し、回帰テストとharness・3 OS CIの新しい証拠を確認してから再度完了へ移動する。
 
 ### PR #10 review対応（2026-09-09）
 
@@ -169,6 +177,15 @@ Windows/macOSのbrowser実行と公開最終CIは未完了のため、Planはact
 
 ## 想定外の発見
 
+- 2026-09-09: 実ChromeでURL mockの不足が判明した。Page.Frame.urlにfragmentは含まれずurlFragmentで別返却される。native query waitは成功したがfragment waitはtimeoutした。frame decode・一時条件評価・document identityへurlFragmentを追加し、commit前にnative検証を再実行する。
+
+- 2026-09-09: 統合docs-checkで再開した日本語版のtranslation_ofがcompleted/を参照していたため拒否された。メタデータを修正し、日英の内容を確認した。文書検証が未完の段階でfull raceは成功した。
+
+- 2026-09-09: 独立レビューで、入力後のJavaScript readback例外やboolean欠落も不確定状態を保つ必要があると判明した。例外なし・明示booleanの検証を追加した。appのartifact回帰テストもrun.jsonの登録を必須確認し、保存検証が空振りしないようにした。
+
+
+- 2026-09-09: 第2回PR reviewで、effect後の確認状態、focus証明、DOM origin範囲、別tabのtopology、redaction後のサイズ制限、raw URL条件、capture queueのtruncation、保存manifest digestの不足が判明した。Planを再開し、以前のCI成功は今回の修正の受け入れ証拠として扱わない。最初のlocal harnessは新規回帰テストのformatで停止したため、整形後に再検証する。
+
 - 2026-09-09 — `3d3fce5`のpush Browser native 34246852839は3 OSすべて成功したが、
   PR Browser native 34246856039のWindowsは最後のprofile削除で共有違反に失敗した
   （`Cache_Data/sqldb0`）。全browser操作と新しいsandboxアクセスlog検査は成功していた。
@@ -256,6 +273,11 @@ OS executable差、WebSocket teardown等を記録する。
 dynamic page対応のためidentity/stale checkを弱めない。
 
 ## 判断の記録
+
+- 2026-09-09: protocol errorだけでは複数段階の操作全体を確認済みとしない。effect前の拒否と検証済み結果だけを確認済みにでき、focusもeffectとして扱う。focusとselectAllの後に隔離worldのnative active-element getterでfocusを確認し、不正readbackは不確定状態を保つ。
+- 2026-09-09: AXとDOMで取得前後のframe検証を共用し、DOM文書frame IDを承認済みtopologyに限定する。親情報のないiframe targetは選択sessionのDOM frame ownerと照合し、対象pageの拒否条件を緩めず別tabを独立させる。
+- 2026-09-09: redaction後の保存captureにも文字列・合計上限を再適用する。期限時点の未処理captureは購読解除と同時にtruncatedとする。browser検査前に保存manifest digestを検証し、URL条件はraw URLで一時評価しつつ証拠URLは秘匿化する。
+
 
 - 2026-09-09 — 既存のnative不在証明後に限り、汎用process state cleanup内でWindowsの
   一時的な共有違反を扱う。そのOS errorだけを最大2秒・呼出し側cancel期限内で再試行し、
@@ -408,6 +430,8 @@ macOS/WindowsおよびLinuxのnative CIは未完了。既存のmacOS readiness t
   引数省略が意図しない空文字列への置換になることを防ぐ。これらの最終調整は受け入れ前の再検証が必要。
 
 ## 成果と振り返り
+
+第2回レビューの状況（2026-09-09）: 以下の第1回レビュー完了証拠は過去の記録である。新規8件を修正中であり、新しい受け入れ検証が成功するまで本Planをactiveに保つ。
 
 2026-09-09、PR #10 review対応を完了した。`3d3fce5`でoriginの証明、wait条件、
 省略・byte予算、event購読、永続的な入力対象の根拠を修正し、`391288c`でnative不在証明後の

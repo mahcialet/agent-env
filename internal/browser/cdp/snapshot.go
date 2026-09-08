@@ -20,6 +20,7 @@ type frameTree struct {
 		ID             string
 		LoaderID       string
 		URL            string
+		URLFragment    string
 		SecurityOrigin string
 	}
 	ChildFrames []frameTree
@@ -62,7 +63,7 @@ func fingerprint(n domain.BrowserNode) string {
 	return hex.EncodeToString(h[:])
 }
 func documentIdentity(tree frameTree) string {
-	h := sha256.Sum256([]byte(tree.Frame.URL))
+	h := sha256.Sum256([]byte(tree.Frame.URL + tree.Frame.URLFragment))
 	return tree.Frame.ID + ":" + tree.Frame.LoaderID + ":" + hex.EncodeToString(h[:])
 }
 func axState(v any) (string, bool) {
@@ -125,14 +126,7 @@ func inheritedFrameAccess(ctx context.Context, c *connection, session, parent, c
 	return err == nil && len(result.ExceptionDetails) == 0 && result.Result.Value
 }
 
-func snapshot(ctx context.Context, c *connection, s string, id domain.BrowserIdentity, p domain.BrowserPage) (*domain.BrowserSnapshot, error) {
-	tree, e := frameDocument(ctx, c, s)
-	if e != nil {
-		return nil, e
-	}
-	p.URL = scrubURL(tree.Frame.URL)
-
-	sn := &domain.BrowserSnapshot{Version: 1, Identity: id, Page: p, Document: documentIdentity(tree), CapturedAt: time.Now().UTC(), Nodes: []domain.BrowserNode{}}
+func approvedFrames(ctx context.Context, c *connection, s string, tree frameTree) ([]frameTree, error) {
 	var frames []frameTree
 	var walk func(frameTree, string) error
 	rootOrigin, rootKnown := serializedOrigin(tree.Frame.SecurityOrigin)
@@ -161,14 +155,43 @@ func snapshot(ctx context.Context, c *connection, s string, id domain.BrowserIde
 		}
 		return nil
 	}
-	if e = walk(tree, ""); e != nil {
+	if e := walk(tree, ""); e != nil {
 		return nil, e
 	}
-	if e = validateFrameTargets(ctx, c, frames, p.ID); e != nil {
+	return frames, nil
+}
+
+func recheckFrames(ctx context.Context, c *connection, s string, tree frameTree, page string) error {
+	latest, e := frameDocument(ctx, c, s)
+	if e != nil {
+		return e
+	}
+	before, _ := json.Marshal(tree)
+	after, _ := json.Marshal(latest)
+	if sha256.Sum256(before) != sha256.Sum256(after) {
+		return errFrameObservationChanged
+	}
+	frames, e := approvedFrames(ctx, c, s, latest)
+	if e != nil {
+		return e
+	}
+	return validateFrameTargets(ctx, c, s, frames, page)
+}
+
+func snapshot(ctx context.Context, c *connection, s string, id domain.BrowserIdentity, p domain.BrowserPage) (*domain.BrowserSnapshot, error) {
+	tree, e := frameDocument(ctx, c, s)
+	if e != nil {
 		return nil, e
 	}
-	if len(frames) > 32 {
-		return nil, errors.New("browser frame limit exceeded")
+	p.URL = scrubURL(tree.Frame.URL)
+
+	sn := &domain.BrowserSnapshot{Version: 1, Identity: id, Page: p, Document: documentIdentity(tree), CapturedAt: time.Now().UTC(), Nodes: []domain.BrowserNode{}}
+	frames, e := approvedFrames(ctx, c, s, tree)
+	if e != nil {
+		return nil, e
+	}
+	if e = validateFrameTargets(ctx, c, s, frames, p.ID); e != nil {
+		return nil, e
 	}
 	if e = c.call(ctx, s, "Accessibility.enable", nil, nil); e != nil {
 		return nil, e
@@ -259,22 +282,7 @@ func snapshot(ctx context.Context, c *connection, s string, id domain.BrowserIde
 	if len(raw) > 1<<20 {
 		return nil, errors.New("semantic snapshot metadata exceeds byte limit")
 	}
-	latest, e := frameDocument(ctx, c, s)
-	if e != nil {
-		return nil, e
-	}
-	before, _ := json.Marshal(tree)
-	after, _ := json.Marshal(latest)
-	if sha256.Sum256(before) != sha256.Sum256(after) {
-		return nil, errFrameObservationChanged
-	}
-	// Re-prove inherited access and target topology after AX collection. Never
-	// publish collected text under an identity approved before a navigation.
-	frames = nil
-	if e = walk(latest, ""); e != nil {
-		return nil, e
-	}
-	if e = validateFrameTargets(ctx, c, frames, p.ID); e != nil {
+	if e = recheckFrames(ctx, c, s, tree, p.ID); e != nil {
 		return nil, e
 	}
 	return sn, nil
@@ -283,10 +291,27 @@ func snapshot(ctx context.Context, c *connection, s string, id domain.BrowserIde
 // DOM evidence intentionally excludes every text/attribute value and input value.
 // It retains bounded structure and layout; semantic labels belong to AX evidence.
 func domSnapshot(ctx context.Context, c *connection, s string) ([]byte, bool, error) {
+	tree, e := frameDocument(ctx, c, s)
+	if e != nil {
+		return nil, false, e
+	}
+	frames, e := approvedFrames(ctx, c, s, tree)
+	if e != nil {
+		return nil, false, e
+	}
+	if e = validateFrameTargets(ctx, c, s, frames, tree.Frame.ID); e != nil {
+		return nil, false, e
+	}
+	approved := map[string]bool{}
+	for _, f := range frames {
+		approved[f.Frame.ID] = true
+	}
+
 	var x struct {
 		Strings   []string
 		Documents []struct {
-			Nodes struct {
+			FrameID *int
+			Nodes   struct {
 				NodeType      []int
 				NodeName      []int
 				ParentIndex   []int
@@ -315,6 +340,14 @@ func domSnapshot(ctx context.Context, c *connection, s string) ([]byte, bool, er
 		Nodes     []node `json:"nodes"`
 		Truncated bool   `json:"truncated"`
 	}{Version: 1, Nodes: []node{}}
+	for _, d := range x.Documents {
+		if d.FrameID == nil || *d.FrameID < 0 || *d.FrameID >= len(x.Strings) || !approved[x.Strings[*d.FrameID]] {
+			return nil, false, errors.New("DOM document frame is not approved")
+		}
+	}
+	if e = recheckFrames(ctx, c, s, tree, tree.Frame.ID); e != nil {
+		return nil, false, e
+	}
 	for di, d := range x.Documents {
 		bounds := map[int][]float64{}
 		for i, n := range d.Layout.NodeIndex {
@@ -357,7 +390,7 @@ func domSnapshot(ctx context.Context, c *connection, s string) ([]byte, bool, er
 	return raw, out.Truncated, e
 }
 
-func validateFrameTargets(ctx context.Context, c *connection, frames []frameTree, page string) error {
+func validateFrameTargets(ctx context.Context, c *connection, s string, frames []frameTree, page string) error {
 	var targets struct {
 		TargetInfos []struct {
 			Type          string
@@ -376,10 +409,69 @@ func validateFrameTargets(ctx context.Context, c *connection, frames []frameTree
 	for _, f := range frames {
 		frameIDs[f.Frame.ID] = true
 	}
+	var owners map[string]bool
 	for _, t := range targets.TargetInfos {
-		if t.Type == "iframe" && (t.ParentID == page || frameIDs[t.ParentFrameID] || (t.ParentID == "" && t.ParentFrameID == "")) {
+		if t.Type == "iframe" && t.ParentID == "" && t.ParentFrameID == "" {
+			var e error
+			owners, e = frameOwners(ctx, c, s)
+			if e != nil {
+				return e
+			}
+			break
+		}
+	}
+	for _, t := range targets.TargetInfos {
+		if t.Type == "iframe" && (t.ParentID == page || frameIDs[t.ParentFrameID] || owners[t.TargetID]) {
 			return errors.New("cross-origin or opaque iframe observation is unsupported: out-of-process frame")
 		}
 	}
 	return nil
+}
+
+// Frame-owner elements belong to this page session, unlike the browser-wide
+// target list. Chrome may omit parent metadata for OOPIF targets; correlate
+// their target IDs with these frame IDs instead of blocking unrelated tabs.
+func frameOwners(ctx context.Context, c *connection, s string) (map[string]bool, error) {
+	type domNode struct {
+		NodeType        int
+		FrameID         string
+		Children        []domNode
+		ShadowRoots     []domNode
+		ContentDocument *domNode
+		TemplateContent *domNode
+	}
+	var result struct{ Root *domNode }
+	if e := c.call(ctx, s, "DOM.getDocument", map[string]any{"depth": -1, "pierce": true}, &result); e != nil {
+		return nil, e
+	}
+	owners := map[string]bool{}
+	pending := []*domNode{result.Root}
+	count := 0
+	for len(pending) > 0 {
+		n := pending[len(pending)-1]
+		pending = pending[:len(pending)-1]
+		if n == nil || n.NodeType == 0 {
+			return nil, errors.New("page frame-owner census unavailable")
+		}
+		count++
+		if count > 65536 {
+			return nil, errors.New("page frame-owner census limit exceeded")
+		}
+		if n.FrameID != "" {
+			owners[n.FrameID] = true
+		}
+		for i := range n.Children {
+			pending = append(pending, &n.Children[i])
+		}
+		for i := range n.ShadowRoots {
+			pending = append(pending, &n.ShadowRoots[i])
+		}
+		if n.ContentDocument != nil {
+			pending = append(pending, n.ContentDocument)
+		}
+		if n.TemplateContent != nil {
+			pending = append(pending, n.TemplateContent)
+		}
+	}
+	return owners, nil
 }

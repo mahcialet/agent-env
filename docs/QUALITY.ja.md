@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/QUALITY.md
-source_sha256: 55700d38679271e227d8658f8a96427a32bf8fa58e90909c28125542d7c66ff5
+source_sha256: 74b3c375c35805dd35e508b444d64edd5b9c97e09c2418c87013c6e94fced0b0
 ---
 
 # 品質と検証
@@ -153,7 +153,7 @@ Windows/macOS/Linux CI成功（Verify 34226859965）を完了Planに記録して
 
 ## Browser/CDPの検証
 
-受け入れ証拠は[完了browser ExecPlan](exec-plans/completed/browser-cdp-automation.ja.md)で管理します。
+受け入れ証拠は[完了browser ExecPlan](exec-plans/active/browser-cdp-automation.ja.md)で管理します。
 `TestBrowserManifestContract`、`TestBrowserManifestNegativeFixtures`、
 `TestBrowserRequiresProcessRuntime`、`TestBrowserAbsentPreservesLegacyCanonicalShape`は、
 明示的binding、正確な専用profile/debugging flag、YAML null/merge/alias、互換性を検証します。

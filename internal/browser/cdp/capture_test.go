@@ -124,3 +124,40 @@ func TestNetworkCaptureCountsAllStringsAgainstTotalBudget(t *testing.T) {
 		t.Fatalf("network budget: bytes=%d truncated=%v", total, obs.Truncated)
 	}
 }
+
+// Domain-enable responses arrive only after these events are queued. An expired
+// capture may omit the remaining queue, but must report that evidence loss.
+func TestCaptureDeadlineMarksPendingEventsTruncated(t *testing.T) {
+	for _, operation := range []string{"console", "network"} {
+		t.Run(operation, func(t *testing.T) {
+			const count = 128
+			c := eventBrowser(t, func(string) []envelope {
+				events := make([]envelope, count)
+				method := "Network.requestWillBeSent"
+				raw := json.RawMessage(`{"requestId":"wanted","request":{"url":"http://localhost/","method":"GET"}}`)
+				if operation == "console" {
+					method = "Runtime.consoleAPICalled"
+					raw, _ = json.Marshal(map[string]any{"type": "log", "timestamp": time.Now().Add(time.Minute).UnixMilli(), "args": []any{map[string]any{"type": "string", "value": "wanted"}}})
+				}
+				for i := range events {
+					events[i] = envelope{Session: "s", Method: method, Params: raw}
+				}
+				return events
+			})
+			var obs domain.BrowserObservation
+			if err := capture(context.Background(), c, "s", domain.BrowserRequest{Operation: operation, Duration: time.Nanosecond}, &obs); err != nil {
+				t.Fatal(err)
+			}
+			retained := len(obs.Console) + len(obs.Network)
+			if retained < count && !obs.Truncated {
+				t.Fatalf("deadline silently omitted queued events: retained=%d of %d", retained, count)
+			}
+			c.mu.Lock()
+			subscribed := c.capture != nil
+			c.mu.Unlock()
+			if subscribed {
+				t.Fatal("capture deadline left subscription active")
+			}
+		})
+	}
+}

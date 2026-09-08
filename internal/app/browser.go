@@ -143,6 +143,9 @@ func selectBrowser(l domain.Lease, name string) (domain.Runtime, domain.BrowserB
 	if err := config.Validate(&m); err != nil {
 		return domain.Runtime{}, domain.BrowserBinding{}, errors.New("stored browser contract is invalid")
 	}
+	if config.Digest(&m) != l.ManifestDigest {
+		return domain.Runtime{}, domain.BrowserBinding{}, errors.New("stored browser manifest digest mismatch")
+	}
 	var b domain.BrowserBinding
 	var r domain.Runtime
 	count := 0
@@ -355,6 +358,8 @@ func (s *Service) Browser(ctx context.Context, id string, o BrowserOptions) (res
 	if e != nil {
 		persistErr = e
 		result.Observation = domain.BrowserObservation{}
+	} else {
+		boundRedactedBrowserCapture(&result.Observation)
 	}
 	if err == nil && persistErr == nil && result.Observation.Snapshot != nil {
 		result.Snapshot = result.Observation.Snapshot

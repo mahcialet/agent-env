@@ -163,7 +163,7 @@ Windows/macOS/Linux CI at `f588960` (Verify 34226859965), are recorded in the co
 
 ## Browser/CDP verification
 
-The [completed browser ExecPlan](exec-plans/completed/browser-cdp-automation.md) owns
+The [completed browser ExecPlan](exec-plans/active/browser-cdp-automation.md) owns
 acceptance evidence. `TestBrowserManifestContract`,
 `TestBrowserManifestNegativeFixtures`, `TestBrowserRequiresProcessRuntime` and
 `TestBrowserAbsentPreservesLegacyCanonicalShape` cover explicit bindings, exact

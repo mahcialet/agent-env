@@ -2,6 +2,7 @@ package cdp
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"runtime"
 
@@ -47,12 +48,25 @@ func act(ctx context.Context, c *connection, s string, id domain.BrowserIdentity
 	if old.Frame != tree.Frame.ID {
 		return false, false, errors.New("iframe input is unsupported")
 	}
+	resolveParams := map[string]any{"backendNodeId": old.BackendID}
+	if q.Operation == "key" || q.Operation == "set-text" {
+		var world struct {
+			ExecutionContextID int `json:"executionContextId"`
+		}
+		if e = c.call(ctx, s, "Page.createIsolatedWorld", map[string]any{"frameId": old.Frame, "worldName": "agent-env-input", "grantUniveralAccess": false}, &world); e != nil {
+			return false, false, e
+		}
+		if world.ExecutionContextID == 0 {
+			return false, false, errors.New("input verification context unavailable")
+		}
+		resolveParams["executionContextId"] = world.ExecutionContextID
+	}
 	var resolved struct {
 		Object struct {
 			ObjectID string `json:"objectId"`
 		}
 	}
-	if e = c.call(ctx, s, "DOM.resolveNode", map[string]any{"backendNodeId": old.BackendID}, &resolved); e != nil {
+	if e = c.call(ctx, s, "DOM.resolveNode", resolveParams, &resolved); e != nil {
 		return false, false, e
 	}
 	object := resolved.Object.ObjectID
@@ -108,10 +122,16 @@ func act(ctx context.Context, c *connection, s string, id domain.BrowserIdentity
 		if e != nil {
 			return true, false, e
 		}
+		if e = verifyFocus(ctx, c, s, object); e != nil {
+			return true, false, e
+		}
 		if q.Operation == "key" {
 			e = key(ctx, c, s, q.Key, 0)
 		} else {
 			e = selectAll(ctx, c, s, runtime.GOOS)
+			if e == nil {
+				e = verifyFocus(ctx, c, s, object)
+			}
 			if e == nil {
 				if q.Text == "" {
 					e = key(ctx, c, s, "Backspace", 0)
@@ -120,9 +140,15 @@ func act(ctx context.Context, c *connection, s string, id domain.BrowserIdentity
 				}
 			}
 			if e == nil {
-				var rb struct{ Result struct{ Value bool } }
+				var rb struct {
+					Result           struct{ Value *bool }
+					ExceptionDetails json.RawMessage
+				}
 				e = c.call(ctx, s, "Runtime.callFunctionOn", map[string]any{"objectId": object, "functionDeclaration": "function(expected){return this.isConnected && (typeof this.value==='string'?this.value:this.textContent)===expected;}", "arguments": []map[string]any{{"value": q.Text}}, "returnByValue": true}, &rb)
-				readback = rb.Result.Value
+				if e == nil && (len(rb.ExceptionDetails) > 0 || rb.Result.Value == nil) {
+					e = errors.New("text replacement readback unavailable")
+				}
+				readback = e == nil && *rb.Result.Value
 				if e == nil && !readback {
 					e = confirmedError{errors.New("text replacement readback differs")}
 				}
@@ -205,4 +231,23 @@ func uniqueFreshNode(nodes []domain.BrowserNode, old domain.BrowserNode) bool {
 		}
 	}
 	return semantic == 1
+}
+
+// verifyFocus runs in an isolated world so page overrides cannot forge the
+// active-element or connectivity checks. Follow shadow focus to the exact node.
+func verifyFocus(ctx context.Context, c *connection, session, object string) error {
+	var x struct {
+		Result struct {
+			Value bool `json:"value"`
+		} `json:"result"`
+		ExceptionDetails json.RawMessage `json:"exceptionDetails"`
+	}
+	e := c.call(ctx, session, "Runtime.callFunctionOn", map[string]any{"objectId": object, "functionDeclaration": `function(){if(!this.isConnected)return false;let active=this.ownerDocument.activeElement;while(active&&active.shadowRoot&&active.shadowRoot.activeElement)active=active.shadowRoot.activeElement;return active===this}`, "returnByValue": true}, &x)
+	if e != nil {
+		return e
+	}
+	if len(x.ExceptionDetails) > 0 || !x.Result.Value {
+		return errors.New("input target no longer has focus")
+	}
+	return nil
 }

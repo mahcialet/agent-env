@@ -40,7 +40,11 @@ func capture(ctx context.Context, c *connection, s string, q domain.BrowserReque
 		case <-c.done:
 			return errors.New("browser disconnected during capture")
 		case <-timer.C:
-			return nil
+			pending, err := unsubscribe()
+			if pending {
+				o.Truncated = true
+			}
+			return err
 		case ev := <-events:
 			if ev.Session != s {
 				continue

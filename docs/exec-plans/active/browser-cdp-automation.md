@@ -1,5 +1,5 @@
 ---
-status: completed
+status: active
 owner: maintainers
 last_verified: 2026-09-09
 ---
@@ -139,6 +139,14 @@ Out of scope:
 
 ## Progress
 
+- [x] 2026-09-09: Final integrated repoctl check and full race passed. Final CDP race passed (2.509s); sandbox-enabled Linux native passed (8.491s), including redirected focus refusal, query/fragment matching, ordinary input/shadow behavior and frame boundaries. Independent review passed after the readback fix. Fresh cross-platform CI remains pending.
+
+- [x] 2026-09-09: Added fail-before regressions for stored-manifest substitution, post-redaction expansion, silent queued-event omission, unsafe DOM frame evidence, unrelated-tab refusal, focus redirection, post-effect errors and raw query/fragment URL waits.
+- [x] 2026-09-09: Implemented eight review repairs. App targeted race passed (2.656s); capture/transport isolated race x10 passed (4.600s); CDP race passed (2.439s); sandbox-enabled Linux native with strengthened frame fixtures passed (8.633s, Chrome 152.0.7977.64/CDP 1.3).
+
+
+- [ ] 2026-09-09: Address the second PR #10 review (eight findings), demonstrate regressions, and obtain fresh harness and three-OS CI evidence before re-archiving.
+
 ### PR #10 review follow-up (2026-09-09)
 
 - [x] Validate bounded Windows sharing-violation cleanup after native process-tree absence, preserving generic process ownership and failure barriers.
@@ -241,6 +249,15 @@ Earlier pending local refinement checks are closed by this result. Windows/macOS
 browser execution and published final CI remain pending; this plan stays active.
 
 ## Surprises & Discoveries
+
+- 2026-09-09: Real Chrome exposed an inadequate URL mock: Page.Frame.url omits the fragment and returns it separately as urlFragment. The new native query wait passed but fragment wait timed out. Added urlFragment to frame decoding, transient predicate matching and document identity; native validation must pass before commit.
+
+- 2026-09-09: The first integrated docs-check rejected the reopened Japanese translation_of path still pointing to completed/. Corrected the metadata and reviewed the paired content; full race passed while docs validation was still pending.
+
+- 2026-09-09: Independent review found that JavaScript readback exceptions/missing boolean values must also remain uncertain after input. Added explicit boolean/no-exception validation. The app artifact regression now asserts that registered run.json was found, avoiding vacuous persistence checks.
+
+
+- 2026-09-09: The second PR review found post-effect confirmation, focus proof, DOM origin scope, unrelated-tab topology, post-redaction size limits, raw URL predicates, queued capture truncation, and stored manifest digest gaps. Reopened the plan: earlier passing CI is historical evidence, not acceptance of these repairs. The first local harness attempt stopped at formatting of a new regression test; formatting will be corrected before validation.
 
 - 2026-09-09 — At `3d3fce5`, push Browser native 34246852839 passed all three
   OSes, but PR Browser native 34246856039 failed Windows during final profile
@@ -349,6 +366,11 @@ executable differences.
 Do not weaken identity or stale-reference checks to make dynamic pages easier.
 
 ## Decision Log
+
+- 2026-09-09: Protocol errors alone no longer prove a whole multi-step action confirmed. Only pre-effect refusals and verified effect outcomes may confirm; focus is itself an effect. Verify focus through an isolated-world native active-element getter after focus and selectAll; invalid readback remains uncertain.
+- 2026-09-09: AX and DOM share before/after frame proof; DOM document frame IDs must belong to the approved topology. Parentless iframe targets are correlated with selected-session DOM frame owners, preserving unrelated tabs without weakening selected-page refusal.
+- 2026-09-09: Reapply persisted capture string/aggregate bounds after redaction, atomically mark queued capture events truncated at deadline, validate stored manifest digest before browser inspection, and match URL predicates transiently against raw URLs while retaining scrubbed evidence.
+
 
 - 2026-09-09 — Handle transient Windows sharing violations inside generic process
   state cleanup, only after existing native absence proof. Retry only that OS
@@ -553,6 +575,8 @@ the same published commit; no timeout or readiness assertion has been relaxed.
   These latest refinements require final revalidation before acceptance.
 
 ## Outcomes & Retrospective
+
+Second-review status (2026-09-09): the following first-review completion evidence is historical. Eight newly reported findings are under repair; this plan remains active until the fresh acceptance checks pass.
 
 PR #10 review completed on 2026-09-09. Commit `3d3fce5` repairs origin proof,
 wait predicates, truncation/byte budgets, event subscriptions and durable input

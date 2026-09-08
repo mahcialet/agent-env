@@ -316,7 +316,12 @@ func wait(ctx context.Context, c *connection, s string, id domain.BrowserIdentit
 		matched := false
 		switch q.WaitFor {
 		case "url":
-			matched = strings.Contains(sn.Page.URL, q.Contains)
+			// Match transient URL components without publishing them as evidence.
+			current, err := frameDocument(ctx, c, s)
+			if err != nil {
+				return nil, err
+			}
+			matched = documentIdentity(current) == sn.Document && strings.Contains(current.Frame.URL+current.Frame.URLFragment, q.Contains)
 		case "text", "gone":
 			for _, n := range sn.Nodes {
 				if (q.Role == "" || n.Role == q.Role) && strings.Contains(n.Name, q.Contains) {

@@ -57,6 +57,10 @@ document.body.append(blobFrame);
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		fmt.Fprint(w, `<title>Opaque fixture</title><script>Object.defineProperty(HTMLIFrameElement.prototype, 'contentDocument', {get() { return document; }});</script><iframe sandbox srcdoc="<h2>Opaque content must not leak</h2>"></iframe>`)
 	})
+	mux.HandleFunc("/focus-redirect", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		fmt.Fprint(w, `<title>Focus fixture</title><h1 id="status">Focus input untouched</h1><label>Redirecting input<input aria-label="Redirecting input" onfocus="document.getElementById('other').focus()"></label><label>Other input<input id="other" aria-label="Other input" onkeydown="document.getElementById('status').textContent='Unexpected keyboard input'" oninput="document.getElementById('status').textContent='Unexpected text input'"></label>`)
+	})
 	mux.HandleFunc("/next", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		fmt.Fprint(w, "<title>Next page</title><h1>Navigation complete</h1>")

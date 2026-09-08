@@ -20,6 +20,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/mahcialet/agent-env/internal/browser/cdp"
 	"github.com/mahcialet/agent-env/internal/domain"
 )
 
@@ -483,6 +484,7 @@ stacks:
 	}
 	call("navigate", "--page", newPage, "--url", fmt.Sprintf("http://127.0.0.1:%d/origin-frames", backend.Ports["http"]))
 	call("wait", "--page", newPage, "--wait-for", "load", "--timeout", "5s")
+	call("dom-snapshot", "--page", newPage)
 	originSnapshot := call("snapshot", "--page", newPage).Snapshot
 	for _, label := range []string{"Inherited origin marker", "Srcdoc origin marker", "Blob origin marker"} {
 		find(originSnapshot, "heading", label)
@@ -491,17 +493,55 @@ stacks:
 	for _, args := range [][]string{
 		{"browser", "wait", leases[0].ID, "--browser", "web", "--page", newPage, "--wait-for", "load", "--timeout", "5s"},
 		{"browser", "snapshot", leases[0].ID, "--browser", "web", "--page", newPage},
+		{"browser", "dom-snapshot", leases[0].ID, "--browser", "web", "--page", newPage},
 	} {
 		if raw, err := invoke(args...); err == nil || !strings.Contains(string(raw)+err.Error(), "iframe observation is unsupported") || strings.Contains(string(raw), "Opaque content must not leak") {
 			t.Fatalf("opaque origin was not explicitly refused without content: %s %v", raw, err)
 		}
 	}
+	// An unrelated tab's parentless OOPIF must not contaminate this page's
+	// frame authority or block observation/waits.
+	call("snapshot", "--page", page)
+	call("dom-snapshot", "--page", page)
+	call("wait", "--page", page, "--wait-for", "load", "--timeout", "5s")
 	call("page-close", "--page", newPage)
 	call("navigate", "--page", page, "--url", fmt.Sprintf("http://127.0.0.1:%d/next", backend.Ports["http"]))
 	if _, err := invoke("browser", "click", leases[0].ID, "--browser", "web", "--page", page, "--snapshot", s.ID, "--node", find(s, "button", "Send request").Ref); err == nil {
 		t.Fatal("pre-navigation snapshot accepted")
 	}
 	call("wait", "--page", page, "--wait-for", "url", "--contains", "/next", "--timeout", "5s")
+
+	// Exercise real synchronous focus redirection through the adapter. App tests
+	// separately prove an uncertain observation retains its durable run barrier;
+	// direct adapter execution here allows normal owned fixture cleanup.
+	call("navigate", "--page", page, "--url", fmt.Sprintf("http://127.0.0.1:%d/focus-redirect?status=ready#complete", backend.Ports["http"]))
+	for _, predicate := range []string{"?status=ready", "#complete"} {
+		waited := call("wait", "--page", page, "--wait-for", "url", "--contains", predicate, "--timeout", "5s")
+		if strings.Contains(waited.Observation.Snapshot.Page.URL, "?") || strings.Contains(waited.Observation.Snapshot.Page.URL, "#") {
+			t.Fatal("URL wait published transient components")
+		}
+	}
+	call("wait", "--page", page, "--wait-for", "text", "--contains", "Focus input untouched", "--timeout", "5s")
+	var browserRuntime domain.Runtime
+	for _, r := range leases[0].Runtimes {
+		if r.Name == "browser-process" {
+			browserRuntime = r
+		}
+	}
+	for _, operation := range []string{"key", "set-text"} {
+		prior := snapshot()
+		node := find(prior, "textbox", "Redirecting input")
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		observation, actionErr := (cdp.Client{}).Observe(ctx, browserRuntime, domain.BrowserBinding{Name: "web", Runtime: "browser-process", CDPPort: "cdp"}, domain.BrowserRequest{Operation: operation, Page: page, Prior: prior, Node: node.Ref, Key: "Enter", Text: "must-not-reach-other-field"}, func(context.Context) error {
+			_, err := invoke("browser", "pages", leases[0].ID, "--browser", "web")
+			return err
+		})
+		cancel()
+		if actionErr == nil || !strings.Contains(actionErr.Error(), "no longer has focus") || !observation.ActionPerformed || observation.Confirmed {
+			t.Fatalf("focus redirect did not retain uncertainty: %+v %v", observation, actionErr)
+		}
+		find(snapshot(), "heading", "Focus input untouched")
+	}
 	// Independent second lease stays on its original blank page and backend state.
 	raw := must("browser", "pages", leases[1].ID, "--browser", "web")
 	var other result

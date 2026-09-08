@@ -83,8 +83,14 @@ func TestFrameClassificationUsesSecurityOrigin(t *testing.T) {
 func TestDOMNameTruncationIsReported(t *testing.T) {
 	for _, size := range []int{128, 129} {
 		t.Run(strings.Repeat("n", size), func(t *testing.T) {
-			c, done := mockBrowser(t, func(envelope) any {
-				return map[string]any{"strings": []string{strings.Repeat("n", size)}, "documents": []any{map[string]any{"nodes": map[string]any{"nodeType": []int{1}, "nodeName": []int{0}}}}}
+			c, done := mockBrowser(t, func(q envelope) any {
+				if q.Method == "Page.getFrameTree" {
+					return map[string]any{"frameTree": map[string]any{"frame": map[string]any{"id": "main"}}}
+				}
+				if q.Method != "DOMSnapshot.captureSnapshot" {
+					return map[string]any{}
+				}
+				return map[string]any{"strings": []string{strings.Repeat("n", size), "main"}, "documents": []any{map[string]any{"frameId": 1, "nodes": map[string]any{"nodeType": []int{1}, "nodeName": []int{0}}}}}
 			})
 			defer done()
 			raw, truncated, e := domSnapshot(context.Background(), c, "s")
@@ -149,6 +155,8 @@ func TestOutOfProcessFrameCannotBeSilentlyOmitted(t *testing.T) {
 					return map[string]any{"frameTree": map[string]any{"frame": map[string]any{"id": "main", "url": "https://site.test/", "securityOrigin": "https://site.test"}}}
 				case "Target.getTargets":
 					return map[string]any{"targetInfos": []any{map[string]any{"type": "iframe", "targetId": "opaque-child", "parentId": parent, "parentFrameId": parent}}}
+				case "DOM.getDocument":
+					return map[string]any{"root": map[string]any{"nodeType": 9, "children": []any{map[string]any{"nodeType": 1, "frameId": "opaque-child"}}}}
 				default:
 					return map[string]any{}
 				}
@@ -279,6 +287,89 @@ func TestWaitRetriesFrameChangesButNeverPublishesPartialEvidence(t *testing.T) {
 				}
 			} else if e != nil || sn == nil || sn.Nodes[0].Name != "stable" {
 				t.Fatalf("did not wait for proved stable frame: %v", e)
+			}
+		})
+	}
+}
+
+func TestDOMSnapshotOriginAndDocumentProof(t *testing.T) {
+	for _, kind := range []string{"same-origin", "cross-origin", "opaque", "navigation", "oopif", "unapproved-document", "missing-frame"} {
+		t.Run(kind, func(t *testing.T) {
+			var captured atomic.Bool
+			c, done := mockBrowser(t, func(q envelope) any {
+				switch q.Method {
+				case "Page.getFrameTree":
+					origin := "https://site.test"
+					if kind == "cross-origin" || (kind == "navigation" && captured.Load()) {
+						origin = "https://foreign.test"
+					}
+					if kind == "opaque" {
+						origin = "://"
+					}
+					return map[string]any{"frameTree": map[string]any{"frame": map[string]any{"id": "main", "url": "https://site.test/", "securityOrigin": "https://site.test"}, "childFrames": []any{map[string]any{"frame": map[string]any{"id": "child", "url": "https://site.test/frame", "securityOrigin": origin}}}}}
+				case "Target.getTargets":
+					if kind == "oopif" && captured.Load() {
+						return map[string]any{"targetInfos": []any{map[string]any{"type": "iframe", "parentId": "main"}}}
+					}
+					return map[string]any{}
+				case "DOMSnapshot.captureSnapshot":
+					captured.Store(true)
+					frame := "child"
+					if kind == "unapproved-document" {
+						frame = "foreign"
+					}
+					doc := map[string]any{"frameId": 1, "nodes": map[string]any{"nodeType": []int{1}, "nodeName": []int{0}}}
+					if kind == "missing-frame" {
+						delete(doc, "frameId")
+					}
+					return map[string]any{"strings": []string{"DIV", frame}, "documents": []any{doc}}
+				default:
+					return map[string]any{}
+				}
+			})
+			defer done()
+			raw, _, err := domSnapshot(context.Background(), c, "s")
+			if kind == "same-origin" {
+				if err != nil || raw == nil {
+					t.Fatalf("same-origin rejected: %v", err)
+				}
+			} else if err == nil || raw != nil {
+				t.Fatal("unapproved DOM evidence published")
+			}
+		})
+	}
+}
+
+func TestUnparentedIframeTargetsArePageScoped(t *testing.T) {
+	for _, related := range []bool{false, true} {
+		t.Run(map[bool]string{false: "other-tab", true: "selected-tab"}[related], func(t *testing.T) {
+			c, done := mockBrowser(t, func(q envelope) any {
+				switch q.Method {
+				case "Page.getFrameTree":
+					return map[string]any{"frameTree": map[string]any{"frame": map[string]any{"id": "main", "url": "https://site.test/", "securityOrigin": "https://site.test"}}}
+				case "Target.getTargets":
+					return map[string]any{"targetInfos": []any{map[string]any{"targetId": "oopif", "type": "iframe"}}}
+				case "DOM.getDocument":
+					if q.Session != "selected-session" {
+						t.Error("frame owner census escaped selected page session")
+					}
+					children := []any{}
+					if related {
+						children = append(children, map[string]any{"nodeType": 1, "nodeName": "IFRAME", "frameId": "oopif"})
+					}
+					return map[string]any{"root": map[string]any{"nodeType": 9, "children": children}}
+				default:
+					return map[string]any{}
+				}
+			})
+			defer done()
+			sn, err := snapshot(context.Background(), c, "selected-session", domain.BrowserIdentity{}, domain.BrowserPage{ID: "main"})
+			if related {
+				if err == nil || sn != nil {
+					t.Fatal("selected OOPIF accepted")
+				}
+			} else if err != nil || sn == nil {
+				t.Fatalf("unrelated OOPIF blocked selected page: %v", err)
 			}
 		})
 	}
