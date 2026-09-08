@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: README.md
-source_sha256: bea43a7ef78c3330a819bcafce517e806d4a6c23ef37c3501e638e1de2e820f7
+source_sha256: fcde3691c3ca19885d36f1b9c8d66f03cd2c12efb1599c6b622c580d26f79400
 ---
 
 [英語版（翻訳元）](README.md)
@@ -60,10 +60,38 @@ go run ./cmd/agent-env destroy <lease-id>
 
 [Flutter Androidアプリケーション](docs/product-specs/flutter-android-runtime.ja.md)は、固定ソースからのAPKビルド、所有Emulatorへのインストール、バックエンドへのreverse設定、Activity起動に対応します。任意の `applications` を宣言し、コンポーネントから選択します。`doctor <repository> --runtime flutter-android` で設定済みFlutter実行ファイル、プロジェクト、Androidの前提条件を確認できます。互換性のあるFlutter・Java・Androidビルドツールチェーンが必要です。
 
+## Android UI を観測する
+
+[Android UI observer](docs/product-specs/android-ui-observer.ja.md) は、所有する Emulator の
+accessibility snapshot と PNG を取得し、古い参照を拒否する意味情報に基づく tap、Unicode の
+text 置換、現在の PID に範囲を限定した logcat 収集を行います。対象アプリに test 依存を追加せず、
+Flutter semantics と native Android UI を扱えます。UI 観測で runtime を作成したり、manifest を変更したりしません。
+
+インストール済み SDK/JDK を使って任意の companion を一度 build し、host の環境変数設定で
+`AGENT_ENV_UI_HELPER` に生成先 directory を指定します。出力 directory は新規である必要があります。
+例で指定する version は事前にインストールされている必要があり、builder は tool のインストールや
+license 受諾を行いません。通常の Go build や関係のないコマンドに companion や JDK は不要です。
+
+```text
+go run ./tools/uihelper --sdk <sdk> --jdk <jdk> --platform android-35 --build-tools 36.0.0 --output <new-directory>
+go run ./cmd/agent-env ui snapshot <lease-id> --application mobile-app
+go run ./cmd/agent-env ui screenshot <lease-id> --application mobile-app
+go run ./cmd/agent-env ui tap <lease-id> --snapshot <snapshot-id> --node n7
+go run ./cmd/agent-env ui set-text <lease-id> --snapshot <snapshot-id> --node n3 --text <replacement>
+go run ./cmd/agent-env ui logcat <lease-id> --application mobile-app --since 30s
+```
+
+意味情報に基づく参照は一つの snapshot に属します。対象が変化した場合や曖昧な場合は新しい snapshot が必要で、
+入力を自動再実行することはありません。text 置換には、focus のある編集可能な node と読み戻しの一致確認が必要です。
+保持する text 証拠では編集可能な値を伏せますが、PNG のピクセルには秘密情報が含まれ得ます。
+helper run が中断した場合、cleanup 前に `ui recover <lease-id> --run <run-id>` が必要になる場合があります。
+復旧では失敗または結果不確実という outcome を保持し、入力は再試行しません。
+上限、状態の制約、navigation、wait、復旧の詳細は仕様を参照してください。
+
 ## 状態と制限
 
 状態は対象リポジトリの外に保存されます。`AGENT_ENV_HOME`に絶対パスを指定すると、OS標準の保存先（LinuxのXDG state、macOSのApplication Support、WindowsのLOCALAPPDATA）を上書きできます。このhomeには`state.db`、管理対象worktree、正規化したruntime設定、リースの成果物、診断用の`leases/<id>/environment.json`記述子が入ります。リース状態の判断では、診断用記述子よりSQLiteの記録を優先します。既定のTTLは4時間、最大TTLは24時間、有効な予約数の上限は8です。quarantinedのリースは予約を保持します。ホストポリシー設定ファイルはまだ公開していません。
 
-iOS、browser/CDPとUI自動操作、リモートGitキャッシュ、registry promotion、書き込み可能な修正リースは[ロードマップ項目](docs/roadmap.ja.md)です。
+iOS、browser/CDPの自動操作、リモートGitキャッシュ、registry promotion、書き込み可能な修正リースは[ロードマップ項目](docs/roadmap.ja.md)です。
 
 貢献者は[AGENTS.md](AGENTS.md)と[文書索引](docs/index.ja.md)から始めてください。既存の[MITライセンス](LICENSE)を適用します。

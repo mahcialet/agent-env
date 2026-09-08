@@ -14,3 +14,4 @@ last_verified: 2026-09-08
 - [android-emulator](android-emulator.md) / [日本語](android-emulator.ja.md)
 
 - [flutter-android-runtime](flutter-android-runtime.md) / [日本語](flutter-android-runtime.ja.md)
+- [android-ui-observer](android-ui-observer.md) / [日本語](android-ui-observer.ja.md)

@@ -17,3 +17,4 @@ last_verified: 2026-09-08
 - [Bilingual documentation](bilingual-documentation.md) / [日本語](bilingual-documentation.ja.md): language ownership, translation metadata and exceptions.
 
 - [flutter-android-runtime](flutter-android-runtime.md) / [日本語](flutter-android-runtime.ja.md)
+- [android-ui-observer](android-ui-observer.md) / [日本語](android-ui-observer.ja.md)

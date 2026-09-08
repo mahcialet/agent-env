@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/product-specs/index.md
-source_sha256: 6740f0ff93c684b046864c6ff8ce3c9e6d89de0cf5392e9f35f1f2c5cf2093eb
+source_sha256: 79f268997e7f843c4561e6099f0d532bf637e40ea95ab95a38bfa1ed9f11dc01
 ---
 
 [English（翻訳元）](index.md)
@@ -16,3 +16,4 @@ source_sha256: 6740f0ff93c684b046864c6ff8ce3c9e6d89de0cf5392e9f35f1f2c5cf2093eb
 - [android-emulator](android-emulator.ja.md) · [English](android-emulator.md)
 
 - [flutter-android-runtime](flutter-android-runtime.ja.md) · [English](flutter-android-runtime.md)
+- [android-ui-observer](android-ui-observer.ja.md) · [English](android-ui-observer.md)

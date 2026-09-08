@@ -8,7 +8,7 @@ last_verified: 2026-09-08
 
 [日本語](roadmap.ja.md)
 
-The implemented scope is local pinned Git sources, detached review worktrees, isolated Compose and Android Emulator runtimes, Flutter Android application builds/install/launch and backend reverse mappings, named argv tests, evidence, and a portable repository harness. This roadmap does not advertise deferred features as available commands.
+The implemented scope is local pinned Git sources, detached review worktrees, isolated Compose and Android Emulator runtimes, Flutter Android application builds/install/launch and backend reverse mappings, owned Android UI accessibility observation/actions, named argv tests, evidence, and a portable repository harness. This roadmap does not advertise deferred features as available commands.
 
 ## Settled MVP choices
 
@@ -24,7 +24,14 @@ Remote mirror/cache management, HTTPS/SSH authentication, provider-specific PR s
 
 ## Runtime extensions
 
-iOS, browser/CDP and UI automation/snapshots, generic persistent host processes, Podman-specific support, and distributed/multi-host coordination are not implemented. Android Emulator leases own private AVD state and local SDK processes; additional real-device CI needs acceleration-capable runners. Browser resources need explicit ownership and cleanup rules.
+iOS, browser/CDP automation and snapshots, generic persistent host processes, Podman-specific support, and distributed/multi-host coordination are not implemented. Android Emulator leases own private AVD state and local SDK processes; additional real-device CI needs acceleration-capable runners. Browser resources need explicit ownership and cleanup rules.
+
+The [Android UI observer](product-specs/android-ui-observer.md) adds bounded semantic
+snapshots, PNGs, Unicode replacement, navigation and current-PID logs to existing
+owned Emulators. Its separate optional platform companion requires no target-app
+instrumentation. OCR, visual regression, richer gestures, physical devices and remote
+Emulator hosts remain deferred. Final observer acceptance and platform evidence are
+tracked in the [active plan](exec-plans/active/android-ui-observer.md).
 
 ## Artifacts and releases
 

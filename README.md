@@ -50,10 +50,41 @@ Declare a runtime with `type: android-emulator`, `source: app`, and `avd: <insta
 
 [Flutter Android applications](docs/product-specs/flutter-android-runtime.md) add pinned-source APK builds, installation, backend reverse mappings, and activity launch on these owned Emulators. Declare optional `applications` and select one from a component. Use `doctor <repository> --runtime flutter-android` to check the configured Flutter executable, project and Android prerequisites; a compatible Flutter/Java/Android build toolchain is required.
 
+## Observe Android UI
+
+The [Android UI observer](docs/product-specs/android-ui-observer.md) captures
+accessibility snapshots and PNGs, performs stale-safe semantic taps and Unicode
+text replacement, and collects bounded current-PID logcat on owned Emulators.
+It works with Flutter semantics and native Android UI without adding target-app
+test dependencies. UI observation does not create a runtime or change the manifest.
+
+Build the optional companion once using an installed SDK/JDK, then set
+`AGENT_ENV_UI_HELPER` to the generated directory using your host environment settings.
+The output directory must not already exist. These example versions must be installed;
+the builder does not install tools or accept licenses. Ordinary Go builds and unrelated
+commands do not need the companion or a JDK.
+
+```text
+go run ./tools/uihelper --sdk <sdk> --jdk <jdk> --platform android-35 --build-tools 36.0.0 --output <new-directory>
+go run ./cmd/agent-env ui snapshot <lease-id> --application mobile-app
+go run ./cmd/agent-env ui screenshot <lease-id> --application mobile-app
+go run ./cmd/agent-env ui tap <lease-id> --snapshot <snapshot-id> --node n7
+go run ./cmd/agent-env ui set-text <lease-id> --snapshot <snapshot-id> --node n3 --text <replacement>
+go run ./cmd/agent-env ui logcat <lease-id> --application mobile-app --since 30s
+```
+
+A semantic reference belongs to one snapshot. A changed or ambiguous target requires
+a fresh snapshot; input is never replayed automatically. Text replacement requires
+a focused editable node and verified read-back. Editable values are redacted from
+retained text evidence, but PNG pixels may contain secrets. An interrupted helper
+run can require `ui recover <lease-id> --run <run-id>` before cleanup; recovery retains
+an uncertain/failed outcome and never retries input. See the contract for limits,
+state restrictions, navigation, waits and recovery.
+
 ## State and limits
 
 State lives outside target repositories. Set `AGENT_ENV_HOME` to an absolute path to override the native defaults: Linux XDG state, macOS Application Support, or Windows LOCALAPPDATA. The home contains `state.db`, managed worktrees, normalized runtime configuration, lease artifacts, and a diagnostic `leases/<id>/environment.json` descriptor. SQLite remains authoritative. Defaults are a 4-hour TTL, a 24-hour maximum TTL, and 8 active reservations; quarantined leases retain reservations. A host policy configuration file is not exposed yet.
 
-iOS, browser/CDP and UI automation, remote Git caching, registry promotion, and writable fix leases are [roadmap items](docs/roadmap.md).
+iOS and browser/CDP automation, remote Git caching, registry promotion, and writable fix leases are [roadmap items](docs/roadmap.md).
 
 Contributors start at [AGENTS.md](AGENTS.md) and the [documentation index](docs/index.md). Licensed under the existing [MIT license](LICENSE).

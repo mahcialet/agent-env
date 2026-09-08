@@ -3,14 +3,14 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/roadmap.md
-source_sha256: d2ba2e79868fc42311b34c0ab4935fc35e41b42ae5240bc7f0d847c9c997d4ba
+source_sha256: efc12d1d41590f5aa6dacbce63eec28840029f149c746eca86470efcaad13728
 ---
 
 [英語版（翻訳元）](roadmap.md)
 
 # ロードマップと未解決の決定事項
 
-実装済みの範囲は、固定したローカルGitソース、detached review worktree、隔離したComposeとAndroid Emulatorのruntime、Flutter Androidアプリのビルド・インストール・起動とバックエンドへのreverse設定、名前付きargvテスト、証拠、移植可能なリポジトリharnessです。このロードマップは、延期した機能を利用可能なコマンドとして紹介するものではありません。
+実装済みの範囲は、固定したローカルGitソース、detached review worktree、隔離したComposeとAndroid Emulatorのruntime、Flutter Androidアプリのビルド・インストール・起動とバックエンドへのreverse設定、所有 Android UI の accessibility 観測・操作、名前付きargvテスト、証拠、移植可能なリポジトリharnessです。このロードマップは、延期した機能を利用可能なコマンドとして紹介するものではありません。
 
 ## 確定したMVPの選択
 
@@ -26,7 +26,13 @@ moduleは`github.com/mahcialet/agent-env`で、既存のMITライセンスを保
 
 ## runtimeの拡張
 
-iOS、browser/CDPとUI自動操作・snapshot、汎用の永続ホストプロセス、Podman固有対応、分散・複数ホストの調整は未実装です。Android Emulatorリースは専用AVD状態とローカルSDKプロセスを所有します。追加の実機CIにはアクセラレーションを利用できるrunnerが必要です。ブラウザーリソースには明示的な所有権とcleanupルールが必要です。
+iOS、browser/CDPの自動操作・snapshot、汎用の永続ホストプロセス、Podman固有対応、分散・複数ホストの調整は未実装です。Android Emulatorリースは専用AVD状態とローカルSDKプロセスを所有します。追加の実機CIにはアクセラレーションを利用できるrunnerが必要です。ブラウザーリソースには明示的な所有権とcleanupルールが必要です。
+
+[Android UI observer](product-specs/android-ui-observer.ja.md) は、既存の所有 Emulator に対し、
+上限付きの意味情報 snapshot、PNG、Unicode 置換、navigation、現在の PID の log を提供します。
+独立した任意の platform companion を使い、対象アプリへの instrumentation 追加は不要です。
+OCR、visual regression、より豊富な gesture、物理デバイス、remote Emulator host は引き続き延期しています。
+observer の最終受け入れ確認と platform 別の証拠は[進行中の計画](exec-plans/active/android-ui-observer.ja.md)で管理します。
 
 ## 成果物とリリース
 
