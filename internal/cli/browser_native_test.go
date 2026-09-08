@@ -529,6 +529,9 @@ stacks:
 		}
 	}
 	for _, operation := range []string{"key", "set-text"} {
+		// Creating a foreground tab deliberately leaves the input page inactive.
+		// Activation must deliver its focus handler before keyboard dispatch.
+		foreground := call("page-create").Observation.Page.ID
 		prior := snapshot()
 		node := find(prior, "textbox", "Redirecting input")
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -541,6 +544,7 @@ stacks:
 			t.Fatalf("focus redirect did not retain uncertainty: %+v %v", observation, actionErr)
 		}
 		find(snapshot(), "heading", "Focus input untouched")
+		call("page-close", "--page", foreground)
 	}
 	// Independent second lease stays on its original blank page and backend state.
 	raw := must("browser", "pages", leases[1].ID, "--browser", "web")

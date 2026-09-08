@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/product-specs/browser-cdp-automation.md
-source_sha256: 7d7e915d5cab121d45b3aa57d60a6c090e9bcef79fb687823d6137570e16f949
+source_sha256: 2219343a4691d73aaadb08e6f5504e83df99218ea1c6e1ff7d9de11410ff6320
 ---
 
 # Browser/CDP自動操作
@@ -113,6 +113,10 @@ document loader、frame、backend DOM fingerprintとの一致を確認します�
 保存座標へのfallbackは行いません。Unicode textはCDP入力後に読み返して一致を確認します。
 内部の固定JavaScriptは対象nodeの状態確認に使えますが、任意JavaScriptやraw CDPの公開コマンドはありません。
 keyはEnter、Tab、Escape、Backspace、Delete、矢印、Home、End、PageUp、PageDownに対応します。
+
+keyboard/text入力は対象pageを前面にしてから対象nodeへfocusします。
+documentと対象nodeのfocusをdispatch前とselect-all後に確認します。
+pageの前面化やfocusにも副作用があり、その後に入力結果を確認できず失敗した場合は不確定状態を保ちます。
 
 操作timeoutは既定30秒、最大60秒です。console/network captureは既定1秒、1 msから10秒までです。
 置換textはNULを含まないUTF-8で4096 byte以内、scrollは各軸±10000以内です。

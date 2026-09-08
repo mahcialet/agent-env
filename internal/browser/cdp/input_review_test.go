@@ -17,6 +17,7 @@ import (
 func reviewActionFixture(t *testing.T, focus bool, readbackFailure string) (*connection, func(), *atomic.Int32) {
 	t.Helper()
 	var inputs atomic.Int32
+	var activated atomic.Bool
 	up := websocket.Upgrader{}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ws, e := up.Upgrade(w, r, nil)
@@ -34,10 +35,20 @@ func reviewActionFixture(t *testing.T, focus bool, readbackFailure string) (*con
 				inputs.Add(1)
 			}
 			switch q.Method {
+			case "Page.bringToFront":
+				activated.Store(true)
+			case "DOM.focus":
+				if !activated.Load() {
+					t.Error("control focused before page activation")
+				}
 			case "Page.getFrameTree":
 				result = map[string]any{"frameTree": map[string]any{"frame": map[string]any{"id": "main", "loaderId": "doc", "url": "http://localhost/"}}}
 			case "Accessibility.getFullAXTree":
-				result = map[string]any{"nodes": []any{map[string]any{"backendDOMNodeId": 4, "role": map[string]any{"value": "textbox"}, "name": map[string]any{"value": "Field"}, "properties": []any{map[string]any{"name": "editable", "value": map[string]any{"value": "plaintext"}}}}}}
+				backend := 4
+				if readbackFailure == "activation-replaced" && activated.Load() {
+					backend = 5
+				}
+				result = map[string]any{"nodes": []any{map[string]any{"backendDOMNodeId": backend, "role": map[string]any{"value": "textbox"}, "name": map[string]any{"value": "Field"}, "properties": []any{map[string]any{"name": "editable", "value": map[string]any{"value": "plaintext"}}}}}}
 			case "DOM.describeNode":
 				result = map[string]any{"node": map[string]any{"attributes": []string{"type", "text"}}}
 			case "Page.createIsolatedWorld":
@@ -52,6 +63,13 @@ func reviewActionFixture(t *testing.T, focus bool, readbackFailure string) (*con
 				value := true
 				if strings.Contains(params.FunctionDeclaration, "activeElement") {
 					value = focus
+					if readbackFailure == "inactive-document" {
+						if !strings.Contains(params.FunctionDeclaration, "hasFocus()") {
+							t.Error("keyboard verification ignores document focus")
+						} else {
+							value = false
+						}
+					}
 					if readbackFailure == "selection-focus" && inputs.Load() >= 2 {
 						value = false
 					}
@@ -156,5 +174,31 @@ func TestSelectionFocusChangeRefusesTextInsertion(t *testing.T) {
 	performed, _, e := act(context.Background(), c, "s", domain.BrowserIdentity{}, sn.Page, domain.BrowserRequest{Operation: "set-text", Prior: sn, Node: sn.Nodes[0].Ref, Text: "secret"}, func() error { return nil })
 	if e == nil || !performed || inputs.Load() != 2 {
 		t.Fatalf("text inserted after selection moved focus: performed=%v inputs=%d err=%v", performed, inputs.Load(), e)
+	}
+}
+
+func TestInactiveDocumentRefusesKeyboardDispatch(t *testing.T) {
+	c, done, inputs := reviewActionFixture(t, true, "inactive-document")
+	defer done()
+	sn, e := snapshot(context.Background(), c, "s", domain.BrowserIdentity{}, domain.BrowserPage{ID: "page"})
+	if e != nil {
+		t.Fatal(e)
+	}
+	performed, _, e := act(context.Background(), c, "s", domain.BrowserIdentity{}, sn.Page, domain.BrowserRequest{Operation: "key", Prior: sn, Node: sn.Nodes[0].Ref, Key: "Enter"}, func() error { return nil })
+	if e == nil || !performed || inputs.Load() != 0 {
+		t.Fatalf("inactive document accepted keyboard input: performed=%v inputs=%d err=%v", performed, inputs.Load(), e)
+	}
+}
+
+func TestActivationMutationRefusesKeyboardDispatch(t *testing.T) {
+	c, done, inputs := reviewActionFixture(t, true, "activation-replaced")
+	defer done()
+	sn, e := snapshot(context.Background(), c, "s", domain.BrowserIdentity{}, domain.BrowserPage{ID: "page"})
+	if e != nil {
+		t.Fatal(e)
+	}
+	performed, _, e := act(context.Background(), c, "s", domain.BrowserIdentity{}, sn.Page, domain.BrowserRequest{Operation: "key", Prior: sn, Node: sn.Nodes[0].Ref, Key: "Enter"}, func() error { return nil })
+	if e == nil || !strings.Contains(e.Error(), "page activation") || !performed || inputs.Load() != 0 {
+		t.Fatalf("activation mutation accepted keyboard input: performed=%v inputs=%d err=%v", performed, inputs.Load(), e)
 	}
 }

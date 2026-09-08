@@ -119,6 +119,11 @@ JavaScript can inspect node state; no unrestricted public JavaScript or raw-CDP
 command exists. Key input supports Enter, Tab, Escape, Backspace, Delete, arrow
 keys, Home, End, PageUp and PageDown.
 
+Keyboard and text input activate the selected page before focusing the target.
+The document and exact target must hold focus before dispatch, including after
+select-all. Page activation or focus can have effects; a subsequent failure
+without verified input outcome remains uncertain.
+
 Operations default to a 30-second timeout, with a 60-second maximum. Console and
 network captures default to one second and allow 1 ms through 10 seconds. Text
 replacement is valid UTF-8 without NUL, at most 4096 bytes. Scroll deltas are

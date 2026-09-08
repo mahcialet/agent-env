@@ -139,6 +139,8 @@ Out of scope:
 
 ## Progress
 
+- [x] 2026-09-09: Added page activation/document-focus checks and post-activation target revalidation. Inactive-document and activation-mutation regressions fail before the repair. Strengthened native fixture explicitly opens a foreground tab before each guarded input. Final CDP race passed (2.833s), Linux native race passed (10.791s), repoctl check passed, and independent review found no further issues. macOS/Windows acceptance is pending fresh CI.
+
 - [x] 2026-09-09: Final integrated repoctl check and full race passed. Final CDP race passed (2.509s); sandbox-enabled Linux native passed (8.491s), including redirected focus refusal, query/fragment matching, ordinary input/shadow behavior and frame boundaries. Independent review passed after the readback fix. Fresh cross-platform CI remains pending.
 
 - [x] 2026-09-09: Added fail-before regressions for stored-manifest substitution, post-redaction expansion, silent queued-event omission, unsafe DOM frame evidence, unrelated-tab refusal, focus redirection, post-effect errors and raw query/fragment URL waits.
@@ -249,6 +251,8 @@ Earlier pending local refinement checks are closed by this result. Windows/macOS
 browser execution and published final CI remain pending; this plan stays active.
 
 ## Surprises & Discoveries
+
+- 2026-09-09: Fresh native CI at 859ca74 failed the new focus-redirection regression on macOS and Windows in both push run 34251804805 and PR run 34251809149; Linux passed. The key operation returned success instead of uncertain refusal. Investigating browser tab focus/event dispatch before claiming acceptance; no test or sandbox conditions are weakened.
 
 - 2026-09-09: Real Chrome exposed an inadequate URL mock: Page.Frame.url omits the fragment and returns it separately as urlFragment. The new native query wait passed but fragment wait timed out. Added urlFragment to frame decoding, transient predicate matching and document identity; native validation must pass before commit.
 
@@ -366,6 +370,8 @@ executable differences.
 Do not weaken identity or stale-reference checks to make dynamic pages easier.
 
 ## Decision Log
+
+- 2026-09-09: Before keyboard/text focus, activate the selected page, then repeat snapshot identity/node/hit proof because activation may execute page handlers. Require document.hasFocus() and exact target focus in the isolated world. Activation failures remain uncertain. This addresses the inactive-page hypothesis without relaxing the native focus-redirection assertion or sandbox.
 
 - 2026-09-09: Protocol errors alone no longer prove a whole multi-step action confirmed. Only pre-effect refusals and verified effect outcomes may confirm; focus is itself an effect. Verify focus through an isolated-world native active-element getter after focus and selectAll; invalid readback remains uncertain.
 - 2026-09-09: AX and DOM share before/after frame proof; DOM document frame IDs must belong to the approved topology. Parentless iframe targets are correlated with selected-session DOM frame owners, preserving unrelated tabs without weakening selected-page refusal.

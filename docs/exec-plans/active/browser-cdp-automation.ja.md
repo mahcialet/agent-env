@@ -1,5 +1,5 @@
 ---
-source_sha256: b37a73bd4b1ebcfe1d593f7403273f002a3f63d3454ed2e2b01baa41bcdb2259
+source_sha256: e996fa1f3022d5f7f0c638ba4b6fafaeea8022c6bb3e69e4540ff10b213a6156
 translation_of: docs/exec-plans/active/browser-cdp-automation.md
 status: active
 owner: maintainers
@@ -76,6 +76,8 @@ browsers:
 port名だけからbrowserをimplicit推測しない。
 
 ## 進捗
+
+- [x] 2026-09-09: page前面化・document focus確認・前面化後の対象再検証を追加した。inactive documentと前面化時の対象変更を修正前に再現した。native fixtureは各入力前に別の前面tabを開く。最終CDP race成功（2.833秒）、Linux native race成功（10.791秒）、repoctl check成功、独立レビューで追加指摘なし。macOS/Windowsの受け入れは新しいCI待ち。
 
 - [x] 2026-09-09: 最終統合repoctl checkとfull raceが成功した。最終CDP race成功（2.509秒）、sandbox有効Linux native成功（8.491秒）。focus転送時の拒否、query/fragment条件、通常入力・shadow動作、frame境界を検証した。readback修正後の独立レビューも成功した。新しいcross-platform CIは未完。
 
@@ -177,6 +179,8 @@ Windows/macOSのbrowser実行と公開最終CIは未完了のため、Planはact
 
 ## 想定外の発見
 
+- 2026-09-09: 859ca74の新しいnative CIでfocus転送回帰テストがmacOSとWindowsのpush run 34251804805・PR run 34251809149の両方で失敗した。Linuxは成功した。key操作が不確定拒否でなく成功を返しており、tab focus/event dispatchを調査する。テストやsandbox条件を緩めず、受け入れは未完とする。
+
 - 2026-09-09: 実ChromeでURL mockの不足が判明した。Page.Frame.urlにfragmentは含まれずurlFragmentで別返却される。native query waitは成功したがfragment waitはtimeoutした。frame decode・一時条件評価・document identityへurlFragmentを追加し、commit前にnative検証を再実行する。
 
 - 2026-09-09: 統合docs-checkで再開した日本語版のtranslation_ofがcompleted/を参照していたため拒否された。メタデータを修正し、日英の内容を確認した。文書検証が未完の段階でfull raceは成功した。
@@ -273,6 +277,8 @@ OS executable差、WebSocket teardown等を記録する。
 dynamic page対応のためidentity/stale checkを弱めない。
 
 ## 判断の記録
+
+- 2026-09-09: keyboard/textのfocus前に対象pageを前面化し、page handlerが動く可能性があるためsnapshot identity・node・hit検証を再実行する。隔離worldでdocument.hasFocus()と対象のfocus一致を必須とし、前面化後の失敗は不確定状態を保つ。非active pageという仮説に対応するが、native focus転送のassertionやsandboxは緩めない。
 
 - 2026-09-09: protocol errorだけでは複数段階の操作全体を確認済みとしない。effect前の拒否と検証済み結果だけを確認済みにでき、focusもeffectとして扱う。focusとselectAllの後に隔離worldのnative active-element getterでfocusを確認し、不正readbackは不確定状態を保つ。
 - 2026-09-09: AXとDOMで取得前後のframe検証を共用し、DOM文書frame IDを承認済みtopologyに限定する。親情報のないiframe targetは選択sessionのDOM frame ownerと照合し、対象pageの拒否条件を緩めず別tabを独立させる。

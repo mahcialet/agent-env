@@ -118,6 +118,22 @@ func act(ctx context.Context, c *connection, s string, id domain.BrowserIdentity
 	case "scroll":
 		e = c.call(ctx, s, "Input.dispatchMouseEvent", map[string]any{"type": "mouseWheel", "x": x, "y": y, "deltaX": q.DeltaX, "deltaY": q.DeltaY}, nil)
 	case "key", "set-text":
+		// Activate the selected page before focusing its control: background pages
+		// can retain activeElement without delivering synchronous focus handlers.
+		if e = c.call(ctx, s, "Page.bringToFront", nil, nil); e != nil {
+			return true, false, e
+		}
+
+		activated, activationErr := snapshot(ctx, c, s, id, p)
+		if activationErr != nil {
+			return true, false, activationErr
+		}
+		if activated.Document != fresh.Document || activated.Truncated || !uniqueFreshNode(activated.Nodes, *old) {
+			return true, false, errors.New("semantic node changed during page activation")
+		}
+		if _, _, e = nodeHit(ctx, c, s, object, old.BackendID); e != nil {
+			return true, false, e
+		}
 		e = c.call(ctx, s, "DOM.focus", map[string]any{"backendNodeId": old.BackendID}, nil)
 		if e != nil {
 			return true, false, e
@@ -242,7 +258,7 @@ func verifyFocus(ctx context.Context, c *connection, session, object string) err
 		} `json:"result"`
 		ExceptionDetails json.RawMessage `json:"exceptionDetails"`
 	}
-	e := c.call(ctx, session, "Runtime.callFunctionOn", map[string]any{"objectId": object, "functionDeclaration": `function(){if(!this.isConnected)return false;let active=this.ownerDocument.activeElement;while(active&&active.shadowRoot&&active.shadowRoot.activeElement)active=active.shadowRoot.activeElement;return active===this}`, "returnByValue": true}, &x)
+	e := c.call(ctx, session, "Runtime.callFunctionOn", map[string]any{"objectId": object, "functionDeclaration": `function(){if(!this.isConnected||!this.ownerDocument.hasFocus())return false;let active=this.ownerDocument.activeElement;while(active&&active.shadowRoot&&active.shadowRoot.activeElement)active=active.shadowRoot.activeElement;return active===this}`, "returnByValue": true}, &x)
 	if e != nil {
 		return e
 	}
