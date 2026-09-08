@@ -1,0 +1,178 @@
+// Package assets materializes agent-env-owned immutable bytes under state.
+package assets
+
+import (
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+	"strings"
+)
+
+func Describe(name, version string, data []byte) (AssetInfo, error) {
+	if !portableName(name) || version == "" {
+		return AssetInfo{}, fmt.Errorf("invalid asset identity")
+	}
+	sum := sha256.Sum256(data)
+	return AssetInfo{Name: name, Version: version, SHA256: hex.EncodeToString(sum[:]), Size: int64(len(data))}, nil
+}
+
+// portableName applies Windows filename restrictions on every host so an asset
+// identity cannot become a device, stream, or normalized alias on another OS.
+func portableName(name string) bool {
+	if name == "" || name == "." || name == ".." || strings.ContainsAny(name, `/\\:<>"|?*`) || strings.HasSuffix(name, ".") || strings.HasSuffix(name, " ") {
+		return false
+	}
+	for _, r := range name {
+		if r < 32 {
+			return false
+		}
+	}
+	base, _, _ := strings.Cut(name, ".")
+	base = strings.ToUpper(strings.TrimRight(base, " "))
+	switch base {
+	case "CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$":
+		return false
+	}
+	for _, prefix := range []string{"COM", "LPT"} {
+		if suffix, ok := strings.CutPrefix(base, prefix); ok && (len(suffix) == 1 && suffix[0] >= '1' && suffix[0] <= '9' || suffix == "¹" || suffix == "²" || suffix == "³") {
+			return false
+		}
+	}
+	return true
+}
+
+// readAssetOnce checks the opened file before allocating and bounds the read
+// even if its length changes afterwards. Callers validate its exact bytes.
+func readAssetOnce(path string, expectedSize int64) ([]byte, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	st, err := f.Stat()
+	if err != nil {
+		return nil, err
+	}
+	if !st.Mode().IsRegular() {
+		return nil, fmt.Errorf("asset path is not regular")
+	}
+	if expectedSize < 0 || st.Size() != expectedSize {
+		return nil, fmt.Errorf("materialized asset size mismatch")
+	}
+	data, err := io.ReadAll(io.LimitReader(f, expectedSize))
+	if err != nil {
+		return nil, err
+	}
+	var extra [1]byte
+	n, err := f.Read(extra[:])
+	if err != nil && err != io.EOF {
+		return nil, err
+	}
+	if int64(len(data)) != expectedSize || n != 0 {
+		return nil, fmt.Errorf("materialized asset size mismatch")
+	}
+	return data, nil
+}
+
+// Materialize verifies or atomically creates a content-addressed asset. The
+// returned path is never derived from caller-controlled path separators.
+func Materialize(root string, info AssetInfo, data []byte) (string, error) {
+	actual, err := Describe(info.Name, info.Version, data)
+	if err != nil || actual.SHA256 != info.SHA256 || actual.Size != info.Size {
+		return "", fmt.Errorf("asset provenance mismatch")
+	}
+	dir := filepath.Join(root, "assets", info.Name, info.SHA256)
+	path := filepath.Join(dir, info.Name)
+	if err := safeMkdirAll(root, dir); err != nil {
+		return "", err
+	}
+	if st, err := os.Lstat(path); err == nil {
+		if st.Mode()&os.ModeSymlink != 0 || !st.Mode().IsRegular() {
+			return "", fmt.Errorf("asset path is not regular")
+		}
+		if st.Size() != info.Size {
+			return "", fmt.Errorf("materialized asset size mismatch")
+		}
+		got, err := readAsset(path, info.Size)
+		if err != nil {
+			return "", err
+		}
+		if string(got) != string(data) {
+			return "", fmt.Errorf("materialized asset digest mismatch")
+		}
+		return path, nil
+	} else if !os.IsNotExist(err) {
+		return "", err
+	}
+	tmp, err := os.CreateTemp(dir, ".asset-")
+	if err != nil {
+		return "", err
+	}
+	tmpPath := tmp.Name()
+	defer os.Remove(tmpPath)
+	if _, err = tmp.Write(data); err == nil {
+		err = tmp.Chmod(0600)
+	}
+	if closeErr := tmp.Close(); err == nil {
+		err = closeErr
+	}
+	if err != nil {
+		return "", err
+	}
+	if err = publishAsset(tmpPath, path); err != nil {
+		if st, statErr := os.Lstat(path); statErr == nil && st.Mode().IsRegular() {
+			if st.Size() != info.Size {
+				return "", fmt.Errorf("materialized asset size mismatch")
+			}
+			got, readErr := readAsset(path, info.Size)
+			if readErr != nil {
+				return "", readErr
+			}
+			if string(got) == string(data) {
+				return path, nil
+			}
+		}
+		return "", err
+	}
+	return path, nil
+}
+
+func safeMkdirAll(root, target string) error {
+	root = filepath.Clean(root)
+	rel, err := filepath.Rel(root, target)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) || filepath.IsAbs(rel) {
+		return fmt.Errorf("asset path escapes root")
+	}
+	cur := root
+	if err := os.MkdirAll(cur, 0700); err != nil {
+		return err
+	}
+	if st, err := os.Lstat(cur); err != nil {
+		return err
+	} else if st.Mode()&os.ModeSymlink != 0 || !st.IsDir() {
+		return fmt.Errorf("asset root is not a directory")
+	}
+	parts := strings.Split(rel, string(filepath.Separator))
+	for _, part := range parts {
+		cur = filepath.Join(cur, part)
+		st, statErr := os.Lstat(cur)
+		if os.IsNotExist(statErr) {
+			if err := os.Mkdir(cur, 0700); err != nil && !os.IsExist(err) {
+				return err
+			}
+			// A concurrent materializer can create this component after Lstat.
+			// Check the winner's entry rather than trusting EEXIST alone.
+			st, statErr = os.Lstat(cur)
+		}
+		if statErr != nil {
+			return statErr
+		}
+		if st.Mode()&os.ModeSymlink != 0 || !st.IsDir() {
+			return fmt.Errorf("asset ancestor is not a directory")
+		}
+	}
+	return nil
+}

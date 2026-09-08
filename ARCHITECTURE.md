@@ -50,3 +50,15 @@ effects and helper identity. Existing `CommandRun` rows provide intent and clean
 barriers; no SQL migration or target-manifest section is added. `tools/uihelper`
 builds the companion explicitly using native tool argv. No runtime adapter imports
 another runtime. See the [observer design](docs/design-docs/android-ui-observer.md).
+
+## Standalone release boundary
+
+`internal/buildinfo` exposes executable identity; `internal/assets` owns generic
+digest-verified materialization, without Android or Flutter lifecycle behavior.
+The current CLI embeds no runtime companion assets. The Android UI helper remains
+an explicitly built external input. `tools/repoctl` owns Git release validation,
+CGO-disabled cross-builds, archive normalization, checksums, manifest validation
+and extracted native smoke tests. Release metadata does not belong in lease/domain
+models. GitHub Actions orchestrates these commands and publishes validated bytes;
+it does not implement a second packaging algorithm. See the
+[distribution design](docs/design-docs/standalone-distribution.md).

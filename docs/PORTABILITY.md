@@ -51,3 +51,21 @@ SDK discovery uses `ANDROID_HOME`, then `ANDROID_SDK_ROOT` (conflicting values f
 A compatible local ADB server on `127.0.0.1:5037` is a shared prerequisite. The adapter compares a direct read-only `host:version` response with the SDK client's protocol version before startup or boot inspection. It refuses incompatible or malformed servers. If absent, the SDK's `adb -L tcp:localhost:5037 start-server` runs through a separate detached launch before the Emulator, with retained startup diagnostics. Bounded boot inspection uses `-H 127.0.0.1 -P 5037 -s <reserved-serial>` and clears inherited server-routing variables; it does not start a missing server. The compatibility probe prevents the normal SDK client's version-mismatch replacement path. Shared ADB is outside lease cleanup.
 
 Native unit CI and actual Emulator integration are distinct. Real SDK integration has been exercised on Linux; actual Windows/macOS SDK startup, acceleration and shared-server lifetime remain unverified. The Android ExecPlan records the tested revisions and remaining platform gaps.
+
+## Standalone release targets
+
+The archive contract adds windows/arm64 to the historical five-target build set:
+Windows, macOS (`darwin`) and Linux each have amd64 and arm64 archives. Windows
+uses ZIP; macOS/Linux use tar.gz. Every target is built with `CGO_ENABLED=0`.
+Packaging uses Go libraries and needs no external shell, tar, zip or checksum tool.
+Archives have one versioned directory and use the tagged commit timestamp, not
+packaging time; ZIP stores a UTC extended timestamp in addition to its coarser DOS
+field. State remains under the native state root or absolute `AGENT_ENV_HOME`,
+including paths containing spaces and non-ASCII characters.
+
+A successful six-target cross-build does not establish native operation on all six
+tuples. Record each actual native smoke runner separately, including arm64; do not
+infer execution coverage from a produced archive. The
+[release plan](exec-plans/completed/standalone-release-finalization.md) tracks current
+evidence. Extracted CLI execution needs no Go; selected external capabilities keep
+the prerequisites in the [README](../README.md).

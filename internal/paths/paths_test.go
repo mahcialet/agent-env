@@ -59,3 +59,17 @@ func TestSourceConfinement(t *testing.T) {
 		}
 	}
 }
+
+func TestResolveOverrideWithoutUserHome(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "state 日本語 spaces")
+	t.Setenv("AGENT_ENV_HOME", root)
+	t.Setenv("HOME", "")
+	t.Setenv("USERPROFILE", "")
+	got, err := Resolve()
+	if err != nil || got != root {
+		t.Fatalf("explicit override requires unrelated user home: %q %v", got, err)
+	}
+	if _, err := os.Stat(root); !os.IsNotExist(err) {
+		t.Fatal("resolution created state")
+	}
+}

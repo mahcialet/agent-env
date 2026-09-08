@@ -1,0 +1,46 @@
+name: Release preview
+on:
+  push:
+    branches: ['feat/standalone-release-finalization']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.27.1'
+      - run: go run ./tools/repoctl release-verify --out dist/candidate
+      - run: go test ./tools/repoctl -run TestReleaseCandidate -count=1
+        env:
+          AGENT_ENV_RELEASE_CANDIDATE: ../../dist/candidate
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-preview
+          path: dist/candidate/*
+          if-no-files-found: error
+  smoke:
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.27.1'
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-preview
+          path: dist/candidate
+      - run: go run ./tools/repoctl release-preview-smoke --dir dist/candidate

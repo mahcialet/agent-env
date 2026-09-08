@@ -204,3 +204,60 @@ func TestUISemanticActionRejectsChangedBackendBeforeDeviceInput(t *testing.T) {
 		t.Fatal("changed backend reached device")
 	}
 }
+
+type uiStagingRunner struct {
+	base      execx.Runner
+	t         *testing.T
+	directory string
+	staged    string
+	apk       []byte
+	fail      bool
+}
+
+func (r *uiStagingRunner) Run(ctx context.Context, c execx.Command) (execx.Result, error) {
+	if len(c.Args) == 8 && c.Args[6] == "install" {
+		r.staged = c.Args[7]
+		if filepath.Dir(r.staged) != r.directory {
+			r.t.Errorf("helper staged outside owned runtime: %s", r.staged)
+		}
+		data, err := os.ReadFile(r.staged)
+		if err != nil || string(data) != string(r.apk) {
+			r.t.Errorf("staged helper bytes: %q %v", data, err)
+		}
+		if r.fail {
+			return execx.Result{}, errors.New("fixture install failure")
+		}
+		return execx.Result{Stdout: "Success\n"}, nil
+	}
+	return r.base.Run(ctx, c)
+}
+func TestUIHelperStagingStaysInOwnedRuntimeAndCleansUp(t *testing.T) {
+	for _, fail := range []bool{false, true} {
+		t.Run(fmt.Sprint(fail), func(t *testing.T) {
+			a, r, _, runner, _ := applicationFixture(t)
+			dir := t.TempDir()
+			apk := []byte("verified staging fixture")
+			writeFixture(t, filepath.Join(dir, "observer.apk"), string(apk))
+			meta := uihelper.Metadata{Version: uihelper.Version, Package: uihelper.Package, SourceSHA256: uihelper.SourceDigest(), APKSHA256: fmt.Sprintf("%x", sha256.Sum256(apk)), Platform: "android-35", BuildTools: "36.0.0"}
+			data, err := json.Marshal(meta)
+			if err != nil {
+				t.Fatal(err)
+			}
+			writeFixture(t, filepath.Join(dir, "observer.json"), string(data))
+			t.Setenv("AGENT_ENV_UI_HELPER", dir)
+			runner.output["shell getprop ro.build.version.sdk"] = execx.Result{Stdout: "35"}
+			runner.output["shell pm path "+uihelper.Package] = execx.Result{}
+			staging := &uiStagingRunner{base: runner, t: t, directory: r.Directory, apk: apk, fail: fail}
+			a.Runner = staging
+			// An empty package observation after a successful install deliberately stops
+			// subsequent instrumentation; staging cleanup must hold on both paths.
+			_, err = a.ObserveUI(context.Background(), r, domain.UIRequest{Version: 1, Operation: "snapshot"})
+			if staging.staged == "" {
+				t.Fatalf("helper never staged: %v", err)
+			}
+			if _, err := os.Stat(staging.staged); !os.IsNotExist(err) {
+				t.Fatalf("staged helper not removed: %v", err)
+			}
+		})
+	}
+}

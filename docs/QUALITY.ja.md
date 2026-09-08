@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/QUALITY.md
-source_sha256: a13fbbd00e069d7c5b0f75440b1da081dc032baf8f97af9605fc26bf343ccb64
+source_sha256: 60ec1a8cddfbf2b7bb04a9f6a4a1cf436749415a37fb8a4943f160f6cf09d8a1
 ---
 
 # 品質と検証
@@ -58,3 +58,45 @@ CIはGo 1.26.xと1.27.xを使い、Windows、macOS、LinuxでハーネスとCLI�
 ## 翻訳の検証
 
 永続文書は英語と日本語の`.ja.md`を対にし、内容が食い違う場合は英語を優先する。[言語の方針](design-docs/bilingual-documentation.ja.md)でメタデータと正確なパス単位の例外を定義する。`docs-check`は、英語ファイル全体のCRLFをLFへ正規化したSHA-256と、翻訳のsource hashを比較する。そのためWindowsのcheckoutでもLinux／macOSと一致する。検査は読み取り専用であり、翻訳メタデータを自動更新しない。hashの一致は、どの原文リビジョンを確認したかを示すだけで、翻訳の正確さは証明しない。hashを更新する前に実際の日本語文を見直す。
+
+## リリースの検証
+
+tag と完全に一致する変更のないソースから、まだ存在しない出力パスを指定して作成します。
+繰り返しビルドの比較には、それぞれ別の出力ディレクトリを使います。
+
+```text
+go run ./tools/repoctl release-build --version X.Y.Z --out <new-directory>
+go run ./tools/repoctl release-check --dir <directory> --version X.Y.Z
+go run ./tools/repoctl release-repeat --dir <directory> --version X.Y.Z
+go run ./tools/repoctl release-smoke --dir <directory> --version X.Y.Z
+```
+
+`release-check` は他プラットフォームの実行ファイルを起動せず、6 アーカイブ一式と
+Go 実行ファイルのビルド情報を静的に検査します。`release-smoke` は checkout の外へ展開し、
+実行ファイルの検索パスを制限して、ホストと一致する対象だけを実行します。
+状態には空白・非 ASCII 文字を含む独立した home を使います。同一ソース・同一ツールチェーンで
+繰り返し作成し、実行ファイルとアーカイブの digest、checksum、manifest を比較します。
+コンパイル成功をバイト列比較の代わりにしません。リリース CI の builder は Go 1.27.1 に固定します。
+Windows/macOS/Linux のネイティブ smoke 結果と arm64 の検証範囲は、
+[リリース計画](exec-plans/completed/standalone-release-finalization.ja.md)に明記します。
+
+tag workflow は、リポジトリ検査、成果物の静的検証、繰り返しビルドの比較、ネイティブ smoke job の
+成功を公開条件にします。公開 job は再ビルドせず、検証済みの候補バイト列をアップロードします。
+workflow が存在するだけでは、リリースやネイティブ検証が成功した証拠にはなりません。
+
+`release-repeat` は tag に対応する候補を検証し、同じコミット・ツールチェーンで再ビルドして、
+出力 8 ファイルすべてのバイト列を比較します。tag のないブランチや PR の検証には
+専用の preview を使います。
+
+```text
+go run ./tools/repoctl release-verify --out <new-directory>
+go run ./tools/repoctl release-preview-smoke --dir <directory>
+```
+
+`release-verify` は変更のないソースを要求し、専用 clone 内だけに `v0.1.0` を作成して
+2 回のビルド、バイト列比較、ローカルのネイティブ smoke を実行した後、候補を新規出力先へコピーします。
+`release-preview-smoke` は別の専用 clone で、preview を現在のコミットと照合します。
+どちらも公開 ref の作成やリリース公開は行いません。preview workflow はこの比較と
+3 OS のネイティブ smoke job を実行します。tag workflow は公開前に、独立して繰り返しビルドと
+3 OS のネイティブ smoke の成功を要求します。これは workflow の条件であり、
+個別の実行が成功したという主張ではありません。
