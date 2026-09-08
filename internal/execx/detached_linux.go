@@ -63,7 +63,7 @@ func detachedGroupAlive(pgid int) (bool, error) {
 			return alive, err
 		}
 		if pass > 0 && zombies != prior {
-			return false, errors.New("process group membership changed during termination observation")
+			return false, fmt.Errorf("process group membership changed: %w", errProcessCensusUnstable)
 		}
 		prior = zombies
 	}
@@ -112,7 +112,7 @@ func detachedGroupCensus(pgid int) (bool, string, error) {
 	// processes, and require the same zombie membership in two full snapshots:
 	// this prevents a rapidly exiting parent from hiding a newly born child.
 	if unstable {
-		return false, "", errors.New("process census changed during termination observation")
+		return false, "", errProcessCensusUnstable
 	}
 	sort.Strings(zombies)
 	return false, strings.Join(zombies, ","), nil

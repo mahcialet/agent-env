@@ -17,6 +17,7 @@ import (
 	"github.com/mahcialet/agent-env/internal/domain"
 	"github.com/mahcialet/agent-env/internal/evidence"
 	"github.com/mahcialet/agent-env/internal/execx"
+	"github.com/mahcialet/agent-env/internal/paths"
 	"github.com/mahcialet/agent-env/internal/policy"
 	"github.com/oklog/ulid/v2"
 )
@@ -83,6 +84,7 @@ type Service struct {
 	Source              SourceProvider
 	Runtime             RuntimeProvider
 	Android             AndroidProvider
+	Process             PersistentProcessProvider
 	Home                string
 	Policy              policy.Policy
 	Runner              execx.Runner
@@ -161,6 +163,12 @@ func (s *Service) Create(ctx context.Context, o PlanOptions, options CreateOptio
 			r.Android = &validated
 			continue
 		}
+		if r.Type == "process" {
+			if s.Process == nil {
+				return lease, fmt.Errorf("%w: persistent process provider unavailable", ErrPrerequisite)
+			}
+			continue
+		}
 		if s.Runtime == nil {
 			return lease, fmt.Errorf("%w: Compose provider unavailable", ErrPrerequisite)
 		}
@@ -214,6 +222,17 @@ func (s *Service) Create(ctx context.Context, o PlanOptions, options CreateOptio
 			r.Android.AVDName = r.Project
 			r.Android.AVDHome = filepath.Join(r.Directory, "avd")
 			r.Android.AVDPath = filepath.Join(r.Android.AVDHome, r.Android.AVDName+".avd")
+			continue
+		}
+		if r.Type == "process" {
+			r.Directory = root
+			r.Process.Directory, err = paths.CanonicalFuture(paths.ProcessRuntime(home, id, r.Name))
+			if err != nil {
+				return domain.Lease{}, err
+			}
+			r.Process.StateDirectory = filepath.Join(r.Process.Directory, "state")
+			r.Process.StdoutPath = filepath.Join(r.Process.Directory, "stdout.log")
+			r.Process.StderrPath = filepath.Join(r.Process.Directory, "stderr.log")
 			continue
 		}
 		r.Directory = filepath.Join(root, filepath.FromSlash(r.Directory))
@@ -328,6 +347,12 @@ func (s *Service) allocate(ctx context.Context, l *domain.Lease, home string) er
 			}
 			continue
 		}
+		if r.Type == "process" {
+			if err := s.startProcess(ctx, l, i); err != nil {
+				return err
+			}
+			continue
+		}
 		var sourceRoot string
 		for _, source := range l.Sources {
 			if source.Alias == r.Source {
@@ -388,6 +413,9 @@ func (s *Service) allocate(ctx context.Context, l *domain.Lease, home string) er
 		return err
 	}
 	if err := s.startApplications(ctx, l); err != nil {
+		return err
+	}
+	if err := s.confirmProcessesReady(ctx, l); err != nil {
 		return err
 	}
 	l.Observed = "ready"
@@ -543,6 +571,7 @@ func (s *Service) waitReady(ctx context.Context, l *domain.Lease) error {
 			inspectErr := inspectCtx.Err()
 			cancelInspect()
 			observeAndroid(r, o, err)
+			observeProcess(r, o, err)
 			if inspectErr != nil {
 				return fmt.Errorf("readiness deadline for runtime %s: %w", pendingName, inspectErr)
 			}
@@ -754,6 +783,9 @@ func (s *Service) cleanup(ctx context.Context, l *domain.Lease, force bool) erro
 			}
 			return false, nil
 		}
+		if r.Type == "process" {
+			return s.cleanupProcess(ctx, l, r)
+		}
 		if preparer, ok := s.Runtime.(RuntimeCleanupPreparation); ok {
 			prepared, err := preparer.PrepareCleanup(ctx, *r)
 			if err != nil {
@@ -907,6 +939,7 @@ func (s *Service) Reconcile(ctx context.Context, id string) (lease domain.Lease,
 		r := &lease.Runtimes[i]
 		o, e := s.inspectRuntime(ctx, *r)
 		observeAndroid(r, o, e)
+		observeProcess(r, o, e)
 		if e != nil {
 			dirty = dirty || errors.Is(e, domain.ErrResourceIdentity)
 			unknown = true

@@ -60,6 +60,7 @@ func EffectiveComposeProvider(name ComposeProviderName) ComposeProviderName {
 }
 
 type Runtime struct {
+	Process *PersistentProcess `json:"process,omitempty"`
 	// CleanupEvidence survives container disappearance until residual cleanup is verified.
 	CleanupEvidence []Resource          `json:"cleanup_evidence,omitempty"`
 	Provider        ComposeProviderName `json:"provider,omitempty"`

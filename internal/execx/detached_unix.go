@@ -14,10 +14,10 @@ import (
 func startDetached(ctx context.Context, cmd *exec.Cmd) (ProcessIdentity, error) {
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
 	if err := ctx.Err(); err != nil {
-		return ProcessIdentity{}, err
+		return ProcessIdentity{}, errors.Join(ErrProcessNotStarted, err)
 	}
 	if err := cmd.Start(); err != nil {
-		return ProcessIdentity{}, err
+		return ProcessIdentity{}, errors.Join(ErrProcessNotStarted, err)
 	}
 	id := ProcessIdentity{PID: cmd.Process.Pid}
 	start, alive, err := detachedIdentity(id.PID)

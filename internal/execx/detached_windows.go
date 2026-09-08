@@ -20,30 +20,30 @@ import (
 func startDetached(ctx context.Context, cmd *exec.Cmd) (ProcessIdentity, error) {
 	var session uint32
 	if err := windows.ProcessIdToSessionId(uint32(os.Getpid()), &session); err != nil {
-		return ProcessIdentity{}, err
+		return ProcessIdentity{}, errors.Join(ErrProcessNotStarted, err)
 	}
 	var nonce [16]byte
 	if _, err := rand.Read(nonce[:]); err != nil {
-		return ProcessIdentity{}, err
+		return ProcessIdentity{}, errors.Join(ErrProcessNotStarted, err)
 	}
 	name := "Local\\agent-env-" + hex.EncodeToString(nonce[:])
 	wide, err := windows.UTF16PtrFromString(name)
 	if err != nil {
-		return ProcessIdentity{}, err
+		return ProcessIdentity{}, errors.Join(ErrProcessNotStarted, err)
 	}
 	job, err := windows.CreateJobObject(nil, wide)
 	if err != nil {
-		return ProcessIdentity{}, err
+		return ProcessIdentity{}, errors.Join(ErrProcessNotStarted, err)
 	}
 	defer windows.CloseHandle(job)
 	// No KILL_ON_JOB_CLOSE: a per-resource guardian retains a handle while
 	// members live, preserving named observation after this CLI exits.
 	cmd.SysProcAttr = &syscall.SysProcAttr{CreationFlags: windows.CREATE_NEW_PROCESS_GROUP | windows.DETACHED_PROCESS | windows.CREATE_SUSPENDED}
 	if err := ctx.Err(); err != nil {
-		return ProcessIdentity{}, err
+		return ProcessIdentity{}, errors.Join(ErrProcessNotStarted, err)
 	}
 	if err := cmd.Start(); err != nil {
-		return ProcessIdentity{}, err
+		return ProcessIdentity{}, errors.Join(ErrProcessNotStarted, err)
 	}
 	id := ProcessIdentity{PID: cmd.Process.Pid}
 	abort := func(cause error) (ProcessIdentity, error) {

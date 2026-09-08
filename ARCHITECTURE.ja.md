@@ -3,14 +3,14 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: ARCHITECTURE.md
-source_sha256: ae62af9dd6876136c509b87974c17c1560946b1fe3ce98b8efeb5ff8858d803f
+source_sha256: e6ee9e3c1dcd24f06405dbe152664848b4345eebe8ddb68882fa120584ed7f7b
 ---
 
 [英語版（翻訳元）](ARCHITECTURE.md)
 
 # アーキテクチャ
 
-このシステムは、固定したローカルGitソースと選択したコンポーネントの依存閉包を、ComposeまたはAndroid Emulatorのリソースを持つ環境リースとして実体化します。[MVP仕様](docs/product-specs/agent-env-mvp.ja.md)が振る舞いを定義し、[完了済み計画](docs/exec-plans/completed/agent-env-mvp.md)が実装済みの責務境界と検証証拠を記録します。
+このシステムは、固定したローカルGitソースと選択したコンポーネントの依存閉包を、Compose、Android Emulator、常駐native processのリソースを持つ環境リースとして実体化します。[MVP仕様](docs/product-specs/agent-env-mvp.ja.md)が振る舞いを定義し、[完了済み計画](docs/exec-plans/completed/agent-env-mvp.md)が実装済みの責務境界と検証証拠を記録します。
 
 CLIは引数を解析し、出力を整形して、ユースケースをappに委譲します。domainの型は、具体的なアダプターに依存せず、リース、不変のソース集合、コンポーネント、リソース、イベントをモデル化します。configはマニフェストを厳密にデコードし、stackは決定的な依存閉包を解決します。appはソースとruntimeのインターフェース、ポリシー、準備完了判定、証拠、補償cleanupを調整します。
 
@@ -73,3 +73,20 @@ CGO 無効のクロスビルド、アーカイブの正規化、checksum、manif
 lease/domain のモデルに入れません。GitHub Actions はこれらのコマンドを呼び出し、
 検証済みのバイト列を公開します。別のパッケージ生成処理は持ちません。
 [配布設計](docs/design-docs/standalone-distribution.ja.md)を参照してください。
+
+## 常駐host process
+
+`app.PersistentProcessProvider`と`internal/runtime/process`は、Compose、Android、Flutterと
+分離して汎用foreground processのlifecycleを実装します。domainは追加fieldとして不変の起動
+参照とnative識別情報を持ち、appは意図/識別情報の保存、port予約、共通endpointの解決、
+readiness調整、操作fence下の補償を担います。SQLiteがlease間のTCP予約を管理します。
+`execx.ManagedProcess`はnative Start/Observe/Terminateの仕組みを担います。
+runtime adapterは互いをimportせず、この境界にBrowserの挙動を入れません。
+
+各runtimeは`leases/<id>/process-runtimes/<runtime>/`配下に`state/`、`stdout.log`、
+`stderr.log`、`owner.json`、`redaction.json`、`launch.json`を置きます。`${runtime_dir}`として公開するのは専用の`state/`
+pathのみです。起動receiptはregistry保存失敗後の識別情報復旧に使います。独立した
+`redaction.json`にversion付き所有情報とsecret fingerprintをnative起動前に保存するため、
+起動receiptの書き込みに失敗しても補償時の上限付き診断redactionを行えます。可変状態の削除、port/worktreeの解放前に、
+cleanupがtree全体の不在を証明する必要があります。[process設計](docs/design-docs/persistent-process-runtime.ja.md)
+とそのactive実行証拠を参照してください。native platformの受け入れは進行中です。

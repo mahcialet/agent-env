@@ -12,7 +12,7 @@ The implemented scope is local pinned Git sources, detached review worktrees, is
 
 ## Settled MVP choices
 
-The module is `github.com/mahcialet/agent-env` and the existing MIT license is retained. AGENTS is capped at 150 lines, package boundaries have structural checks, and database documentation is generated from numbered migrations. Built-in policy rejects fixed published ports and selected external/shared Compose resources. SQLite transactions and renewable fenced operation locks coordinate local processes. Execution snapshots contain only the selected service/resource closure. Native process-tree cancellation is part of the current runner, not a future host-process adapter.
+The module is `github.com/mahcialet/agent-env` and the existing MIT license is retained. AGENTS is capped at 150 lines, package boundaries have structural checks, and database documentation is generated from numbered migrations. Built-in policy rejects fixed published ports and selected external/shared Compose resources. SQLite transactions and renewable fenced operation locks coordinate local processes. Execution snapshots contain only the selected service/resource closure. Native process-tree cancellation belongs to the bounded runner; persistent lifetimes use a separate managed detached interface.
 
 ## Trust and host policy
 
@@ -24,7 +24,14 @@ Remote mirror/cache management, HTTPS/SSH authentication, provider-specific PR s
 
 ## Runtime extensions
 
-iOS, browser/CDP automation and snapshots, generic persistent host processes, and distributed/multi-host coordination are not implemented. Android Emulator leases own private AVD state and local SDK processes; additional real-device CI needs acceleration-capable runners. Browser resources need explicit ownership and cleanup rules.
+iOS, browser/CDP automation and snapshots, and distributed/multi-host coordination are not implemented. Android Emulator leases own private AVD state and local SDK processes; additional real-device CI needs acceleration-capable runners. Browser observation and actions need a separate contract above generic process ownership.
+
+The [persistent process runtime](product-specs/persistent-process-runtime.md) is
+implemented with direct argv, private mutable state, named loopback TCP ports and
+conservative native tree cleanup. Final native integration acceptance remains
+in progress in the [active process plan](exec-plans/active/persistent-process-runtime.md).
+Self-daemonization, automatic restart, interactive terminals, remote execution and
+service installation remain outside this runtime contract.
 
 The [Android UI observer](product-specs/android-ui-observer.md) adds bounded semantic
 snapshots, PNGs, Unicode replacement, navigation and current-PID logs to existing

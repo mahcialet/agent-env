@@ -26,7 +26,7 @@ Manifest paths within a source use forward slashes. Native absolute local reposi
 
 Commands use executable-plus-argv, explicit working directories, deadlines, and streamed output. Git inspection uses machine-readable output; Compose engine inspection uses structured output and recorded provider/engine identity. Newline handling tolerates CRLF. The Go repository harness invokes standard tools directly and requires no shell scripting language.
 
-On Unix, managed command process groups provide cancellation of descendants. On Windows, command children are assigned to a Job Object before they run, with job termination used for cancellation and timeout. This supports bounded named tests and probes; it is not a generic persistent host-process runtime. Background programs deliberately escaping OS containment are outside the trusted-repository model. Failure to verify termination is surfaced as a typed unconfirmed-process-tree result; the app must retain a running registry record and refuse cleanup until reviewed recovery establishes completion.
+On Unix, managed command process groups provide cancellation of descendants. On Windows, command children are assigned to a Job Object before they run, with job termination used for cancellation and timeout. This supports bounded named tests and probes; generic persistent process runtimes use the separate managed detached interface below. Background programs deliberately escaping OS containment are outside the trusted-repository model. Failure to verify termination is surfaced as a typed unconfirmed-process-tree result; the app must retain a running registry record and refuse cleanup until reviewed recovery establishes completion.
 
 Windows `.cmd` and `.bat` execution is isolated in the Windows adapter. Wrapper arguments are quoted through the platform path; tokens that cannot be represented safely are rejected instead of silently changing argv. Native executable argv tests cover spaces, quotes, trailing separators, and Unicode. Shell-sensitive wrapper behavior is a separately tested boundary.
 
@@ -85,3 +85,26 @@ infer execution coverage from a produced archive. The
 [release plan](exec-plans/completed/standalone-release-finalization.md) tracks current
 evidence. Extracted CLI execution needs no Go; selected external capabilities keep
 the prerequisites in the [README](../README.md).
+
+## Generic persistent process runtimes
+
+`type: process` uses native argv and a foreground lifecycle anchor that survives
+its launching CLI. Source-relative cwd/executable paths are confined after symlink
+resolution; PATH tools record source/host origin and readable executable digest,
+without a claim of host-tool reproducibility. No implicit shell, batch wrapper,
+service manager, new language runtime, or daemon is required by the core.
+
+Unix checks birth identity and process-group membership immediately before each
+signal. Observation and group signaling are not atomic; this reduces but cannot
+eliminate the final native syscall race. Root disappearance with live descendants
+is uncertain ownership and blocks further destructive effects. Windows revalidates
+and terminates the exact named Job using a retained handle. This is forced Job
+termination, not a promise of graceful console signaling. Identity uncertainty
+retains the lease's ports, state and sources.
+
+Named ports reserve loopback TCP allocation among agent-env leases. The interval
+before the target binds remains vulnerable to external occupancy; there is no
+socket activation or inherited listening socket. Native adapter tests, race tests
+and cross-compilation have passed during implementation; real persistent-process
+Windows/macOS/Linux integration and final CI evidence are tracked separately in
+the [active process plan](exec-plans/active/persistent-process-runtime.md).

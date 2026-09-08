@@ -36,7 +36,7 @@ agent-env renew <lease-id> [--ttl <duration>]
 agent-env destroy <lease-id> [--dry-run] [--force]
 agent-env reconcile [lease-id]
 agent-env gc [--apply]
-agent-env doctor [repository|lease-id] [--runtime compose|android-emulator|flutter-android] [--provider docker-compose|podman-compose]
+agent-env doctor [repository|lease-id] [--runtime compose|process|android-emulator|flutter-android] [--provider docker-compose|podman-compose]
 ```
 
 An omitted repository means the current directory. `init` requires one recognizable root Compose file, creates `.agent-env.yaml` exclusively, and reports that review is required; it does not start anything. `validate` checks schema and references without Docker or Podman. `plan` additionally resolves local Git commits and the deterministic component closure without creating state or worktrees. `--ref` requires a single source; use alias-specific `--source` overrides for multiple sources. Neither form fetches remote refs.
@@ -47,13 +47,13 @@ The manifest defaults to the supplied control checkout. `--manifest` on plan/cre
 
 `--owner <text>` is a global advisory owner selector. `AGENT_ENV_OWNER` supplies an explicit default. Otherwise a local user/host identity and unique suffix identify allocations; `list --mine` matches that local identity across invocations. Owner labels are filters, not authorization boundaries.
 
-`list` and `show` inspect recorded sources and provider-pinned Compose projects; `--cached` is the explicit registry-only list. `show` includes the lease, events, command runs, artifacts, and endpoint observations. `capabilities` reports capabilities declared by selected components, the observed state, and an endpoint address map. Declared endpoints generate dynamic loopback publishing in the saved runtime configuration. `reconcile <lease-id>` returns that observed lease. Full `reconcile` returns an object containing `leases` and `inventory`, including resources with no matching recorded owner; it never deletes them. Discovery examines installed provider executables and recorded provider/engine identities together, with provider-scoped resource IDs. An installed but unavailable engine returns partial inventory and a visible error.
+`list` and `show` inspect recorded sources, provider-pinned Compose projects and owned persistent process identities; `--cached` is the explicit registry-only list. `show` includes the lease, events, command runs, artifacts, and endpoint observations. `capabilities` reports capabilities declared by selected components, the observed state, and an endpoint address map. Declared endpoints generate dynamic loopback publishing in the saved runtime configuration. `reconcile <lease-id>` returns that observed lease. Full `reconcile` returns an object containing `leases` and `inventory`, including resources with no matching recorded owner; it never deletes them. Discovery examines installed provider executables and recorded provider/engine identities together, with provider-scoped resource IDs. An installed but unavailable engine returns partial inventory and a visible error.
 
-Desired state is `active` or `released`. Observed state can be `requested`, `allocating`, `starting`, `ready`, `degraded`, `failed`, `releasing`, `released`, `quarantined`, or `unknown`. A stored ready row is not proof of live health. Missing Compose resources degrade an active lease; inspection failures remain visible as uncertainty. Expired or quarantined leases cannot become an unqualified ready result.
+Desired state is `active` or `released`. Observed state can be `requested`, `allocating`, `starting`, `ready`, `degraded`, `failed`, `releasing`, `released`, `quarantined`, or `unknown`. A stored ready row is not proof of live health. Missing Compose resources or an unexpectedly exited persistent process degrade an active lease; inspection failures remain visible as uncertainty. Expired or quarantined leases cannot become an unqualified ready result.
 
 Runtime/container and bounded HTTP readiness can be re-observed. Arbitrary command probes run during create; list/show do not rerun repository commands. A healthy live observation therefore does not prove that a previously successful command probe would still pass.
 
-`logs --run` reads one recorded command run's stdout/stderr. `logs --component` selects the component's services within its runtime, rather than returning all services sharing that Compose project. Without a filter, logs include available runtime and retained cleanup evidence.
+`logs --run` reads one recorded command run's stdout/stderr. `logs --component` selects the component's services within a Compose runtime; a process component selects its runtime's file-backed stdout/stderr. Without a filter, logs include available runtime and retained cleanup evidence.
 
 ## Output and exit status
 
@@ -140,3 +140,20 @@ Expand/shrink, writable forks, checkpoint/reproduce, browser observation, and ar
 `destroy` requests cancellation of the exact active named-run IDs and waits up to ten seconds for termination/evidence finalization before cleanup. An unconfirmed cancellation or an ownerless running record prevents cleanup, including with `--force`. An operation already unrelated to those named runs remains busy; destroy does not cancel a newer run that begins during the wait.
 
 Plans and leases expose `manifest_path`, `manifest_commit`, and `manifest_modified`. The path identifies the actual selected file; the commit is its control checkout HEAD, independent of runtime source refs. A modified, untracked or ignored file is marked modified. Outside Git, the commit is empty and diagnostics explain that the canonical snapshot/digest provides provenance. `--manifest` does not change the control repository used to resolve relative source repository paths.
+
+## Persistent process diagnostics and logs
+
+`doctor --runtime process` selects process runtime diagnostics without requiring
+Docker, Podman or the Android SDK. `doctor <lease-id>` observes the recorded native
+identity; there is no adoption or automatic restart. Process-only lifecycle and
+individual lease observation do not require a Compose engine. Full inventory still
+reports installed/recorded Compose provider availability separately.
+
+For process runtimes, `show` retains the process snapshot and observed endpoint
+addresses. `${endpoint:localName}` in process readiness is a numeric port, while
+`capabilities`/endpoint output uses the common `host:port` representation. `logs`
+reads attributed stdout/stderr with bounded output and secret redaction based on
+independent prelaunch `redaction.json`, not on successful `launch.json` creation. A later host environment change does not remove that redaction proof;
+missing or mismatched proof fails closed after launch. Final process logs can be
+retained as cleanup artifacts; raw private logs and mutable state are not an
+unconditional artifact export. See the [process contract](persistent-process-runtime.md).

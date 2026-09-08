@@ -83,3 +83,30 @@ does not authorize stopping this host service. Destroy and GC remove only owned
 Emulator resources; they never issue global ADB server cleanup. Recovery must
 restore the shared prerequisite without treating its process as a lease-owned
 Emulator or discarding failed-start evidence.
+
+## Persistent process recovery
+
+Process creation fixes source commit, runtime paths and named TCP reservations
+before launch intent is persisted. Returned native identity is saved before
+readiness. A nonzero identity returned with an error is still cleanup evidence;
+`launch.json` can recover the launch when the later registry save fails. Never
+repeat an uncertain Start as if it had no effects. Later independent CLI calls
+observe native identity and bounded HTTP health; root exit degrades the lease and
+does not automatically restart it.
+
+Destroy revalidates native ownership before signaling and again before escalation.
+The foreground root is required on Unix when live descendants remain; ambiguous
+group lineage quarantines instead of authorizing a numeric group kill. Windows
+uses the exact owned Job. Whole-tree absence gates private-state deletion, port
+release and ordinary tracked-change-protected worktree cleanup. An uncertain
+launch, termination, output-evidence failure or lost fence retains recovery state
+and reservations. Repeated destroy/GC never override that proof requirement.
+
+Runtime files live under `leases/<id>/process-runtimes/<runtime>/`; mutable `state/`
+is deleted after confirmed cleanup, while logs/launch identity remain diagnostic
+evidence. Independent `redaction.json` persists versioned ownership and secret
+fingerprints before native Start, allowing redacted compensation logs even when
+writing `launch.json` fails. A later CLI does not depend on the current host secret
+environment. A typed `ErrProcessNotStarted` plus zero PID permits recovery to
+prepared state; an untyped zero-identity failure remains uncertain. See the
+[process lifecycle design](design-docs/persistent-process-runtime.md).

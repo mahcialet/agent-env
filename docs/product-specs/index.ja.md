@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/product-specs/index.md
-source_sha256: a2a9253c3e7326d7177e9b56c4f5a94314da04eaa9942c081090195c903823f9
+source_sha256: 740e530aee7e929b2e4915443ecdb0e1bd5f18fce09edea4110424bea90cbce2
 ---
 
 [English（翻訳元）](index.md)
@@ -19,3 +19,4 @@ source_sha256: a2a9253c3e7326d7177e9b56c4f5a94314da04eaa9942c081090195c903823f9
 - [android-ui-observer](android-ui-observer.ja.md) · [English](android-ui-observer.md)
 - [standalone-distribution](standalone-distribution.ja.md) · [English](standalone-distribution.md)
 - [compose-providers](compose-providers.ja.md) · [English](compose-providers.md)
+- [persistent-process-runtime](persistent-process-runtime.ja.md) / [English](persistent-process-runtime.md)

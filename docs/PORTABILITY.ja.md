@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/PORTABILITY.md
-source_sha256: 713e69fde4e3373f2941f13514ddcb533451d027f27a68996fa02311d8a733ad
+source_sha256: 2acaee7d68ff36c334ba9a8fd320676ce1d09aba0f0d0a769bea109077e248c0
 ---
 
 [英語版（翻訳元）](PORTABILITY.md)
@@ -28,7 +28,7 @@ source_sha256: 713e69fde4e3373f2941f13514ddcb533451d027f27a68996fa02311d8a733ad
 
 コマンドは実行ファイルとargv、明示的な作業ディレクトリ、deadline、stream出力を使います。Git検査には機械可読出力を使い、Compose engine検査には構造化出力と記録したprovider/engine識別情報を使います。改行処理はCRLFを許容します。Go製のリポジトリharnessは標準ツールを直接呼び出し、shell script言語を必要としません。
 
-Unixでは管理対象コマンドのprocess groupで子孫を取り消します。Windowsではコマンドの子プロセスを実行前にJob Objectへ割り当て、取消やtimeout時にはJobを終了します。これは時間を制限した名前付きテストとprobeを支えるもので、汎用の永続ホストプロセスruntimeではありません。OSの隔離機構から意図的に逃れるバックグラウンドプログラムは、信頼済みリポジトリモデルの範囲外です。終了を検証できない場合は、型で識別できるプロセスツリー未確認の結果として通知します。appはレジストリ記録をrunningに保ち、レビューした復旧により完了が確定するまでcleanupを拒否しなければなりません。
+Unixでは管理対象コマンドのprocess groupで子孫を取り消します。Windowsではコマンドの子プロセスを実行前にJob Objectへ割り当て、取消やtimeout時にはJobを終了します。これは時間を制限した名前付きテストとprobeを支えます。汎用の常駐process runtimeには後述の独立したmanaged detached interfaceを使います。OSの隔離機構から意図的に逃れるバックグラウンドプログラムは、信頼済みリポジトリモデルの範囲外です。終了を検証できない場合は、型で識別できるプロセスツリー未確認の結果として通知します。appはレジストリ記録をrunningに保ち、レビューした復旧により完了が確定するまでcleanupを拒否しなければなりません。
 
 Windowsの`.cmd`と`.bat`の実行処理はWindowsアダプターに隔離します。wrapper引数はプラットフォーム固有の経路でquoteし、安全に表現できないtokenはargvを黙って変えるのではなく拒否します。ネイティブ実行ファイルのargvテストには、空白、引用符、末尾の区切り文字、Unicodeを含めます。shellに影響されるwrapperの振る舞いは別個にテストする境界です。
 
@@ -85,3 +85,24 @@ arm64 を含め、実際に smoke test を実行したネイティブ runner を
 [リリース計画](exec-plans/completed/standalone-release-finalization.ja.md)で管理します。
 展開した CLI の実行に Go は不要です。選択した機能の外部前提条件は
 [README](../README.ja.md)に記載しています。
+
+## 汎用の常駐process runtime
+
+`type: process`はnative argvと、起動元CLIの終了後も存続するforegroundの起点processを
+使います。source相対のcwd/実行ファイルpathはsymlink解決後もsource内に閉じます。
+PATH toolにはsource/hostの由来と読み取れる実行ファイルのdigestを記録しますが、host toolの
+再現性は主張しません。coreに暗黙のshell、batch wrapper、service manager、新たな言語runtime、
+daemonは不要です。
+
+Unixは各signal直前に生成識別情報とprocess groupへの所属を確認します。観測とgroupへの
+signal送信はatomicではなく、最後のnative syscallとの競合を減らせても解消はできません。
+子孫が生きたまま起点が消えた場合は所有が不確実となり、以後の破壊的作用を止めます。
+Windowsは保持したhandleを使い正確なnamed Jobを再検証して停止します。これはJobの強制停止で
+あり、console signalによる穏当な終了を約束しません。識別情報が不確実ならleaseのport、状態、
+sourceを保持します。
+
+名前付きportはagent-env lease間のloopback TCP割り当てを予約します。対象がbindするまでの
+間は外部占有と競合し得ます。socket activationやlisten socket継承は使いません。実装中の
+native adapter test、race test、cross-buildは成功しています。実常駐processの
+Windows/macOS/Linux integrationと最終CI証拠は、[active process plan](exec-plans/active/persistent-process-runtime.ja.md)
+で別途追跡します。

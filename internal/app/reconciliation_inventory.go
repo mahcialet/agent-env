@@ -61,7 +61,7 @@ func (s *Service) Inventory(ctx context.Context) ([]domain.Resource, error) {
 	for _, l := range leases {
 		byID[l.ID] = l
 		for _, r := range l.Runtimes {
-			if r.Type == "android-emulator" {
+			if r.Type == "android-emulator" || r.Type == "process" {
 				continue
 			}
 			target := composeInventoryTarget{domain.EffectiveComposeProvider(r.Provider), r.Context}

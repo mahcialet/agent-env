@@ -2,7 +2,7 @@
 
 [日本語](README.ja.md)
 
-Create disposable environment leases from pinned local Git commits and isolated Compose projects using Docker or Podman or private Android Emulators. Select a stack, inspect its live state, run named tests with retained evidence, then clean up its resources. Multiple repositories and simultaneous leases are supported.
+Create disposable environment leases from pinned local Git commits and isolated Compose projects using Docker or Podman or private Android Emulators, and foreground native process runtimes. Select a stack, inspect its live state, run named tests with retained evidence, then clean up its resources. Multiple repositories and simultaneous leases are supported.
 
 **Environment isolation is not a malicious-code sandbox.** Dockerfiles, Compose configuration, tests, and package scripts execute repository-controlled code. Use trusted or controlled repositories; arbitrary untrusted pull requests need a stronger outer boundary.
 
@@ -22,6 +22,7 @@ Release availability and native verification are recorded in the
 | Source resolution and managed worktrees | Git and a trusted local repository |
 | Docker Compose leases (default) | Git, Docker daemon and Compose v2 plugin |
 | Podman Compose leases | Git, Podman 5.x and standalone podman-compose >=1.6.0,<2.0.0; Linux rootless acceptance verified with 5.4.2 / 1.6.0 |
+| Persistent process leases | Git and the declared native executable; no container daemon or SDK |
 | Android Emulator leases | Git, Android SDK, Emulator, adb, installed system image/AVD template and host acceleration |
 | Flutter Android applications | Android prerequisites plus Flutter and a compatible Java/Android build toolchain |
 | Android UI observation | Android lease and separately built optional UI companion; SDK/JDK and Go are needed to build that companion |
@@ -33,7 +34,7 @@ See the [distribution contract](docs/product-specs/standalone-distribution.md).
 
 ## Build and verify
 
-Use Go 1.26.x or 1.27.x. Runtime operations need Git plus the selected runtime prerequisites: Docker with Compose v2 or Podman with podman-compose for containers, or an installed Android SDK, Emulator, adb and stopped AVD template for Android. The repository harness itself needs no Bash, Make, PowerShell, or Docker for ordinary unit checks.
+Use Go 1.26.x or 1.27.x. Runtime operations need Git plus the selected runtime prerequisites: Docker with Compose v2 or Podman with podman-compose for containers, an installed Android SDK, Emulator, adb and stopped AVD template for Android, or the declared native executable for process runtimes. The repository harness itself needs no Bash, Make, PowerShell, or Docker for ordinary unit checks.
 
 ```text
 go run ./tools/repoctl doctor
@@ -76,6 +77,16 @@ while `doctor <repository>` checks the providers declared by its manifest.
 Real Linux rootless acceptance passed with Podman 5.4.2 and podman-compose 1.6.0,
 including concurrent leases and Docker coexistence. Native Windows/macOS/Linux provider CI passed on 4a5de3d
 (run 34216579481); real Podman Machine infrastructure is unavailable. See the [provider contract](docs/product-specs/compose-providers.md).
+
+## Persistent process leases
+
+Declare `type: process` with a pinned `source`, `working_directory` and native argv
+`command`. Optional named TCP ports and `${runtime_dir}` support local servers or
+private profile state without Compose. Use `doctor --runtime process` for process
+diagnostics. The foreground process survives create CLI exit and participates in
+readiness, show/logs and conservative destroy; unexpected exit does not restart it.
+See the [process contract](docs/product-specs/persistent-process-runtime.md).
+Final native integration acceptance is tracked in its active ExecPlan.
 
 ## Android Emulator leases
 

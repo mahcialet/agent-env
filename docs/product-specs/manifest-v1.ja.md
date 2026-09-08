@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/product-specs/manifest-v1.md
-source_sha256: 7bbac67169c308d5c5061773c664a29cfb6959377d9cde820595cb389a111ce0
+source_sha256: 22704b579c6f421c7d673a1fcf8297ac4404d22b09e14a8dd5f98a8dfc4483a7
 ---
 
 [English（翻訳元）](manifest-v1.md)
@@ -85,9 +85,9 @@ tests:
 | --- | --- |
 | Root | `version: 1` と空でない `sources`、`runtimes`、`components`、`stacks` が必須。`applications` と `tests` は任意 |
 | `sources.<alias>` | ローカル `repository` が必須。`default_ref`（空なら Git HEAD）、`writable`（review mode では false のみ対応）は任意 |
-| `runtimes.<name>` | `type` と `source` が必須。Compose は空でない `files` が必須で `project_directory` と `provider` は任意。Android は `type: android-emulator` と `avd` が必須で Compose field は不可 |
+| `runtimes.<name>` | `type` と `source` が必須。Compose は空でない `files` が必須で `project_directory` と `provider` は任意。Android は `type: android-emulator` と `avd` が必須で Compose field は不可。process は `working_directory` と argv の `command` が必須で、`env` と名前付きTCP `ports` は任意 |
 | `applications.<name>` | `type: flutter-android`、`source`、Android の `runtime`、`build.command`、`build.artifact`、`package`、`activity`。`project_directory`、`build.timeout`、`reverse` は任意。[Flutter 契約](flutter-android-runtime.ja.md)を参照 |
-| `components.<name>` | `runtime` が必須。Compose は空でない `compose_services` が必須。Android では Compose services/endpoints/readiness を省略し、同じ runtime の `application` を選択可能。`depends_on`、`provides`、適用可能な `readiness` は任意 |
+| `components.<name>` | `runtime` が必須。Compose は空でない `compose_services` が必須。Android では Compose services/endpoints/readiness を省略し、同じ runtime の `application` を選択可能。process はCompose servicesを省略し`runtime_port` endpointを使う。`depends_on`、`provides`、適用可能な `readiness` は任意 |
 | `stacks.<name>` | 空でない `roots` が必須。`description` は任意 |
 | `tests.<name>` | `stack`、`source`、空でない argv `command` が必須。`working_directory`、文字列 map の `env`、`timeout`、`artifacts` は任意 |
 
@@ -106,7 +106,7 @@ test/probe の working directory と artifact path は、宣言した source roo
 選択コンポーネントは決定的な依存順序に従います。Compose のサービス依存関係の閉包も含めます。実行する正規化設定には選択サービスと、そこから到達できる network、volume、config、secret だけを含め、未選択のグローバルリソースが削除対象へ入り込むのを防ぎます。
 
 Compose runtimeは任意の`provider: docker-compose`または`provider: podman-compose`を
-受け付けます。省略時はDockerです。明示的な空文字列・null、未知の値、Androidのprovider
+受け付けます。省略時はDockerです。明示的な空文字列・null、未知の値、Android/processのprovider
 fieldはエラーです。planとlease snapshotには実効providerを記録し、省略したfieldを
 canonical manifestへ追加しません。providerを持たない旧snapshotはDockerとして扱います。
 選択したproviderから他engineへのfallbackはありません。PodmanにはPodman 5.xと独立した
@@ -127,11 +127,11 @@ podman-compose >=1.6.0,<2.0.0が必要です。5.4.2 / 1.6.0で実Linux rootless
 
 期間は `500ms`、`10s`、`2m` などの正の Go duration 文字列にします。選択した Compose probe の宣言は、最短の宣言 timeout と最速の interval を組み込み既定値の 2 分/1 秒と組み合わせ、ランタイム全体の readiness に上限を与えます。別の probe type に属する field はエラーです。稼働コンテナに container healthcheck が定義されていれば healthy である必要があり、選択した全サービスが存在しなければなりません。HTTP probe は時間制限付き観測内の成功応答を要求します。command probe は create 中に固定 source 内で実行し、出力証拠を保持します。通常の list/show はリポジトリコマンドを再実行しません。
 
-HTTP URL は明示設定した literal URL です。動的 endpoint の probe URL への自動代入はありません。コンテナ内 HTTP readiness には Compose healthcheck を使い、割り当てられたホストポートは endpoint 観測で取得します。
+ComposeのHTTP URLは引き続き明示設定したliteral URLです。コンテナ内readinessにはCompose healthcheckを使い、host portはendpoint観測で取得します。process HTTP readinessでは同じcomponentの宣言済みendpointを`${endpoint:localName}`で参照でき、数値の予約portへ展開します。例は`http://127.0.0.1:${endpoint:http}/health`です。host:port全体への展開ではありません。未知の参照やlocal範囲を外れた参照は拒否します。process command readinessの引数ではendpointとprocess引数の参照を使えます。
 
 ## Endpoint
 
-`components.<name>.endpoints` は endpoint 名を `service`、整数 `target`（1〜65535）、任意の `protocol`（既定の `tcp` または `udp`）へ対応付けます。service はそのコンポーネントが直接選択している必要があります。起動前に各宣言から、その service/target/protocol に対する host port `0` の `127.0.0.1` binding を正規化実行 snapshot に生成します。元の Compose file は変更しません。実際のホストポートは選択したengineが決めます。remote Podmanのmappingはagent-envホストからの到達性確認が必要であり、未確認のendpointは公開しません。これは、入力設定で policy が拒否する固定ホストポートを許可するものではありません。観測は割り当てポートを resource metadata に記録し、runtime の service/port/protocol 観測とともに、コンポーネント名で修飾した endpoint 名を `capabilities` で公開します。不在または停止した binding は、実際に使える endpoint を提供しません。
+Composeでは`components.<name>.endpoints` は endpoint 名を `service`、整数 `target`（1〜65535）、任意の `protocol`（既定の `tcp` または `udp`）へ対応付けます。service はそのコンポーネントが直接選択している必要があります。起動前に各宣言から、その service/target/protocol に対する host port `0` の `127.0.0.1` binding を正規化実行 snapshot に生成します。元の Compose file は変更しません。実際のホストポートは選択したengineが決めます。remote Podmanのmappingはagent-envホストからの到達性確認が必要であり、未確認のendpointは公開しません。これは、入力設定で policy が拒否する固定ホストポートを許可するものではありません。観測は割り当てポートを resource metadata に記録し、runtime の service/port/protocol 観測とともに、コンポーネント名で修飾した endpoint 名を `capabilities` で公開します。不在または停止した binding は、実際に使える endpoint を提供しません。
 
 ## Named command の環境と artifact
 
@@ -151,10 +151,26 @@ artifact 項目は明示的な source 相対の file/directory path で、glob p
 
 `sources` に別のローカル項目を加え、runtime、test、command probe からその alias を参照します。選択 runtime が 1 つでも、宣言した全 source を固定し materialize します。[統合 fixture](../../internal/cli/integration_test.go)が、別々のローカルリポジトリと alias ごとの commit override を検証します。
 
-[Android Emulator ランタイム](android-emulator.ja.md)は `avd` でローカル AVD テンプレートを選び、Flutter と独立して専用の書き込み状態を割り当てます。plan に SDK は不要で、device を割り当てません。[Flutter アプリケーション](flutter-android-runtime.ja.md)は、任意の `applications` とコンポーネントの `application` フィールドで、ホスト上で APK をビルドし、それらの runtime にインストールします。browser/CDP、書き込み可能な fix lease、remote source cache、任意の host-process runtime は[延期対象](../roadmap.ja.md)です。それらの提案 field は有効な manifest v1 YAML ではありません。
+[Android Emulator ランタイム](android-emulator.ja.md)は `avd` でローカル AVD テンプレートを選び、Flutter と独立して専用の書き込み状態を割り当てます。plan に SDK は不要で、device を割り当てません。[Flutter アプリケーション](flutter-android-runtime.ja.md)は、任意の `applications` とコンポーネントの `application` フィールドで、ホスト上で APK をビルドし、それらの runtime にインストールします。[常駐process runtime](persistent-process-runtime.ja.md)は`type: process`を使い、固定sourceからforegroundのnative commandを実行します。browser/CDP、書き込み可能なfix lease、remote source cacheは[延期対象](../roadmap.ja.md)です。それらの提案fieldは有効なmanifest v1 YAMLではありません。
 
 ## Manifest の由来と readiness の上限
 
 control repository は `.agent-env.yaml` または明示的な `--manifest` file を選びます。runtime source ref の override によって別の manifest を選ぶことはありません。plan と lease は、canonical snapshot digest に加え、解決した絶対パス、取得できれば control checkout HEAD、modified flag を記録します。dirty、未追跡、ignored の file は modified とし、Git 外なら commit は空で診断を付けます。相対 `sources.*.repository` path は、明示 manifest file の directory ではなく指定した control repository を基準にします。
 
 Compose readiness probe の timeout と interval は、全体 readiness の期限と polling interval を厳しくできます。アプリケーションのグローバル readiness timeout は上限のままです。HTTP と command probe も、操作全体の期限内で設定した正の期間を守ります。キャンセルは観測を止め、所有権喪失状態での削除を防ぎます。
+
+## 常駐processのvariant
+
+process runtimeには`type: process`、`source`、literalの`working_directory`、argvの
+`command`が必要です。`env`と`ports`は任意です。各portには`protocol: tcp`の明示が必須で、
+固定host portとUDPは拒否します。process専用fieldはCompose/Androidで無効です。
+`provider`、`project_directory`、`files`、`avd`はnull/空でもprocessで無効となります。
+process名は大文字小文字の衝突、Windows device名、末尾dotも拒否します。
+
+commandの引数/環境変数値には`${runtime_dir}`、`${lease_id}`、`${port:name}`、`${env:NAME}`
+を使えます。未知の参照はerrorです。実行ファイル名とcwdの補間は禁止です。
+process componentは`compose_services`を省略し、宣言したruntime portを
+`endpoints.<name>.runtime_port`で参照します。このvariantではCompose用の
+service/target/protocol fieldを禁止します。共通の観測endpoint mapは引き続き`host:port`を
+持ち、数値のreadiness参照とは区別します。foregroundの寿命、専用可変状態、実行ファイル証拠、
+保守的なcleanupは[process契約全文](persistent-process-runtime.ja.md)を参照してください。

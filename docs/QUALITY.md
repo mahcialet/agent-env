@@ -140,3 +140,24 @@ creates public refs or publishes. The preview workflow runs this comparison and
 three native OS smoke jobs; the tag workflow independently requires repeat-build
 and three native smoke gates before publishing. These are workflow requirements,
 not a claim that any particular run has passed.
+
+## Persistent process verification
+
+The [process ExecPlan](exec-plans/active/persistent-process-runtime.md) tracks direct
+acceptance. Config tests cover strict process/Compose/Android field variants,
+null/empty/merged YAML fields, named TCP ports, local readiness endpoint references,
+portable directory names and unchanged legacy canonical snapshots. Adapter tests
+cover confined executable/cwd resolution, interpolation, private state and launch
+identity/prelaunch-redaction evidence, native identity recovery, bounded logs and
+redaction after host secrets
+change. Native primitive tests cover mismatched identity, termination retry and
+root exit with live descendants; existing Android detached tests remain regressions.
+
+Lifecycle acceptance additionally requires independent CLI survival/observation,
+two concurrent leases, sibling/unrelated-process survival, persistence failure,
+quarantine, TCP occupancy, source mutation, real HTTP readiness, process/Compose
+coexistence and a browser-shaped state/CDP-like fixture. No browser semantics are
+implemented by that fixture. Native Windows/macOS/Linux execution is required;
+cross-compilation alone cannot complete this acceptance. Current local adapter,
+race and cross-build evidence is recorded in the active plan; final native CI is
+not yet claimed complete.

@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/QUALITY.md
-source_sha256: ffd05dff38af22b283bc62a1b0aa055c09e9e6d321e4c84ee8393fe18facb973
+source_sha256: a18ebaaad81f8bdbfa1fe213c4e2dae12cd76674b841e3025d3e8bd7ef620785
 ---
 
 # 品質と検証
@@ -132,3 +132,21 @@ go run ./tools/repoctl release-preview-smoke --dir <directory>
 3 OS のネイティブ smoke job を実行します。tag workflow は公開前に、独立して繰り返しビルドと
 3 OS のネイティブ smoke の成功を要求します。これは workflow の条件であり、
 個別の実行が成功したという主張ではありません。
+
+## 常駐processの検証
+
+[process ExecPlan](exec-plans/active/persistent-process-runtime.ja.md)で直接の受け入れ証拠を
+追跡します。config testはprocess/Compose/Androidの厳密なfield variant、null/空/mergeした
+YAML field、名前付きTCP port、local readiness endpoint参照、portableなdirectory名、
+既存canonical snapshotの維持を検証します。adapter testは閉じた実行ファイル/cwd解決、補間、
+専用状態と識別情報/起動前redaction証拠、native識別情報の復旧、上限付きlogs、
+host secret変更後のredactionを
+検証します。native primitive testは識別情報不一致、停止の再実行、子孫が残る起点終了を扱い、
+既存Android detached testも回帰範囲に残します。
+
+lifecycleの受け入れには、独立CLIをまたぐ存続/観測、並行2 lease、兄弟/無関係processの存続、
+永続化失敗、quarantine、TCP占有、source変更、実HTTP readiness、process/Compose共存、
+Browser状の状態/CDP状fixtureも必要です。このfixtureでBrowser自体の機能は実装しません。
+native Windows/macOS/Linux実行が必須であり、cross-buildだけでは受け入れ完了にできません。
+現在のlocal adapter、race、cross-build証拠はactive Planに記録し、最終native CIの完了は
+まだ主張しません。

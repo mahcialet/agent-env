@@ -17,3 +17,4 @@ last_verified: 2026-09-08
 - [android-ui-observer](android-ui-observer.md) / [日本語](android-ui-observer.ja.md)
 - [standalone-distribution](standalone-distribution.md) / [日本語](standalone-distribution.ja.md)
 - [compose-providers](compose-providers.md) / [日本語](compose-providers.ja.md)
+- [persistent-process-runtime](persistent-process-runtime.md) / [日本語](persistent-process-runtime.ja.md)

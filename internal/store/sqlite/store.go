@@ -162,6 +162,11 @@ func (s *Store) Reserve(ctx context.Context, lease domain.Lease, maxActive int) 
 	if err != nil {
 		return err
 	}
+	releaseProcessPorts, err := allocateProcesses(ctx, tx, &lease)
+	if err != nil {
+		return err
+	}
+	defer releaseProcessPorts()
 	if err = writeLease(ctx, tx, lease, true); err != nil {
 		return err
 	}
@@ -211,6 +216,9 @@ func writeLease(ctx context.Context, tx *sql.Tx, l domain.Lease, insert bool) er
 		return ErrNotFound
 	}
 	if err := saveAndroid(ctx, tx, l, insert); err != nil {
+		return err
+	}
+	if err := saveProcesses(ctx, tx, &l, insert); err != nil {
 		return err
 	}
 	for _, table := range []string{"lease_sources", "lease_components", "lease_runtimes", "runtime_resources"} {

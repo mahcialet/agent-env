@@ -3,14 +3,14 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: README.md
-source_sha256: 3cd303a596f9094e3d961870cb386238c95a90c33d3eac7072c12764dbf5e14e
+source_sha256: 5fc80a1ca6517a956e312a3dc1da3e29e6e626a63665f5755f6817542caf38da
 ---
 
 [英語版（翻訳元）](README.md)
 
 # agent-env
 
-固定したローカルGitコミットと、DockerまたはPodmanを使う隔離されたComposeプロジェクトまたは専用Android Emulatorから、使い捨ての環境リースを作成します。stackを選び、稼働状態を確認し、証拠を保持する名前付きテストを実行して、最後にリソースを片付けます。複数リポジトリと同時に存在する複数リースに対応します。
+固定したローカルGitコミットと、DockerまたはPodmanを使う隔離されたComposeプロジェクト、専用Android Emulator、foregroundのnative process runtimeから、使い捨ての環境リースを作成します。stackを選び、稼働状態を確認し、証拠を保持する名前付きテストを実行して、最後にリソースを片付けます。複数リポジトリと同時に存在する複数リースに対応します。
 
 **環境の隔離は、悪意あるコードを封じ込めるsandboxではありません。** Dockerfile、Compose設定、テスト、パッケージスクリプトは、リポジトリが制御するコードを実行します。信頼できる、または管理下にあるリポジトリを使用してください。任意の信頼できないpull requestには、より強い外側の境界が必要です。
 
@@ -30,6 +30,7 @@ GitHub Releases から OS と CPU に合うアーカイブを取得し、バー�
 | ソース解決と管理対象 worktree | Git と信頼できるローカルリポジトリ |
 | Docker Compose リース（既定） | Git、Docker daemon、Compose v2 plugin |
 | Podman Compose リース | Git、Podman 5.x、独立したpodman-compose >=1.6.0,<2.0.0。5.4.2 / 1.6.0でLinux rootless受け入れを検証済み |
+| 常駐processリース | Gitと宣言したnative実行ファイル。container daemonやSDKは不要 |
 | Android Emulator リース | Git、Android SDK、Emulator、adb、インストール済み system image/AVD テンプレート、ホストのアクセラレーション |
 | Flutter Android アプリ | Android の前提条件に加え、Flutter と互換性のある Java/Android ビルドツールチェーン |
 | Android UI 観測 | Android リースと別途ビルドした任意の UI companion。そのビルドには SDK/JDK と Go が必要 |
@@ -41,7 +42,7 @@ GitHub Releases から OS と CPU に合うアーカイブを取得し、バー�
 
 ## ビルドと検証
 
-Go 1.26.xまたは1.27.xを使用します。runtime操作にはGitに加え、選択したruntimeの前提条件が必要です。コンテナーならCompose v2を備えたDocker、またはpodman-composeを備えたPodman、Androidならインストール済みのAndroid SDK、Emulator、adb、停止したAVDテンプレートを用意します。リポジトリharnessの通常の単体検査にはBash、Make、PowerShell、Dockerは不要です。
+Go 1.26.xまたは1.27.xを使用します。runtime操作にはGitに加え、選択したruntimeの前提条件が必要です。コンテナーならCompose v2を備えたDocker、またはpodman-composeを備えたPodman、Androidならインストール済みのAndroid SDK、Emulator、adb、停止したAVDテンプレートを、process runtimeなら宣言したnative実行ファイルを用意します。リポジトリharnessの通常の単体検査にはBash、Make、PowerShell、Dockerは不要です。
 
 ```text
 go run ./tools/repoctl doctor
@@ -86,6 +87,16 @@ fallbackしません。`doctor --provider podman-compose`はそのproviderを検
 podman-compose 1.6.0で、並行leaseとDocker共存を含む実Linux rootless受け入れが
 成功しました。Windows/macOS/Linuxのnative provider CIは4a5de3d（run 34216579481）で成功で、実機のPodman Machine環境はありません。[provider契約](docs/product-specs/compose-providers.ja.md)を
 参照してください。
+
+## 常駐processリース
+
+`type: process`に固定`source`、`working_directory`、native argvの`command`を宣言します。
+任意の名前付きTCP portと`${runtime_dir}`を使うと、Composeなしでlocal serverや専用profile
+状態を管理できます。process診断には`doctor --runtime process`を使います。
+foreground processはcreate CLI終了後も存続し、readiness、show/logs、保守的destroyに
+参加します。予期しない終了でも再起動しません。
+[process契約](docs/product-specs/persistent-process-runtime.ja.md)を参照してください。
+最終native integration受け入れはactive ExecPlanで追跡しています。
 
 ## Android Emulatorリース
 
