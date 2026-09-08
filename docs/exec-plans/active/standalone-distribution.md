@@ -79,6 +79,26 @@ Breaking internal package/build layout changes are acceptable when they simplify
 the long-term standalone contract, but public behavior changes must be explicit,
 documented and migrated deliberately.
 
+## Child ExecPlans
+
+`standalone-release-finalization.md` is a child execution plan of this plan.
+
+It owns the remaining concrete release-engineering work:
+
+- strict Git tag release validation
+- `repoctl release-build`
+- `repoctl release-check`
+- six-target archive generation
+- deterministic/reproducibility validation
+- native smoke tests
+- GitHub Release workflow
+- final release documentation and evidence
+
+Completion of the child plan is necessary but not by itself sufficient to
+complete this parent plan. After the child is archived, this plan must reconcile
+the delivered behavior and evidence against its own acceptance criteria and fill
+its Outcomes & Retrospective.
+
 ## Progress
 
 - [x] 2026-09-08: `master` at `938e584` includes PR #5; created
@@ -99,6 +119,8 @@ documented and migrated deliberately.
 - [x] 2026-09-08: Added generic content-addressed, digest-verified atomic asset
       materialization with idempotence and traversal/symlink checks in
       `internal/assets`; tests cover reuse and tamper rejection.
+- [ ] Complete the child ExecPlan `docs/exec-plans/active/standalone-release-finalization.md`. This child plan owns release-build, release-check, deterministic packaging, native smoke tests, and GitHub Release workflow implementation.
+- [ ] After the child plan completes, reconcile its acceptance evidence into this parent plan and verify all remaining standalone-distribution acceptance requirements.
 - [ ] Add deterministic embedded-asset tests without a target-app dependency.
 - [ ] Add/refine an explicit `--home` state-root override if justified.
 - [ ] Verify every persistent writable path follows the resolved state-root contract.
