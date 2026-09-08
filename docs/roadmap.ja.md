@@ -3,14 +3,14 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/roadmap.md
-source_sha256: 68635208b6ccb87819f5960a5c15b0c722b5899441697fd1eca5f760739b9281
+source_sha256: d2ba2e79868fc42311b34c0ab4935fc35e41b42ae5240bc7f0d847c9c997d4ba
 ---
 
 [英語版（翻訳元）](roadmap.md)
 
 # ロードマップと未解決の決定事項
 
-実装済みの範囲は、固定したローカルGitソース、detached review worktree、隔離したComposeとAndroid Emulatorのruntime、名前付きargvテスト、証拠、移植可能なリポジトリharnessです。このロードマップは、延期した機能を利用可能なコマンドとして紹介するものではありません。
+実装済みの範囲は、固定したローカルGitソース、detached review worktree、隔離したComposeとAndroid Emulatorのruntime、Flutter Androidアプリのビルド・インストール・起動とバックエンドへのreverse設定、名前付きargvテスト、証拠、移植可能なリポジトリharnessです。このロードマップは、延期した機能を利用可能なコマンドとして紹介するものではありません。
 
 ## 確定したMVPの選択
 
@@ -26,7 +26,7 @@ moduleは`github.com/mahcialet/agent-env`で、既存のMITライセンスを保
 
 ## runtimeの拡張
 
-Flutter、browser/CDPとUI snapshot、汎用の永続ホストプロセス、Podman固有対応、分散・複数ホストの調整は未実装です。Android Emulatorリースは専用AVD状態とローカルSDKプロセスを所有します。追加の実機CIにはアクセラレーションを利用できるrunnerが必要です。ブラウザーリソースには明示的な所有権とcleanupルールが必要です。
+iOS、browser/CDPとUI自動操作・snapshot、汎用の永続ホストプロセス、Podman固有対応、分散・複数ホストの調整は未実装です。Android Emulatorリースは専用AVD状態とローカルSDKプロセスを所有します。追加の実機CIにはアクセラレーションを利用できるrunnerが必要です。ブラウザーリソースには明示的な所有権とcleanupルールが必要です。
 
 ## 成果物とリリース
 

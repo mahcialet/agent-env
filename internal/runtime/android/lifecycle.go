@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -184,6 +185,10 @@ func (a Adapter) Create(ctx context.Context, r domain.Runtime) (domain.Runtime, 
 	if err := makePrivateAVD(r); err != nil {
 		return r, err
 	}
+	childEnv := emulatorEnvironment(*r.Android, runtime.GOOS)
+	if err := os.MkdirAll(childEnv["TMPDIR"], 0700); err != nil {
+		return r, err
+	}
 	if err := a.ensureADBServer(ctx, r); err != nil {
 		if ctx.Err() != nil {
 			return r, err
@@ -198,7 +203,7 @@ func (a Adapter) Create(ctx context.Context, r domain.Runtime) (domain.Runtime, 
 		return r, err
 	}
 	d := r.Android
-	cmd := execx.Command{Name: executable(d.SDKPath, "emulator", "emulator"), Args: []string{"-avd", d.AVDName, "-port", strconv.Itoa(d.ConsolePort), "-no-window", "-no-audio", "-no-boot-anim", "-no-snapshot", "-no-cache", "-wipe-data"}, Dir: r.Directory, Env: map[string]string{"ANDROID_AVD_HOME": d.AVDHome, "ANDROID_HOME": d.SDKPath, "ANDROID_SDK_ROOT": d.SDKPath}, UnsetEnv: adbRoutingEnvironment()}
+	cmd := execx.Command{Name: executable(d.SDKPath, "emulator", "emulator"), Args: []string{"-avd", d.AVDName, "-port", strconv.Itoa(d.ConsolePort), "-no-window", "-no-audio", "-no-boot-anim", "-no-snapshot", "-no-cache", "-wipe-data", "-netsim-args", "--no-web-ui"}, Dir: r.Directory, Env: childEnv, UnsetEnv: adbRoutingEnvironment()}
 	id, err := a.processes().Start(ctx, cmd, filepath.Join(r.Directory, "emulator.stdout.log"), filepath.Join(r.Directory, "emulator.stderr.log"))
 	d.ProcessID = id.PID
 	d.ProcessStart = id.StartID
@@ -219,6 +224,27 @@ func (a Adapter) Create(ctx context.Context, r domain.Runtime) (domain.Runtime, 
 	// The app owns the readiness budget, operation fencing and compensation.
 	// Persistent launch is complete here; Inspect supplies bounded boot observations.
 	return r, nil
+}
+
+// The emulator client discovers netsimd via TMPDIR, while the daemon uses
+// XDG_RUNTIME_DIR on Linux, LOCALAPPDATA/Temp on Windows, and the native temp
+// directory on macOS. Keep all of these in one owned namespace so a sibling
+// cannot attach to this process tree's radio/network service. The web UI alone
+// is disabled at launch; guest networking and radio simulation remain enabled.
+func emulatorEnvironment(d domain.AndroidEmulator, goos string) map[string]string {
+	localData := filepath.Join(d.AVDHome, "emulator-data")
+	temp := filepath.Join(localData, "Temp")
+	env := map[string]string{
+		"ANDROID_AVD_HOME": d.AVDHome, "ANDROID_HOME": d.SDKPath, "ANDROID_SDK_ROOT": d.SDKPath,
+		"TMPDIR": temp, "TMP": temp, "TEMP": temp, "XDG_RUNTIME_DIR": temp,
+		// The client uses instance 1. A private discovery directory disambiguates
+		// it; the HCI listener must use an ephemeral port instead of shared 6402.
+		"NETSIM_INSTANCE": "1", "NETSIM_HCI_PORT": "0",
+	}
+	if goos == "windows" {
+		env["LOCALAPPDATA"] = localData
+	}
+	return env
 }
 
 func (a Adapter) Inspect(ctx context.Context, r domain.Runtime) (app.RuntimeObservation, error) {

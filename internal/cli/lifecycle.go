@@ -21,6 +21,7 @@ import (
 	"github.com/mahcialet/agent-env/internal/policy"
 	androidruntime "github.com/mahcialet/agent-env/internal/runtime/android"
 	"github.com/mahcialet/agent-env/internal/runtime/compose"
+	flutterruntime "github.com/mahcialet/agent-env/internal/runtime/flutter"
 	"github.com/mahcialet/agent-env/internal/source/gitcli"
 	"github.com/mahcialet/agent-env/internal/store/sqlite"
 	"github.com/oklog/ulid/v2"
@@ -159,7 +160,8 @@ func openService(out, errOut io.Writer) (*app.Service, func() error, error) {
 func serviceForStore(home string, store app.Store, out, errOut io.Writer) *app.Service {
 	runner := execx.OSRunner{}
 	p := policy.Defaults()
-	return &app.Service{Home: home, Store: store, Source: gitSource{gitcli.Client{Runner: runner}}, Runtime: runtimeAdapter{compose.Client{Runner: runner, Policy: p}}, Android: androidruntime.Adapter{Runner: runner, Processes: execx.NativeDetached{}}, Policy: p, Runner: runner, Stdout: out, Stderr: errOut}
+	android := androidruntime.Adapter{Runner: runner, Processes: execx.NativeDetached{}}
+	return &app.Service{Home: home, Store: store, Source: gitSource{gitcli.Client{Runner: runner}}, Runtime: runtimeAdapter{compose.Client{Runner: runner, Policy: p}}, Android: android, Flutter: flutterruntime.Adapter{Runner: runner}, AndroidApplications: android, Policy: p, Runner: runner, Stdout: out, Stderr: errOut}
 }
 
 func addLifecycle(root *cobra.Command, output *string, emit func(any) error, out, errOut io.Writer) {
@@ -345,8 +347,8 @@ func addLifecycle(root *cobra.Command, output *string, emit func(any) error, out
 	}})
 	doctorRuntime := "compose"
 	doctor := &cobra.Command{Use: "doctor [repository|lease-id]", Args: cobra.MaximumNArgs(1), RunE: func(cmd *cobra.Command, args []string) error {
-		if doctorRuntime != "compose" && doctorRuntime != "android-emulator" {
-			return coded(2, errors.New("--runtime must be compose or android-emulator"))
+		if doctorRuntime != "compose" && doctorRuntime != "android-emulator" && doctorRuntime != "flutter-android" {
+			return coded(2, errors.New("--runtime must be compose, android-emulator or flutter-android"))
 		}
 		if len(args) == 1 {
 			if _, e := ulid.ParseStrict(args[0]); e == nil {
@@ -379,11 +381,13 @@ func addLifecycle(root *cobra.Command, output *string, emit func(any) error, out
 				checks[name] = p
 			}
 		}
-		if len(issues) == 0 {
+		if len(issues) == 0 && (doctorRuntime != "flutter-android" || len(args) == 0) {
 			var d map[string]string
 			var err error
 			if doctorRuntime == "android-emulator" {
 				d, err = (androidruntime.Adapter{Runner: execx.OSRunner{}, Processes: execx.NativeDetached{}}).Doctor(cmd.Context())
+			} else if doctorRuntime == "flutter-android" {
+				d, err = doctorFlutterHost(cmd.Context(), flutterruntime.Adapter{}, androidruntime.Adapter{Runner: execx.OSRunner{}, Processes: execx.NativeDetached{}})
 			} else {
 				d, err = (compose.Client{Runner: execx.OSRunner{}, Policy: policy.Defaults()}).Doctor(cmd.Context())
 			}
@@ -393,7 +397,16 @@ func addLifecycle(root *cobra.Command, output *string, emit func(any) error, out
 			}
 		}
 		if len(args) > 0 {
-			m, err := doctorManifest(cmd.Context(), args[0], doctorRuntime, androidruntime.Adapter{Runner: execx.OSRunner{}, Processes: execx.NativeDetached{}})
+			android := androidruntime.Adapter{Runner: execx.OSRunner{}, Processes: execx.NativeDetached{}}
+			var m string
+			var err error
+			if doctorRuntime == "flutter-android" {
+				var applications map[string]any
+				m, applications, err = doctorFlutterManifest(cmd.Context(), args[0], flutterruntime.Adapter{}, android)
+				checks["applications"] = applications
+			} else {
+				m, err = doctorManifest(cmd.Context(), args[0], doctorRuntime, android)
+			}
 			if err != nil {
 				issues = append(issues, err.Error())
 			} else {
@@ -410,7 +423,7 @@ func addLifecycle(root *cobra.Command, output *string, emit func(any) error, out
 		}
 		return nil
 	}}
-	doctor.Flags().StringVar(&doctorRuntime, "runtime", "compose", "prerequisites for compose or android-emulator")
+	doctor.Flags().StringVar(&doctorRuntime, "runtime", "compose", "prerequisites for compose, android-emulator or flutter-android")
 	root.AddCommand(doctor)
 	root.AddCommand(&cobra.Command{Use: "test <lease-id> <test-name>", Args: cobra.ExactArgs(2), RunE: func(cmd *cobra.Command, args []string) error {
 		return with(func(s *app.Service) error {
@@ -501,6 +514,9 @@ func runtimeLogEntries(ctx context.Context, s *app.Service, lease domain.Lease, 
 		for _, c := range lease.Components {
 			if c.Name == component {
 				selectedRuntime = c.Runtime
+				if c.Application != "" {
+					allowedKinds["application-build/"+c.Application] = true
+				}
 				selectedServices = append([]string(nil), c.Services...)
 				for _, service := range c.Services {
 					allowedKinds["compose-log/"+c.Runtime+"/"+service] = true
@@ -529,7 +545,7 @@ func runtimeLogEntries(ctx context.Context, s *app.Service, lease domain.Lease, 
 			if component != "" {
 				continue
 			}
-		} else if strings.HasPrefix(artifact.Kind, "compose-log/") {
+		} else if strings.HasPrefix(artifact.Kind, "compose-log/") || strings.HasPrefix(artifact.Kind, "application-build/") {
 			if component != "" && !allowedKinds[artifact.Kind] {
 				continue
 			}

@@ -12,7 +12,6 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
-	"time"
 
 	"github.com/mahcialet/agent-env/internal/app"
 	"github.com/mahcialet/agent-env/internal/execx"
@@ -120,7 +119,7 @@ func TestSharedADBStartsOutsideEmulatorContainment(t *testing.T) {
 }
 
 func TestSharedADBReadinessFailureNeverLaunchesEmulator(t *testing.T) {
-	for _, mode := range []string{"canceled", "unavailable"} {
+	for _, mode := range []string{"canceled", "unavailable", "canceled_while_waiting"} {
 		t.Run(mode, func(t *testing.T) {
 			a, r, emulator := fixture(t)
 			runner := &serverRunner{base: a.Runner.(*testRunner)}
@@ -128,14 +127,35 @@ func TestSharedADBReadinessFailureNeverLaunchesEmulator(t *testing.T) {
 			a.Runner = runner
 			a.Processes = processes
 			a.ProbeADB = runner.probe
-			ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
+			wantErr := context.Canceled
 			if mode == "canceled" {
 				processes.cancel = cancel
+			} else if mode == "canceled_while_waiting" {
+				a.ProbeADB = func(ctx context.Context) (int, bool, error) {
+					if len(processes.starts) > 0 {
+						// Return an ordinary unready observation, then exercise the
+						// wait loop's cancellation path without a wall-clock race.
+						cancel()
+						return 41, false, nil
+					}
+					return runner.probe(ctx)
+				}
+			} else {
+				wantErr = errors.New("shared server unavailable after startup")
+				// Inject the readiness failure only after startup. A wall-clock
+				// deadline can expire during unrelated fixture I/O on busy CI.
+				a.ProbeADB = func(ctx context.Context) (int, bool, error) {
+					if len(processes.starts) > 0 {
+						return 0, false, wantErr
+					}
+					return runner.probe(ctx)
+				}
 			}
 			r, err := a.Create(ctx, r)
-			if err == nil {
-				t.Fatal("unready shared server allowed launch")
+			if !errors.Is(err, wantErr) {
+				t.Fatalf("readiness error = %v, want %v", err, wantErr)
 			}
 			if strings.Join(processes.starts, ",") != "shared-adb" || emulator.alive.Load() || r.Android.ProcessID != 0 {
 				t.Fatalf("emulator launched before shared server was ready: %v %+v", processes.starts, r.Android)

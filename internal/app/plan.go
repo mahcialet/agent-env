@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -39,18 +40,19 @@ type PlanOptions struct {
 	SourceRefs                           map[string]string
 }
 type Plan struct {
-	Repository       string             `json:"repository"`
-	Stack            string             `json:"stack"`
-	ManifestDigest   string             `json:"manifest_digest"`
-	ManifestPath     string             `json:"manifest_path"`
-	ManifestCommit   string             `json:"manifest_commit"`
-	ManifestModified bool               `json:"manifest_modified"`
-	SourceSetDigest  string             `json:"source_set_digest"`
-	Sources          []domain.Source    `json:"sources"`
-	Components       []domain.Component `json:"components"`
-	Runtimes         []domain.Runtime   `json:"runtimes"`
-	Diagnostics      []string           `json:"diagnostics"`
-	Manifest         *config.Manifest   `json:"-"`
+	Repository       string               `json:"repository"`
+	Stack            string               `json:"stack"`
+	ManifestDigest   string               `json:"manifest_digest"`
+	ManifestPath     string               `json:"manifest_path"`
+	ManifestCommit   string               `json:"manifest_commit"`
+	ManifestModified bool                 `json:"manifest_modified"`
+	SourceSetDigest  string               `json:"source_set_digest"`
+	Sources          []domain.Source      `json:"sources"`
+	Components       []domain.Component   `json:"components"`
+	Applications     []domain.Application `json:"applications,omitempty"`
+	Runtimes         []domain.Runtime     `json:"runtimes"`
+	Diagnostics      []string             `json:"diagnostics"`
+	Manifest         *config.Manifest     `json:"-"`
 }
 
 func BuildPlan(ctx context.Context, o PlanOptions, source SourceProvider) (Plan, error) {
@@ -114,6 +116,23 @@ func BuildPlan(ctx context.Context, o PlanOptions, source SourceProvider) (Plan,
 	if err != nil {
 		return p, err
 	}
+	// All selected builds complete before installation in the same source
+	// worktree. A later build must never overwrite another application's APK.
+	outputs := map[[2]string]string{}
+	for _, component := range components {
+		name := m.Components[component].Application
+		if name == "" {
+			continue
+		}
+		a := m.Applications[name]
+		output := path.Join(a.ProjectDirectory, a.Build.Artifact)
+		// Keep a manifest portable to case-insensitive Windows/macOS filesystems.
+		key := [2]string{a.Source, strings.ToLower(output)}
+		if previous, exists := outputs[key]; exists && previous != name {
+			return p, fmt.Errorf("applications %q and %q use the same source-relative APK output %q in source %q; choose distinct project/output paths", previous, name, output, a.Source)
+		}
+		outputs[key] = name
+	}
 	for alias := range o.SourceRefs {
 		if _, ok := m.Sources[alias]; !ok {
 			return p, fmt.Errorf("--source refers to unknown alias %q", alias)
@@ -155,7 +174,20 @@ func BuildPlan(ctx context.Context, o PlanOptions, source SourceProvider) (Plan,
 	byRuntime := map[string]int{}
 	for _, name := range components {
 		c := m.Components[name]
-		p.Components = append(p.Components, domain.Component{Name: name, Runtime: c.Runtime, Services: c.ComposeServices, Capabilities: c.Provides})
+		p.Components = append(p.Components, domain.Component{Name: name, Application: c.Application, Runtime: c.Runtime, Services: c.ComposeServices, Capabilities: c.Provides})
+		if c.Application != "" && !applicationSelected(p.Applications, c.Application) {
+			spec := m.Applications[c.Application]
+			a := domain.Application{Name: c.Application, Type: spec.Type, Source: spec.Source, Runtime: spec.Runtime, ProjectDirectory: spec.ProjectDirectory, Command: append([]string(nil), spec.Build.Command...), Artifact: spec.Build.Artifact, Timeout: spec.Build.Timeout, Package: spec.Package, Activity: spec.Activity, State: "planned"}
+			for _, src := range p.Sources {
+				if src.Alias == a.Source {
+					a.SourceCommit = src.Commit
+				}
+			}
+			for _, binding := range spec.Reverse {
+				a.Reverse = append(a.Reverse, domain.ReverseBinding{DevicePort: binding.DevicePort, Endpoint: binding.Endpoint})
+			}
+			p.Applications = append(p.Applications, a)
+		}
 		i, exists := byRuntime[c.Runtime]
 		if !exists {
 			r := m.Runtimes[c.Runtime]

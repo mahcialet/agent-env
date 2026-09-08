@@ -491,6 +491,7 @@ func archCheck(root string) error {
 			case rel == "internal/app" || strings.HasPrefix(rel, "internal/app/"):
 				bad = local == "internal/cli" || strings.HasPrefix(local, "internal/cli/")
 			case strings.HasPrefix(rel, "internal/runtime/"):
+				// Each adapter (including Flutter builds) is independent; app coordinates them.
 				bad = local == "internal/cli" || strings.HasPrefix(local, "internal/cli/")
 				if strings.HasPrefix(local, "internal/runtime/") {
 					own := strings.Split(rel, "/")[2]

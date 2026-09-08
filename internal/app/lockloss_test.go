@@ -20,6 +20,7 @@ import (
 // connection replaces its token after a simulated external effect completes.
 type lockLossStore struct {
 	Store
+	t       *testing.T
 	raw     *sql.DB
 	op      context.Context
 	leaseID string
@@ -34,8 +35,15 @@ func (s *lockLossStore) AcquireContext(ctx context.Context, id, token string, _ 
 }
 
 func (s *lockLossStore) replaceOwner() error {
-	if _, err := s.raw.Exec("UPDATE operation_locks SET token=? WHERE lease_id=?", "replacement-owner", s.leaseID); err != nil {
+	result, err := s.raw.Exec("UPDATE operation_locks SET token=? WHERE lease_id=?", "replacement-owner", s.leaseID)
+	if err != nil {
+		s.t.Errorf("inject operation-lock loss: token replacement failed: %v", err)
 		return err
+	}
+	if rows, err := result.RowsAffected(); err != nil || rows != 1 {
+		failure := fmt.Errorf("inject operation-lock loss: updated %d rows, want 1 (error: %v)", rows, err)
+		s.t.Error(failure)
+		return failure
 	}
 	select {
 	case <-s.op.Done():
@@ -55,9 +63,55 @@ func lossStore(t *testing.T, s *Service) *lockLossStore {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = raw.Close() })
-	wrapped := &lockLossStore{Store: s.Store, raw: raw}
+	// Use the registry's writer-contention policy on the injector connection.
+	// SQLITE_BUSY before the UPDATE succeeds is not an injected lock loss.
+	raw.SetMaxOpenConns(1)
+	if _, err := raw.Exec("PRAGMA busy_timeout=10000"); err != nil {
+		t.Fatal(err)
+	}
+	wrapped := &lockLossStore{Store: s.Store, t: t, raw: raw}
 	s.Store = wrapped
 	return wrapped
+}
+
+func TestLockLossFixtureWaitsForSQLiteWriter(t *testing.T) {
+	s, l, _, _, _ := siblingCleanupFixture(t)
+	store := lossStore(t, s)
+	_, release, err := store.AcquireContext(context.Background(), l.ID, "fixture-owner", time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer release()
+	writer, err := sql.Open("sqlite", filepath.Join(s.Home, "registry.sqlite"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer writer.Close()
+	writer.SetMaxOpenConns(1)
+	if _, err := writer.Exec("PRAGMA busy_timeout=10000"); err != nil {
+		t.Fatal(err)
+	}
+	tx, err := writer.Begin()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tx.Rollback()
+	if _, err := tx.Exec("UPDATE operation_locks SET token=token WHERE lease_id=?", l.ID); err != nil {
+		t.Fatal(err)
+	}
+	// Keep a real writer active across the injection. This delay only releases
+	// contention; success has no short scheduling deadline.
+	released := make(chan struct{})
+	go func() {
+		defer close(released)
+		time.Sleep(50 * time.Millisecond)
+		_ = tx.Rollback()
+	}()
+	err = store.replaceOwner()
+	<-released
+	if !errors.Is(err, domain.ErrLockLost) {
+		t.Fatalf("writer contention prevented actual lock-loss injection: %v", err)
+	}
 }
 
 type lockLossRuntime struct {

@@ -18,7 +18,7 @@ SQLite owns desired state, reservations, ownership, source identity and event hi
 
 - Domain must not import CLI, SQLite, Git or Compose adapters.
 - App may use domain and interfaces; it must not depend on CLI formatting.
-- Runtime adapters must not import CLI.
+- Runtime adapters must not import CLI or other runtime adapters.
 - Store implements persistence and must not own app orchestration policy.
 - CLI delegates lifecycle behavior to app; concrete wiring belongs at the application boundary.
 
@@ -32,4 +32,12 @@ Allocation is a saga across separate authorities. Save intent before effects, re
 
 The development harness is separate from the target manifest: [agent instructions](AGENTS.md), indexed docs, plans, repoctl and CI describe this repository; `.agent-env.yaml` describes target-repository startup.
 
-Android Emulator resources extend Compose through a separate `app.AndroidProvider` and `internal/runtime/android` adapter. The adapter uses domain identities, app observations and `execx` native process boundaries; it never imports Compose. SQLite owns exclusive AVD/port reservations, and app owns compensation and readiness. Detached processes are distinct from bounded command process trees. See the [Android design](docs/design-docs/android-emulator.md) and [completed execution evidence](docs/exec-plans/completed/android-emulator-lease.md). Browser and Flutter integration remain separate work.
+Android Emulator resources extend Compose through a separate `app.AndroidProvider` and `internal/runtime/android` adapter. The adapter uses domain identities, app observations and `execx` native process boundaries; it never imports Compose. SQLite owns exclusive AVD/port reservations, and app owns compensation and readiness. Detached processes are distinct from bounded command process trees. See the [Android design](docs/design-docs/android-emulator.md) and [completed execution evidence](docs/exec-plans/completed/android-emulator-lease.md). Browser integration remains separate work.
+
+Flutter builds use `app.FlutterProvider` and the independent
+`internal/runtime/flutter` adapter. Android package/install/reverse/launch effects
+use `app.AndroidApplicationProvider`, implemented by the existing Android adapter.
+Neither adapter imports the other or Compose; app owns their ordering and
+compensation. Additive application/build/reverse records use the existing Lease
+JSON persistence. See the [Flutter design](docs/design-docs/flutter-android-runtime.md)
+and [ADR 0005](docs/adr/0005-separate-flutter-applications.md).

@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: README.md
-source_sha256: 9c90ad8c71412b0c3523e2a8218895c7ed0d4285f4ec1ccc1d947993712a0fe7
+source_sha256: bea43a7ef78c3330a819bcafce517e806d4a6c23ef37c3501e638e1de2e820f7
 ---
 
 [英語版（翻訳元）](README.md)
@@ -29,7 +29,7 @@ go run ./tools/repoctl test-integration
 
 ## 信頼できるリポジトリを使う
 
-対象の`.agent-env.yaml`に、sources、runtimes、components、stacks、名前付きargvテストを宣言します。[マニフェストリファレンス](docs/product-specs/manifest-v1.ja.md)に完全な例があります。ルートにComposeファイルがちょうど1つある単純なリポジトリでは、`init`が既存ファイルを上書きせずに候補マニフェストを作成します。実行前に、選択されたサービスとホストポリシーを確認してください。
+対象の`.agent-env.yaml`に、sources、runtimes、任意のapplications、components、stacks、名前付きargvテストを宣言します。[マニフェストリファレンス](docs/product-specs/manifest-v1.ja.md)に完全な例があります。ルートにComposeファイルがちょうど1つある単純なリポジトリでは、`init`が既存ファイルを上書きせずに候補マニフェストを作成します。実行前に、選択されたサービスとホストポリシーを確認してください。
 
 次のコマンドは、このcheckoutから実行します。リポジトリパス、stack、名前付きテストは自分の値に置き換えてください。
 
@@ -56,12 +56,14 @@ go run ./cmd/agent-env destroy <lease-id>
 
 ## Android Emulatorリース
 
-`type: android-emulator`、`source: app`、`avd: <installed-template>`を持つruntimeを宣言し、Compose servicesを持たないコンポーネントから参照します。SDKの前提条件は`doctor --runtime android-emulator`で、稼働状態は`doctor <lease-id>`で確認します。AndroidのみのstackにはDockerは不要です。各リースは専用の書き込み可能なAVD状態と予約済みのconsole/ADBポートペアを持ち、`show`でserialを確認できます。完全なマニフェストと復旧ルールは[Android契約](docs/product-specs/android-emulator.ja.md)を参照してください。FlutterビルドとAPKインストールは別の作業です。
+`type: android-emulator`、`source: app`、`avd: <installed-template>`を持つruntimeを宣言し、Compose servicesを持たないコンポーネントから参照します。SDKの前提条件は`doctor --runtime android-emulator`で、稼働状態は`doctor <lease-id>`で確認します。AndroidのみのstackにはDockerは不要です。各リースは専用の書き込み可能なAVD状態と予約済みのconsole/ADBポートペアを持ち、`show`でserialを確認できます。完全なマニフェストと復旧ルールは[Android契約](docs/product-specs/android-emulator.ja.md)を参照してください。
+
+[Flutter Androidアプリケーション](docs/product-specs/flutter-android-runtime.ja.md)は、固定ソースからのAPKビルド、所有Emulatorへのインストール、バックエンドへのreverse設定、Activity起動に対応します。任意の `applications` を宣言し、コンポーネントから選択します。`doctor <repository> --runtime flutter-android` で設定済みFlutter実行ファイル、プロジェクト、Androidの前提条件を確認できます。互換性のあるFlutter・Java・Androidビルドツールチェーンが必要です。
 
 ## 状態と制限
 
 状態は対象リポジトリの外に保存されます。`AGENT_ENV_HOME`に絶対パスを指定すると、OS標準の保存先（LinuxのXDG state、macOSのApplication Support、WindowsのLOCALAPPDATA）を上書きできます。このhomeには`state.db`、管理対象worktree、正規化したruntime設定、リースの成果物、診断用の`leases/<id>/environment.json`記述子が入ります。リース状態の判断では、診断用記述子よりSQLiteの記録を優先します。既定のTTLは4時間、最大TTLは24時間、有効な予約数の上限は8です。quarantinedのリースは予約を保持します。ホストポリシー設定ファイルはまだ公開していません。
 
-Flutter、browser/CDP、リモートGitキャッシュ、registry promotion、書き込み可能な修正リースは[ロードマップ項目](docs/roadmap.ja.md)です。
+iOS、browser/CDPとUI自動操作、リモートGitキャッシュ、registry promotion、書き込み可能な修正リースは[ロードマップ項目](docs/roadmap.ja.md)です。
 
 貢献者は[AGENTS.md](AGENTS.md)と[文書索引](docs/index.ja.md)から始めてください。既存の[MITライセンス](LICENSE)を適用します。

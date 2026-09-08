@@ -8,7 +8,7 @@ last_verified: 2026-09-08
 
 [日本語](roadmap.ja.md)
 
-The implemented scope is local pinned Git sources, detached review worktrees, isolated Compose and Android Emulator runtimes, named argv tests, evidence, and a portable repository harness. This roadmap does not advertise deferred features as available commands.
+The implemented scope is local pinned Git sources, detached review worktrees, isolated Compose and Android Emulator runtimes, Flutter Android application builds/install/launch and backend reverse mappings, named argv tests, evidence, and a portable repository harness. This roadmap does not advertise deferred features as available commands.
 
 ## Settled MVP choices
 
@@ -24,7 +24,7 @@ Remote mirror/cache management, HTTPS/SSH authentication, provider-specific PR s
 
 ## Runtime extensions
 
-Flutter, browser/CDP and UI snapshots, generic persistent host processes, Podman-specific support, and distributed/multi-host coordination are not implemented. Android Emulator leases own private AVD state and local SDK processes; additional real-device CI needs acceleration-capable runners. Browser resources need explicit ownership and cleanup rules.
+iOS, browser/CDP and UI automation/snapshots, generic persistent host processes, Podman-specific support, and distributed/multi-host coordination are not implemented. Android Emulator leases own private AVD state and local SDK processes; additional real-device CI needs acceleration-capable runners. Browser resources need explicit ownership and cleanup rules.
 
 ## Artifacts and releases
 

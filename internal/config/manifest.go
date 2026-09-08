@@ -20,12 +20,13 @@ import (
 )
 
 type Manifest struct {
-	Version    int                  `yaml:"version" json:"version"`
-	Sources    map[string]Source    `yaml:"sources" json:"sources"`
-	Runtimes   map[string]Runtime   `yaml:"runtimes" json:"runtimes"`
-	Components map[string]Component `yaml:"components" json:"components"`
-	Stacks     map[string]Stack     `yaml:"stacks" json:"stacks"`
-	Tests      map[string]Test      `yaml:"tests,omitempty" json:"tests,omitempty"`
+	Applications map[string]Application `yaml:"applications,omitempty" json:"applications,omitempty"`
+	Version      int                    `yaml:"version" json:"version"`
+	Sources      map[string]Source      `yaml:"sources" json:"sources"`
+	Runtimes     map[string]Runtime     `yaml:"runtimes" json:"runtimes"`
+	Components   map[string]Component   `yaml:"components" json:"components"`
+	Stacks       map[string]Stack       `yaml:"stacks" json:"stacks"`
+	Tests        map[string]Test        `yaml:"tests,omitempty" json:"tests,omitempty"`
 }
 type Source struct {
 	Repository string `yaml:"repository" json:"repository"`
@@ -40,6 +41,7 @@ type Runtime struct {
 	AVD              string   `yaml:"avd,omitempty" json:"avd,omitempty"`
 }
 type Component struct {
+	Application     string              `yaml:"application,omitempty" json:"application,omitempty"`
 	Runtime         string              `yaml:"runtime" json:"runtime"`
 	ComposeServices []string            `yaml:"compose_services" json:"compose_services"`
 	DependsOn       []string            `yaml:"depends_on,omitempty" json:"depends_on,omitempty"`
@@ -208,7 +210,7 @@ func Validate(m *Manifest) error {
 	if len(m.Sources) == 0 || len(m.Runtimes) == 0 || len(m.Components) == 0 || len(m.Stacks) == 0 {
 		return fmt.Errorf("manifest: sources, runtimes, components and stacks must be nonempty")
 	}
-	for _, err := range []error{names("source", m.Sources), names("runtime", m.Runtimes), names("component", m.Components), names("stack", m.Stacks), names("test", m.Tests)} {
+	for _, err := range []error{names("source", m.Sources), names("runtime", m.Runtimes), names("component", m.Components), names("stack", m.Stacks), names("test", m.Tests), names("application", m.Applications)} {
 		if err != nil {
 			return err
 		}
@@ -318,6 +320,9 @@ func Validate(m *Manifest) error {
 				return fmt.Errorf("manifest: component %s endpoint %s requires a selected service, target port 1..65535, and tcp/udp protocol", n, en)
 			}
 		}
+	}
+	if err := validateApplications(m); err != nil {
+		return err
 	}
 	colors := map[string]int{}
 	var visit func(string, []string) error

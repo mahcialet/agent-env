@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: ARCHITECTURE.md
-source_sha256: a237aa4ced0b7de068cdb6bc9fdd83993c417a0119d52a3f7289ddd761ca50e5
+source_sha256: 663d73afbf64805f16c8822e440d8f3f0ac07ffe729a72b70e388a58bf9cf645
 ---
 
 [英語版（翻訳元）](ARCHITECTURE.md)
@@ -20,7 +20,7 @@ SQLiteは期待状態、予約、所有権、ソースの識別情報、イベ�
 
 - domainはCLI、SQLite、Git、Composeのアダプターをimportしてはいけません。
 - appはdomainとインターフェースを利用できますが、CLIの出力整形に依存してはいけません。
-- runtimeアダプターはCLIをimportしてはいけません。
+- runtimeアダプターはCLIや他のruntimeアダプターをimportしてはいけません。
 - storeは永続化を実装し、appのオーケストレーション方針を担ってはいけません。
 - CLIはライフサイクルの振る舞いをappに委譲します。具体的な依存の接続はアプリケーション境界に置きます。
 
@@ -34,4 +34,12 @@ SQLiteは期待状態、予約、所有権、ソースの識別情報、イベ�
 
 開発harnessと対象マニフェストは別物です。[エージェント向け指示](AGENTS.md)、索引付き文書、計画、repoctl、CIはこのリポジトリを説明し、`.agent-env.yaml`は対象リポジトリの起動方法を説明します。
 
-Android Emulatorリソースは、独立した`app.AndroidProvider`と`internal/runtime/android`アダプターを通じて、Composeに加えて利用できます。このアダプターはdomainの識別情報、appの観測結果、`execx`のネイティブプロセス境界を使い、Composeをimportしません。SQLiteはAVDとポートの排他的予約を担い、appは補償と準備完了判定を担います。detached processと実行時間を制限したコマンドのプロセスツリーは別の仕組みです。[Android設計](docs/design-docs/android-emulator.ja.md)と[完了済みの実行証拠](docs/exec-plans/completed/android-emulator-lease.md)を参照してください。ブラウザーとFlutterの統合は別の作業です。
+Android Emulatorリソースは、独立した`app.AndroidProvider`と`internal/runtime/android`アダプターを通じて、Composeに加えて利用できます。このアダプターはdomainの識別情報、appの観測結果、`execx`のネイティブプロセス境界を使い、Composeをimportしません。SQLiteはAVDとポートの排他的予約を担い、appは補償と準備完了判定を担います。detached processと実行時間を制限したコマンドのプロセスツリーは別の仕組みです。[Android設計](docs/design-docs/android-emulator.ja.md)と[完了済みの実行証拠](docs/exec-plans/completed/android-emulator-lease.md)を参照してください。ブラウザー統合は別の作業です。
+
+Flutterのビルドには `app.FlutterProvider` と独立した
+`internal/runtime/flutter` アダプターを使います。Androidのパッケージ確認、インストール、
+reverse、起動は `app.AndroidApplicationProvider` を通じ、既存のAndroidアダプターが実装します。
+両アダプターは互いやComposeをimportせず、appが順序と補償を担います。
+アプリ・ビルド・reverseの追加記録は既存のLease JSON保存を利用します。
+[Flutter設計](docs/design-docs/flutter-android-runtime.ja.md)と
+[ADR 0005](docs/adr/0005-separate-flutter-applications.ja.md)を参照してください。

@@ -47,7 +47,17 @@ func New(out, errOut io.Writer) *cobra.Command {
 				fmt.Fprintf(out, "Source %-12s %s -> %s\n", s.Alias, s.RequestedRef, s.Commit)
 			}
 			for _, c := range p.Components {
-				fmt.Fprintf(out, "Component %-12s runtime=%s services=%v\n", c.Name, c.Runtime, c.Services)
+				fmt.Fprintf(out, "Component %-12s runtime=%s services=%v", c.Name, c.Runtime, c.Services)
+				if c.Application != "" {
+					fmt.Fprintf(out, " application=%s", c.Application)
+				}
+				fmt.Fprintln(out)
+			}
+			for _, a := range p.Applications {
+				fmt.Fprintf(out, "Application %-12s source=%s runtime=%s artifact=%s\n", a.Name, a.Source, a.Runtime, a.Artifact)
+				for _, binding := range a.Reverse {
+					fmt.Fprintf(out, "  Reverse device tcp:%d -> %s\n", binding.DevicePort, binding.Endpoint)
+				}
 			}
 		case []domain.Lease:
 			w := tabwriter.NewWriter(out, 0, 4, 2, ' ', 0)

@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"strconv"
 	"strings"
@@ -191,6 +192,8 @@ func fixture(t *testing.T) (Adapter, domain.Runtime, *testProcess) {
 
 func TestCreateUsesPrivateAVDAndOwnedConsoleCleanup(t *testing.T) {
 	a, r, p := fixture(t)
+	t.Setenv("NETSIM_INSTANCE", "777")
+	t.Setenv("NETSIM_HCI_PORT", "6402")
 	ctx := context.Background()
 	r, err := a.Create(ctx, r)
 	if err != nil {
@@ -201,6 +204,13 @@ func TestCreateUsesPrivateAVDAndOwnedConsoleCleanup(t *testing.T) {
 	}
 	if p.command.Env["ANDROID_AVD_HOME"] != r.Android.AVDHome || p.command.Name != executable(r.Android.SDKPath, "emulator", "emulator") {
 		t.Fatalf("native command mismatch: %+v", p.command)
+	}
+	wantArgs := []string{"-avd", r.Android.AVDName, "-port", strconv.Itoa(r.Android.ConsolePort), "-no-window", "-no-audio", "-no-boot-anim", "-no-snapshot", "-no-cache", "-wipe-data", "-netsim-args", "--no-web-ui"}
+	if !reflect.DeepEqual(p.command.Args, wantArgs) || !reflect.DeepEqual(p.command.Env, emulatorEnvironment(*r.Android, runtime.GOOS)) {
+		t.Fatalf("emulator isolation command mismatch: %+v", p.command)
+	}
+	if info, err := os.Stat(p.command.Env["TMPDIR"]); err != nil || !info.IsDir() {
+		t.Fatalf("private discovery directory was not prepared: %v", err)
 	}
 	if _, err := os.Stat(filepath.Join(r.Android.AVDPath, "userdata-qemu.img")); !os.IsNotExist(err) {
 		t.Fatal("template mutable userdata was copied")
@@ -248,6 +258,33 @@ func TestCreateUsesPrivateAVDAndOwnedConsoleCleanup(t *testing.T) {
 	}
 	if !found {
 		t.Fatal("no console kill recorded")
+	}
+}
+
+func TestEmulatorEnvironmentUsesPrivateNativeDiscoveryPaths(t *testing.T) {
+	base := filepath.Join(t.TempDir(), "Android 日本語 with spaces")
+	for _, goos := range []string{"linux", "darwin", "windows"} {
+		t.Run(goos, func(t *testing.T) {
+			var previous string
+			for _, lease := range []string{"one", "two"} {
+				d := domain.AndroidEmulator{AVDHome: filepath.Join(base, lease, "avd"), SDKPath: filepath.Join(base, "sdk")}
+				localData := filepath.Join(d.AVDHome, "emulator-data")
+				temp := filepath.Join(localData, "Temp")
+				want := map[string]string{
+					"ANDROID_AVD_HOME": d.AVDHome, "ANDROID_HOME": d.SDKPath, "ANDROID_SDK_ROOT": d.SDKPath,
+					"TMPDIR": temp, "TMP": temp, "TEMP": temp, "XDG_RUNTIME_DIR": temp,
+					"NETSIM_INSTANCE": "1", "NETSIM_HCI_PORT": "0",
+				}
+				if goos == "windows" {
+					want["LOCALAPPDATA"] = localData
+				}
+				got := emulatorEnvironment(d, goos)
+				if !reflect.DeepEqual(got, want) || !filepath.IsAbs(got["TMPDIR"]) || got["TMPDIR"] == previous {
+					t.Fatalf("private %s namespace mismatch: %+v", goos, got)
+				}
+				previous = got["TMPDIR"]
+			}
+		})
 	}
 }
 

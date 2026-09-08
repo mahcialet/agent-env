@@ -92,14 +92,14 @@ func (s *Service) Test(ctx context.Context, leaseID, name string) (run domain.Co
 	}
 	env := make(map[string]string, len(spec.Env))
 	for key, value := range spec.Env {
-		env[key], err = expandTestValue(value, lease.ID)
+		env[key], err = expandTestValue(value, lease.ID, func(name string) (string, error) { return s.androidTestSerial(ctx, lease, name) })
 		if err != nil {
 			return run, fmt.Errorf("test environment %s: %w", key, err)
 		}
 	}
 	argv := make([]string, len(spec.Command))
 	for i, value := range spec.Command {
-		argv[i], err = expandTestValue(value, lease.ID)
+		argv[i], err = expandTestValue(value, lease.ID, func(name string) (string, error) { return s.androidTestSerial(ctx, lease, name) })
 		if err != nil {
 			return run, fmt.Errorf("test argv %d: %w", i, err)
 		}
@@ -125,6 +125,9 @@ func (s *Service) Test(ctx context.Context, leaseID, name string) (run domain.Co
 		return run, err
 	}
 	run = domain.CommandRun{ID: runID, LeaseID: lease.ID, Name: name, Source: source.Alias, Directory: dir, StartedAt: time.Now().UTC(), ExitCode: -1, Status: "running", StdoutPath: filepath.Join(directory, "stdout.log"), StderrPath: filepath.Join(directory, "stderr.log")}
+	if len(lease.Applications) > 0 {
+		run.Notes = []string{"Named tests may build and reinstall a test APK. Creation APK digest is provenance only; this run does not prove execution of that exact APK."}
+	}
 	for _, arg := range argv {
 		run.Argv = append(run.Argv, evidence.RedactString(arg, secrets))
 	}
@@ -152,7 +155,17 @@ func (s *Service) Test(ctx context.Context, leaseID, name string) (run domain.Co
 		stderrDst = io.MultiWriter(stderr, s.Stderr)
 	}
 	stdoutRedactor, stderrRedactor := evidence.NewRedactor(stdoutDst, secrets), evidence.NewRedactor(stderrDst, secrets)
-	result, commandErr := s.runWithCancellation(ctx, run.ID, execx.Command{Name: argv[0], Args: argv[1:], Dir: dir, Env: env, Timeout: timeout, Stdout: stdoutRedactor, Stderr: stderrRedactor})
+	result := execx.Result{ExitCode: -1}
+	var commandErr error
+	for _, note := range run.Notes {
+		if _, err := fmt.Fprintln(stdoutRedactor, note); err != nil {
+			commandErr = err
+			break
+		}
+	}
+	if commandErr == nil {
+		result, commandErr = s.runWithCancellation(ctx, run.ID, execx.Command{Name: argv[0], Args: argv[1:], Dir: dir, Env: env, Timeout: timeout, Stdout: stdoutRedactor, Stderr: stderrRedactor})
+	}
 	streamErr := errors.Join(stdoutRedactor.Close(), stderrRedactor.Close(), out.Sync(), stderr.Sync(), out.Close(), stderr.Close())
 	run.FinishedAt = time.Now().UTC()
 	run.ExitCode = result.ExitCode
@@ -221,7 +234,7 @@ func (s *Service) Test(ctx context.Context, leaseID, name string) (run domain.Co
 	return run, nil
 }
 
-func expandTestValue(value, leaseID string) (string, error) {
+func expandTestValue(value, leaseID string, android ...func(string) (string, error)) (string, error) {
 	var result strings.Builder
 	for {
 		before, after, found := strings.Cut(value, "${")
@@ -236,6 +249,16 @@ func expandTestValue(value, leaseID string) (string, error) {
 		switch {
 		case expression == "lease_id":
 			result.WriteString(leaseID)
+		case strings.HasPrefix(expression, "android:"):
+			parts := strings.Split(expression, ":")
+			if len(parts) != 3 || parts[1] == "" || parts[2] != "serial" || len(android) == 0 {
+				return "", fmt.Errorf("unsupported Android interpolation %q", expression)
+			}
+			serial, err := android[0](parts[1])
+			if err != nil {
+				return "", err
+			}
+			result.WriteString(serial)
 		case strings.HasPrefix(expression, "env:"):
 			key := strings.TrimPrefix(expression, "env:")
 			resolved, ok := os.LookupEnv(key)
@@ -333,4 +356,19 @@ func (s *Service) collectTestArtifact(ctx context.Context, run domain.CommandRun
 		return err
 	}
 	return s.recordRunArtifact(ctx, run, "test-output", destination)
+}
+
+func (s *Service) androidTestSerial(ctx context.Context, l domain.Lease, name string) (string, error) {
+	r, err := applicationRuntime(l, name)
+	if err != nil {
+		return "", err
+	}
+	o, err := s.inspectRuntime(ctx, r)
+	if err != nil {
+		return "", err
+	}
+	if !o.Exists || !o.Ready || r.Android.Serial == "" {
+		return "", fmt.Errorf("Android runtime %s is not owned and ready", name)
+	}
+	return r.Android.Serial, nil
 }

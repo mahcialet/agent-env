@@ -91,3 +91,24 @@ Actual SDK integration has been exercised on Linux; real Windows/macOS SDK,
 acceleration and shared-server startup behavior remain unverified.
 The [ExecPlan](../exec-plans/completed/android-emulator-lease.md) records evidence,
 implementation decisions, unresolved prerequisites and platform gaps.
+
+## Private netsim discovery and helper lifetime
+
+The Emulator and its netsimd helper must discover the same lease-private daemon.
+Child-only `TMPDIR`, `TMP`, `TEMP` and `XDG_RUNTIME_DIR` point to
+`<AVDHome>/emulator-data/Temp`; on Windows, child `LOCALAPPDATA` points to
+`<AVDHome>/emulator-data`. No host/global environment is changed. These paths
+align the Emulator client's temporary-file discovery with Linux daemon runtime
+paths, Windows `LOCALAPPDATA/Temp`, and native temporary paths on macOS.
+
+`NETSIM_INSTANCE=1` matches the client's default instance, while
+`NETSIM_HCI_PORT=0` requests an ephemeral HCI listener. Emulator argv includes
+`-netsim-args --no-web-ui` to avoid the helper UI's fixed port 8080. This disables
+only the auxiliary web UI; radio and guest networking remain enabled. Shared ADB
+policy, process birth/group/Job proof, and conservative cleanup are unchanged.
+
+An SDK 37.1.11 build 15917651 / netsimd 0.3.114 private-daemon probe confirmed a
+private `netsim.ini`, gRPC listener, HCI port 0 configuration and libslirp enabled;
+the probe daemon was stopped. This focused probe is not evidence that the full
+two-Emulator lifecycle passed. The Flutter execution plan records that separate
+validation and the shared-helper cleanup failure that motivated this isolation.
