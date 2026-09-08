@@ -77,7 +77,12 @@ public final class Observer extends Instrumentation {
             windowIdentity.put(new JSONArray(new int[]{bounds.left,bounds.top,bounds.right,bounds.bottom}));
             windowIdentity.put(field(root.getPackageName()));windowIdentity.put(field(root.getClassName()));windowIdentity.put(w.isActive());
             String windowKey=digest(windowIdentity.toString());
-            windows.put(new JSONObject().put("id",w.getId()).put("key",windowKey).put("type",w.getType()).put("active",w.isActive()));
+            windows.put(new JSONObject().put("id",w.getId()).put("key",windowKey).put("type",w.getType())
+                    .put("title",field(w.getTitle()))
+                    .put("bounds",new JSONArray(new int[]{bounds.left,bounds.top,bounds.right,bounds.bottom}))
+                    .put("root_package",field(root.getPackageName()))
+                    .put("root_class",field(root.getClassName()))
+                    .put("active",w.isActive()));
             node(root,"","window:"+windowKey,0,nodes);
         }
         return new JSONObject().put("windows",windows).put("nodes",nodes).put("truncated",truncated);

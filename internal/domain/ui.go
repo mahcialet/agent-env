@@ -36,10 +36,14 @@ type UINode struct {
 	Fingerprint   string `json:"fingerprint"`
 }
 type UIWindow struct {
-	Key    string `json:"key,omitempty"`
-	ID     int    `json:"id"`
-	Type   int    `json:"type"`
-	Active bool   `json:"active"`
+	Key         string `json:"key,omitempty"`
+	ID          int    `json:"id"`
+	Type        int    `json:"type"`
+	Title       string `json:"title,omitempty"`
+	Bounds      [4]int `json:"bounds,omitempty"`
+	RootPackage string `json:"root_package,omitempty"`
+	RootClass   string `json:"root_class,omitempty"`
+	Active      bool   `json:"active"`
 }
 type UITree struct {
 	Windows   []UIWindow `json:"windows"`

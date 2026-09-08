@@ -174,7 +174,7 @@ func (s *Service) UI(ctx context.Context, id string, o UIOptions) (result UIResu
 			return result, errors.Join(domain.ErrUIInput, err)
 		}
 		if o.Runtime != "" && o.Runtime != prior.Runtime {
-			return result, errors.New("snapshot runtime selection mismatch")
+			return result, errors.Join(domain.ErrUIInput, errors.New("snapshot runtime selection mismatch"))
 		}
 		if o.Runtime == "" && o.Application == "" {
 			o.Runtime = prior.Runtime
@@ -187,7 +187,7 @@ func (s *Service) UI(ctx context.Context, id string, o UIOptions) (result UIResu
 	req := domain.UIRequest{Version: 1, Operation: o.Operation, Package: pkg, Text: o.Text, X: o.X, Y: o.Y, ToX: o.ToX, ToY: o.ToY, DurationMS: int(o.Duration / time.Millisecond), SinceSeconds: int(o.Since / time.Second)}
 	if prior != nil {
 		if prior.Runtime != r.Name || prior.Serial != r.Android.Serial || o.Application != "" && prior.Package != pkg || o.AllWindows {
-			return result, errors.New("snapshot runtime or scope mismatch")
+			return result, errors.Join(domain.ErrUIInput, errors.New("snapshot runtime or scope mismatch"))
 		}
 		if prior.Tree.Truncated {
 			return result, errors.New("AGENTENV-UI-STALE: truncated snapshot cannot authorize input")
@@ -258,6 +258,8 @@ func (s *Service) UI(ctx context.Context, id string, o UIOptions) (result UIResu
 		case <-deadline.Done():
 			timer.Stop()
 			effectErr = deadline.Err()
+			result.Observation.Status = "timeout"
+			result.Observation.Detail = "wait predicate was not satisfied before the deadline"
 		case <-timer.C:
 		}
 		if effectErr != nil {

@@ -2,6 +2,7 @@ package android
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
@@ -76,7 +77,31 @@ func (a Adapter) ObserveUI(ctx context.Context, r domain.Runtime, q domain.UIReq
 				return o, nil
 			}
 			o.Confirmed = false
-			v, e = call(16384, "install", meta.APKPath)
+			// Install bytes that were verified by Load, rather than reopening the
+			// mutable configured path after verification.
+			apk, readErr := os.ReadFile(meta.APKPath)
+			if readErr != nil {
+				return o, fmt.Errorf("AGENTENV-UI-UNAVAILABLE: verified helper read failed: %w", readErr)
+			}
+			sum := sha256.Sum256(apk)
+			if hex.EncodeToString(sum[:]) != meta.APKSHA256 {
+				return o, fmt.Errorf("AGENTENV-UI-UNAVAILABLE: helper changed after verification")
+			}
+			tmp, tempErr := os.CreateTemp("", "agent-env-observer-*.apk")
+			if tempErr != nil {
+				return o, fmt.Errorf("AGENTENV-UI-UNAVAILABLE: helper staging failed: %w", tempErr)
+			}
+			tmpPath := tmp.Name()
+			defer os.Remove(tmpPath)
+			if _, tempErr = tmp.Write(apk); tempErr == nil {
+				tempErr = tmp.Close()
+			} else {
+				_ = tmp.Close()
+			}
+			if tempErr != nil {
+				return o, fmt.Errorf("AGENTENV-UI-UNAVAILABLE: helper staging failed: %w", tempErr)
+			}
+			v, e = call(16384, "install", tmpPath)
 			if e != nil {
 				return o, e
 			}
@@ -135,6 +160,7 @@ func (a Adapter) ObserveUI(ctx context.Context, r domain.Runtime, q domain.UIReq
 		}
 		parsed.Backend = o.Backend
 		parsed.Confirmed = true
+		parsed.HelperInstalled = o.HelperInstalled
 		return parsed, nil
 	case "screenshot":
 		v, e := call(16<<20, "exec-out", "screencap", "-p")
