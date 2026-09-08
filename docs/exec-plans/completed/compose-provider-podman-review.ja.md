@@ -1,9 +1,9 @@
 ---
-status: active
+status: completed
 owner: maintainers
 last_verified: 2026-09-08
-translation_of: docs/exec-plans/active/compose-provider-podman-review.md
-source_sha256: 53cb9f87fff9f571fdfe98307810d8b6c3554c4fc049764d26b843f14923590f
+translation_of: docs/exec-plans/completed/compose-provider-podman-review.md
+source_sha256: 2890b85003a28a940066b3965ea3bca821d254a201f109a295bfa51dfc5b9ada
 ---
 
 # Podman providerのPRレビュー修正
@@ -22,8 +22,10 @@ PR #8のUDP到達性と任意のComposeツールに依存するinventoryの指�
 - [x] 2026-09-08: 未解決の2 threadを読み、実装と照合した。
 - [x] 2026-09-08: 両指摘を再現し、protocol判定とnative inventoryを修正した。
   provider回帰テスト、全repository check、全raceテストが成功した。
-- [ ] 共通Docker走査、Podman挙動、harness、native CIを検証する。
-- [ ] 修正をpushし、各threadへの返信・Resolve後に本Planを完了へ移す。
+- [x] 2026-09-08: 全harness、race、Docker integration、native Podman/Docker
+  共存（104.081秒）、Verify 34221034636の全12 jobが成功した。
+- [x] 2026-09-08: 53c141fをpushし、元の両threadへ修正と回帰検証の証拠を返信した。
+  両threadをResolveし、本Planをcompletedへ移した。
 
 ## 想定外の発見
 
@@ -44,7 +46,16 @@ engineのみのInventoryDoctorテストはInventory呼び出し前で終わっ�
 
 ## 成果と振り返り
 
-実装・検証待ち。
+両指摘を解決した。remote UDP mappingにTCP専用のreadiness検査を適用せず、
+native Podman inventoryはCompose frontendなしで動作する。Dockerのproject検出と
+共通の所有／エラー処理は維持した。英日契約でUDP観測の保証範囲を明記した。
+
+従来のテストは隣接するhelperで止まっていた。engineのみのDoctor検証はその後の
+inventory経路を証明せず、endpoint fixtureはremoteでのprotocol混在を扱わなかった。
+新しい回帰テストは入口からの全経路、任意ツールの欠落／古いpath、labelのみのorphan、
+途中失敗、TCP/UDP混在を扱う。providerの組み合わせもhelperとともに検証する。
+実Podman Machineの転送は未検証であり、remote回帰テストはrunnerによるinspectionと
+nativeなローカルsocketを使用している。
 
 ## 背景と構成
 
@@ -89,7 +100,12 @@ threadをResolveしない。
 より失敗した。修正後は到達可能／不能なTCP、native resource全3種、label競合、
 inventory途中失敗を含め成功した。別担当がproduction差分を独立確認し、providerの
 raceテストを実行した。`go run ./tools/repoctl check`と`go test -race ./...`も成功した。
-native Podman/Docker共存と既存Docker integrationは実行中。CI・push・thread対応は未完了。
+native Podman/Docker共存は104.081秒で成功し、既存Docker integrationも成功した。
+53c141fの[Verify 34221034636](https://github.com/mahcialet/agent-env/actions/runs/34221034636)
+は全12 job（Windows/macOS/LinuxとGo 1.26/1.27のnative 6 job、cross-build 5 job、
+Linuxのrace／Docker integration）が成功した。元の両threadへ返信してResolveした。
+返信はdiscussion_r3957440177（UDP）とdiscussion_r3957440447（inventory）。
+完了移動後の文書もdocs-checkで成功した。
 
 ## インターフェースと依存
 

@@ -1,5 +1,5 @@
 ---
-status: active
+status: completed
 owner: maintainers
 last_verified: 2026-09-08
 ---
@@ -20,8 +20,10 @@ original implementation evidence.
 - [x] 2026-09-08: Read both unresolved threads and reconcile the implementation.
 - [x] 2026-09-08: Reproduced both findings, fixed protocol filtering/native inventory,
   and passed full provider regression tests, repository check, and full race tests.
-- [ ] Validate shared Docker traversal, Podman behavior, harness and native CI.
-- [ ] Push fixes, reply to each thread, resolve addressed threads, and archive this plan.
+- [x] 2026-09-08: Full harness, race, Docker integration, native Podman/Docker
+  coexistence (104.081s), and Verify 34221034636 (all 12 jobs) passed.
+- [x] 2026-09-08: Pushed 53c141f, replied to both original threads with fix and
+  regression evidence, resolved both threads, and archived this plan.
 
 ## Surprises & Discoveries
 
@@ -42,7 +44,18 @@ mappings because every mapping used a TCP connection attempt. Latest baseline CI
 
 ## Outcomes & Retrospective
 
-Pending implementation and validation.
+Both review findings are resolved. Remote UDP mappings no longer pass through a
+TCP-only readiness check, and native Podman inventory works without a Compose
+frontend. Docker project discovery and shared ownership/error handling are
+unchanged. English/Japanese contracts state the precise UDP observation limit.
+
+The original tests stopped at adjacent helpers: engine-only Doctor did not prove
+the following inventory path, and endpoint fixtures did not exercise mixed remote
+protocols. The new regressions cover those full entry points, absent/stale optional
+tooling, label-only orphans, partial failures, and mixed TCP/UDP observations.
+Review-driven coverage therefore checks provider composition as well as helpers.
+Real Podman Machine forwarding remains unverified; the remote regression uses
+runner-backed inspection with native local sockets.
 
 ## Context and Orientation
 
@@ -89,8 +102,12 @@ or stale Compose executables. Both now pass, including reachable/unreachable TCP
 all three native resource kinds, conflicting labels, and partial inventory failure.
 An independent agent reviewed the production diff and ran provider race tests.
 `go run ./tools/repoctl check` and `go test -race ./...` passed. Native Podman/Docker
-coexistence and existing Docker integration are running; CI/push/thread actions
-remain pending.
+coexistence passed in 104.081s; existing Docker integration also passed.
+[Verify 34221034636](https://github.com/mahcialet/agent-env/actions/runs/34221034636)
+on 53c141f passed all 12 jobs (six Windows/macOS/Linux Go 1.26/1.27 native jobs,
+five cross-builds, and Linux race/Docker integration). Both original threads were
+replied to and resolved: discussion_r3957440177 (UDP) and discussion_r3957440447
+(inventory). Final archival documentation passes docs-check.
 
 ## Interfaces and Dependencies
 
