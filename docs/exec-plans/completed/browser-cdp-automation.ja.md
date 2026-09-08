@@ -1,7 +1,7 @@
 ---
-source_sha256: 3ed16574f8fa51ceb6601c1de8feacae19a21bfe385fcdefc5bc062aea2c50ac
-translation_of: docs/exec-plans/active/browser-cdp-automation.md
-status: active
+source_sha256: 76bc6ee62237232c33f8aaa581c737ab1baca5371b025b8328254a384dcaf766
+translation_of: docs/exec-plans/completed/browser-cdp-automation.md
+status: completed
 owner: maintainers
 last_verified: 2026-09-08
 ---
@@ -103,7 +103,7 @@ port名だけからbrowserをimplicit推測しない。
 - [x] iframe/shadow DOM/multi-page
 - [x] lease所有backendを含むLinux native fixtureを実行。
   Chrome 152.0.7977.64、CDP 1.3、amd64、sandbox有効。初回7.072秒、後続3反復が成功。
-  最新raceも成功（package 8.489秒、native test 7.47秒）。Windows/macOSは下の未完了gateで追跡。
+  最新raceも成功（package 8.489秒、native test 7.47秒）。Windows/macOSもその後成功し、下記とB25/B26に証拠を記録。
 - [x] macOS real integration: `9b94b42`、run 34234714187、darwin/arm64、
   Chrome 152.0.7977.82 / CDP 1.3、native test 20.98秒で成功。
 - [x] Windows real integration: `9b94b42`、run 34234714187、windows/amd64、
@@ -112,9 +112,10 @@ port名だけからbrowserをimplicit推測しない。
 - [x] 製品・設計・architecture・security/reliability・portability・quality・manifest/CLI・
   distribution・index・roadmapを英日更新し、今回の`repoctl docs-check`が成功。
   native CI後に最終受け入れ証拠を照合する。
-- [ ] final harness/race/native/cross
-- [ ] direct evidence/retrospective
-- [ ] completed移動/link/hash
+- [x] (2026-09-08) final harness/race/native/cross: `b48ab64`のVerify
+  34235476057、Browser native 34235476126で成功。
+- [x] (2026-09-08) B1–B34の直接証拠と英日retrospectiveを完成。
+- [x] (2026-09-08) 英日Planをcompletedへ移動し、参照・翻訳hash・文書検査を更新。
 
 checkboxは観測済み完了のみ。browser/protocol version、native run、resultを記録する。
 
@@ -329,17 +330,39 @@ macOS/WindowsおよびLinuxのnative CIは未完了。既存のmacOS readiness t
 
 ## 成果と振り返り
 
-実装とlocal検証はまとまったcheckpointに達したが、最終受け入れ完了ではない。config/domain契約、
-fence付きapp処理、CDP transport/操作、private証拠、英日文書を実装した。local完全harness・race・6 cross-build・
-Linux real browser反復が成功し、独立reviewの指摘を修正して回帰testを追加した。
-Docker integrationも成功した。Windows/macOS native、最新stale-state/CLI調整の再検証、最終受け入れ照合が済むまでarchiveしない。
-baseline docs-check失敗とnative PID/command-line証明が必要だった発見は、後続成功で隠さず記録した。
+2026-09-08、`feat/browser-cdp-automation`で完了した。既存の常駐process runtimeの上に、
+明示的なChromium-CDP bindingを実装した。processの所有・寿命管理はruntimeに残し、
+adapterは上限付きCDP通信、page、AX/DOM観測、PNG screenshot、型を限定した入力、
+console/network取得を担う。操作前にnative PID・command line・profileの一致とleaseの
+operation fenceを検証する。登録snapshotはlease・browser・page・document・nodeに結び付け、
+古い参照や曖昧な参照では過去の座標を再利用せず、操作を再送しない。set-textはUnicodeと
+明示的な空文字消去に対応し、一時的な読戻しで一致を確認する。保存したfingerprintにより、
+後の別CLI processでも入力textをredactする。
 
-未完了。
+最終実装・test revision `b48ab643a3e01029d880122b3c7c6830d82ed325`で
+[Verify 34235476057](https://github.com/mahcialet/agent-env/actions/runs/34235476057)の
+全12 job（全race・integrationを含む）と、
+[Browser native 34235476126](https://github.com/mahcialet/agent-env/actions/runs/34235476126)の
+3 OSすべてが成功した。Chrome 152.0.7977.82 / CDP 1.3をLinux/amd64、Windows/amd64、
+macOS/arm64で検証した。local harness・全race・実Docker integration・6 target build・
+sandbox有効のLinux browser反復も成功した。各受け入れ行と日付付きcheckpointに、
+実行した検証と証拠の限界を記録した。
 
-完了時にbinding、browser versions、CDP transport、ownership、profile isolation、
-page model、AX/DOM normalization、stale semantics、input、console/network制約、
-privacy、native evidence、Android/Browser共通UI abstraction昇格要否をまとめる。
+独立reviewでは、fence loss時の早期returnで未redactの値を返す問題と、汎用JSON redactionが
+操作の根拠となる識別情報まで壊す問題を発見し、修正と回帰testを追加した。native CIでは、
+macOSの全選択、WindowsのUnicode proof pathによる誤検出、Ubuntuのsandbox前提条件が
+明らかになった。明示CDP編集command、decode後のsecret検査、対象を限定したrunner設定で
+解決した。browser fixtureの準備期限も、検査対象の操作期限から分離した。protocol mockと
+local成功だけではnative受け入れを代替できないことが分かった。以前の失敗と、変更なしで
+成功した既存readiness testの再実行は履歴に残す。製品のtimeout・fence・sandbox・privacy
+要件は緩めていない。
+
+制限は明記した。same-origin iframeとshadowの観測には対応するが、iframe入力と
+cross-origin/OOPIF観測には対応しない。外部browser接続、公開script/CDP実行、download、
+browser自動再起動、Android/browser共通UI層は追加していない。network header/bodyと
+DOMの編集可能な値は保存しないが、screenshot・未知のpage text・専用profileには機密が
+含まれ得る。この機能は暗号化やbrowser sandboxの境界を提供しない。英日Planをarchiveし、
+現在の文書からの参照も更新した。
 
 ## 背景と構成
 
@@ -538,16 +561,16 @@ bundleしない。
 | B22 | process absence前profile削除無し | native fixtureで両lease destroy後のstate/profile directory不在を確認。generic `TestMissingLaunchingReceiptIsUncertain`とbrowser結果不明/証拠barrierで保守的cleanupを維持。 |
 | B23 | process lifecycle重複実装無し | `TestArchitectureBoundaries`のbrowser依存負例とarch-check成功。native fixtureはCDP Browser.closeではなく通常destroyでcleanup。 |
 | B24 | auto restart無し | `TestBrowserLifecycleGuards`で起動回数不変。native手動終了fixtureで履歴PID不変・readyに戻らないことを確認。 |
-| B25 | Windows real headless pass | 未完了：Windows native browser CI未実行。6 target cross-buildはnative証拠ではない。 |
-| B26 | macOS real headless pass | 未完了：macOS native browser CI未実行。 |
+| B25 | Windows real headless pass | 成功：`b48ab64`、Browser native 34235476126、windows/amd64、Chrome 152.0.7977.82 / CDP 1.3、実CLI fixture 29.97秒。 |
+| B26 | macOS real headless pass | 成功：`b48ab64`、Browser native 34235476126、darwin/arm64、Chrome 152.0.7977.82 / CDP 1.3、実CLI fixture 19.62秒。 |
 | B27 | Linux real headless pass | Linux amd64 `TestBrowserNativeCLI`、sandbox有効、Chrome 152.0.7977.64 / CDP 1.3。初回・3反復・最新race成功（package 8.489秒 / test 7.47秒）。 |
-| B28 | real AX/DOM/screenshot/Unicode/click/stale/iframe/shadow/console/network/cleanup | Linux native fixtureで列挙機能を検証。same-origin iframe/shadowは観測のみで、iframe入力とcross-origin観測は明示的に非対応。Windows/macOS未完了。 |
+| B28 | real AX/DOM/screenshot/Unicode/click/stale/iframe/shadow/console/network/cleanup | `b48ab64`の3 OS native fixtureですべて成功（Browser native 34235476126）。same-origin iframe/shadowは観測のみで、iframe入力とcross-origin観測は明示的に非対応。 |
 | B29 | provider非依存lease backend E2E | native fixtureでrepository所有HTTP backendを別process runtimeとしてbuild。Unicode request/count/log相関と別lease backendの不変を確認。Compose provider不使用。 |
 | B30 | Browser未使用時coreにbrowser不要 | browser integration tagなしでcore unit/raceと6 CGO-free CLI cross-build成功。browser前提は明示的browserintegration test/commandだけに適用。 |
 | B31 | Node/Python/Playwright/Selenium/ChromeDriver runtime dependency無し | Go gorilla/websocket transportと直接native argvを使用。architecture check成功、helper runtime/browser同梱なし。 |
 | B32 | 英日durable docs final behavior/privacy | 製品・設計・関連文書を英日更新し、正確なflag、native前提、privacy/上限を記載。意味確認後hash更新、docs-check成功。 |
-| B33 | final harness/translation/race/native CI | 未完了：local完全harness/race・Docker integration・6 cross-build成功。Windows/macOS native CI未実行、最後のstale-state/CLI調整は再検証が必要。 |
-| B34 | 英日ExecPlan evidence/retrospective後archive | 最終受け入れ未完了。今回の直接証拠・review修正・残るnative/integration gateを記録し、英日planをactiveに維持。 |
+| B33 | final harness/translation/race/native CI | 成功：最終`b48ab64`のVerify 34235476057（12 job、全race/integration）、Browser native 34235476126（3 OS）、local harness/docs-checkと6 cross-build。 |
+| B34 | 英日ExecPlan evidence/retrospective後archive | 成功：B1–B34の証拠を照合し、英日成果・振り返りを記入。両Planを同時にarchiveし、参照と翻訳を検査。 |
 
 ## 冪等性と復旧
 
@@ -627,3 +650,15 @@ Milestone 1の初期論点は判断の記録で解決済み。受け入れ時の
 Ubuntuの限定したAppArmor許可を含め、sandboxとhost全体の制限は有効。
 browser fixture準備時だけreadiness期限を変更した状態で、全`TestBrowser*`の
 local race 10回反復も成功（20.222秒）。全Verifyは未完了。
+
+最終native証拠: `b48ab643a3e01029d880122b3c7c6830d82ed325`の
+[Browser native 34235476126](https://github.com/mahcialet/agent-env/actions/runs/34235476126)で
+3 jobすべて成功。Chrome 152.0.7977.82 / CDP 1.3、Go 1.27。
+Linux/amd64のnative fixtureは8.16秒、Windows/amd64は29.97秒、macOS/arm64は19.62秒。
+JSON privacy検査の回帰testも3 OSで成功した。この結果は以前のnative未完了checkpointを
+更新するもので、失敗履歴は消さない。
+
+最終完了記録（2026-09-08）: `b48ab64`のVerify 34235476057は全12 jobで成功した。
+Browser native 34235476126と合わせ、以前の日付付きcheckpointに残っていた受け入れgateは
+すべて完了した。この検証済みrevisionからの最終変更は、英日文書の照合とPlanのarchiveのみ。
+archiveの区切りではruntimeやtestの動作を変更していない。

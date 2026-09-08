@@ -106,4 +106,4 @@ identity and stale-node checks. It does not import concrete runtime adapters or
 own process/profile/port lifecycle. CLI provides concrete wiring. The transport
 uses gorilla/websocket without a Node/Python helper. See the
 [browser design](docs/design-docs/browser-cdp-automation.md) and
-[active implementation evidence](docs/exec-plans/active/browser-cdp-automation.md).
+[completed implementation evidence](docs/exec-plans/completed/browser-cdp-automation.md).

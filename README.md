@@ -144,5 +144,5 @@ pages`, `snapshot`, `screenshot`, `navigate` and snapshot-scoped semantic input.
 Console/network captures are bounded; profile state and artifacts are private,
 and PNG pixels are not automatically redacted. See the
 [browser contract](docs/product-specs/browser-cdp-automation.md) for a complete
-manifest and commands, and the [active plan](docs/exec-plans/active/browser-cdp-automation.md)
+manifest and commands, and the [completed plan](docs/exec-plans/completed/browser-cdp-automation.md)
 for native acceptance status. Chrome is an external prerequisite, not bundled.

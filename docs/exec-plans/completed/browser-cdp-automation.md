@@ -1,5 +1,5 @@
 ---
-status: active
+status: completed
 owner: maintainers
 last_verified: 2026-09-08
 ---
@@ -167,7 +167,7 @@ Out of scope:
 - [x] Run the real Linux native fixture, including the lease-hosted backend.
   Chrome 152.0.7977.64, CDP 1.3, amd64, sandbox enabled: initial 7.072s pass,
   three subsequent repetitions passed, latest race run passed (package 8.489s,
-  native test 7.47s). Windows/macOS native gates remain unchecked below.
+  native test 7.47s). Windows/macOS subsequently passed as recorded below and in B25/B26.
 - [x] Run real macOS browser integration: `9b94b42`, run 34234714187,
   darwin/arm64, Chrome 152.0.7977.82 / CDP 1.3, native test 20.98s PASS.
 - [x] Run real Windows browser integration: `9b94b42`, run 34234714187,
@@ -178,9 +178,11 @@ Out of scope:
   distribution, indexes and roadmap. `repoctl docs-check` passed at this checkpoint;
   final acceptance evidence will be reconciled after native CI.
 - [x] Update standalone prerequisite matrix.
-- [ ] Run final harness/race/native/cross-build suites.
-- [ ] Complete direct evidence and bilingual retrospective.
-- [ ] Move both plans to `docs/exec-plans/completed/`.
+- [x] (2026-09-08) Run final harness/race/native/cross-build suites: Verify
+  34235476057 and Browser native 34235476126 passed at `b48ab64`.
+- [x] (2026-09-08) Complete B1–B34 direct evidence and bilingual retrospective.
+- [x] (2026-09-08) Move both plans to `docs/exec-plans/completed/` and update
+  references, reviewed translation hashes and documentation checks.
 
 A checked item means observed completion. Record UTC date, revision, exact
 browser version, protocol version, command/test/workflow and result.
@@ -455,23 +457,42 @@ the same published commit; no timeout or readiness assertion has been relaxed.
 
 ## Outcomes & Retrospective
 
-Implementation and local validation have reached a coherent checkpoint, not final
-acceptance. Config/domain contracts, fenced app orchestration, CDP transport/actions,
-private evidence and bilingual documentation are implemented. Full local harness,
-race, six cross-builds and repeated Linux real-browser coverage passed. Independent
-review findings are fixed and covered by regressions; Docker integration also passed.
-Native Windows/macOS, revalidation of the latest stale-state/CLI refinements and
-final acceptance reconciliation remain necessary before archiving.
-The baseline docs-check failure and the need for native PID/command-line proof are
-recorded above rather than hidden by later successful checks.
+Completed on 2026-09-08 on `feat/browser-cdp-automation`. This slice delivers
+explicit Chromium-CDP bindings above the existing persistent process runtime.
+Process ownership remains with that runtime; the adapter handles bounded CDP
+transport, pages, AX/DOM observation, PNG screenshots, typed input and bounded
+console/network capture. Live native PID/command-line/profile proof and the lease
+operation fence precede effects. Registered snapshots bind lease, browser, page,
+document and node identity; stale or ambiguous references fail without coordinate
+fallback or replay. Set-text supports Unicode and explicit clearing with transient
+readback, and durable fingerprints redact entered text across later CLI processes.
 
-Not completed.
+Final implementation/test revision `b48ab643a3e01029d880122b3c7c6830d82ed325`
+passed [Verify 34235476057](https://github.com/mahcialet/agent-env/actions/runs/34235476057)
+(all 12 jobs, including full race and integration) and
+[Browser native 34235476126](https://github.com/mahcialet/agent-env/actions/runs/34235476126)
+(all three OSes). Native Chrome 152.0.7977.82 / CDP 1.3 passed on Linux/amd64,
+Windows/amd64 and macOS/arm64. Local harness, full race, real Docker integration,
+six target builds and repeated sandboxed Linux browser tests also passed; the
+acceptance table and dated checkpoints give direct evidence and its limits.
 
-At completion summarize final manifest binding, browser/CDP library, tested
-browser versions, process/CDP identity proof, profile isolation, page model,
-AX/DOM normalization, stale semantics, input primitives, console/network limits,
-privacy behavior, native evidence and whether Browser/Android UI concepts are
-mature enough for a later shared UI abstraction.
+Independent review caught an early unredacted fence-loss return and authority
+corruption from generic JSON redaction; both received targeted fixes and
+regressions. Native CI then exposed macOS selection behavior, a Windows Unicode
+proof-path false positive and Ubuntu's sandbox prerequisite. Explicit CDP editing,
+decoded secret assertions and narrowly scoped runner provisioning resolved them.
+A browser-fixture setup deadline was isolated from tested operation deadlines.
+These discoveries show why protocol mocks and local success cannot replace native
+acceptance. Earlier failed checks and the unchanged readiness-test retry remain
+recorded. No production timeout, fence, sandbox or privacy requirement was relaxed.
+
+Limits remain explicit: same-origin iframe and shadow observation are supported,
+iframe input and cross-origin/OOPIF observation are not. No external attachment,
+public script/CDP passthrough, download handling, automatic browser restart or
+shared Android/browser UI layer was introduced. Network headers/bodies and DOM
+editable values are excluded, but screenshots, unknown page text and the private
+profile may contain sensitive data; this is not an encryption or browser-sandbox
+boundary. The bilingual plan is archived with current documentation links updated.
 
 ## Context and Orientation
 
@@ -768,16 +789,16 @@ Complete acceptance evidence and retrospective before archiving both plans.
 | B22 | Profile deletion occurs only after process-tree absence is proven; uncertainty retains/quarantines. | Native fixture destroys both leases and checks state/profile directories absent; generic `TestMissingLaunchingReceiptIsUncertain` and browser uncertain/evidence barriers preserve conservative cleanup. |
 | B23 | Browser process lifecycle remains owned by persistent-process runtime; no duplicate PID cleanup. | `TestArchitectureBoundaries` browser dependency negatives and arch-check passed; native fixture cleanup calls ordinary destroy, not CDP Browser.close. |
 | B24 | No automatic browser restart. | `TestBrowserLifecycleGuards` checks start count unchanged; native manual-death fixture keeps historical PID and never returns ready. |
-| B25 | Real native headless Browser/CDP integration passes on Windows. | Pending: native Windows browser CI has not run. Six-target cross-build is not native evidence. |
-| B26 | Real native headless Browser/CDP integration passes on macOS. | Pending: native macOS browser CI has not run. |
+| B25 | Real native headless Browser/CDP integration passes on Windows. | PASS: `b48ab64`, Browser native 34235476126, windows/amd64, Chrome 152.0.7977.82 / CDP 1.3, real CLI fixture 29.97s. |
+| B26 | Real native headless Browser/CDP integration passes on macOS. | PASS: `b48ab64`, Browser native 34235476126, darwin/arm64, Chrome 152.0.7977.82 / CDP 1.3, real CLI fixture 19.62s. |
 | B27 | Real native headless Browser/CDP integration passes on Linux. | Linux amd64 `TestBrowserNativeCLI`, sandbox enabled, Chrome 152.0.7977.64 / CDP 1.3: initial pass, three repetitions, latest race 8.489s package / 7.47s test. |
-| B28 | Real fixture proves AX/DOM/screenshot/Unicode/click/stale/iframe/shadow/console/network/cleanup. | Linux native fixture covers the listed features; same-origin iframe/shadow observation only, all iframe input and cross-origin observation explicitly unsupported. Windows/macOS pending. |
+| B28 | Real fixture proves AX/DOM/screenshot/Unicode/click/stale/iframe/shadow/console/network/cleanup. | All three native OS fixtures passed at `b48ab64` (Browser native 34235476126); same-origin iframe/shadow observation only, all iframe input and cross-origin observation explicitly unsupported. |
 | B29 | Browser exercises a lease-hosted backend without one Compose-provider dependency. | Native fixture builds a repository-owned HTTP backend as another process runtime, correlates Unicode request/count/log evidence, and proves the second lease backend unaffected; no Compose provider used. |
 | B30 | Core standalone commands do not require a browser when Browser/CDP is unused. | Full core unit/race suites and six CGO-free CLI cross-builds passed without browser integration tag; browser prerequisite is required only by explicit browserintegration tests/commands. |
 | B31 | No Node/Python/Playwright/Selenium/ChromeDriver runtime dependency is introduced. | Go gorilla/websocket transport and direct native argv; architecture checks passed, no helper runtime/bundled browser added. |
 | B32 | Bilingual durable docs describe final behavior and privacy limits. | Paired product/design and supporting documents updated with exact flags, native prerequisites, privacy/limits; docs-check passed and hashes refreshed after meaning review. |
-| B33 | Final harness/translation/race/native CI passes. | Pending: full local harness/race, Docker integration and six cross-builds passed; native Windows/macOS CI not yet run and final stale-state/CLI refinements require revalidation. |
-| B34 | Both plans contain direct evidence and Outcomes & Retrospective before archival. | Pending final acceptance. Current checkpoint records direct evidence, review fixes and remaining native/integration gates; both plans remain active. |
+| B33 | Final harness/translation/race/native CI passes. | PASS: final `b48ab64` Verify 34235476057 (12 jobs, full race/integration) and Browser native 34235476126 (3 OSes), plus local harness/docs-check and six cross-builds. |
+| B34 | Both plans contain direct evidence and Outcomes & Retrospective before archival. | PASS: B1–B34 reconciled with direct evidence, bilingual outcomes filled, both plans archived together and references/translations checked. |
 
 Code existence alone is not acceptance. Record exact browser/protocol versions,
 native runs and observed behavior.
@@ -882,3 +903,16 @@ Resolve these in Decision Log before dependent behavior is declared stable.
 including Ubuntu's scoped AppArmor allowance with sandbox and global restriction
 still enabled. The browser-fixture-only readiness preparation change passed ten
 local race repetitions of every `TestBrowser*` (20.222s). Full Verify is pending.
+
+Final native evidence at `b48ab643a3e01029d880122b3c7c6830d82ed325`:
+[Browser native 34235476126](https://github.com/mahcialet/agent-env/actions/runs/34235476126)
+passed all three jobs with Chrome 152.0.7977.82 / CDP 1.3 and Go 1.27.
+Linux/amd64 native fixture: 8.16s; Windows/amd64: 29.97s; macOS/arm64: 19.62s.
+The JSON privacy-detector regression also passed on all three platforms. These
+results supersede earlier native-pending checkpoints without erasing the failures.
+
+Final closure (2026-09-08): Verify 34235476057 completed successfully at `b48ab64`
+with all 12 jobs passing. Combined with Browser native 34235476126, this closes
+all acceptance gates left open in earlier dated checkpoints. The final change
+from that verified revision only reconciles bilingual documentation and archives
+this plan; no runtime or test behavior changes are part of the archive milestone.

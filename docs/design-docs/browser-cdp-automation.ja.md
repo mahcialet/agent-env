@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/design-docs/browser-cdp-automation.md
-source_sha256: b8ddf31756e215c64fc03081ad46ec9e96551e777e57f10f01a7e168cf79db03
+source_sha256: d30a90093636eb004c2d61b4ba0b8597a55d65463fde4a2acef5c14c8933cae1
 ---
 
 # Browser/CDP設計
@@ -11,7 +11,7 @@ source_sha256: b8ddf31756e215c64fc03081ad46ec9e96551e777e57f10f01a7e168cf79db03
 [英語版（翻訳元）](browser-cdp-automation.md)
 
 コマンドと上限は[製品契約](../product-specs/browser-cdp-automation.ja.md)、
-実装判断とnative環境での直接証拠は[実行中ExecPlan](../exec-plans/active/browser-cdp-automation.ja.md)に記録します。
+実装判断とnative環境での直接証拠は[完了ExecPlan](../exec-plans/completed/browser-cdp-automation.ja.md)に記録します。
 
 ## 所有権と依存関係
 
@@ -66,10 +66,10 @@ console/networkは接続期間を限定します。screenshotと未認識のpage
 configの負例で明示的bindingと正確なswitch要件を検証します。app testは所有権再検証、
 古い参照・別lease参照、run/証拠の失敗、destroy fencingを対象にします。
 transport fixtureは別接続先discovery、不正・過大応答を拒否することを検証します。
-native testの選定matrixはWindows・macOS・Linux、Go 1.27、Chrome for Testing 152.0.7977.82です。
-これは検証対象の選定であり、native受け入れ成功の宣言ではありません。
-browser/backend fixtureは同じleaseのendpointを使います。実測product/protocol versionとnative結果を
-planへ記録し、cross-buildだけでCDP動作を検証済みとは扱いません。
+native testはWindows・macOS・Linux、Go 1.27、Chrome for Testing 152.0.7977.82で実行します。
+`b48ab64`の3 native jobはすべて成功し（Browser native 34235476126）、CDP 1.3を報告しました。
+browser/backend fixtureは同じleaseのendpointを使います。Planには実行したnative検証の証拠を、
+cross-buildの結果と分けて記録しています。
 
 明示navigationはhash/history変化でも以前のbrowser snapshotを無効にします。document tokenは
 raw URLのdigest（query文字列そのものは保存しない）、node fingerprintは許可した非text AX stateを含みます。
