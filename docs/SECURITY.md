@@ -90,3 +90,28 @@ Runtime prerequisites remain trusted host tools and are not installed by the
 release CLI. The optional Android UI helper is externally built, not embedded in
 the current release. Generic asset digest checks detect corruption, not hostile
 host modification beyond the existing local trust boundary.
+
+## Persistent host process trust and logs
+
+A process runtime executes the declared native executable with the host user's
+privileges. Pinned source, isolated state and reserved loopback ports are ownership
+and collision controls, not a sandbox. The command must itself bind loopback;
+agent-env cannot prevent arbitrary network or filesystem effects from trusted
+repository code. Cwd/source-relative executable confinement follows symlinks, and
+PATH resolution/digest records evidence without freezing host tools.
+
+Process environment values use the same explicit `${env:NAME}` secret-reference
+rule as named tests. Expanded credentials remain transient launch input; durable
+command/environment fields retain references. Native stdout/stderr files are
+private raw output and may contain secrets emitted by the application. Keep the
+state root, launch receipt and prelaunch redaction evidence private; do not publish them as ordinary artifacts.
+
+CLI log reads are bounded and redact using launch-time secret fingerprints in
+independent prelaunch `redaction.json`, including when host variables are later
+removed or changed, or writing the post-launch identity receipt fails. Missing,
+invalid or mismatched redaction evidence fails closed for an already launched
+process. Fingerprints avoid storing plaintext values, but are not encryption and
+still require private storage. Unknown application secrets and transformed secret
+values are not guaranteed to be recognized. Mutable profiles/databases are not
+automatically copied to evidence and are removed only after confirmed tree absence.
+See the [process contract](product-specs/persistent-process-runtime.md).

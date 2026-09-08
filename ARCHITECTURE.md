@@ -8,7 +8,7 @@ last_verified: 2026-09-08
 
 [日本語](ARCHITECTURE.ja.md)
 
-The system materializes pinned local Git sources and a selected component closure into an environment lease with Compose and/or Android Emulator resources. The [MVP specification](docs/product-specs/agent-env-mvp.md) defines behavior; the [completed plan](docs/exec-plans/completed/agent-env-mvp.md) records delivered boundaries and verification evidence.
+The system materializes pinned local Git sources and a selected component closure into an environment lease with Compose, Android Emulator and/or persistent native process resources. The [MVP specification](docs/product-specs/agent-env-mvp.md) defines behavior; the [completed plan](docs/exec-plans/completed/agent-env-mvp.md) records delivered boundaries and verification evidence.
 
 The CLI parses arguments and formats output, then delegates use cases to app. Domain types model leases, immutable source sets, components, resources and events without concrete adapters. Config strictly decodes the manifest; stack resolves deterministic dependency closure. App coordinates source and runtime interfaces, policy, readiness, evidence, and compensating cleanup.
 
@@ -72,3 +72,25 @@ and extracted native smoke tests. Release metadata does not belong in lease/doma
 models. GitHub Actions orchestrates these commands and publishes validated bytes;
 it does not implement a second packaging algorithm. See the
 [distribution design](docs/design-docs/standalone-distribution.md).
+
+## Persistent host processes
+
+`app.PersistentProcessProvider` and `internal/runtime/process` implement generic
+foreground process lifecycle separately from Compose, Android and Flutter. Domain
+stores additive immutable launch references and native identity; app persists
+intent/identity, reserves ports, resolves common endpoints, coordinates readiness
+and compensates under the operation fence. SQLite owns cross-lease TCP reservations.
+`execx.ManagedProcess` owns native Start/Observe/Terminate mechanics. Runtime
+adapters do not import one another, and no browser behavior enters this boundary.
+
+Each runtime keeps `state/`, `stdout.log`, `stderr.log`, `owner.json`,
+`redaction.json` and `launch.json` below
+`leases/<id>/process-runtimes/<runtime>/`. Only the private `state/` path is exposed
+as `${runtime_dir}`. The launch receipt recovers identity after a registry-save
+failure. Independent `redaction.json` stores versioned ownership and secret
+fingerprints before native launch, so receipt-write failure does not prevent
+bounded diagnostic redaction during compensation. Cleanup
+must prove whole-tree absence before deleting mutable state or releasing ports and
+worktrees. See the [process design](docs/design-docs/persistent-process-runtime.md)
+and its [completed execution evidence](docs/exec-plans/completed/persistent-process-runtime.md);
+native Windows/macOS/Linux acceptance passed.

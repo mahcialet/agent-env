@@ -24,6 +24,12 @@ func (s *Service) inspectRuntime(ctx context.Context, r domain.Runtime) (Runtime
 		}
 		return s.Android.Inspect(ctx, r)
 	}
+	if r.Type == "process" {
+		if s.Process == nil {
+			return RuntimeObservation{}, errors.New("persistent process provider unavailable")
+		}
+		return s.Process.Inspect(ctx, r)
+	}
 	if s.Runtime == nil {
 		return RuntimeObservation{}, errors.New("Compose provider unavailable")
 	}

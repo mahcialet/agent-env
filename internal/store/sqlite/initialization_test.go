@@ -104,7 +104,7 @@ func TestInitializationRetriesOnlyBoundedBusyContention(t *testing.T) {
 		t.Fatal(err)
 	}
 	var count int
-	if err := raw.QueryRow("SELECT count(*) FROM schema_migrations").Scan(&count); err != nil || count != 3 {
+	if err := raw.QueryRow("SELECT count(*) FROM schema_migrations").Scan(&count); err != nil || count != 4 {
 		t.Fatalf("migrations %d: %v", count, err)
 	}
 }

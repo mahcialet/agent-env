@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/product-specs/cli-contract.md
-source_sha256: 7fa565d69b622b25c520c527a7ed3158661b2ccb733b33cbe6881d27926cd762
+source_sha256: ff80303855ffe62430a011cf579ccb39fcdc1a081db4fec8bac98d55303d0c82
 ---
 
 [English（翻訳元）](cli-contract.md)
@@ -38,7 +38,7 @@ agent-env renew <lease-id> [--ttl <duration>]
 agent-env destroy <lease-id> [--dry-run] [--force]
 agent-env reconcile [lease-id]
 agent-env gc [--apply]
-agent-env doctor [repository|lease-id] [--runtime compose|android-emulator|flutter-android] [--provider docker-compose|podman-compose]
+agent-env doctor [repository|lease-id] [--runtime compose|process|android-emulator|flutter-android] [--provider docker-compose|podman-compose]
 ```
 
 リポジトリ省略時は現在のディレクトリを使います。`init` は認識可能なルート Compose file が 1 つあることを要求し、`.agent-env.yaml` を排他的に新規作成して review が必要と報告します。何も起動しません。
@@ -53,17 +53,17 @@ manifest は既定で指定した control checkout から取得します。plan/
 
 `--owner <text>` はグローバルな参考所有者 selector です。`AGENT_ENV_OWNER` が明示的な既定値を与えます。指定しない場合はローカル user/host の識別情報と一意の接尾辞で割り当てを識別し、`list --mine` は別の呼び出しでもそのローカル識別情報に一致させます。owner label は filter であり、認可境界ではありません。
 
-`list` と `show` は記録した source とproviderを固定したCompose project を検査します。`--cached` はレジストリのみを読む明示的な list です。`show` は lease、event、command run、artifact、endpoint の観測を含みます。
+`list`と`show`は記録したsource、providerを固定したCompose project、所有する常駐processの識別情報を検査します。`--cached` はレジストリのみを読む明示的な list です。`show` は lease、event、command run、artifact、endpoint の観測を含みます。
 
 `capabilities` は選択コンポーネントが宣言する capability、観測状態、endpoint のアドレス map を報告します。宣言された endpoint は、保存したランタイム設定に動的 loopback 公開を生成します。
 
 `reconcile <lease-id>` は観測した lease を返します。全体の `reconcile` は `leases` と `inventory` を含む object を返し、一致する所有者記録のないリソースも含めます。削除はしません。
 
-desired state は `active` または `released` です。observed state は `requested`、`allocating`、`starting`、`ready`、`degraded`、`failed`、`releasing`、`released`、`quarantined`、`unknown` です。保存済みの ready 行は実際の健全性の証明ではありません。Compose リソースの不在は active lease を degraded にし、検査失敗は不確定として見える状態を保ちます。期限切れまたは隔離中の lease を、留保のない ready 結果にはできません。
+desired state は `active` または `released` です。observed state は `requested`、`allocating`、`starting`、`ready`、`degraded`、`failed`、`releasing`、`released`、`quarantined`、`unknown` です。保存済みの ready 行は実際の健全性の証明ではありません。Compose resourceの不在や常駐processの予期しない終了はactive leaseをdegradedにし、検査失敗は不確定として見える状態を保ちます。期限切れまたは隔離中の lease を、留保のない ready 結果にはできません。
 
 ランタイム/コンテナと時間制限付き HTTP readiness は再観測できます。任意の command probe は create 中に実行し、list/show はリポジトリコマンドを再実行しません。したがって実リソースの健全な観測は、以前成功した command probe が現在も成功する証明にはなりません。
 
-`logs --run` は記録した 1 つの command run の stdout/stderr を読みます。`logs --component` は、その Compose project を共有する全サービスを返すのではなく、コンポーネントが持つランタイム内サービスを選びます。filter がなければ、利用可能なランタイムのログと保持済みの削除証拠を含めます。
+`logs --run` は記録した 1 つの command run の stdout/stderr を読みます。`logs --component`はCompose runtime内のcomponentのserviceを選びます。process componentではruntimeのfile出力stdout/stderrを選びます。filter がなければ、利用可能なランタイムのログと保持済みの削除証拠を含めます。
 
 グローバルinventoryは、導入済みprovider実行ファイルと記録済みprovider/engine識別情報を
 併せて探索し、resource IDをprovider単位に区別します。導入済みでもengineが利用不能なら、
@@ -152,3 +152,18 @@ Expand/shrink、書き込み可能な fork、checkpoint/reproduce、browser 観�
 `destroy` は対象を厳密に特定した active named run ID にキャンセルを要求し、削除前に最大 10 秒、終了/証拠確定を待ちます。キャンセル未確認や所有者のない running 記録は `--force` を含め削除を阻止します。すでにそれらの named run と無関係な操作は busy のままです。待機中に始まった新しい run を destroy はキャンセルしません。
 
 plan と lease は `manifest_path`、`manifest_commit`、`manifest_modified` を公開します。path は実際に選択した file、commit は runtime source ref とは独立した control checkout の HEAD です。変更済み、未追跡、ignored の file は modified と記録します。Git 外では commit は空で、canonical snapshot/digest が由来を示すことを診断で説明します。`--manifest` は相対 source repository path の解決に使う control repository を変更しません。
+
+## 常駐processの診断とlogs
+
+`doctor --runtime process`はDocker、Podman、Android SDKを要求せずprocess runtime診断を
+選びます。`doctor <lease-id>`は記録したnative識別情報を観測します。外部processの取り込みや
+自動再起動はしません。processのみのlifecycleと個別lease観測にCompose engineは不要です。
+全体inventoryでは導入済み/記録済みCompose providerの可用性を別途報告します。
+
+process runtimeの`show`はprocess snapshotと観測endpoint addressを保持します。
+process readiness内の`${endpoint:localName}`は数値portで、`capabilities`/endpoint出力は
+共通の`host:port`表現です。`logs`は帰属するstdout/stderrを上限付きで読み、独立した起動前
+`redaction.json`でsecretをredactionします。`launch.json`の作成成功には依存しません。host環境を後で変えてもその証拠は失われません。
+起動後に証拠が欠落・不一致なら出力を拒否します。最終process logはcleanup artifactとして
+保持できますが、専用の未加工logや可変状態を無条件でartifactへexportするものではありません。
+[process契約](persistent-process-runtime.ja.md)を参照してください。

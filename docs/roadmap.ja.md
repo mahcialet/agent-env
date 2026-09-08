@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/roadmap.md
-source_sha256: f2cd054c170afa1c42dd67bd05d27519c30b13237a574495e568a4c507c8b84b
+source_sha256: 057a53825e83a8fab933cad1ceacb8019ba6cd3fa90f08b41d5d5fc1646e7a49
 ---
 
 [英語版（翻訳元）](roadmap.md)
@@ -14,7 +14,7 @@ source_sha256: f2cd054c170afa1c42dd67bd05d27519c30b13237a574495e568a4c507c8b84b
 
 ## 確定したMVPの選択
 
-moduleは`github.com/mahcialet/agent-env`で、既存のMITライセンスを保持します。AGENTSは150行を上限とし、パッケージ境界には構造的な検査を設け、データベース文書は連番migrationから生成します。組み込みポリシーは固定公開ポートと、選択対象の外部・共有Composeリソースを拒否します。SQLite transactionと、更新可能でfencingを備える操作lockによりローカルプロセスを調整します。実行スナップショットには選択したサービス・リソースの依存閉包のみを含めます。ネイティブのプロセスツリー取消は現在のrunnerの一部であり、将来のホストプロセスアダプターではありません。
+moduleは`github.com/mahcialet/agent-env`で、既存のMITライセンスを保持します。AGENTSは150行を上限とし、パッケージ境界には構造的な検査を設け、データベース文書は連番migrationから生成します。組み込みポリシーは固定公開ポートと、選択対象の外部・共有Composeリソースを拒否します。SQLite transactionと、更新可能でfencingを備える操作lockによりローカルプロセスを調整します。実行スナップショットには選択したサービス・リソースの依存閉包のみを含めます。native process treeの取消は時間制限付きrunnerが担い、常駐processの寿命には独立したmanaged detached interfaceを使います。
 
 ## 信頼とホストポリシー
 
@@ -26,7 +26,13 @@ moduleは`github.com/mahcialet/agent-env`で、既存のMITライセンスを保
 
 ## runtimeの拡張
 
-iOS、browser/CDPの自動操作・snapshot、汎用の永続ホストプロセス、分散・複数ホストの調整は未実装です。Android Emulatorリースは専用AVD状態とローカルSDKプロセスを所有します。追加の実機CIにはアクセラレーションを利用できるrunnerが必要です。ブラウザーリソースには明示的な所有権とcleanupルールが必要です。
+iOS、browser/CDPの自動操作・snapshot、分散・複数ホストの調整は未実装です。Android Emulatorリースは専用AVD状態とローカルSDKプロセスを所有します。追加の実機CIにはアクセラレーションを利用できるrunnerが必要です。Browser観測と操作には汎用process所有の上に別の契約が必要です。
+
+[常駐process runtime](product-specs/persistent-process-runtime.ja.md)は、argv直接実行、
+専用可変状態、名前付きloopback TCP port、保守的なnative tree cleanupを実装しています。
+最終native integration受け入れは3 OSで成功し、証拠を[完了process plan](exec-plans/completed/persistent-process-runtime.ja.md)
+に記録しました。自己daemon化、自動再起動、対話terminal、remote実行、service導入は
+このruntime契約の対象外です。
 
 [Android UI observer](product-specs/android-ui-observer.ja.md) は、既存の所有 Emulator に対し、
 上限付きの意味情報 snapshot、PNG、Unicode 置換、navigation、現在の PID の log を提供します。

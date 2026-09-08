@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/RELIABILITY.md
-source_sha256: 6d28a3504ad99ca2a85511742e34096c8337c519ced1ea870d97b60ef89b46b7
+source_sha256: 92428534bd0b3b9de62800ca9badeee55938876cf8c4915a97d2d7b28ea5d861
 ---
 
 [英語版（翻訳元）](RELIABILITY.md)
@@ -75,3 +75,26 @@ SQLiteは起動前に専用AVDの識別情報と、偶数・奇数のconsole/ADB
 共有ローカルADBサーバーの寿命は各リースとは別です。作成時にはEmulatorを起動する前に、`127.0.0.1:5037`へ直接送る読み取り専用の`host:version` probeでプロトコル互換性を確立します。サーバーがなければdetached-process APIを通じて別途起動します。既存サーバーのバージョン不一致、不正な応答、観測不能は、置き換えを行わず前提条件の失敗とします。bootの観測ではSDKクライアントを実行する前に互換性確認を繰り返します。共有前提条件が欠けていれば、起動や置き換えをせず報告します。
 
 起動診断と識別情報は、runtimeの証拠と同じ場所の`adb-server.stdout.log`、`adb-server.stderr.log`、`adb-server-start.json`に残ります。その後に割り当てが失敗しても、このホストサービスを停止する許可にはなりません。destroyとGCは所有するEmulatorリソースのみを削除し、グローバルADBサーバーのcleanupは決して行いません。復旧では、このプロセスをリース所有のEmulatorとして扱ったり、起動失敗の証拠を捨てたりせず、共有前提条件を復元する必要があります。
+
+## 常駐processの復旧
+
+processのcreateはsource commit、runtime path、名前付きTCP予約を確定し、起動意図を
+永続化してから起動します。返されたnative識別情報はreadiness前に保存します。
+errorとともに返された0以外の識別情報もcleanup証拠です。後続のregistry保存に失敗した場合は
+`launch.json`で起動を復旧できます。不確実なStartを無作用だったとして繰り返しません。
+後続の独立CLIはnative識別情報と上限付きHTTP healthを観測します。起点終了はleaseを
+ degradedにし、自動再起動はしません。
+
+destroyはsignal前と強制停止への移行前にnative所有を再検証します。Unixで子孫が残る場合は
+foregroundの起点が必要です。group系譜が曖昧なら数値groupへのkillを許可せずquarantineに
+します。Windowsは正確な所有Jobを使います。tree全体の不在を確認してから専用状態、portを
+解放し、通常のtracked変更保護付きworktree cleanupへ進みます。不確実な起動・停止、出力証拠の
+失敗、fence喪失では復旧状態と予約を保持します。destroy/GCの再実行でも証明要件を上書きしません。
+
+runtime fileは`leases/<id>/process-runtimes/<runtime>/`配下に置きます。可変の`state/`は
+cleanup確認後に削除し、logs/起動識別情報は診断証拠として残します。独立した`redaction.json`は
+version付き所有情報とsecret fingerprintをnative Start前に保存するため、`launch.json`の保存に
+失敗しても補償logをredactionできます。後続CLIは現在のhost secret環境に依存しません。
+型付きの`ErrProcessNotStarted`と0のPIDがそろう場合はpreparedへ戻せます。型による証明のない
+識別情報0の失敗は不確実なまま扱います。
+[process lifecycle設計](design-docs/persistent-process-runtime.ja.md)を参照してください。

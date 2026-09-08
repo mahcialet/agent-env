@@ -91,6 +91,9 @@ func BuildPlan(ctx context.Context, o PlanOptions, source SourceProvider) (Plan,
 	if err != nil {
 		return p, err
 	}
+	if err := validateProcessSecrets(*m); err != nil {
+		return p, err
+	}
 	p.Manifest = m
 	p.ManifestDigest = config.Digest(m)
 	if origin, ok := source.(SourceManifestOrigin); ok {
@@ -196,6 +199,21 @@ func BuildPlan(ctx context.Context, o PlanOptions, source SourceProvider) (Plan,
 			p.Runtimes = append(p.Runtimes, domain.Runtime{Name: c.Runtime, Type: r.Type, Source: r.Source, Directory: r.ProjectDirectory, Files: r.Files, Services: []string{}})
 			if r.Type == "compose" {
 				p.Runtimes[i].Provider = domain.EffectiveComposeProvider(domain.ComposeProviderName(r.Provider))
+			}
+			if r.Type == "process" {
+				process := &domain.PersistentProcess{WorkingDirectory: r.WorkingDirectory, Command: append([]string(nil), r.Command...), Env: map[string]string{}, Ports: map[string]int{}, State: "planned"}
+				for key, value := range r.Env {
+					process.Env[key] = value
+				}
+				for name := range r.Ports {
+					process.Ports[name] = 0
+				}
+				for _, source := range p.Sources {
+					if source.Alias == r.Source {
+						process.SourceCommit = source.Commit
+					}
+				}
+				p.Runtimes[i].Process = process
 			}
 			if r.Type == "android-emulator" {
 				p.Runtimes[i].Android = &domain.AndroidEmulator{Template: r.AVD, State: "planned"}

@@ -22,6 +22,7 @@ import (
 	androidruntime "github.com/mahcialet/agent-env/internal/runtime/android"
 	"github.com/mahcialet/agent-env/internal/runtime/compose"
 	flutterruntime "github.com/mahcialet/agent-env/internal/runtime/flutter"
+	processruntime "github.com/mahcialet/agent-env/internal/runtime/process"
 	"github.com/mahcialet/agent-env/internal/source/gitcli"
 	"github.com/mahcialet/agent-env/internal/store/sqlite"
 	"github.com/oklog/ulid/v2"
@@ -78,6 +79,13 @@ func coded(code int, err error) error {
 		return nil
 	}
 	return &ExitError{code, err}
+}
+
+type processAdapter struct{ processruntime.Client }
+
+func (p processAdapter) Inspect(ctx context.Context, runtime domain.Runtime) (app.RuntimeObservation, error) {
+	o, err := p.Client.Inspect(ctx, runtime)
+	return app.RuntimeObservation{Ready: o.Ready, Exists: o.Exists, Resources: o.Resources, Diagnostics: o.Diagnostics, Endpoints: o.Endpoints}, err
 }
 
 type runtimeAdapter struct{ client compose.Client }
@@ -187,7 +195,7 @@ func serviceForStore(home string, store app.Store, out, errOut io.Writer) *app.S
 	runner := execx.OSRunner{}
 	p := policy.Defaults()
 	android := androidruntime.Adapter{Runner: runner, Processes: execx.NativeDetached{}}
-	return &app.Service{Home: home, Store: store, Source: gitSource{gitcli.Client{Runner: runner}}, Runtime: runtimeAdapter{compose.Client{Runner: runner, Policy: p}}, Android: android, Flutter: flutterruntime.Adapter{Runner: runner}, AndroidApplications: android, AndroidUI: android, Policy: p, Runner: runner, Stdout: out, Stderr: errOut}
+	return &app.Service{Home: home, Store: store, Source: gitSource{gitcli.Client{Runner: runner}}, Runtime: runtimeAdapter{compose.Client{Runner: runner, Policy: p}}, Android: android, Process: processAdapter{processruntime.Client{Processes: execx.NativeDetached{}}}, Flutter: flutterruntime.Adapter{Runner: runner}, AndroidApplications: android, AndroidUI: android, Policy: p, Runner: runner, Stdout: out, Stderr: errOut}
 }
 
 func addLifecycle(root *cobra.Command, output *string, emit func(any) error, out, errOut io.Writer) {
@@ -374,8 +382,8 @@ func addLifecycle(root *cobra.Command, output *string, emit func(any) error, out
 	doctorRuntime := "compose"
 	doctorProvider := ""
 	doctor := &cobra.Command{Use: "doctor [repository|lease-id]", Args: cobra.MaximumNArgs(1), RunE: func(cmd *cobra.Command, args []string) error {
-		if doctorRuntime != "compose" && doctorRuntime != "android-emulator" && doctorRuntime != "flutter-android" {
-			return coded(2, errors.New("--runtime must be compose, android-emulator or flutter-android"))
+		if doctorRuntime != "compose" && doctorRuntime != "android-emulator" && doctorRuntime != "flutter-android" && doctorRuntime != "process" {
+			return coded(2, errors.New("--runtime must be compose, android-emulator, flutter-android or process"))
 		}
 		if cmd.Flags().Changed("provider") && (doctorRuntime != "compose" || doctorProvider == "") {
 			return coded(2, errors.New("--provider requires a nonempty Compose provider"))
@@ -439,6 +447,8 @@ func addLifecycle(root *cobra.Command, output *string, emit func(any) error, out
 			var err error
 			if doctorRuntime == "android-emulator" {
 				d, err = (androidruntime.Adapter{Runner: execx.OSRunner{}, Processes: execx.NativeDetached{}}).Doctor(cmd.Context())
+			} else if doctorRuntime == "process" {
+				d = map[string]string{"execution": "native detached process"}
 			} else if doctorRuntime == "flutter-android" {
 				d, err = doctorFlutterHost(cmd.Context(), flutterruntime.Adapter{}, androidruntime.Adapter{Runner: execx.OSRunner{}, Processes: execx.NativeDetached{}})
 			} else {
@@ -573,6 +583,7 @@ func runtimeLogEntries(ctx context.Context, s *app.Service, lease domain.Lease, 
 	entries := map[string]string{}
 	selectedRuntime := ""
 	selectedAndroid := false
+	selectedProcess := false
 	selectedServices := []string{}
 	allowedKinds := map[string]bool{}
 	if component != "" {
@@ -592,10 +603,15 @@ func runtimeLogEntries(ctx context.Context, s *app.Service, lease domain.Lease, 
 		for _, runtime := range lease.Runtimes {
 			if runtime.Name == selectedRuntime {
 				selectedAndroid = runtime.Type == "android-emulator"
+				selectedProcess = runtime.Type == "process"
+				if selectedProcess {
+					allowedKinds["process-log/"+selectedRuntime] = true
+					allowedKinds["process-log-before-stop/"+selectedRuntime] = true
+				}
 				break
 			}
 		}
-		if selectedRuntime == "" || (!selectedAndroid && len(selectedServices) == 0) {
+		if selectedRuntime == "" || (!selectedAndroid && !selectedProcess && len(selectedServices) == 0) {
 			return nil, errors.New("component has no allocated runtime services in this lease")
 		}
 	}
@@ -610,7 +626,7 @@ func runtimeLogEntries(ctx context.Context, s *app.Service, lease domain.Lease, 
 			if component != "" {
 				continue
 			}
-		} else if strings.HasPrefix(artifact.Kind, "compose-log/") || strings.HasPrefix(artifact.Kind, "application-build/") {
+		} else if strings.HasPrefix(artifact.Kind, "compose-log/") || strings.HasPrefix(artifact.Kind, "application-build/") || strings.HasPrefix(artifact.Kind, "process-log/") || strings.HasPrefix(artifact.Kind, "process-log-before-stop/") {
 			if component != "" && !allowedKinds[artifact.Kind] {
 				continue
 			}
@@ -653,7 +669,16 @@ func runtimeLogEntries(ctx context.Context, s *app.Service, lease domain.Lease, 
 			}
 			runtime.Services = append([]string(nil), selectedServices...)
 		}
-		logs, err := s.Runtime.Logs(ctx, runtime)
+		var logs string
+		var err error
+		if runtime.Type == "process" {
+			if s.Process == nil {
+				return nil, errors.New("process provider unavailable")
+			}
+			logs, err = s.Process.Logs(ctx, runtime)
+		} else {
+			logs, err = s.Runtime.Logs(ctx, runtime)
+		}
 		if err != nil {
 			return nil, err
 		}

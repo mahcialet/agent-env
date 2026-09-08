@@ -11,6 +11,7 @@ import (
 
 	"github.com/mahcialet/agent-env/internal/config"
 	"github.com/mahcialet/agent-env/internal/domain"
+	"github.com/mahcialet/agent-env/internal/evidence"
 	"github.com/mahcialet/agent-env/internal/execx"
 	"github.com/mahcialet/agent-env/internal/paths"
 )
@@ -34,6 +35,12 @@ func (s *Service) probeReady(ctx context.Context, l *domain.Lease) error {
 }
 
 func (s *Service) runProbe(ctx context.Context, l domain.Lease, component string, index int, p config.Probe) error {
+	probeSecrets := append(evidence.InheritedSecrets(), processProbeSecrets(p)...)
+	var expandErr error
+	p, expandErr = s.processProbe(l, component, p)
+	if expandErr != nil {
+		return expandErr
+	}
 	timeout := 30 * time.Second
 	if p.Timeout != "" {
 		timeout, _ = time.ParseDuration(p.Timeout)
@@ -84,7 +91,7 @@ func (s *Service) runProbe(ctx context.Context, l domain.Lease, component string
 			}
 			result, err := s.Runner.Run(ctx, execx.Command{Name: p.Command[0], Args: p.Command[1:], Dir: directory, Timeout: timeout})
 			last = err
-			if e := s.saveTextArtifact(context.WithoutCancel(ctx), l, "readiness", fmt.Sprintf("%s-%d-probe.log", component, index), result.Stdout+"\n"+result.Stderr); e != nil {
+			if e := s.saveTextArtifact(context.WithoutCancel(ctx), l, "readiness", fmt.Sprintf("%s-%d-probe.log", component, index), evidence.RedactString(result.Stdout+"\n"+result.Stderr, probeSecrets)); e != nil {
 				return e
 			}
 		default:
@@ -95,7 +102,7 @@ func (s *Service) runProbe(ctx context.Context, l domain.Lease, component string
 		}
 		select {
 		case <-ctx.Done():
-			return fmt.Errorf("component %s readiness probe %d (%s) failed: %w: %v", component, index, p.Type, ctx.Err(), last)
+			return fmt.Errorf("component %s readiness probe %d (%s) failed: %w: %v", component, index, p.Type, ctx.Err(), evidence.RedactString(fmt.Sprint(last), probeSecrets))
 		case <-time.After(interval):
 		}
 	}
@@ -121,13 +128,20 @@ func (s *Service) Endpoints(ctx context.Context, l domain.Lease) (map[string]str
 				if protocol == "" {
 					protocol = "tcp"
 				}
-				if address, ok := o.Endpoints[fmt.Sprintf("%s/%d/%s", e.Service, e.Target, protocol)]; ok {
+				key := fmt.Sprintf("%s/%d/%s", e.Service, e.Target, protocol)
+				if r.Type == "process" {
+					key = e.RuntimePort
+				}
+				if address, ok := o.Endpoints[key]; ok {
 					result[c.Name+"."+name] = address
 				}
 			}
 		}
 		for name, address := range o.Endpoints {
-			result[r.Name+"."+strings.ReplaceAll(name, "/", ".")] = address
+			key := r.Name + "." + strings.ReplaceAll(name, "/", ".")
+			if _, declared := result[key]; !declared {
+				result[key] = address
+			}
 		}
 	}
 	return result, nil
@@ -146,6 +160,10 @@ func (s *Service) probeHealth(ctx context.Context, l domain.Lease) error {
 		for i, p := range m.Components[c.Name].Readiness {
 			if p.Type != "http" {
 				continue
+			}
+			p, err := s.processProbe(l, c.Name, p)
+			if err != nil {
+				return err
 			}
 			req, err := http.NewRequestWithContext(ctx, http.MethodGet, p.URL, nil)
 			if err != nil {

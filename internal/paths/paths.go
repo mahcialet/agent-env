@@ -92,3 +92,8 @@ func contained(root, p string) bool {
 	rel, err := filepath.Rel(root, p)
 	return err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) && !filepath.IsAbs(rel)
 }
+
+// ProcessRuntime stores lease-local state and evidence independently of source trees.
+func ProcessRuntime(home, leaseID, name string) string {
+	return filepath.Join(home, "leases", leaseID, "process-runtimes", name)
+}

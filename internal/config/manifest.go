@@ -34,12 +34,16 @@ type Source struct {
 	Writable   bool   `yaml:"writable,omitempty" json:"writable,omitempty"`
 }
 type Runtime struct {
-	Type             string   `yaml:"type" json:"type"`
-	Provider         string   `yaml:"provider,omitempty" json:"provider,omitempty"`
-	Source           string   `yaml:"source" json:"source"`
-	ProjectDirectory string   `yaml:"project_directory" json:"project_directory"`
-	Files            []string `yaml:"files" json:"files"`
-	AVD              string   `yaml:"avd,omitempty" json:"avd,omitempty"`
+	WorkingDirectory string                 `yaml:"working_directory,omitempty" json:"working_directory,omitempty"`
+	Command          []string               `yaml:"command,omitempty" json:"command,omitempty"`
+	Env              map[string]string      `yaml:"env,omitempty" json:"env,omitempty"`
+	Ports            map[string]ProcessPort `yaml:"ports,omitempty" json:"ports,omitempty"`
+	Type             string                 `yaml:"type" json:"type"`
+	Provider         string                 `yaml:"provider,omitempty" json:"provider,omitempty"`
+	Source           string                 `yaml:"source" json:"source"`
+	ProjectDirectory string                 `yaml:"project_directory" json:"project_directory"`
+	Files            []string               `yaml:"files" json:"files"`
+	AVD              string                 `yaml:"avd,omitempty" json:"avd,omitempty"`
 }
 type Component struct {
 	Application     string              `yaml:"application,omitempty" json:"application,omitempty"`
@@ -73,9 +77,10 @@ type Probe struct {
 	Command          []string `yaml:"command,omitempty" json:"command,omitempty"`
 }
 type Endpoint struct {
-	Service  string `yaml:"service" json:"service"`
-	Target   int    `yaml:"target" json:"target"`
-	Protocol string `yaml:"protocol,omitempty" json:"protocol,omitempty"`
+	RuntimePort string `yaml:"runtime_port,omitempty" json:"runtime_port,omitempty"`
+	Service     string `yaml:"service" json:"service"`
+	Target      int    `yaml:"target" json:"target"`
+	Protocol    string `yaml:"protocol,omitempty" json:"protocol,omitempty"`
 }
 
 // Load reads either a repository directory or an explicit manifest file.
@@ -124,6 +129,9 @@ func Parse(data []byte) (*Manifest, error) {
 				return nil, fmt.Errorf("manifest: runtime %s provider must be docker-compose or podman-compose", name)
 			}
 		}
+	}
+	if err := validateProcessPresence(data, &m); err != nil {
+		return nil, err
 	}
 	if err := Validate(&m); err != nil {
 		return nil, err
@@ -251,10 +259,11 @@ func Validate(m *Manifest) error {
 		}
 	}
 	androidNames := map[string]string{}
+	processNames := map[string]string{}
 	for _, n := range keys(m.Runtimes) {
 		r := m.Runtimes[n]
-		if r.Type != "compose" && r.Type != "android-emulator" {
-			return fmt.Errorf("manifest: runtime %s type %q is unsupported; use compose or android-emulator", n, r.Type)
+		if r.Type != "compose" && r.Type != "android-emulator" && r.Type != "process" {
+			return fmt.Errorf("manifest: runtime %s type %q is unsupported; use compose, android-emulator, or process", n, r.Type)
 		}
 		if _, ok := m.Sources[r.Source]; !ok {
 			return fmt.Errorf("manifest: runtime %s references unknown source %q", n, r.Source)
@@ -264,6 +273,19 @@ func Validate(m *Manifest) error {
 		}
 		if r.Type == "compose" && r.Provider != "" && r.Provider != "docker-compose" && r.Provider != "podman-compose" {
 			return fmt.Errorf("manifest: runtime %s provider %q is unsupported; use docker-compose or podman-compose", n, r.Provider)
+		}
+		if r.Type == "process" {
+			if previous, exists := processNames[strings.ToLower(n)]; exists {
+				return fmt.Errorf("manifest: process runtime names %q and %q collide under case folding", previous, n)
+			}
+			processNames[strings.ToLower(n)] = n
+			if err := validateProcess(n, r); err != nil {
+				return err
+			}
+			continue
+		}
+		if r.WorkingDirectory != "" || len(r.Command) > 0 || len(r.Env) > 0 || len(r.Ports) > 0 {
+			return fmt.Errorf("manifest: runtime %s process fields require type process", n)
 		}
 		if r.Type == "android-emulator" {
 			folded := strings.ToLower(n)
@@ -300,10 +322,14 @@ func Validate(m *Manifest) error {
 			return fmt.Errorf("manifest: component %s references unknown runtime %q", n, c.Runtime)
 		}
 		android := m.Runtimes[c.Runtime].Type == "android-emulator"
+		process := m.Runtimes[c.Runtime].Type == "process"
+		if process && len(c.ComposeServices) > 0 {
+			return fmt.Errorf("manifest: process component %s cannot use compose_services", n)
+		}
 		if android && (len(c.ComposeServices) != 0 || len(c.Endpoints) != 0) {
 			return fmt.Errorf("manifest: Android component %s cannot use Compose services or endpoints", n)
 		}
-		if err := distinct("component "+n+" compose_services", c.ComposeServices, !android); err != nil {
+		if err := distinct("component "+n+" compose_services", c.ComposeServices, !android && !process); err != nil {
 			return err
 		}
 		for _, service := range c.ComposeServices {
@@ -323,8 +349,15 @@ func Validate(m *Manifest) error {
 			return err
 		}
 		for i, p := range c.Readiness {
-			if android && p.Type == "compose" {
-				return fmt.Errorf("manifest: Android component %s cannot use Compose readiness", n)
+			if err := validateProcessProbeReferences(p, c, m.Runtimes[c.Runtime], process); err != nil {
+				return fmt.Errorf("manifest: component %s readiness: %w", n, err)
+			}
+			if process {
+				p.URL = processEndpointReference.ReplaceAllString(p.URL, "1")
+			}
+
+			if (android || process) && p.Type == "compose" {
+				return fmt.Errorf("manifest: non-Compose component %s cannot use Compose readiness", n)
 			}
 			if err := probe(m, p); err != nil {
 				return fmt.Errorf("manifest: component %s readiness[%d]: %w", n, i, err)
@@ -335,6 +368,15 @@ func Validate(m *Manifest) error {
 		}
 		for _, en := range keys(c.Endpoints) {
 			e := c.Endpoints[en]
+			if process {
+				if _, ok := m.Runtimes[c.Runtime].Ports[e.RuntimePort]; !ok || e.Service != "" || e.Target != 0 || e.Protocol != "" {
+					return fmt.Errorf("manifest: process component %s endpoint %s requires only a declared runtime_port", n, en)
+				}
+				continue
+			}
+			if e.RuntimePort != "" {
+				return fmt.Errorf("manifest: Compose component %s cannot use runtime_port", n)
+			}
 			found := false
 			for _, s := range c.ComposeServices {
 				found = found || s == e.Service

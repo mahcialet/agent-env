@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/SECURITY.md
-source_sha256: 1913baeb35ab4a612f3e4830d33a942a3a8790c3f55c2e781d8564a968454303
+source_sha256: 6a49fed49d58dba821926d397b3a8b73874621773ed4d120ff55dd0b474a268c
 ---
 
 [英語版（翻訳元）](SECURITY.md)
@@ -81,3 +81,25 @@ runtime の前提ツールは引き続き信頼するホスト入力であり、
 任意の Android UI helper は外部でビルドし、現在のリリースには埋め込みません。
 汎用資産の digest 検査は破損を検出するもので、既存のローカルな信頼境界を越えて
 悪意あるホスト変更を防ぐものではありません。
+
+## 常駐host processの信頼とlogs
+
+process runtimeは宣言したnative実行ファイルをhost userの権限で動かします。固定source、
+分離した状態、予約loopback portは所有と衝突の制御であり、sandboxではありません。
+command自身がloopbackへbindする必要があります。agent-envは信頼するrepository codeの
+任意のnetwork/file system作用を防ぎません。cwd/source相対実行ファイルの閉じ込めはsymlinkを
+解決して確認します。PATH解決/digestはhost toolを固定せずに証拠を記録します。
+
+process環境変数値にも名前付きtestと同じ明示的な`${env:NAME}` secret参照規則を適用します。
+展開した認証情報は一時的な起動入力とし、永続command/環境変数fieldには参照を残します。
+native stdout/stderr fileは専用の未加工出力であり、applicationが出したsecretを含むことが
+あります。状態root、起動receipt、起動前redaction証拠は非公開とし、通常のartifactとして
+公開しないでください。
+
+CLIのlog読み取りは上限付きで、独立した起動前`redaction.json`内のsecret fingerprintを
+使ってredactionします。host変数を後で削除・変更した場合や、起動後の識別情報receiptの保存に
+失敗した場合も同じ値を隠します。起動済みprocessのredaction証拠が
+欠落、不正、不一致の場合は出力を拒否します。fingerprintは平文値を保存しませんが暗号化では
+なく、専用storageでの保護が必要です。未知のapplication secretや変換済みsecret値の検出は
+保証しません。可変profile/databaseを自動で証拠へcopyせず、tree不在確認後にのみ削除します。
+[process契約](product-specs/persistent-process-runtime.ja.md)を参照してください。

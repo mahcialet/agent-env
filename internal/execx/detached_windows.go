@@ -20,30 +20,30 @@ import (
 func startDetached(ctx context.Context, cmd *exec.Cmd) (ProcessIdentity, error) {
 	var session uint32
 	if err := windows.ProcessIdToSessionId(uint32(os.Getpid()), &session); err != nil {
-		return ProcessIdentity{}, err
+		return ProcessIdentity{}, errors.Join(ErrProcessNotStarted, err)
 	}
 	var nonce [16]byte
 	if _, err := rand.Read(nonce[:]); err != nil {
-		return ProcessIdentity{}, err
+		return ProcessIdentity{}, errors.Join(ErrProcessNotStarted, err)
 	}
 	name := "Local\\agent-env-" + hex.EncodeToString(nonce[:])
 	wide, err := windows.UTF16PtrFromString(name)
 	if err != nil {
-		return ProcessIdentity{}, err
+		return ProcessIdentity{}, errors.Join(ErrProcessNotStarted, err)
 	}
 	job, err := windows.CreateJobObject(nil, wide)
 	if err != nil {
-		return ProcessIdentity{}, err
+		return ProcessIdentity{}, errors.Join(ErrProcessNotStarted, err)
 	}
 	defer windows.CloseHandle(job)
 	// No KILL_ON_JOB_CLOSE: a per-resource guardian retains a handle while
 	// members live, preserving named observation after this CLI exits.
 	cmd.SysProcAttr = &syscall.SysProcAttr{CreationFlags: windows.CREATE_NEW_PROCESS_GROUP | windows.DETACHED_PROCESS | windows.CREATE_SUSPENDED}
 	if err := ctx.Err(); err != nil {
-		return ProcessIdentity{}, err
+		return ProcessIdentity{}, errors.Join(ErrProcessNotStarted, err)
 	}
 	if err := cmd.Start(); err != nil {
-		return ProcessIdentity{}, err
+		return ProcessIdentity{}, errors.Join(ErrProcessNotStarted, err)
 	}
 	id := ProcessIdentity{PID: cmd.Process.Pid}
 	abort := func(cause error) (ProcessIdentity, error) {
@@ -90,80 +90,83 @@ func startDetached(ctx context.Context, cmd *exec.Cmd) (ProcessIdentity, error) 
 var openDetachedJob = windows.NewLazySystemDLL("kernel32.dll").NewProc("OpenJobObjectW")
 
 func detachedTreeAlive(id ProcessIdentity) (bool, error) {
+	observed, err := observeDetachedJob(id)
+	return observed.Alive, err
+}
+
+func observeDetachedJob(id ProcessIdentity) (ProcessObservation, error) {
 	fields := strings.Split(id.StartID, "|")
 	if len(fields) != 5 || fields[0] != "job" || !strings.HasPrefix(fields[2], "Local\\agent-env-") || fields[3] == "" || !filepath.IsAbs(fields[4]) {
-		return false, errors.New("detached job identity missing")
+		return ProcessObservation{}, errors.New("detached job identity missing")
 	}
 	if filepath.Base(fields[4]) != ".detached-"+strings.TrimPrefix(fields[2], "Local\\agent-env-")+"-empty" {
-		return false, errors.New("detached guardian proof identity mismatch")
+		return ProcessObservation{}, errors.New("detached guardian proof identity mismatch")
 	}
 	wantedSession, err := strconv.ParseUint(fields[1], 10, 32)
 	if err != nil {
-		return false, errors.New("invalid detached job session identity")
+		return ProcessObservation{}, errors.New("invalid detached job session identity")
 	}
 	var currentSession uint32
 	if err := windows.ProcessIdToSessionId(uint32(os.Getpid()), &currentSession); err != nil {
-		return false, err
+		return ProcessObservation{}, err
 	}
 	// Local job names resolve in the observing CLI's Terminal Services session.
 	// A missing name in another session says nothing about the original job,
 	// especially after its root exits while descendants remain alive.
 	if uint64(currentSession) != wantedSession {
-		return false, errors.New("detached job belongs to a different Windows session; observation is uncertain")
-	}
-	actual, rootAlive, err := detachedIdentity(id.PID)
-	if err != nil {
-		return false, err
-	}
-	if rootAlive && actual != fields[3] {
-		return false, errors.New("detached job root identity reused or ambiguous")
+		return ProcessObservation{}, errors.New("detached job belongs to a different Windows session; observation is uncertain")
 	}
 	wide, err := windows.UTF16PtrFromString(fields[2])
 	if err != nil {
-		return false, err
+		return ProcessObservation{}, err
 	}
 	// JOB_OBJECT_QUERY = 0x0004. x/sys does not expose OpenJobObjectW.
 	raw, _, callErr := openDetachedJob.Call(0x0004, 0, uintptr(unsafe.Pointer(wide)))
 	if raw == 0 {
 		if errors.Is(callErr, windows.ERROR_FILE_NOT_FOUND) {
-			actual, alive, err := detachedIdentity(id.PID)
-			if err != nil {
-				return false, err
-			}
-			if alive {
-				if actual != fields[3] {
-					return false, errors.New("detached job root identity reused during observation")
-				}
-				return false, errors.New("live detached root lost its job identity")
-			}
+			// The exact guardian tombstone proves the recorded Job completed.
+			// A later process using its historical PID is unrelated and must
+			// neither prevent absence nor become a signal target.
 			proof, proofErr := os.ReadFile(fields[4])
 			if proofErr != nil || string(proof) != fields[2] {
-				return false, errors.New("detached job missing without confirmed empty-process evidence")
+				return ProcessObservation{}, errors.New("detached job missing without confirmed empty-process evidence")
 			}
-			return false, nil
+			return ProcessObservation{}, nil
 		}
-		return false, callErr
+		return ProcessObservation{}, callErr
 	}
 	job := windows.Handle(raw)
 	defer windows.CloseHandle(job)
 	var accounting jobAccounting
 	if err := windows.QueryInformationJobObject(job, windows.JobObjectBasicAccountingInformation, uintptr(unsafe.Pointer(&accounting)), uint32(unsafe.Sizeof(accounting)), nil); err != nil {
-		return false, err
+		return ProcessObservation{}, err
 	}
 	if accounting.ActiveProcesses > 0 {
-		return true, nil
+		actual, rootAlive, identityErr := detachedIdentity(id.PID)
+		mismatch := rootAlive && actual != fields[3]
+		if identityErr == nil && !mismatch {
+			return ProcessObservation{Alive: true, RootAlive: rootAlive}, nil
+		}
+		// The last member may exit between accounting and PID observation.
+		// Recheck this already-open exact Job before diagnosing a reused PID.
+		if err := windows.QueryInformationJobObject(job, windows.JobObjectBasicAccountingInformation, uintptr(unsafe.Pointer(&accounting)), uint32(unsafe.Sizeof(accounting)), nil); err != nil {
+			return ProcessObservation{}, err
+		}
+		if accounting.ActiveProcesses > 0 {
+			return ProcessObservation{Alive: true}, errors.Join(ErrProcessTreeUnconfirmed, identityErr, errors.New("detached job root identity reused or ambiguous"))
+		}
 	}
 	// An empty Job precedes the guardian's last write. Keep the cleanup barrier
 	// until it publishes its closed, synced proof; otherwise it could create a
 	// file while a caller removes the evidence directory after observed absence.
 	proof, proofErr := os.ReadFile(fields[4])
 	if errors.Is(proofErr, os.ErrNotExist) {
-		return true, nil
+		return ProcessObservation{Alive: true}, nil
 	}
 	if proofErr != nil || string(proof) != fields[2] {
-		return true, errors.Join(ErrProcessTreeUnconfirmed, proofErr, errors.New("detached guardian completion evidence invalid"))
+		return ProcessObservation{Alive: true}, errors.Join(ErrProcessTreeUnconfirmed, proofErr, errors.New("detached guardian completion evidence invalid"))
 	}
-	return false, nil
+	return ProcessObservation{}, nil
 }
 
 func detachedIdentity(pid int) (string, bool, error) {
