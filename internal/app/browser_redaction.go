@@ -142,3 +142,56 @@ func boundRedactedBrowserCapture(o *domain.BrowserObservation) {
 	}
 	o.Network = network
 }
+
+// Keep the final registered snapshot within the semantic contract, including
+// metadata added by app and expansion from redaction. References/fingerprints
+// stay unchanged; any reduced evidence is explicitly unusable for input.
+func boundRedactedBrowserSnapshot(sn *domain.BrowserSnapshot) error {
+	if sn == nil {
+		return nil
+	}
+	for i := range sn.Nodes {
+		for _, field := range []*string{&sn.Nodes[i].Name, &sn.Nodes[i].Value} {
+			if len(*field) > 4096 {
+				*field = "[TRUNCATED]"
+				sn.Truncated = true
+			}
+		}
+	}
+	if len(sn.Nodes) > 2048 {
+		sn.Nodes = sn.Nodes[:2048]
+		sn.Truncated = true
+	}
+	data, err := json.Marshal(sn)
+	if err != nil || len(data) <= 1<<20 {
+		return err
+	}
+	sn.Truncated = true
+	// Find the largest complete node prefix that fits, counting JSON escaping.
+	all := sn.Nodes
+	trial := *sn
+	trial.Nodes = all[:0]
+	data, err = json.Marshal(&trial)
+	if err != nil {
+		return err
+	}
+	if len(data) > 1<<20 {
+		return errors.New("semantic snapshot metadata exceeds 1 MiB")
+	}
+	low, high := 0, len(all)
+	for low < high {
+		mid := low + (high-low+1)/2
+		trial.Nodes = all[:mid]
+		data, err = json.Marshal(&trial)
+		if err != nil {
+			return err
+		}
+		if len(data) <= 1<<20 {
+			low = mid
+		} else {
+			high = mid - 1
+		}
+	}
+	sn.Nodes = all[:low]
+	return nil
+}

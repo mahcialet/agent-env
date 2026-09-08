@@ -85,7 +85,7 @@ func TestTransportCaptureIgnoresOtherSessionsAndMethods(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 	var obs domain.BrowserObservation
-	err := capture(ctx, c, "s", domain.BrowserRequest{Operation: "network", Duration: 20 * time.Millisecond}, &obs)
+	err := capture(ctx, c, "s", domain.BrowserRequest{Operation: "network", Duration: time.Second}, &obs)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,7 +104,7 @@ func TestTransportSubscribedOverflowFailsClosed(t *testing.T) {
 	})
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	if err := capture(ctx, c, "s", domain.BrowserRequest{Operation: "network", Duration: 20 * time.Millisecond}, &domain.BrowserObservation{}); err == nil {
+	if err := capture(ctx, c, "s", domain.BrowserRequest{Operation: "network", Duration: time.Second}, &domain.BrowserObservation{}); err == nil {
 		t.Fatal("subscribed overflow silently succeeded")
 	}
 }
@@ -123,7 +123,7 @@ func TestTransportCaptureSubscriptionEndsWithOperation(t *testing.T) {
 	})
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	if err := capture(ctx, c, "s", domain.BrowserRequest{Operation: "network", Duration: 20 * time.Millisecond}, &domain.BrowserObservation{}); err != nil {
+	if err := capture(ctx, c, "s", domain.BrowserRequest{Operation: "network", Duration: time.Second}, &domain.BrowserObservation{}); err != nil {
 		t.Fatal(err)
 	}
 	if err := c.call(ctx, "s", "Runtime.evaluate", nil, nil); err != nil {

@@ -374,3 +374,63 @@ func TestUnparentedIframeTargetsArePageScoped(t *testing.T) {
 		})
 	}
 }
+
+func TestSnapshotNodeLimitMarksOnlyOmittedNodes(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		counts    []int
+		truncated bool
+	}{
+		{"below", []int{2047}, false},
+		{"exact", []int{2048}, false},
+		{"over", []int{2049}, true},
+		{"frames-exact", []int{1024, 1024}, false},
+		{"frames-over", []int{1024, 1025}, true},
+		{"exact-empty-child", []int{2048, 0}, false},
+		{"exact-nonempty-child", []int{2048, 1}, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			c, done := mockBrowser(t, func(q envelope) any {
+				switch q.Method {
+				case "Page.getFrameTree":
+					main := map[string]any{"frame": map[string]any{"id": "main", "url": "https://site.test/", "securityOrigin": "https://site.test"}}
+					if len(tc.counts) > 1 {
+						main["childFrames"] = []any{map[string]any{"frame": map[string]any{"id": "child", "url": "https://site.test/frame", "securityOrigin": "https://site.test"}}}
+					}
+					return map[string]any{"frameTree": main}
+				case "Accessibility.getFullAXTree":
+					var params struct{ FrameID string }
+					if e := json.Unmarshal(q.Params, &params); e != nil {
+						t.Error(e)
+					}
+					count := tc.counts[0]
+					if params.FrameID == "child" {
+						count = tc.counts[1]
+					}
+					nodes := make([]axNode, count)
+					for i := range nodes {
+						nodes[i].BackendDOMNodeID = i + 1
+					}
+					return map[string]any{"nodes": nodes}
+				default:
+					return map[string]any{}
+				}
+			})
+			defer done()
+			sn, e := snapshot(context.Background(), c, "s", domain.BrowserIdentity{}, domain.BrowserPage{ID: "main"})
+			if e != nil {
+				t.Fatal(e)
+			}
+			total := 0
+			for _, n := range tc.counts {
+				total += n
+			}
+			if total > 2048 {
+				total = 2048
+			}
+			if len(sn.Nodes) != total || sn.Truncated != tc.truncated {
+				t.Fatalf("nodes=%d truncated=%v, want %d/%v", len(sn.Nodes), sn.Truncated, total, tc.truncated)
+			}
+		})
+	}
+}

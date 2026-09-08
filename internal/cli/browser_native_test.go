@@ -287,6 +287,44 @@ stacks:
 		t.Helper()
 		return call(op, append([]string{"--page", page, "--snapshot", s.ID, "--node", n.Ref}, args...)...)
 	}
+	call("navigate", "--page", page, "--url", strings.TrimSuffix(url, "/page.html")+"/closed-shadow")
+	call("wait", "--page", page, "--wait-for", "text", "--contains", "Closed action")
+	closed := snapshot()
+	action("click", closed, find(closed, "button", "Closed action"))
+	call("wait", "--page", page, "--wait-for", "text", "--contains", "Closed click received")
+	closed = snapshot()
+	if !action("set-text", closed, find(closed, "textbox", "Closed input"), "--text", "閉じた shadow input").Observation.ReadbackEqual {
+		t.Fatal("closed shadow text replacement readback failed")
+	}
+	closed = snapshot()
+	action("key", closed, find(closed, "textbox", "Closed input"), "--key", "Enter")
+	call("wait", "--page", page, "--wait-for", "text", "--contains", "Closed key received")
+	closed = snapshot()
+	action("scroll", closed, find(closed, "region", "Closed scroll"), "--delta-y", "100")
+	call("wait", "--page", page, "--wait-for", "text", "--contains", "Closed scroll received")
+	closed = snapshot()
+	action("click", closed, find(closed, "button", "Cover closed action"))
+	closed = snapshot()
+	for _, op := range []string{"click", "scroll", "key", "set-text"} {
+		role, name := "button", "Closed action"
+		extra := []string{}
+		switch op {
+		case "scroll":
+			role, name, extra = "region", "Closed scroll", []string{"--delta-y", "100"}
+		case "key":
+			role, name, extra = "textbox", "Closed input", []string{"--key", "Enter"}
+		case "set-text":
+			role, name, extra = "textbox", "Closed input", []string{"--text", "must not be entered"}
+		}
+		node := find(closed, role, name)
+		args := append([]string{"browser", op, leases[0].ID, "--browser", "web", "--page", page, "--snapshot", closed.ID, "--node", node.Ref}, extra...)
+		if output, err := invoke(args...); err == nil || !bytes.Contains(output, []byte("node is obscured")) {
+			t.Fatalf("covered closed-root %s must refuse before input: %s %v", op, output, err)
+		}
+	}
+	call("navigate", "--page", page, "--url", url)
+	call("wait", "--page", page, "--wait-for", "text", "--contains", "Browser fixture")
+	s = snapshot()
 	unicode := "入力秘匿 日本語 🧪 café ' \\\""
 	typed := action("set-text", s, find(s, "textbox", "Unicode text"), "--text", unicode)
 	if !typed.Observation.ReadbackEqual {

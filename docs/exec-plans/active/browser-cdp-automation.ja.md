@@ -1,7 +1,7 @@
 ---
-source_sha256: fa84d5114bd7488993a93f48c0a770ddb487d7a314191f887e1ffdfa00c3d7d8
-translation_of: docs/exec-plans/completed/browser-cdp-automation.md
-status: completed
+source_sha256: 02c4f5c214cb79c33602a3d67c30cfe776b12c527fa75a39f35b261f3f80416f
+translation_of: docs/exec-plans/active/browser-cdp-automation.md
+status: active
 owner: maintainers
 last_verified: 2026-09-09
 ---
@@ -76,6 +76,13 @@ browsers:
 port名だけからbrowserをimplicit推測しない。
 
 ## 進捗
+
+- [x] 2026-09-09: 最終統合repoctl check、全repository race、sandbox有効Linux native race（10.082秒）が成功した。6件のmutation callback検証を復旧後（race 10回、1.582秒）、独立相互レビューも成功した。redaction後のsnapshot回帰テスト成功（6.369秒）。2 MiB超の膨張、保存artifact 1 MiB上限、対象識別子保持、永続run完了を検証した。残るgateは新しい複数OS CI。
+
+- [x] 2026-09-09: 第3回5件を修正し、修正前に失敗する回帰テストを追加した。closed shadow native race成功（11.031秒）、actions/focus race 3回成功（1.245秒）、AX snapshot/gone境界race 10回成功（15.425秒）、capture/network/transport race 10回成功（44.414秒）、最終console/capture race 10回成功（3.091秒）。この時点では統合harness/full raceと新しいnative CIは未完。
+
+
+- [ ] 2026-09-09: PR #10の第3回レビューに対応する。redaction後のsemantic上限、closed shadow入力、capture購読期限、AX node境界、console引数省略を修正し、回帰テスト・harness・native CIの証拠を確認してから完了へ移す。
 
 - [x] 2026-09-09: 最終実装cdcec91807a27b6215d2aeb0f6533ed8c96437cdで全検証が成功した。PR Verify 34252382308（12 jobs）、PR Browser native 34252379866（Linux 11.50秒、macOS 14.04秒、Windows 30.98秒）、Release preview 34252379587（buildと3 smoke jobs）、push Verify 34252373749、push Browser native 34252373761。第2回8件すべてに対応内容を返信済みで、archiveとともに最終CI確認とResolveを行う。
 
@@ -182,6 +189,11 @@ Windows/macOSのbrowser実行と公開最終CIは未完了のため、Planはact
 
 ## 想定外の発見
 
+- 2026-09-09: 独立レビューで、既存のstale target回帰fixtureに新たに必要な隔離execution contextがなく、mutation callback前の拒否だけでテストが通ることが判明した。context fixtureとcallback実行の必須assertionを追加し、意図した拒否経路を検証する。統合harnessとfull raceは成功し、snapshot検証もartifact実byte数、保持node識別子、永続runのpassed状態まで確認した。
+
+- 2026-09-09: 短いsecretのredactionでprovider上限内の文字列がAX fieldとsemantic JSON上限を超え、大きな回帰ケースは従来のapp 2 MiB guardも超えた。2048 nodeちょうどの単一/複数frameや末尾空frameが誤ってtruncatedになっていた。native closed root clickはhost.shadowRootを参照できず修正前に失敗した。遅いdomain enableで20 ms captureが500 ms超になり、省略console引数も完全な証拠と表示された。既存bulk-eventテストはenable時間の除外を前提としていたため、event件数とassertionを維持してenable処理を含む時間予算へ更新した。
+
+
 - 2026-09-09: 859ca74の新しいnative CIでfocus転送回帰テストがmacOSとWindowsのpush run 34251804805・PR run 34251809149の両方で失敗した。Linuxは成功した。key操作が不確定拒否でなく成功を返しており、tab focus/event dispatchを調査する。テストやsandbox条件を緩めず、受け入れは未完とする。
 
 - 2026-09-09: 実ChromeでURL mockの不足が判明した。Page.Frame.urlにfragmentは含まれずurlFragmentで別返却される。native query waitは成功したがfragment waitはtimeoutした。frame decode・一時条件評価・document identityへurlFragmentを追加し、commit前にnative検証を再実行する。
@@ -280,6 +292,9 @@ OS executable差、WebSocket teardown等を記録する。
 dynamic page対応のためidentity/stale checkを弱めない。
 
 ## 判断の記録
+
+- 2026-09-09: redactionとapp metadata設定後にsemantic snapshotを再制限する。長いAX name/valueを置換し、node数とJSON encoding 1 MiB以内の最大node prefixを維持する。参照/fingerprintを保持してtruncatedを明示し、縮小証拠による入力を拒否する。成功したread-only観測でrunning barrierを残さない。closed shadowは隔離worldのbackend nodeから最大128 rootを外向きに辿り、各hostでoverlayを検証してhit/focusを証明する。capture時間は購読/domain enableを含み、期限までにenableが終わらなければ失敗する。console object詳細は保存せず省略をtruncatedとする。AX node上限は実際の省略nodeがある場合だけtruncatedとする。
+
 
 - 2026-09-09: keyboard/textのfocus前に対象pageを前面化し、page handlerが動く可能性があるためsnapshot identity・node・hit検証を再実行する。隔離worldでdocument.hasFocus()と対象のfocus一致を必須とし、前面化後の失敗は不確定状態を保つ。非active pageという仮説に対応するが、native focus転送のassertionやsandboxは緩めない。
 
@@ -439,6 +454,9 @@ macOS/WindowsおよびLinuxのnative CIは未完了。既存のmacOS readiness t
   引数省略が意図しない空文字列への置換になることを防ぐ。これらの最終調整は受け入れ前の再検証が必要。
 
 ## 成果と振り返り
+
+第3回レビューの時点（2026-09-09）: 新規5件のため本Planを再開した。以下の過去の完了・native結果を今回の受け入れ証拠として扱わず、新しい統合検証とnative CIの成功を必要とする。
+
 
 第2回レビュー完了（2026-09-09）: 8件すべてを859ca74とcdcec91で修正した。effect後のエラーで不確定状態を保持し、前面化・選択後のdocument/target focusを証明する。DOM origin/topologyと別tab境界を検証し、redaction後もcapture上限を維持してqueue省略を明示する。query/fragmentを一時URL条件へ含めつつ保存証拠を秘匿化し、保存manifest digestを検証する。cdcec91の新しいCIは上記全gateで成功した。859ca74のmacOS/Windows native focus失敗は過去の失敗として残し、成功には数えない。page前面化と再検証により強化nativeシナリオは3 OSすべて成功したが、OS/browserのevent配送機構自体は計測しておらず、当初の原因説明は仮説として扱う。回帰テスト・独立レビュー・実ブラウザの複数OS検証を組み合わせた。URL mockとLinuxだけのnative証拠では不十分だった。
 

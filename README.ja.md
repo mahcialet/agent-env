@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: README.md
-source_sha256: 4ae59d3c9b69fe2c48503fb9f438d3c278766230dc6dabae29b855c1dddbd7c1
+source_sha256: 7a4fc7716a57b44ccea05dac041d484141c35135d72c9f0f30f9c0e8fa1b68b7
 ---
 
 [英語版（翻訳元）](README.md)
@@ -150,5 +150,5 @@ browser層は別processを起動しません。`browser pages`、`snapshot`、`s
 snapshotに限定したsemantic入力を使えます。console/network captureには上限があり、
 profileとartifactはprivateです。PNG pixelの自動redactionはしません。
 完全なmanifestとコマンドは[browser契約](docs/product-specs/browser-cdp-automation.ja.md)、
-native受け入れ状況は[完了plan](docs/exec-plans/completed/browser-cdp-automation.ja.md)を参照してください。
+native受け入れ状況は[完了plan](docs/exec-plans/active/browser-cdp-automation.ja.md)を参照してください。
 Chromeは外部の前提ツールであり、同梱しません。

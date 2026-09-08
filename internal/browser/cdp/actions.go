@@ -49,7 +49,7 @@ func act(ctx context.Context, c *connection, s string, id domain.BrowserIdentity
 		return false, false, errors.New("iframe input is unsupported")
 	}
 	resolveParams := map[string]any{"backendNodeId": old.BackendID}
-	if q.Operation == "key" || q.Operation == "set-text" {
+	{
 		var world struct {
 			ExecutionContextID int `json:"executionContextId"`
 		}
@@ -218,11 +218,29 @@ func nodeHit(ctx context.Context, c *connection, s, object string, backend int) 
 	}
 	x := (box.Model.Content[0] + box.Model.Content[4]) / 2
 	y := (box.Model.Content[1] + box.Model.Content[5]) / 2
-	var hit struct{ Result struct{ Value bool } }
-	if e := c.call(ctx, s, "Runtime.callFunctionOn", map[string]any{"objectId": object, "functionDeclaration": "function(x,y){let h=this.ownerDocument.elementFromPoint(x,y);while(h&&h.shadowRoot){let n=h.shadowRoot.elementFromPoint(x,y);if(!n||n===h)break;h=n;}return this.isConnected && !!h && (h===this||this.contains(h));}", "arguments": []map[string]any{{"value": x}, {"value": y}}, "returnByValue": true}, &hit); e != nil {
+	// Check every enclosing root from the target outward. Closed shadow roots
+	// are reachable from their children even when host.shadowRoot is null.
+	// Each enclosing host must itself pass hit testing, so overlays still refuse.
+	var hit struct {
+		Result           struct{ Value bool }
+		ExceptionDetails json.RawMessage
+	}
+	if e := c.call(ctx, s, "Runtime.callFunctionOn", map[string]any{"objectId": object, "functionDeclaration": `function(x,y){
+if(!this.isConnected)return false;
+let node=this;
+for(let depth=0;depth<128;depth++){
+ const root=node.getRootNode();
+ const hit=root.elementFromPoint(x,y);
+ if(!hit || (hit!==node && !node.contains(hit)))return false;
+ if(root===this.ownerDocument)return true;
+ if(!(root instanceof ShadowRoot))return false;
+ node=root.host;
+}
+return false;
+}`, "arguments": []map[string]any{{"value": x}, {"value": y}}, "returnByValue": true}, &hit); e != nil {
 		return 0, 0, e
 	}
-	if !hit.Result.Value {
+	if len(hit.ExceptionDetails) > 0 || !hit.Result.Value {
 		return 0, 0, errors.New("node is obscured or outside the viewport")
 	}
 	return x, y, nil
@@ -250,7 +268,8 @@ func uniqueFreshNode(nodes []domain.BrowserNode, old domain.BrowserNode) bool {
 }
 
 // verifyFocus runs in an isolated world so page overrides cannot forge the
-// active-element or connectivity checks. Follow shadow focus to the exact node.
+// active-element or connectivity checks. Walk outward from the resolved target:
+// getRootNode exposes its closed roots without relying on host.shadowRoot.
 func verifyFocus(ctx context.Context, c *connection, session, object string) error {
 	var x struct {
 		Result struct {
@@ -258,7 +277,18 @@ func verifyFocus(ctx context.Context, c *connection, session, object string) err
 		} `json:"result"`
 		ExceptionDetails json.RawMessage `json:"exceptionDetails"`
 	}
-	e := c.call(ctx, session, "Runtime.callFunctionOn", map[string]any{"objectId": object, "functionDeclaration": `function(){if(!this.isConnected||!this.ownerDocument.hasFocus())return false;let active=this.ownerDocument.activeElement;while(active&&active.shadowRoot&&active.shadowRoot.activeElement)active=active.shadowRoot.activeElement;return active===this}`, "returnByValue": true}, &x)
+	e := c.call(ctx, session, "Runtime.callFunctionOn", map[string]any{"objectId": object, "functionDeclaration": `function(){
+if(!this.isConnected||!this.ownerDocument.hasFocus())return false;
+let node=this;
+for(let depth=0;depth<128;depth++){
+ const root=node.getRootNode();
+ if(root.activeElement!==node)return false;
+ if(root===this.ownerDocument)return true;
+ if(!(root instanceof ShadowRoot))return false;
+ node=root.host;
+}
+return false;
+}`, "returnByValue": true}, &x)
 	if e != nil {
 		return e
 	}

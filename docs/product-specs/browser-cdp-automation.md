@@ -11,7 +11,7 @@ last_verified: 2026-09-08
 Browser commands observe and control an explicitly declared Chromium-family
 browser owned by a persistent process lease. They do not launch a second browser,
 attach to an external browser, or reuse a personal profile. Implementation and
-native acceptance are tracked in the [completed ExecPlan](../exec-plans/completed/browser-cdp-automation.md).
+native acceptance are tracked in the [completed ExecPlan](../exec-plans/active/browser-cdp-automation.md).
 
 ## Manifest and prerequisites
 
@@ -169,6 +169,10 @@ cannot authorize input. Console and network each retain at most 256 records,
 with `[TRUNCATED]`); overflowing the 512-event transport
 buffer disconnects and fails capture. DOM evidence retains structure/layout only,
 without any text, attributes or input values.
+
+These persisted limits also apply after redaction. Capture duration starts before
+subscription and domain enable; if enable cannot finish within it, capture fails.
+Omitted console argument values are explicitly marked truncated.
 
 Before set-text, a registered artifact stores only length and full/prefix SHA
 fingerprints. Later observations load this proof to redact entered text echoed

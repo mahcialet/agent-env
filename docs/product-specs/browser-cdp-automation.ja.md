@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/product-specs/browser-cdp-automation.md
-source_sha256: 811ea86fafcfd39d9ef005a199057a5721e8a71bee918623e109d938fc516b3d
+source_sha256: e9fd5fd9066519c411c1a12a80955af48f7dde657dda5bbddd54a148a6e45a6b
 ---
 
 # Browser/CDP自動操作
@@ -12,7 +12,7 @@ source_sha256: 811ea86fafcfd39d9ef005a199057a5721e8a71bee918623e109d938fc516b3d
 
 browserコマンドは、persistent process leaseが所有する明示的なChromium系ブラウザーを
 観測・操作します。別のブラウザーの起動、外部ブラウザーへの接続、個人用profileの再利用は
-行いません。実装とnative環境での受け入れ状況は[完了ExecPlan](../exec-plans/completed/browser-cdp-automation.ja.md)に記録します。
+行いません。実装とnative環境での受け入れ状況は[完了ExecPlan](../exec-plans/active/browser-cdp-automation.ja.md)に記録します。
 
 ## manifestと前提条件
 
@@ -152,6 +152,9 @@ snapshotをtruncatedと表示します。truncated snapshotで入力は許可し
 console/networkはそれぞれ256 record、文字列合計64 KiB、各文字列4096 byteまでです。超過した文字列は全体を`[TRUNCATED]`へ置き換えます。
 512 eventのtransport bufferがあふれると切断してcaptureを失敗させます。
 DOM証拠はstructure/layoutのみで、text・attribute・input valueは保存しません。
+
+保存証拠の上限はredaction後にも適用します。capture時間は購読とdomain enableの前から計測し、
+期限までにenableが完了しなければcaptureを失敗させます。省略したconsole引数はtruncatedと明示します。
 
 set-text前に長さと全体/接頭辞SHA fingerprintだけをartifact登録します。後続観測がこの証拠を読み込み、
 pageやconsoleへechoされた入力もredactします。証拠欠落・破損は安全側に倒して失敗し、検証CPUにも上限があります。

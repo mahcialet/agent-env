@@ -15,6 +15,8 @@ func capture(ctx context.Context, c *connection, s string, q domain.BrowserReque
 	if d <= 0 || d > 10*time.Second {
 		return errors.New("capture duration must be greater than zero and at most 10 seconds")
 	}
+	captureCtx, cancel := context.WithTimeout(ctx, d)
+	defer cancel()
 	method := "Runtime.enable"
 	methods := []string{"Runtime.consoleAPICalled"}
 	started := float64(time.Now().UnixMilli())
@@ -27,25 +29,37 @@ func capture(ctx context.Context, c *connection, s string, q domain.BrowserReque
 		return err
 	}
 	defer unsubscribe()
-	if e := c.call(ctx, s, method, nil, nil); e != nil {
+	if e := c.call(captureCtx, s, method, nil, nil); e != nil {
 		return e
 	}
-	timer := time.NewTimer(d)
-	defer timer.Stop()
 	bytes := 0
 	for {
+		// Do not let a continuously ready event queue extend the deadline.
+		if captureCtx.Err() != nil {
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
+			return finishCapture(unsubscribe, o)
+		}
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
 		case <-c.done:
 			return errors.New("browser disconnected during capture")
-		case <-timer.C:
-			pending, err := unsubscribe()
-			if pending {
-				o.Truncated = true
+		case <-captureCtx.Done():
+			if ctx.Err() != nil {
+				return ctx.Err()
 			}
-			return err
+			return finishCapture(unsubscribe, o)
 		case ev := <-events:
+			if captureCtx.Err() != nil {
+				if ctx.Err() != nil {
+					return ctx.Err()
+				}
+				// The selected event also belongs to the omitted remainder.
+				o.Truncated = true
+				return finishCapture(unsubscribe, o)
+			}
 			if ev.Session != s {
 				continue
 			}
@@ -67,11 +81,14 @@ func capture(ctx context.Context, c *connection, s string, q domain.BrowserReque
 				parts := []string{}
 				for _, a := range x.Args {
 					if a.Type != "string" {
+						o.Truncated = true
 						continue
 					}
-					var v string
-					if json.Unmarshal(a.Value, &v) == nil {
-						parts = append(parts, v)
+					var v *string
+					if json.Unmarshal(a.Value, &v) == nil && v != nil {
+						parts = append(parts, *v)
+					} else {
+						o.Truncated = true
 					}
 				}
 				v := strings.Join(parts, " ")
@@ -138,4 +155,14 @@ func boundCaptureStrings(o *domain.BrowserObservation, fields ...*string) int {
 		size += len(*field)
 	}
 	return size
+}
+
+// Stop admission and report omitted queued evidence atomically. Transport overflow
+// or disconnect remains failure even when the capture deadline wins selection.
+func finishCapture(unsubscribe func() (bool, error), o *domain.BrowserObservation) error {
+	pending, err := unsubscribe()
+	if pending {
+		o.Truncated = true
+	}
+	return err
 }

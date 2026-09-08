@@ -20,6 +20,8 @@ func TestNodeChangesDuringOwnershipVerificationNeverInputs(t *testing.T) {
 					effects.Add(1)
 				}
 				switch q.Method {
+				case "Page.createIsolatedWorld":
+					return map[string]any{"executionContextId": 42}
 				case "Page.getFrameTree":
 					pageURL := "http://localhost/"
 					if changed.Load() && mode == "same-document-url" {
@@ -58,6 +60,9 @@ func TestNodeChangesDuringOwnershipVerificationNeverInputs(t *testing.T) {
 				t.Fatal(e)
 			}
 			performed, _, e := act(context.Background(), c, "s", domain.BrowserIdentity{}, sn.Page, domain.BrowserRequest{Operation: "click", Prior: sn, Node: sn.Nodes[0].Ref}, func() error { changed.Store(true); return nil })
+			if !changed.Load() {
+				t.Fatal("action failed before ownership verification mutation")
+			}
 			if e == nil || performed || effects.Load() != 0 {
 				t.Fatalf("mutation during verification reached input: %v %v", performed, e)
 			}

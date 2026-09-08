@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/design-docs/browser-cdp-automation.md
-source_sha256: 31402134de30cd0c12f2fcacd96425d72dd2e6fc9872fe5d29a3e670d9b85f78
+source_sha256: 271b717a637463ee3a0f82cbcc087a7b69e85666a7b8ebea390dae7bdbc243ee
 ---
 
 # Browser/CDP設計
@@ -11,7 +11,7 @@ source_sha256: 31402134de30cd0c12f2fcacd96425d72dd2e6fc9872fe5d29a3e670d9b85f78
 [英語版（翻訳元）](browser-cdp-automation.md)
 
 コマンドと上限は[製品契約](../product-specs/browser-cdp-automation.ja.md)、
-実装判断とnative環境での直接証拠は[完了ExecPlan](../exec-plans/completed/browser-cdp-automation.ja.md)に記録します。
+実装判断とnative環境での直接証拠は[完了ExecPlan](../exec-plans/active/browser-cdp-automation.ja.md)に記録します。
 
 ## 所有権と依存関係
 

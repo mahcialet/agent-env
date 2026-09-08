@@ -9,7 +9,7 @@ last_verified: 2026-09-08
 [日本語](browser-cdp-automation.ja.md)
 
 The [product contract](../product-specs/browser-cdp-automation.md) defines commands
-and limits. The [completed ExecPlan](../exec-plans/completed/browser-cdp-automation.md)
+and limits. The [completed ExecPlan](../exec-plans/active/browser-cdp-automation.md)
 records implementation decisions and direct native evidence.
 
 ## Ownership and dependencies

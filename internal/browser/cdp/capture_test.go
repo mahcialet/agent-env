@@ -86,7 +86,7 @@ func TestNetworkCaptureBoundsEveryPersistedString(t *testing.T) {
 		return []envelope{{Session: "s", Method: "Network.requestWillBeSent", Params: raw}, {Session: "s", Method: "Network.loadingFailed", Params: failure}}
 	})
 	var obs domain.BrowserObservation
-	err := capture(context.Background(), c, "s", domain.BrowserRequest{Operation: "network", Duration: 20 * time.Millisecond}, &obs)
+	err := capture(context.Background(), c, "s", domain.BrowserRequest{Operation: "network", Duration: time.Second}, &obs)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -112,7 +112,7 @@ func TestNetworkCaptureCountsAllStringsAgainstTotalBudget(t *testing.T) {
 		return events
 	})
 	var obs domain.BrowserObservation
-	err := capture(context.Background(), c, "s", domain.BrowserRequest{Operation: "network", Duration: 20 * time.Millisecond}, &obs)
+	err := capture(context.Background(), c, "s", domain.BrowserRequest{Operation: "network", Duration: time.Second}, &obs)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -125,38 +125,89 @@ func TestNetworkCaptureCountsAllStringsAgainstTotalBudget(t *testing.T) {
 	}
 }
 
-// Domain-enable responses arrive only after these events are queued. An expired
-// capture may omit the remaining queue, but must report that evidence loss.
+// Capture completion must atomically disclose omitted queued events, and queue
+// overflow must remain a failure even if the deadline wins the race.
 func TestCaptureDeadlineMarksPendingEventsTruncated(t *testing.T) {
+	for _, overflow := range []bool{false, true} {
+		c := &connection{done: make(chan struct{})}
+		_, unsubscribe, err := c.subscribe("s", "Runtime.consoleAPICalled")
+		if err != nil {
+			t.Fatal(err)
+		}
+		c.capture.events <- envelope{Session: "s", Method: "Runtime.consoleAPICalled"}
+		c.capture.overflow = overflow
+		var obs domain.BrowserObservation
+		err = finishCapture(unsubscribe, &obs)
+		if overflow && err == nil {
+			t.Fatal("overflow silently succeeded")
+		}
+		if !overflow && (err != nil || !obs.Truncated) {
+			t.Fatalf("queued omission: truncated=%v err=%v", obs.Truncated, err)
+		}
+		if c.capture != nil {
+			t.Fatal("capture deadline left subscription active")
+		}
+	}
+}
+
+func TestCaptureDurationIncludesDomainEnable(t *testing.T) {
 	for _, operation := range []string{"console", "network"} {
 		t.Run(operation, func(t *testing.T) {
-			const count = 128
+			release := make(chan struct{})
+			entered := make(chan struct{})
 			c := eventBrowser(t, func(string) []envelope {
-				events := make([]envelope, count)
-				method := "Network.requestWillBeSent"
-				raw := json.RawMessage(`{"requestId":"wanted","request":{"url":"http://localhost/","method":"GET"}}`)
-				if operation == "console" {
-					method = "Runtime.consoleAPICalled"
-					raw, _ = json.Marshal(map[string]any{"type": "log", "timestamp": time.Now().Add(time.Minute).UnixMilli(), "args": []any{map[string]any{"type": "string", "value": "wanted"}}})
-				}
-				for i := range events {
-					events[i] = envelope{Session: "s", Method: method, Params: raw}
-				}
-				return events
+				close(entered)
+				<-release
+				return nil
 			})
-			var obs domain.BrowserObservation
-			if err := capture(context.Background(), c, "s", domain.BrowserRequest{Operation: operation, Duration: time.Nanosecond}, &obs); err != nil {
-				t.Fatal(err)
+			defer close(release)
+			result := make(chan error, 1)
+			go func() {
+				result <- capture(context.Background(), c, "s", domain.BrowserRequest{Operation: operation, Duration: 20 * time.Millisecond}, &domain.BrowserObservation{})
+			}()
+			select {
+			case <-entered:
+			case <-time.After(time.Second):
+				t.Fatal("enable not received")
 			}
-			retained := len(obs.Console) + len(obs.Network)
-			if retained < count && !obs.Truncated {
-				t.Fatalf("deadline silently omitted queued events: retained=%d of %d", retained, count)
+			select {
+			case err := <-result:
+				if err == nil {
+					t.Fatal("unfinished domain enable reported successful capture")
+				}
+			case <-time.After(500 * time.Millisecond):
+				t.Fatal("capture duration did not bound domain enable")
 			}
 			c.mu.Lock()
 			subscribed := c.capture != nil
 			c.mu.Unlock()
 			if subscribed {
-				t.Fatal("capture deadline left subscription active")
+				t.Fatal("expired enable retained subscription")
+			}
+		})
+	}
+}
+
+func TestConsoleMarksOmittedArgumentsTruncated(t *testing.T) {
+	for _, arg := range []string{
+		`{"type":"object","objectId":"private-id","description":"private-object"}`,
+		`{"type":"number","value":42}`,
+		`{"type":"boolean","value":true}`,
+		`{"type":"undefined"}`,
+		`{"type":"string","value":42}`,
+		`{"type":"string","value":null}`,
+	} {
+		t.Run(arg, func(t *testing.T) {
+			c := eventBrowser(t, func(string) []envelope {
+				raw, _ := json.Marshal(map[string]any{"type": "log", "timestamp": time.Now().Add(time.Minute).UnixMilli(), "args": []any{map[string]any{"type": "string", "value": "safe"}, json.RawMessage(arg)}})
+				return []envelope{{Session: "s", Method: "Runtime.consoleAPICalled", Params: raw}}
+			})
+			var obs domain.BrowserObservation
+			if err := capture(context.Background(), c, "s", domain.BrowserRequest{Operation: "console", Duration: 20 * time.Millisecond}, &obs); err != nil {
+				t.Fatal(err)
+			}
+			if len(obs.Console) != 1 || obs.Console[0].Text != "safe" || !obs.Truncated {
+				t.Fatalf("omission not disclosed safely: %+v", obs)
 			}
 		})
 	}

@@ -360,12 +360,18 @@ func (s *Service) Browser(ctx context.Context, id string, o BrowserOptions) (res
 		result.Observation = domain.BrowserObservation{}
 	} else {
 		boundRedactedBrowserCapture(&result.Observation)
+		if e = boundRedactedBrowserSnapshot(result.Observation.Snapshot); e != nil {
+			persistErr = e
+			result.Observation = domain.BrowserObservation{}
+		} else if result.Observation.Snapshot != nil && result.Observation.Snapshot.Truncated {
+			result.Observation.Truncated = true
+		}
 	}
 	if err == nil && persistErr == nil && result.Observation.Snapshot != nil {
 		result.Snapshot = result.Observation.Snapshot
 		data, e := json.Marshal(result.Snapshot)
-		if e == nil && len(data) > 2<<20 {
-			e = errors.New("browser snapshot exceeds 2 MiB")
+		if e == nil && len(data) > 1<<20 {
+			e = errors.New("browser snapshot exceeds 1 MiB")
 		}
 		if e == nil {
 			e = save("browser-snapshot", "snapshot.json", data)

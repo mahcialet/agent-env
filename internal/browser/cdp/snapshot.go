@@ -196,12 +196,19 @@ func snapshot(ctx context.Context, c *connection, s string, id domain.BrowserIde
 	if e = c.call(ctx, s, "Accessibility.enable", nil, nil); e != nil {
 		return nil, e
 	}
+frameNodes:
 	for _, f := range frames {
 		var x struct{ Nodes []axNode }
 		if e = c.call(ctx, s, "Accessibility.getFullAXTree", map[string]any{"frameId": f.Frame.ID}, &x); e != nil {
 			return nil, errors.New("iframe accessibility session unsupported")
 		}
 		for _, a := range x.Nodes {
+			// Reaching the cap is complete when no further node exists. Read
+			// remaining frames until an actual omitted node proves truncation.
+			if len(sn.Nodes) == 2048 {
+				sn.Truncated = true
+				break frameNodes
+			}
 			n := domain.BrowserNode{BackendID: a.BackendDOMNodeID, Frame: f.Frame.ID, Role: valueString(a.Role), Name: valueString(a.Name), Ignored: a.Ignored}
 			for _, v := range a.Properties {
 				switch v.Name {
@@ -251,13 +258,6 @@ func snapshot(ctx context.Context, c *connection, s string, id domain.BrowserIde
 			}
 			n.Fingerprint = fingerprint(n)
 			sn.Nodes = append(sn.Nodes, n)
-			if len(sn.Nodes) >= 2048 {
-				sn.Truncated = true
-				break
-			}
-		}
-		if sn.Truncated {
-			break
 		}
 	}
 	sort.SliceStable(sn.Nodes, func(i, j int) bool {

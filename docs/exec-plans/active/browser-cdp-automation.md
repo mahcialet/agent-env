@@ -1,5 +1,5 @@
 ---
-status: completed
+status: active
 owner: maintainers
 last_verified: 2026-09-09
 ---
@@ -139,6 +139,13 @@ Out of scope:
 
 ## Progress
 
+- [x] 2026-09-09: Final integrated repoctl check passed; full repository race passed; sandbox-enabled Linux native race passed (10.082s). Independent cross-review passed after restoring six mutation test callbacks (race x10, 1.582s). Post-redaction snapshot regressions passed (6.369s) including >2 MiB expansion, persisted 1 MiB artifact limit, retained target identity and completed durable run. Fresh multi-OS CI is the remaining gate.
+
+- [x] 2026-09-09: Implemented third-review five fixes with fail-before regressions. Closed-shadow native race passed (11.031s), actions/focus race x3 passed (1.245s), AX snapshot/gone boundary race x10 passed (15.425s), capture/network/transport race x10 passed (44.414s), final console/capture race x10 passed (3.091s). Integrated harness/full race and fresh native CI remain pending at this checkpoint.
+
+
+- [ ] 2026-09-09: Complete the third PR #10 review: post-redaction semantic limits, closed-shadow input, capture subscription deadline, exact AX node boundary and omitted console arguments; require regression/harness/native CI evidence before archival.
+
 - [x] 2026-09-09: Final implementation cdcec91807a27b6215d2aeb0f6533ed8c96437cd passed all fresh gates: PR Verify 34252382308 (12 jobs), PR Browser native 34252379866 (Linux 11.50s, macOS 14.04s, Windows 30.98s), Release preview 34252379587 (build and three smoke jobs), push Verify 34252373749 and push Browser native 34252373761. All eight second-review threads received substantive replies; final CI confirmation and Resolve accompany archival.
 
 
@@ -254,6 +261,11 @@ Earlier pending local refinement checks are closed by this result. Windows/macOS
 browser execution and published final CI remain pending; this plan stays active.
 
 ## Surprises & Discoveries
+
+- 2026-09-09: Independent review found an existing stale-target regression fixture lacked the newly required isolated execution context. It could pass before invoking its mutation callback. Added the context fixture and mandatory callback assertion so stale-target tests exercise their intended refusal path. Integrated harness and full race passed; stronger persisted snapshot checks also verify artifact bytes, retained node identities and passed durable run state.
+
+- 2026-09-09: Short-secret redaction expands safe provider strings beyond per-field and semantic JSON budgets; a larger regression also exceeds the former 2 MiB app guard. Exact 2048-node snapshots (single/multiple frames and empty trailing frame) were falsely truncated. Native closed-root click failed before repair because hit testing descended via inaccessible host.shadowRoot. Slow domain enable exceeded a 20 ms capture duration by over 500 ms, and omitted console values incorrectly reported complete evidence. Existing bulk-event tests assumed enable time was excluded; their duration budgets now include enable processing with event counts and assertions preserved.
+
 
 - 2026-09-09: Fresh native CI at 859ca74 failed the new focus-redirection regression on macOS and Windows in both push run 34251804805 and PR run 34251809149; Linux passed. The key operation returned success instead of uncertain refusal. Investigating browser tab focus/event dispatch before claiming acceptance; no test or sandbox conditions are weakened.
 
@@ -373,6 +385,9 @@ executable differences.
 Do not weaken identity or stale-reference checks to make dynamic pages easier.
 
 ## Decision Log
+
+- 2026-09-09: Rebound semantic snapshots after redaction and app metadata assignment: replace oversized AX name/value strings, enforce node count and find the largest whole-node prefix whose JSON encoding fits 1 MiB. Preserve references/fingerprints and mark truncation, so reduced evidence cannot authorize input; successful read-only observations must not leave running barriers. Closed-shadow hit/focus proof walks outward from the resolved backend node through at most 128 enclosing roots in an isolated world and verifies every host against overlays. Capture duration includes subscription/domain enable; an unfinished enable fails. Omitted console values are marked truncated without serializing object details. AX node-cap truncation requires an actual omitted node.
+
 
 - 2026-09-09: Before keyboard/text focus, activate the selected page, then repeat snapshot identity/node/hit proof because activation may execute page handlers. Require document.hasFocus() and exact target focus in the isolated world. Activation failures remain uncertain. This addresses the inactive-page hypothesis without relaxing the native focus-redirection assertion or sandbox.
 
@@ -584,6 +599,9 @@ the same published commit; no timeout or readiness assertion has been relaxed.
   These latest refinements require final revalidation before acceptance.
 
 ## Outcomes & Retrospective
+
+Third-review checkpoint (2026-09-09): this plan is reopened for five new findings. Earlier completion and native results below are historical; current acceptance requires fresh integrated and native CI evidence.
+
 
 Second-review completion (2026-09-09): all eight findings are repaired in 859ca74 and cdcec91. Post-effect errors preserve uncertainty; active-document/target focus is proved after activation and selection; DOM origin/topology and unrelated-tab boundaries are enforced; capture remains bounded after redaction and marks queued omissions; URL matching includes transient query/fragment while saved evidence is scrubbed; stored manifest digest is checked. Fresh CI at cdcec91 passed every gate listed above. The macOS/Windows native focus failure at 859ca74 is retained as historical evidence, not counted as success. Activating and revalidating the page fixed the strengthened native scenario on all three OSes; the precise OS/browser event-delivery mechanism was not instrumented, so its original explanation remains a hypothesis. Regression tests, independent review and real multi-OS browser tests all contributed; mock URL shape and Linux-only native evidence were insufficient by themselves.
 
