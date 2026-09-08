@@ -105,6 +105,6 @@ retains the lease's ports, state and sources.
 Named ports reserve loopback TCP allocation among agent-env leases. The interval
 before the target binds remains vulnerable to external occupancy; there is no
 socket activation or inherited listening socket. Native adapter tests, race tests
-and cross-compilation have passed during implementation; real persistent-process
-Windows/macOS/Linux integration and final CI evidence are tracked separately in
-the [active process plan](exec-plans/active/persistent-process-runtime.md).
+and cross-compilation passed during implementation. Real persistent-process
+Windows/macOS/Linux integration passed at `f588960` (Verify 34226859965); see
+the [completed process plan](exec-plans/completed/persistent-process-runtime.md).

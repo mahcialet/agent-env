@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/design-docs/persistent-process-runtime.md
-source_sha256: 6d969349a6f05899676df390db6bbda12b0652a6e19bcae33cd1adb514a3c83b
+source_sha256: 7273d5b7529778f649ab25a55253dc70af7d2c5c2be01ad561e6dcd7dcdc9d80
 ---
 
 # 常駐プロセスのlifecycle設計
@@ -11,7 +11,7 @@ source_sha256: 6d969349a6f05899676df390db6bbda12b0652a6e19bcae33cd1adb514a3c83b
 [English（翻訳元）](persistent-process-runtime.md)
 
 manifest構文は[機能契約](../product-specs/persistent-process-runtime.ja.md)で定める。
-実装と検証は[active ExecPlan](../exec-plans/active/persistent-process-runtime.ja.md)で追跡する。
+実装と検証は[完了ExecPlan](../exec-plans/completed/persistent-process-runtime.ja.md)で追跡する。
 この仕組みはprocess管理をCompose、Android Emulator、Flutter、将来のbrowser機能から分離する。
 
 ## 責務と永続化

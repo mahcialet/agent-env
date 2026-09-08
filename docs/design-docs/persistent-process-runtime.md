@@ -9,7 +9,7 @@ last_verified: 2026-09-08
 [日本語](persistent-process-runtime.ja.md)
 
 The [product contract](../product-specs/persistent-process-runtime.md) defines
-manifest syntax. The [active ExecPlan](../exec-plans/active/persistent-process-runtime.md)
+manifest syntax. The [completed ExecPlan](../exec-plans/completed/persistent-process-runtime.md)
 tracks implementation and validation. This mechanism keeps process management
 independent of Compose, Android Emulator, Flutter, and future browser semantics.
 

@@ -143,7 +143,7 @@ not a claim that any particular run has passed.
 
 ## Persistent process verification
 
-The [process ExecPlan](exec-plans/active/persistent-process-runtime.md) tracks direct
+The [process ExecPlan](exec-plans/completed/persistent-process-runtime.md) tracks direct
 acceptance. Config tests cover strict process/Compose/Android field variants,
 null/empty/merged YAML fields, named TCP ports, local readiness endpoint references,
 portable directory names and unchanged legacy canonical snapshots. Adapter tests
@@ -158,6 +158,5 @@ two concurrent leases, sibling/unrelated-process survival, persistence failure,
 quarantine, TCP occupancy, source mutation, real HTTP readiness, process/Compose
 coexistence and a browser-shaped state/CDP-like fixture. No browser semantics are
 implemented by that fixture. Native Windows/macOS/Linux execution is required;
-cross-compilation alone cannot complete this acceptance. Current local adapter,
-race and cross-build evidence is recorded in the active plan; final native CI is
-not yet claimed complete.
+cross-compilation alone cannot complete this acceptance. Local adapter, race, integration and cross-build evidence, plus successful native
+Windows/macOS/Linux CI at `f588960` (Verify 34226859965), are recorded in the completed plan.

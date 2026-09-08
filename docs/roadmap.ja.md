@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/roadmap.md
-source_sha256: a90df8e723c5e5d11ac04ecb90bfe77c4618013008b8154ee3e85b0f46e39f14
+source_sha256: 057a53825e83a8fab933cad1ceacb8019ba6cd3fa90f08b41d5d5fc1646e7a49
 ---
 
 [英語版（翻訳元）](roadmap.md)
@@ -30,8 +30,8 @@ iOS、browser/CDPの自動操作・snapshot、分散・複数ホストの調整�
 
 [常駐process runtime](product-specs/persistent-process-runtime.ja.md)は、argv直接実行、
 専用可変状態、名前付きloopback TCP port、保守的なnative tree cleanupを実装しています。
-最終native integration受け入れは[active process plan](exec-plans/active/persistent-process-runtime.ja.md)
-で進行中です。自己daemon化、自動再起動、対話terminal、remote実行、service導入は
+最終native integration受け入れは3 OSで成功し、証拠を[完了process plan](exec-plans/completed/persistent-process-runtime.ja.md)
+に記録しました。自己daemon化、自動再起動、対話terminal、remote実行、service導入は
 このruntime契約の対象外です。
 
 [Android UI observer](product-specs/android-ui-observer.ja.md) は、既存の所有 Emulator に対し、

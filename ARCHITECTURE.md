@@ -92,4 +92,5 @@ fingerprints before native launch, so receipt-write failure does not prevent
 bounded diagnostic redaction during compensation. Cleanup
 must prove whole-tree absence before deleting mutable state or releasing ports and
 worktrees. See the [process design](docs/design-docs/persistent-process-runtime.md)
-and its active execution evidence; native platform acceptance remains in progress.
+and its [completed execution evidence](docs/exec-plans/completed/persistent-process-runtime.md);
+native Windows/macOS/Linux acceptance passed.

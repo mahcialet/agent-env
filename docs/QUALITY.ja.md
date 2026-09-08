@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/QUALITY.md
-source_sha256: a18ebaaad81f8bdbfa1fe213c4e2dae12cd76674b841e3025d3e8bd7ef620785
+source_sha256: 902e16d02474105ef9c1c6b6ef011f09cb7fc1c5ec40cf2014a3b8ff285b295f
 ---
 
 # 品質と検証
@@ -135,7 +135,7 @@ go run ./tools/repoctl release-preview-smoke --dir <directory>
 
 ## 常駐processの検証
 
-[process ExecPlan](exec-plans/active/persistent-process-runtime.ja.md)で直接の受け入れ証拠を
+[process ExecPlan](exec-plans/completed/persistent-process-runtime.ja.md)で直接の受け入れ証拠を
 追跡します。config testはprocess/Compose/Androidの厳密なfield variant、null/空/mergeした
 YAML field、名前付きTCP port、local readiness endpoint参照、portableなdirectory名、
 既存canonical snapshotの維持を検証します。adapter testは閉じた実行ファイル/cwd解決、補間、
@@ -148,5 +148,5 @@ lifecycleの受け入れには、独立CLIをまたぐ存続/観測、並行2 le
 永続化失敗、quarantine、TCP占有、source変更、実HTTP readiness、process/Compose共存、
 Browser状の状態/CDP状fixtureも必要です。このfixtureでBrowser自体の機能は実装しません。
 native Windows/macOS/Linux実行が必須であり、cross-buildだけでは受け入れ完了にできません。
-現在のlocal adapter、race、cross-build証拠はactive Planに記録し、最終native CIの完了は
-まだ主張しません。
+local adapter、race、integration、cross-buildの証拠と、`f588960`のnative
+Windows/macOS/Linux CI成功（Verify 34226859965）を完了Planに記録しています。

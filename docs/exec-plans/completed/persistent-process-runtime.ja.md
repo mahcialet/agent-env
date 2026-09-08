@@ -1,9 +1,9 @@
 ---
-status: active
+status: completed
 owner: maintainers
 last_verified: 2026-09-08
-translation_of: docs/exec-plans/active/persistent-process-runtime.md
-source_sha256: 5ea9c54b0d5dbeb503f8a9886c629e8d368b4156b4d8abd06f37e628ede522cb
+translation_of: docs/exec-plans/completed/persistent-process-runtime.md
+source_sha256: 1a1026838411a6333d1dfd654abcfd37e122ab9d26e1e7898023c2d53e3d43da
 ---
 
 # leaseが所有する汎用の常駐process runtimeを追加する
@@ -352,38 +352,51 @@ process起動後の永続化に失敗した場合も、返された識別情報�
 
 ## Progress
 
-- [x] base branch/revisionを記録し、`feat/persistent-process-runtime`を作る。
-- [x] baselineのrepository harnessとrace suiteを実行する。
-- [x] native detached codeとAndroid回帰範囲を調べる。
-- [x] app/config/domain/store/endpoint/readiness/log/cleanup経路を調べる。
-- [x] 英日product/design文書を書く。
-- [x] processのmanifest/endpoint/補間契約を確定する。
-- [x] 必要に応じ、識別情報を条件とするnative停止primitiveを追加する。（Linux証拠は下記。native Windows/macOS実行は未検証。）
-- [x] native停止/識別情報の負例回帰testを追加する。（Linux証拠は下記。native Windows/macOS実行は未検証。）
-- [x] Android detached/guardian testをすべて通し続ける。（Linux証拠は下記。native Windows/macOS実行は未検証。）
-- [x] 厳密なprocess runtimeのconfig/domain型を実装する。
-- [x] 実行ファイルと作業directoryの解決を実装する。
-- [x] runtime所有の状態directoryを実装する。
-- [x] 名前付き動的loopback TCP port予約を実装する。
-- [x] 起動意図/証拠とStartを実装する。
-- [x] readiness、endpoint、show、logsを統合する。
-- [x] Inspect/reconcileと予期しない終了時のdegraded化を実装する。
-- [x] Destroy/停止/補償/GCを実装する。
-- [x] 並行する2つのprocess leaseの分離を追加する。
-- [x] processとComposeの共存fixtureを追加する。
-- [x] 別々のCLI起動を通じたprocess間復旧を追加する。
-- [x] PID再利用と、子孫が残る起点終了の回帰testを追加する。
-- [x] 自動再起動しないことを証明する。
-- [ ] native Windows/macOS/Linuxの常駐process integrationを追加する。
-- [x] 割り当てたloopback endpointを使う実HTTP helperを追加する。
-- [x] Browserを模したCDP状状態directory/portのfixtureを追加する。
-- [x] architecture/portability/reliability/security/quality/roadmapを英日更新する。
-- [ ] 最終harness/race/native/cross-build検証を実行する。
-- [ ] 直接の受け入れ証拠と英日retrospectiveを完成させる。
-- [ ] 両Planを`docs/exec-plans/completed/`へ移す。
+- [x] (2026-09-08) base branch/revisionを記録し、`feat/persistent-process-runtime`を作る。
+- [x] (2026-09-08) baselineのrepository harnessとrace suiteを実行する。
+- [x] (2026-09-08) native detached codeとAndroid回帰範囲を調べる。
+- [x] (2026-09-08) app/config/domain/store/endpoint/readiness/log/cleanup経路を調べる。
+- [x] (2026-09-08) 英日product/design文書を書く。
+- [x] (2026-09-08) processのmanifest/endpoint/補間契約を確定する。
+- [x] (2026-09-08) 必要に応じ、識別情報を条件とするnative停止primitiveを追加する。（3 OSのnative証拠は下記。）
+- [x] (2026-09-08) native停止/識別情報の負例回帰testを追加する。（3 OSのnative証拠は下記。）
+- [x] (2026-09-08) Android detached/guardian testをすべて通し続ける。（3 OSのnative証拠は下記。）
+- [x] (2026-09-08) 厳密なprocess runtimeのconfig/domain型を実装する。
+- [x] (2026-09-08) 実行ファイルと作業directoryの解決を実装する。
+- [x] (2026-09-08) runtime所有の状態directoryを実装する。
+- [x] (2026-09-08) 名前付き動的loopback TCP port予約を実装する。
+- [x] (2026-09-08) 起動意図/証拠とStartを実装する。
+- [x] (2026-09-08) readiness、endpoint、show、logsを統合する。
+- [x] (2026-09-08) Inspect/reconcileと予期しない終了時のdegraded化を実装する。
+- [x] (2026-09-08) Destroy/停止/補償/GCを実装する。
+- [x] (2026-09-08) 並行する2つのprocess leaseの分離を追加する。
+- [x] (2026-09-08) processとComposeの共存fixtureを追加する。
+- [x] (2026-09-08) 別々のCLI起動を通じたprocess間復旧を追加する。
+- [x] (2026-09-08) PID再利用と、子孫が残る起点終了の回帰testを追加する。
+- [x] (2026-09-08) 自動再起動しないことを証明する。
+- [x] (2026-09-08) native Windows/macOS/Linuxの常駐process integrationを追加する。
+- [x] (2026-09-08) 割り当てたloopback endpointを使う実HTTP helperを追加する。
+- [x] (2026-09-08) Browserを模したCDP状状態directory/portのfixtureを追加する。
+- [x] (2026-09-08) architecture/portability/reliability/security/quality/roadmapを英日更新する。
+- [x] (2026-09-08) 最終harness/race/native/cross-build検証を実行する。
+- [x] (2026-09-08) 直接の受け入れ証拠と英日retrospectiveを完成させる。
+- [x] (2026-09-08) 両Planを`docs/exec-plans/completed/`へ移す。
 
 
 check済みは観測した完了を意味する。UTC日付、revision、正確なtestまたはworkflow runと結果を記録する。
+
+### 最終受け入れ記録（2026-09-08）
+
+`f58896050b11481b021bf1ad07701818d3c133eb`の
+[Verify run 34226859965](https://github.com/mahcialet/agent-env/actions/runs/34226859965)
+は全12 job成功。Windows/macOS/Ubuntu × Go 1.26/1.27の6 native jobで
+`repoctl doctor`、`repoctl check`、CLI buildを実行した。
+`TestPersistentProcessNativeCLI`、managed-process、Android detached/guardianの回帰を含み、
+Windowsでは`TestManagedWindowsCompletedJobIgnoresReusedHistoricalPID`も実行した。
+integrationの`go test -race ./...`と`repoctl test-integration`はいずれも成功。
+CIの5 cross-build jobも成功した。別途localの6 target CGO無効buildの証拠はコンパイルのみを
+示す。この結果により以前のcheckpointで残っていたnative gateを満たした。
+初回失敗runは過去の証拠として下記に保持する。
 
 ### 統合時点の記録（2026-09-08）
 
@@ -566,18 +579,37 @@ testを通すために、不確実なprocess所有を誤ってclean状態にし�
   継続する。証拠がなければ出力を拒否する。fingerprintと未加工logも専用storageで保護する。
   日付/著者: 2026-09-08 / maintainers。
 
+- 決定: 過去の起点PID検索より先に正確なWindows named Jobを観測する。空/不在Jobには
+  一致する同期済みguardian完了証明を要求する。active Jobの生成/所属検査は保ち、PID観測中に
+  完了した場合は再調査する。完了証明後に過去PIDへsignalを送らない。
+  理由: 初回native CIで完了後のPID再利用/曖昧性が判明した。Job完了証拠に基づけば、
+  所有検査を弱めず安全にcleanupを繰り返せる。
+  日付/著者: 2026-09-08 / maintainers。
+
 ## Outcomes & Retrospective
 
-最新状況: 初回公開CI後も進行中。native macOSとWindows Go 1.27は成功したが、Windows
-Go 1.26は完了Jobと過去のPIDの確認順序で失敗した。修正、native回帰、最終workflow証拠が残る。
+2026-09-08完了。H1〜H33の直接の受け入れ証拠を下記に記録し、英日Planを一緒に
+archiveした。実装は`fb0d22e`、Windows完了判定の修正は`f588960`であり、後者の
+Verify run全体が成功した。
 
-進行中。汎用process lifecycleとLinuxの直接受け入れを実装し、local検証を完了した。
-native Windows/macOS実行と最終native CIが残るため、最終retrospective/archiveは
-その結果を待つ必要がある。
+提供した`type: process`契約はargv直接実行、範囲を制限した`working_directory`、名前付き
+TCP port、`runtime_port` endpointを使う。config/domain、SQLite予約、process adapter、
+app調整、`execx.ManagedProcess`の責務を分離した。専用可変状態、file出力log、実行ファイルの
+由来/digest証拠、起動前secret fingerprintにより、平文認証情報を永続化せずに、後続の独立CLI
+から観測と安全な診断を行える。永続化した意図/receiptで中断したcreateを復旧する。
+予期しない終了は再起動せずdegradedとし、cleanupが不確実ならport、状態、worktreeを保持する。
 
-完了時には、最終manifest構文、execx変更、OS別native停止の意味、状態directoryと動的portの
-model、endpoint/readiness統合、実行ファイル証拠、crash復旧、起点/子processの知見、native
-Windows/macOS/Linux証拠、daemon化/TTY/再起動の既知の制限、推奨Browser/CDP層分離を要約する。
+3 OSのnative testで、並行lease分離、HTTP/CDP状readiness、作成CLIの中断、log保持、
+source変更保護、無関係processの存続を検証した。Unixではsignal直前の生成/group証明を要求するが、
+観測からsignalまでの競合は残り、子孫の所有が曖昧ならquarantineする。Windowsは正確なJobを停止し、
+完了には一致するguardian証明を要求する。初回Windows CIでJob完了後の過去PID検索の問題が判明した。
+2 processの回帰testで過去識別情報の再利用を模擬し、無関係processの存続を検証する。
+kernelのPID再利用を強制したtestではない。独立レビューとnative CIにより、Linuxのみの成功や
+cross-buildでは確定できなかった問題を検出できた。
+
+受け入れの障害は残っていない。外部port bind競合とnative所有証明の限界は文書化した制約として残る。
+自己daemon化、PTY、自動再起動、Browser自体の機能は対象外。Browser/CDPの観測はこのprocess
+lifecycle、専用profile状態、endpoint契約の上に構築し、Androidは独立したまま扱う。
 
 ## Context and Orientation
 
@@ -706,15 +738,15 @@ Security/Quality/Roadmapを更新し、完了後は汎用の常駐host process�
 
 | ID | 必須の挙動 | 証拠 |
 | --- | --- | --- |
-| H1 | 既存Compose/Android/Flutter/UI-observerの挙動が有効なまま。 | local check/全race/全Docker integration、別途rootless Podman+Docker test成功。native Windows/macOS回帰はCI待ち。 |
+| H1 | 既存Compose/Android/Flutter/UI-observerの挙動が有効なまま。 | local check/race/Docker integration、Podman+Docker成功。Verify 34226859965の6 native回帰jobも成功。 |
 | H2 | `type: process`を厳密に検証し、非互換のruntime fieldを拒否する。 | TestProcessManifestContract; TestProcessManifestNegativeFixtures; TestProcessPresenceRejectsYAMLMergeAndAliases; TestProcessFieldsDoNotChangeLegacyCanonicalShape — 2026-09-08、Linux統合作業treeで成功。 |
 | H3 | commandは閉じたcwdを使うargv直接実行で、暗黙のshellを使わない。 | TestStartInterpolatesWithoutSnapshotSecrets; TestPrepareRejectsUnownedRootAndSourceEscape; TestPrepareRejectsSymlinkCWDAndRuntimeRoot — 2026-09-08、Linux統合作業treeで成功。 |
 | H4 | 起動元create CLI終了後もprocessが生存する。 | Linux TestPersistentProcessNativeCLI成功。create終了後に後続の独立CLIで観測。 |
 | H5 | 後続の独立CLIが永続native識別情報で正確なprocessを検査する。 | Linux native CLI成功。独立showとcreate側中断をまたいで永続識別情報を維持。 |
-| H6 | PID再利用/識別情報不一致で無関係なprocessを所有扱いしない。 | TestManagedTerminationとTestRecoveryUsesReceiptAndChecksMismatchで生成/receipt不一致の模擬検証成功。実kernelのPID再利用を強制したものではない。 |
+| H6 | PID再利用/識別情報不一致で無関係なprocessを所有扱いしない。 | 最終native CIでTestManagedTermination、TestRecoveryUsesReceiptAndChecksMismatch、WindowsのTestManagedWindowsCompletedJobIgnoresReusedHistoricalPID成功。識別情報再利用の模擬であり、kernel PID再利用の強制ではない。 |
 | H7 | stdout/stderrはfileへ書き、runtime logsで取得できる。 | TestProcessComponentLogsRouteAndRetainIsolatedArtifacts; TestLogsRequireDurableRedactionVersion; TestBoundedLogsDoNotExposeSecretAcrossBoundary — 2026-09-08、Linux統合作業treeで成功。 |
 | H8 | 各runtimeがagent-env状態root配下に専用状態directoryを持つ。 | TestDestroyPreservesLogsAndReceipt; TestPersistentProcessNativeCLI — 2026-09-08、Linux統合作業treeで成功。 |
-| H9 | 空白/非ASCIIのnative pathでもruntime directory補間が動く。 | Linux native CLIの日本語/空白pathとsymlink home成功。native Windows/macOSは未検証。 |
+| H9 | 空白/非ASCIIのnative pathでもruntime directory補間が動く。 | Verify 34226859965の3 native OSでTestPersistentProcessNativeCLI成功。空白/Unicode path、Unix symlink homeを検証。 |
 | H10 | 名前付きloopback TCP portを動的に割り当て、起動前に永続化する。 | TestProcessConcurrentReservationPortsAreDisjoint; TestProcessLifecyclePersistedIntentMixedRoutingAndIsolation — 2026-09-08、Linux統合作業treeで成功。 |
 | H11 | 並行process leaseはagent-env port予約やruntime directoryを共有しない。 | TestProcessConcurrentReservationPortsAreDisjoint; TestPersistentProcessNativeCLI — 2026-09-08、Linux統合作業treeで成功。 |
 | H12 | 外部port占有では、保存済みruntime識別情報を黙って変えず安全に失敗する。 | TestProcessDynamicReservationAvoidsExternallyBoundPort; TestReservedPortOccupationPreventsLaunch — 2026-09-08、Linux統合作業treeで成功。 |
@@ -722,7 +754,7 @@ Security/Quality/Roadmapを更新し、完了後は汎用の常駐host process�
 | H14 | 実HTTP helperが通常のapp readinessを通じてREADYになる。 | Linux native CLIの実/json/version HTTP readiness成功。 |
 | H15 | readiness前のprocess終了はcreateを失敗させ、保守的に補償する。 | TestProcessExitDuringSuccessfulProbeCannotBecomeReady; TestProcessIdentitySaveFailureAndPartialStartCompensate — 2026-09-08、Linux統合作業treeで成功。 |
 | H16 | 手動終了はDEGRADEDとなり、自動再起動しない。 | TestProcessCrashDegradesWithoutRestartAndReleasedEffectsQuarantine; TestPersistentProcessNativeCLI — 2026-09-08、Linux統合作業treeで成功。 |
-| H17 | 子孫が残る起点終了を、native証拠なしに誤ってcleanにしない。 | Linux TestManagedRootGoneDescendantとTestExitedRootWithDescendantsIsNotReady成功。他OSのnative実行は未検証。 |
+| H17 | 子孫が残る起点終了を、native証拠なしに誤ってcleanにしない。 | Verify 34226859965の6 native jobでTestManagedRootGoneDescendantとTestExitedRootWithDescendantsIsNotReady成功。 |
 | H18 | destroyは停止直前にnative識別情報を再検証する。 | Linux TestManagedTerminationの不一致/取消し/稼働起点保護が成功。Unix観測からsignalまでのgapは明記したまま。 |
 | H19 | port/runtime状態の解放前に所有tree全体の不在を確認する。 | TestProcessUnknownOwnershipQuarantinesAndRecovers; TestProcessSaveRejectsImmutableSnapshotChanges; TestPersistentProcessNativeCLI — 2026-09-08、Linux統合作業treeで成功。 |
 | H20 | 曖昧な停止はquarantineにし、復旧証拠/resourceを保持する。 | TestProcessUnknownOwnershipQuarantinesAndRecovers; TestProcessFenceLossRetainsLaunchForLaterRecovery; TestMissingLaunchingReceiptIsUncertain — 2026-09-08、Linux統合作業treeで成功。 |
@@ -731,14 +763,14 @@ Security/Quality/Roadmapを更新し、完了後は汎用の常駐host process�
 | H23 | 宣言したstackでprocessとCompose runtimeが共存できる。 | TestIntegrationPersistentProcessComposeCoexistence (55.965s) — 2026-09-08、Linux統合作業treeで成功。 |
 | H24 | processがworktreeを参照し得る間も、sourceのtracked変更保護を保つ。 | TestPersistentProcessNativeCLI（5.422s）成功。稼働中tracked READMEの変更を拒否時にbytes/processごと保持し、forceはtracked-diff記録後に解放。 |
 | H25 | shell/Python/Node/systemd/launchd/Windows Serviceをcore要件にしない。 | 統合arch-check/build/testとGo製CLI/helper成功。新たなcore runtime/daemonは不要。 |
-| H26 | 実常駐process integrationがnative Windowsで成功する。 | 初回CIでWindows Go 1.27成功。Go 1.26 job 102059952028は完了後の起点識別情報で失敗。修正/native回帰待ち。 |
-| H27 | 実常駐process integrationがnative macOSで成功する。 | fb0d22eのVerify 34225937603でnative macOS Go 1.26/1.27成功。最終修正commitのworkflowが必要。 |
+| H26 | 実常駐process integrationがnative Windowsで成功する。 | f588960のVerify 34226859965でWindows Go 1.26/1.27 native repoctl check成功。TestPersistentProcessNativeCLIと完了Job回帰を含む。 |
+| H27 | 実常駐process integrationがnative macOSで成功する。 | f588960のVerify 34226859965でmacOS Go 1.26/1.27 native repoctl check成功。TestPersistentProcessNativeCLIを含む。 |
 | H28 | 実常駐process integrationがnative Linuxで成功する。 | TestPersistentProcessNativeCLI (5.422s) — 2026-09-08、Linux統合作業treeで成功。 |
 | H29 | Browser状fixtureが状態directory、CDP状port、readiness、後続観測、cleanupを証明する。 | TestPersistentProcessNativeCLI成功。専用profile、/json/version、readiness、独立show、cleanupを検証。 |
-| H30 | execx変更後も既存Android detached/guardianの受け入れが成功する。 | Linux/macOSとWindows Go 1.27 native CI成功。Windows Go 1.26のprocess失敗はAndroid/guardian検査を保つ修正が必要。 |
-| H31 | 英日永続文書が提供した契約を説明する。 | 英日永続契約を更新しdocs-check成功。native受け入れの制限を明記。 |
-| H32 | 最終harness/翻訳/race/native CIが成功する。 | local harness/race/integration成功。初回native CIは12 job中11成功、Windows Go 1.26失敗。workflow全体の成功ではない。 |
-| H33 | archive前に両ExecPlanが直接証拠とretrospectiveを持つ。 | 進行中。両Planにlocal直接証拠と残るnative gateを記録。最終retrospective/archiveは未完了。 |
+| H30 | execx変更後も既存Android detached/guardianの受け入れが成功する。 | f588960のVerify 34226859965で6 native repoctl check jobのAndroid detached/guardian回帰成功。 |
+| H31 | 英日永続文書が提供した契約を説明する。 | 英日永続契約、完了先リンク、native証拠を一緒に更新。docs-check成功。 |
+| H32 | 最終harness/翻訳/race/native CIが成功する。 | local harness/race/integration成功。f588960のVerify 34226859965は6 native、race/integration、5 cross-buildを含む全12 job成功。 |
+| H33 | archive前に両ExecPlanが直接証拠とretrospectiveを持つ。 | 両Planに最終checkpoint、H1〜H33証拠、完了retrospectiveを記録し、リンクを更新して一緒にarchiveした。 |
 
 codeの存在だけでは受け入れとしない。成功command、native job、必要に応じて観測したprocess
 識別情報とport割り当てを記録する。
@@ -830,7 +862,7 @@ OS固有のPID/Job/process-group操作をapp方針へ漏らさない。
 runtimeの外部前提は、対象repository/hostが宣言する実行ファイルのみ。
 新たな言語runtimeやdaemonをagent-envのcore要件にしない。
 
-## Unresolved Issues to Settle During Milestone 1
+## Resolved Milestone 1 Questions
 
 1. 最終的な`working_directory`のfield名。
 2. process portの宣言構文。
@@ -848,5 +880,5 @@ runtimeの外部前提は、対象repository/hostが宣言する実行ファイ�
 14. 将来のrestart契約を予約するか、完全に省くか。
 15. 将来Browser/CDPが`type: process`の上にobserverを重ねるか、専用runtimeを内部で組み合わせるか。
 
-解決した契約判断は上のDecision Logへ記録した。最終native停止とshow/listの挙動は、
-adapter/app実装に照らして検証してから受け入れ行を完了にする。
+上記の論点はDecision Log、提供したproduct/design契約、H1〜H33の証拠で解決済み。
+最終3 OSのCLI/primitive testでnative停止とshow/listを検証した。

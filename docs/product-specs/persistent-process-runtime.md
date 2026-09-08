@@ -11,7 +11,7 @@ last_verified: 2026-09-08
 A `process` runtime owns a foreground native host process for a lease. It uses a
 pinned source, direct argv execution, private mutable state, file-backed output,
 and durable native process-tree identity. It does not require Compose or a daemon.
-The [active ExecPlan](../exec-plans/active/persistent-process-runtime.md) tracks
+The [completed ExecPlan](../exec-plans/completed/persistent-process-runtime.md) tracks
 implementation and native acceptance; this document specifies the contract.
 
 ## Manifest

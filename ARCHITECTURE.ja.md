@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: ARCHITECTURE.md
-source_sha256: e6ee9e3c1dcd24f06405dbe152664848b4345eebe8ddb68882fa120584ed7f7b
+source_sha256: 67bea10fad923eeb9fcf7be02d802c1c7da2b7882353d46f853af1c537f8f39d
 ---
 
 [英語版（翻訳元）](ARCHITECTURE.md)
@@ -89,4 +89,5 @@ pathのみです。起動receiptはregistry保存失敗後の識別情報復旧�
 `redaction.json`にversion付き所有情報とsecret fingerprintをnative起動前に保存するため、
 起動receiptの書き込みに失敗しても補償時の上限付き診断redactionを行えます。可変状態の削除、port/worktreeの解放前に、
 cleanupがtree全体の不在を証明する必要があります。[process設計](docs/design-docs/persistent-process-runtime.ja.md)
-とそのactive実行証拠を参照してください。native platformの受け入れは進行中です。
+と[完了した実行証拠](docs/exec-plans/completed/persistent-process-runtime.ja.md)を参照してください。
+native Windows/macOS/Linuxの受け入れは成功しました。

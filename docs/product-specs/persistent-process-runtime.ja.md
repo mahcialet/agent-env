@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/product-specs/persistent-process-runtime.md
-source_sha256: fd0fcbc195e5207bec312eb6391fc50ac56bfdae1d94085b3ee873575d8eeef6
+source_sha256: c57d442fe8de8ffeb592d8075f74df53bcf7d9bd8443f9bc93d485f69b13d1ff
 ---
 
 # 常駐プロセスruntime
@@ -13,7 +13,7 @@ source_sha256: fd0fcbc195e5207bec312eb6391fc50ac56bfdae1d94085b3ee873575d8eeef6
 `process` runtimeは、leaseに属するforegroundのnative host processを管理する。
 固定したsource、argvの直接実行、専用の可変状態directory、fileへの出力、永続化した
 native process treeの識別情報を使う。Composeやdaemonは不要である。
-実装とnative受け入れの状況は[active ExecPlan](../exec-plans/active/persistent-process-runtime.ja.md)
+実装とnative受け入れの状況は[完了ExecPlan](../exec-plans/completed/persistent-process-runtime.ja.md)
 に記録する。この文書は機能の契約を定める。
 
 ## Manifest

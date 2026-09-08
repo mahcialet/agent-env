@@ -1,5 +1,5 @@
 ---
-status: active
+status: completed
 owner: maintainers
 last_verified: 2026-09-08
 ---
@@ -356,39 +356,52 @@ compensate only while ownership remains proven.
 
 ## Progress
 
-- [x] Record base branch/revision and create `feat/persistent-process-runtime`.
-- [x] Run baseline repository harness and race suite.
-- [x] Inspect native detached code and Android regression surface.
-- [x] Inspect app/config/domain/store/endpoint/readiness/log/cleanup paths.
-- [x] Write English/Japanese product and design docs.
-- [x] Finalize process manifest/endpoint/interpolation contract.
-- [x] Add identity-gated native termination primitive if required. (Linux evidence below; native Windows/macOS execution pending.)
-- [x] Add native termination/identity negative regressions. (Linux evidence below; native Windows/macOS execution pending.)
-- [x] Keep all Android detached/guardian tests passing. (Linux evidence below; native Windows/macOS execution pending.)
-- [x] Implement strict process runtime config/domain types.
-- [x] Implement executable and working-directory resolution.
-- [x] Implement runtime-owned state directory.
-- [x] Implement named dynamic loopback TCP port reservations.
-- [x] Implement launch intent/evidence and Start.
-- [x] Integrate readiness, endpoints, show and logs.
-- [x] Implement Inspect/reconcile and unexpected-exit degradation.
-- [x] Implement Destroy/termination/compensation/GC.
-- [x] Add two-concurrent-process-lease isolation.
-- [x] Add process+Compose coexistence fixture.
-- [x] Add cross-process recovery through separate CLI invocations.
-- [x] Add PID-reuse and root-exit-with-descendant regressions.
-- [x] Prove no automatic restart occurs.
-- [ ] Add native Windows/macOS/Linux persistent-process integration.
-- [x] Add real HTTP helper using allocated loopback endpoint.
-- [x] Add browser-shaped CDP-like state-dir/port fixture.
-- [x] Update bilingual architecture/portability/reliability/security/quality/roadmap.
-- [ ] Run final harness/race/native/cross-build verification.
-- [ ] Complete direct acceptance evidence and bilingual retrospective.
-- [ ] Move both plans to `docs/exec-plans/completed/`.
+- [x] (2026-09-08) Record base branch/revision and create `feat/persistent-process-runtime`.
+- [x] (2026-09-08) Run baseline repository harness and race suite.
+- [x] (2026-09-08) Inspect native detached code and Android regression surface.
+- [x] (2026-09-08) Inspect app/config/domain/store/endpoint/readiness/log/cleanup paths.
+- [x] (2026-09-08) Write English/Japanese product and design docs.
+- [x] (2026-09-08) Finalize process manifest/endpoint/interpolation contract.
+- [x] (2026-09-08) Add identity-gated native termination primitive if required. (Native three-OS evidence below.)
+- [x] (2026-09-08) Add native termination/identity negative regressions. (Native three-OS evidence below.)
+- [x] (2026-09-08) Keep all Android detached/guardian tests passing. (Native three-OS evidence below.)
+- [x] (2026-09-08) Implement strict process runtime config/domain types.
+- [x] (2026-09-08) Implement executable and working-directory resolution.
+- [x] (2026-09-08) Implement runtime-owned state directory.
+- [x] (2026-09-08) Implement named dynamic loopback TCP port reservations.
+- [x] (2026-09-08) Implement launch intent/evidence and Start.
+- [x] (2026-09-08) Integrate readiness, endpoints, show and logs.
+- [x] (2026-09-08) Implement Inspect/reconcile and unexpected-exit degradation.
+- [x] (2026-09-08) Implement Destroy/termination/compensation/GC.
+- [x] (2026-09-08) Add two-concurrent-process-lease isolation.
+- [x] (2026-09-08) Add process+Compose coexistence fixture.
+- [x] (2026-09-08) Add cross-process recovery through separate CLI invocations.
+- [x] (2026-09-08) Add PID-reuse and root-exit-with-descendant regressions.
+- [x] (2026-09-08) Prove no automatic restart occurs.
+- [x] (2026-09-08) Add native Windows/macOS/Linux persistent-process integration.
+- [x] (2026-09-08) Add real HTTP helper using allocated loopback endpoint.
+- [x] (2026-09-08) Add browser-shaped CDP-like state-dir/port fixture.
+- [x] (2026-09-08) Update bilingual architecture/portability/reliability/security/quality/roadmap.
+- [x] (2026-09-08) Run final harness/race/native/cross-build verification.
+- [x] (2026-09-08) Complete direct acceptance evidence and bilingual retrospective.
+- [x] (2026-09-08) Move both plans to `docs/exec-plans/completed/`.
 
 
 A checked item means observed completion. Record UTC date, revision, exact test or
 workflow run and result.
+
+### Final acceptance checkpoint (2026-09-08)
+
+[Verify run 34226859965](https://github.com/mahcialet/agent-env/actions/runs/34226859965)
+at `f58896050b11481b021bf1ad07701818d3c133eb` PASS: all 12 jobs succeeded.
+The six native Windows/macOS/Ubuntu jobs (Go 1.26 and 1.27) ran `repoctl doctor`,
+`repoctl check` and CLI build. This includes `TestPersistentProcessNativeCLI`,
+managed-process and Android detached/guardian regressions; Windows also ran
+`TestManagedWindowsCompletedJobIgnoresReusedHistoricalPID`. Integration ran
+`go test -race ./...` and `repoctl test-integration`, both PASS. Five CI cross-build
+jobs PASS; the separate local six-target CGO-disabled build evidence remains
+compile-only. This result closes the native gates left open in earlier checkpoints.
+The first failed run is retained below as historical evidence.
 
 ### Integration checkpoint (2026-09-08)
 
@@ -602,21 +615,43 @@ pass.
   and raw logs still require private storage.
   Date/Author: 2026-09-08 / maintainers.
 
+- Decision: Observe the exact named Windows Job before consulting its historical
+  root PID; empty/missing Jobs require matching synced guardian completion proof.
+  Active Jobs retain birth/membership checks, with a second census if they complete
+  during PID observation. Never signal the historical PID after proven completion.
+  Rationale: the first native CI exposed post-completion PID reuse/ambiguity;
+  complete Job evidence permits safe repeated cleanup without weakening ownership.
+  Date/Author: 2026-09-08 / maintainers.
+
 ## Outcomes & Retrospective
 
-Latest status: in progress after the first published CI. Native macOS and Windows
-Go 1.27 passed; Windows Go 1.26 failed on completed-Job/historical-PID ordering.
-The fix, native regression and final workflow evidence remain outstanding.
+Completed on 2026-09-08. H1–H33 have direct acceptance evidence below; the
+English and Japanese plans are archived together. Implementation is `fb0d22e`,
+with the Windows completion correction in `f588960`; its full Verify run passed.
 
-In progress. Generic process lifecycle and Linux direct acceptance are delivered
-and locally validated. Native Windows/macOS execution and final native CI remain
-outstanding; final retrospective and archival must wait for those results.
+The delivered `type: process` contract uses direct argv, confined
+`working_directory`, named TCP ports and `runtime_port` endpoints. Config/domain,
+SQLite reservations, the process adapter, app orchestration and `execx.ManagedProcess`
+retain separate responsibilities. Private mutable state, file-backed logs, executable
+origin/digest evidence and prelaunch secret fingerprints support later independent
+CLI observations and safe diagnostics without persisting plaintext credentials.
+Persisted intent/receipts recover interrupted creation; unexpected death degrades
+without restart, and uncertain cleanup retains ports, state and worktrees.
 
-At completion summarize final manifest syntax, execx changes, native termination
-semantics by OS, state-directory and dynamic-port models, endpoint/readiness
-integration, executable evidence, crash recovery, root/child findings, native
-Windows/macOS/Linux evidence, known daemonization/TTY/restart limits, and the
-recommended Browser/CDP layering.
+Native tests on three OSes demonstrate concurrent lease isolation, HTTP/CDP-like
+readiness, creator interruption, retained logs, source-change protection and unrelated
+process survival. Unix signals require fresh birth/group proof and retain an
+observation-to-signal race; ambiguous descendants quarantine. Windows terminates the
+exact Job and requires matching guardian proof for completion. Initial Windows CI
+exposed historical-PID lookup after Job completion. A two-process regression now
+simulates recycled historical identity and proves unrelated-process survival; it does
+not force kernel PID reuse. Independent review and native CI caught issues that
+Linux-only success and cross-compilation could not settle.
+
+No acceptance blockers remain. External port-bind races and native ownership limits
+remain documented constraints. Self-daemonization, PTY, automatic restart and browser
+semantics remain outside scope. Browser/CDP should build observation above this
+process lifecycle, private profile state and endpoint contract; Android remains separate.
 
 ## Context and Orientation
 
@@ -756,15 +791,15 @@ roadmap after completion.
 
 | ID | Required behavior | Evidence |
 | --- | --- | --- |
-| H1 | Existing Compose/Android/Flutter/UI-observer behavior remains valid. | Local check/full race/full Docker integration and separate rootless Podman+Docker test PASS; native Windows/macOS regressions await CI. |
+| H1 | Existing Compose/Android/Flutter/UI-observer behavior remains valid. | Local check/race/Docker integration and Podman+Docker PASS; all six native regression jobs PASS in Verify 34226859965. |
 | H2 | `type: process` is strictly validated and rejects incompatible runtime fields. | TestProcessManifestContract; TestProcessManifestNegativeFixtures; TestProcessPresenceRejectsYAMLMergeAndAliases; TestProcessFieldsDoNotChangeLegacyCanonicalShape — PASS, Linux integrated working tree 2026-09-08. |
 | H3 | Command is direct argv with confined cwd and no implicit shell. | TestStartInterpolatesWithoutSnapshotSecrets; TestPrepareRejectsUnownedRootAndSourceEscape; TestPrepareRejectsSymlinkCWDAndRuntimeRoot — PASS, Linux integrated working tree 2026-09-08. |
 | H4 | Process remains alive after launching create CLI exits. | Linux TestPersistentProcessNativeCLI PASS: create exits before independent later CLI observations. |
 | H5 | A later independent CLI inspects the exact process using durable native identity. | Linux native CLI PASS: persisted identity survives independent show and creator interruption. |
-| H6 | PID reuse/identity mismatch never makes an unrelated process owned. | TestManagedTermination and TestRecoveryUsesReceiptAndChecksMismatch PASS for simulated birth/receipt mismatch. Actual kernel PID reuse was not forced. |
+| H6 | PID reuse/identity mismatch never makes an unrelated process owned. | TestManagedTermination; TestRecoveryUsesReceiptAndChecksMismatch; Windows TestManagedWindowsCompletedJobIgnoresReusedHistoricalPID PASS in final native CI. Identity reuse is simulated, not forced kernel PID reuse. |
 | H7 | stdout/stderr are file-backed and available through runtime logs. | TestProcessComponentLogsRouteAndRetainIsolatedArtifacts; TestLogsRequireDurableRedactionVersion; TestBoundedLogsDoNotExposeSecretAcrossBoundary — PASS, Linux integrated working tree 2026-09-08. |
 | H8 | Each runtime has a private state directory under agent-env state root. | TestDestroyPreservesLogsAndReceipt; TestPersistentProcessNativeCLI — PASS, Linux integrated working tree 2026-09-08. |
-| H9 | Runtime-dir interpolation works with spaces/non-ASCII native paths. | Linux native CLI Japanese/spaced paths and symlink home PASS; native Windows/macOS pending. |
+| H9 | Runtime-dir interpolation works with spaces/non-ASCII native paths. | TestPersistentProcessNativeCLI PASS on all three native OSes in Verify 34226859965: spaced/Unicode paths; Unix symlink home. |
 | H10 | Named loopback TCP ports are dynamically allocated and persisted before launch. | TestProcessConcurrentReservationPortsAreDisjoint; TestProcessLifecyclePersistedIntentMixedRoutingAndIsolation — PASS, Linux integrated working tree 2026-09-08. |
 | H11 | Concurrent process leases never share agent-env port reservation or runtime directory. | TestProcessConcurrentReservationPortsAreDisjoint; TestPersistentProcessNativeCLI — PASS, Linux integrated working tree 2026-09-08. |
 | H12 | External port occupancy fails safely without silently changing persisted runtime identity. | TestProcessDynamicReservationAvoidsExternallyBoundPort; TestReservedPortOccupationPreventsLaunch — PASS, Linux integrated working tree 2026-09-08. |
@@ -772,7 +807,7 @@ roadmap after completion.
 | H14 | Real HTTP helper becomes READY through normal app readiness. | Linux native CLI real /json/version HTTP readiness PASS. |
 | H15 | Process exit before readiness fails create and compensates conservatively. | TestProcessExitDuringSuccessfulProbeCannotBecomeReady; TestProcessIdentitySaveFailureAndPartialStartCompensate — PASS, Linux integrated working tree 2026-09-08. |
 | H16 | Manual death is DEGRADED and no automatic restart occurs. | TestProcessCrashDegradesWithoutRestartAndReleasedEffectsQuarantine; TestPersistentProcessNativeCLI — PASS, Linux integrated working tree 2026-09-08. |
-| H17 | Root exit with descendants is never false-clean without native proof. | Linux TestManagedRootGoneDescendant and TestExitedRootWithDescendantsIsNotReady PASS. Other native OS execution pending. |
+| H17 | Root exit with descendants is never false-clean without native proof. | TestManagedRootGoneDescendant and TestExitedRootWithDescendantsIsNotReady PASS in all six native jobs, Verify 34226859965. |
 | H18 | Destroy revalidates native identity immediately before termination. | Linux TestManagedTermination mismatch/cancellation/live-root protection PASS. Native Unix observation-to-signal gap remains documented. |
 | H19 | Whole owned tree absence is confirmed before releasing ports/runtime state. | TestProcessUnknownOwnershipQuarantinesAndRecovers; TestProcessSaveRejectsImmutableSnapshotChanges; TestPersistentProcessNativeCLI — PASS, Linux integrated working tree 2026-09-08. |
 | H20 | Ambiguous termination quarantines and retains recovery evidence/resources. | TestProcessUnknownOwnershipQuarantinesAndRecovers; TestProcessFenceLossRetainsLaunchForLaterRecovery; TestMissingLaunchingReceiptIsUncertain — PASS, Linux integrated working tree 2026-09-08. |
@@ -781,14 +816,14 @@ roadmap after completion.
 | H23 | Process and Compose runtimes can coexist in a declared stack. | TestIntegrationPersistentProcessComposeCoexistence (55.965s) — PASS, Linux integrated working tree 2026-09-08. |
 | H24 | Source tracked-change protections remain intact while a process may reference its worktree. | TestPersistentProcessNativeCLI (5.422s): live tracked README refusal preserves bytes/process; force captures tracked-diff before release — PASS, Linux integrated working tree 2026-09-08. |
 | H25 | No shell/Python/Node/systemd/launchd/Windows Service becomes a core requirement. | Integrated arch-check/build/tests and Go-built CLI/helper PASS; no new core runtime/daemon. |
-| H26 | Real persistent-process integration passes natively on Windows. | First CI: Windows Go 1.27 PASS; Go 1.26 job 102059952028 FAILED on post-completion root identity. Fix/native regression pending. |
-| H27 | Real persistent-process integration passes natively on macOS. | Native macOS Go 1.26/1.27 PASS in Verify 34225937603 at fb0d22e. Final fixed-commit workflow required. |
+| H26 | Real persistent-process integration passes natively on Windows. | Windows Go 1.26/1.27 native repoctl check, including TestPersistentProcessNativeCLI and completed-Job regression, PASS in Verify 34226859965 at f588960. |
+| H27 | Real persistent-process integration passes natively on macOS. | macOS Go 1.26/1.27 native repoctl check, including TestPersistentProcessNativeCLI, PASS in Verify 34226859965 at f588960. |
 | H28 | Real persistent-process integration passes natively on Linux. | TestPersistentProcessNativeCLI (5.422s) — PASS, Linux integrated working tree 2026-09-08. |
 | H29 | Browser-shaped fixture proves state dir + CDP-like port + readiness + later observation + cleanup. | TestPersistentProcessNativeCLI: private profile, /json/version, readiness, independent show, cleanup — PASS, Linux integrated working tree 2026-09-08. |
-| H30 | Existing Android detached/guardian acceptance still passes after execx changes. | Linux/macOS and Windows Go 1.27 native CI PASS; Windows Go 1.26 process failure needs a fix preserving Android/guardian checks. |
-| H31 | Bilingual durable docs describe the delivered contract. | English/Japanese durable contracts updated, docs-check PASS; native acceptance limitations explicit. |
-| H32 | Final harness/translation/race/native CI passes. | Local harness/race/integration PASS; first native CI completed 11/12 jobs PASS, Windows Go 1.26 FAILED. No overall workflow success. |
-| H33 | Both ExecPlans contain direct evidence and retrospective before archival. | In progress: both plans record direct local evidence and remaining native gates; final retrospective/archival pending. |
+| H30 | Existing Android detached/guardian acceptance still passes after execx changes. | Android detached/guardian regressions PASS in all six native repoctl check jobs at f588960, Verify 34226859965. |
+| H31 | Bilingual durable docs describe the delivered contract. | Bilingual durable contracts, completion links and native evidence updated together; docs-check PASS. |
+| H32 | Final harness/translation/race/native CI passes. | Local harness/race/integration PASS; Verify 34226859965 at f588960 PASS, all 12 jobs including six native jobs, race/integration and five cross-build jobs. |
+| H33 | Both ExecPlans contain direct evidence and retrospective before archival. | Both plans contain the final checkpoint, H1–H33 evidence and completed retrospective, and are archived together with updated links. |
 
 Code existence alone is not acceptance. Record successful commands, native jobs,
 observed process identities and port assignments where appropriate.
@@ -888,7 +923,7 @@ The only runtime external prerequisite is the executable declared by the target
 repository/host. No new language runtime or daemon becomes a core agent-env
 requirement.
 
-## Unresolved Issues to Settle During Milestone 1
+## Resolved Milestone 1 Questions
 
 1. Final `working_directory` field name.
 2. Process port declaration syntax.
@@ -906,6 +941,6 @@ requirement.
 14. Whether to reserve a future restart contract or omit it entirely.
 15. Whether Browser/CDP later layers an observer on `type: process` or composes a specialized runtime internally.
 
-Resolved contract decisions are recorded in the Decision Log above. The final
-native termination and show/list behavior must still be verified against the
-adapter/app implementation before their acceptance rows can be marked complete.
+All questions above are resolved by the Decision Log, delivered product/design
+contract and H1–H33 evidence. Native termination and show/list were verified by
+the final three-OS CLI and primitive tests.

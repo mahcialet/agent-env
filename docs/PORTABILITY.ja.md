@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/PORTABILITY.md
-source_sha256: 2acaee7d68ff36c334ba9a8fd320676ce1d09aba0f0d0a769bea109077e248c0
+source_sha256: c14ae07ee55946ceec2b7480a67a5ad7c5dcb71aa519b83a6d1d2cb9e5c147d2
 ---
 
 [英語版（翻訳元）](PORTABILITY.md)
@@ -104,5 +104,6 @@ sourceを保持します。
 名前付きportはagent-env lease間のloopback TCP割り当てを予約します。対象がbindするまでの
 間は外部占有と競合し得ます。socket activationやlisten socket継承は使いません。実装中の
 native adapter test、race test、cross-buildは成功しています。実常駐processの
-Windows/macOS/Linux integrationと最終CI証拠は、[active process plan](exec-plans/active/persistent-process-runtime.ja.md)
+Windows/macOS/Linux integrationも`f588960`（Verify 34226859965）で成功しました。
+最終CI証拠は[完了process plan](exec-plans/completed/persistent-process-runtime.ja.md)
 で別途追跡します。

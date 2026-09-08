@@ -28,8 +28,8 @@ iOS, browser/CDP automation and snapshots, and distributed/multi-host coordinati
 
 The [persistent process runtime](product-specs/persistent-process-runtime.md) is
 implemented with direct argv, private mutable state, named loopback TCP ports and
-conservative native tree cleanup. Final native integration acceptance remains
-in progress in the [active process plan](exec-plans/active/persistent-process-runtime.md).
+conservative native tree cleanup. Native integration acceptance passed on all
+three OSes; evidence is in the [completed process plan](exec-plans/completed/persistent-process-runtime.md).
 Self-daemonization, automatic restart, interactive terminals, remote execution and
 service installation remain outside this runtime contract.
 
