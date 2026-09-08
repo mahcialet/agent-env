@@ -1,5 +1,5 @@
 ---
-status: active
+status: completed
 owner: maintainers
 last_verified: 2026-09-08
 ---
@@ -23,8 +23,8 @@ public documentation, per-thread replies and resolution after validated fixes.
 - [x] 2026-09-08: Correct colliding selected APK output paths, optional reverse observation and destroy previews.
 - [x] 2026-09-08: Correct host Flutter doctor, default plan rendering, project symlinks and nonzero ADB diagnostics.
 - [x] 2026-09-08: Synchronize existing English/Japanese public documentation.
-- [ ] Run regression tests, repository harness, race checks and native CI.
-- [ ] Reply to and resolve all addressed threads, then archive this plan.
+- [x] 2026-09-08: Run regression tests, repository harness, race checks and native CI.
+- [x] 2026-09-08: Reply to and resolve all eight threads, then archive this plan.
 
 ## Surprises & Discoveries
 
@@ -44,7 +44,18 @@ feature tests. Record reproduced failures and unexpected results below.
 
 ## Outcomes & Retrospective
 
-Pending implementation and verification. No review thread has been resolved yet.
+All eight review requests are addressed in `4677b89`. Each thread received a
+specific fix and regression-test reply, then was resolved after native CI passed.
+The final GitHub query found eight threads and zero unresolved threads.
+
+The fixes cover previously untested entry points and optional paths: default
+human-readable planning, host-only prerequisites, absent reverse bindings and
+safety previews. Regression tests now assert these independently of the original
+happy-path feature tests. Selected colliding APK outputs are explicitly rejected
+before effects rather than allowing one build to overwrite another. No new APK
+storage lifecycle or adapter ownership boundary was introduced. Existing real
+SDK evidence remains historical; this review was validated with native tests,
+race checks and the CI Compose integration suite.
 
 ## Context and Orientation
 
@@ -108,7 +119,7 @@ Review checkpoint (2026-09-08):
 - Initial full harness passed unit tests and vet, then correctly rejected stale
   translation hashes while the public documentation pairs were being edited.
   The documentation owner completed meaning review/hash sync and docs-check
-  passed. A coherent full-harness rerun is required before commit.
+  passed. The coherent full-harness rerun subsequently passed before commit.
 
 Final local validation (2026-09-08):
 
@@ -124,4 +135,17 @@ Final local validation (2026-09-08):
   `TestBuildRejectsInternalProjectSymlinks`, and
   `TestApplicationExecutionFailureRetainsDiagnosticsAndErrorIdentity` all passed.
 - Public docs cover six synchronized English/Japanese pairs. No local Flutter
-  path was added. Native CI and review-thread responses remain pending.
+  path was added. Native CI and review-thread responses subsequently completed as recorded below.
+
+Final completion evidence (2026-09-08):
+
+- Fix commit: `4677b89`.
+- [Push CI 34171724270](https://github.com/mahcialet/agent-env/actions/runs/34171724270)
+  and [PR CI 34171727162](https://github.com/mahcialet/agent-env/actions/runs/34171727162)
+  both passed all 12 jobs: native Windows/macOS/Linux on Go 1.26/1.27,
+  five cross-build targets, and Linux race/real Compose integration.
+- Replies were posted to all eight threads in PR 4; all eight resolve mutations
+  succeeded. A fresh paginated-query check reported `total=8`, `unresolved=[]`,
+  and no further page. Human review/merge remains separate.
+- English/Japanese plan moved together to completed with translation metadata
+  synchronized. No local SDK path or generated artifact was committed.
