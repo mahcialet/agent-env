@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/exec-plans/active/standalone-distribution.md
-source_sha256: bb599da3a0d90740385815ef9a17fcc331441050e191515fdf95c5ef3bd6b38c
+source_sha256: 60725e66ffbea6531166801e64f4f367092b9ce10519e7d189a8c1b26041736c
 ---
 
 # agent-env をクロスプラットフォームのスタンドアロン配布物にする
@@ -129,6 +129,8 @@ compatibility burdenが小さい今の段階では、長期standalone contract�
 
 ## 想定外の発見
 
+- 2026-09-08: Windows native CI 34196175504でLinux/macOSでは見えない2件を検出。Git autocrlfが埋め込みfixtureを17から18バイトへ変換し、公開済み不変ファイルの置換がstress時に共有/access deniedエラーを起こした。fixture限定の-text属性でバイト列を維持し、Windowsでは置換しない公開を使う。同じstress検証を維持し、nativeで再検証する。
+
 - 2026-09-08: merge `16afc83` からの再開時に回帰テストで3件を発見。同時asset mkdirが正常な先行作成を拒否し5子プロセスが失敗、絶対パスoverrideでもHOMEが必要、UI helperの一時コピーがinstall成功時・失敗時ともOS一時領域に作成されていた。検証条件を弱めず修正。asset race stressは10反復、120子プロセス、10,800展開、300新規rootで成功。統合途中のテストはAssetInfo重複宣言と意図したstaging回帰で失敗したため、統合後に最終検証する。
 
 - 2026-09-08: 提供された日本語の active plan に翻訳 metadata がなく、実装前の
@@ -155,6 +157,8 @@ compatibility burdenが小さい今の段階では、長期standalone contract�
 設計へ影響した失敗した試行は残す。
 
 ## 判断の記録
+
+- 判断: 当初の未決事項を子の完了内容と照合。数値形式のGit tagだけをversionの根拠とし、wall clockは識別情報に含めない。linker識別情報とReleaseRecordでtrim済みreleaseを検査する。6ターゲット・CGO無効・version付き最上位ディレクトリ・commit mtime・AGENT_ENV_HOME内のassets・テスト専用go:embed・release CIのGo 1.27.1固定・8ファイルの同一source/toolchain比較を採用済み。EEXIST後の検証によりasset専用process lockは不要。署名/SBOM/attestationと追加native tupleは後続作業。最初の公開versionはmaintainerの公開判断であり、別のversion管理元でも実装の障害でもない。理由: 子と親で実装し直接検証した契約を採用し、packaging方式の未決事項を残さない。日付/担当: 2026-09-08 / maintainers。
 
 - 判断: 製品の同梱一覧は明示的な空配列とし、将来の埋め込み利用は既存のDescribe/Materialize APIとテスト専用fixtureで示す。実際のhelper追加時はCLIとmanifestの由来情報を同時に更新する。破損は黙って修復せず拒否し、mkdir競合はロック追加ではなく先行作成の再検証で扱う。理由: 同一の不変バイト列は並行公開でき、packagingのために不要な製品helperを作るべきではない。日付/担当: 2026-09-08 / maintainers。
 
@@ -430,18 +434,18 @@ README install、architecture、portability、quality、security必要箇所、r
 | --- | --- | --- |
 | S1 | release展開後Go/source tree無しで`version`/help実行可能。 | 子R15・preview 34190701402で3OSの展開済みversion/help/listを空PATH・ソース外で確認。 |
 | S2 | core startupにDocker/Android/Flutter/Java/Python/Node/shell不要。 | 同じnative smokeで任意の外部ツールなしにcore commandを実行。 |
-| S3 | capability commandがmissing prerequisiteをlazy/正直に報告。 | Pending |
-| S4 | `version --output json`がversion/commit/toolchain/platform/asset metadataを返す。 | buildinfo.CurrentとCLI JSONはversion/commit/dirty/Go/platformをprovider初期化なしで表示。asset一覧は未完了。 |
+| S3 | capability commandがmissing prerequisiteをlazy/正直に報告。 | 2026-09-08, `8eb92d5`: 空PATHの `TestStandaloneCommandsRequestGitOnlyWhenSourcesAreNeeded` と既存Compose/Android/Flutterのdoctor/plan回帰が成功。具体的な不足ツール・exit 3・不要な状態作成や探索がないことを確認。 |
+| S4 | `version --output json`がversion/commit/toolchain/platform/asset metadataを返す。 | 2026-09-08, `8eb92d5`: `TestVersionReportsBundledInventoryWithoutState` がJSONの `assets: []` と表形式を検証。buildinfoテストが開発/release識別情報を検証。 |
 | S5 | development buildがrelease metadata無しでも正直なidentity。 | 開発defaultはdevel/unknownと表示し、単体テストが成功。 |
 | S6 | tag/version/commit mismatchまたはdirty release inputを拒否。 | 子R1–R4の厳密なGit検証と専用commit checkoutの負例が成功。 |
 | S7 | release buildが`CGO_ENABLED=0`かつshell packaging tool不要。 | 子R5で6バイナリのCGO=0とGoのみのarchive生成を確認。 |
 | S8 | fixed matrixからdocumented archive setだけ生成。 | 子R6–R7で6つの名前とprefix配下の3通常memberを確認。 |
 | S9 | checksum/manifestがarchive/executable bytesと一致。 | 子R9–R11で実bytesのchecksum/manifest/identityと不一致拒否を確認。 |
 | S10 | archiveはsafe relative regular filesのみでsymlink/traversal無し。 | 子R12のtraversal/symlink/memberとZIP local/central名の回帰が成功。 |
-| S11 | bundled assetがcontent-addressed/digest verified/atomic/concurrency-safe/idempotent。 | assetsのcontent-addressed再利用とatomic生成のテスト成功。cross-process stress証拠は未完了。 |
+| S11 | bundled assetがcontent-addressed/digest verified/atomic/concurrency-safe/idempotent。 | 2026-09-08, `8eb92d5`: `TestEmbeddedFixture`、tamper/pathテスト、`go test -race ./internal/assets -count=10` が成功。120子プロセス・10,800呼出・300新規rootで最終内容一致と一時ファイル残留なしを確認。 |
 | S12 | corrupt materialized assetを検出しsilent trustしない。 | TestMaterializeIsContentAddressedAndIdempotentで改ざんbytesを拒否。 |
-| S13 | capability initialize無しでasset metadata取得可能。 | Pending |
-| S14 | persistent stateがstate-root precedenceへ従いtarget repoへ漏れない。 | Pending |
+| S13 | capability initialize無しでasset metadata取得可能。 | 2026-09-08, `8eb92d5`: `assets.Inventory` はI/Oなしでbuildinfoへ一覧を渡す。CLIテストは空PATHと状態未作成を検証。テスト専用fixtureは配布しない。 |
+| S14 | persistent stateがstate-root precedenceへ従いtarget repoへ漏れない。 | 2026-09-08, `8eb92d5`: designの永続パスaudit、`TestResolveOverrideWithoutUserHome`、`TestLifecyclePersistentStateStaysUnderOverride`、`TestNamedCommandEvidenceStaysUnderStateRoot`、`TestUIHelperStagingStaysInOwnedRuntimeAndCleansUp`、既存Android専用環境テストが成功。外部ツールの状態は明確に区別。 |
 | S15 | explicit state rootがnative OS path/spaceで動き可能ならnon-ASCIIも検証。 | 子R16でWindows/amd64・macOS/arm64・Linux/amd64のUnicode/空白state rootを確認。 |
 | S16 | same-source/toolchain repeated releaseのdigest比較とgap記録。 | 子R14で641cb49の同source/toolchainによる8ファイル一致を確認。 |
 | S17 | extracted releaseをnative Windows/macOS/Linuxでsmoke test。 | preview 34190701402でWindows/amd64・macOS/arm64・Linux/amd64のnative成功。 |
@@ -452,7 +456,7 @@ README install、architecture、portability、quality、security必要箇所、r
 | S22 | full harness/docs/translation/race pass。 | 子R26で641cb49のローカルraceとhosted harness成功。親の残作業には別途最終検査が必要。 |
 | S23 | standalone docs/ExecPlan英日双方が存在しindex済み。 | 英日文書・indexがあり、子archival後のdocs-check成功。 |
 | S24 | 完了後roadmapのarchive release undecided表現解消。 | 英日roadmapでarchiveによるGitHub Releaseを決定済みとした。 |
-| S25 | `android-ui-observer`がseparate downloader無しでfuture embedded helper利用可能。 | Pending |
+| S25 | `android-ui-observer`がseparate downloader無しでfuture embedded helper利用可能。 | 2026-09-08, `8eb92d5`: designに将来のgo:embed → Describe → Materialize契約を記録。`TestEmbeddedFixture` がSDK・対象app・ダウンローダーなしで検証。既存外部helperは維持し、実際の製品への埋め込みは別作業。 |
 
 すべてdirect evidence必須。workflow/file存在だけではacceptance evidenceではない。
 
@@ -473,6 +477,24 @@ repoctlはtag作成/移動/削除/force updateしない。missing embedded asset
 自動downloadしない。
 
 ## 成果物と注記
+
+2026-09-08の親検証は `8eb92d528c8d0f49f15b7a5c99e6a99f08c7c042`、
+Go 1.27.1、private preview `v0.1.0` を使用（公開tagなし）。
+`go run ./tools/repoctl release-verify --out dist/parent-final-candidate` は
+6ターゲット各2回、8ファイルのバイト一致、Linux/amd64 native smokeに成功。
+`AGENT_ENV_RELEASE_CANDIDATE=../../dist/parent-final-candidate go test ./tools/repoctl -run TestReleaseCandidate -count=1 -v`
+は全18ケース成功。archiveを直接確認し、version付きprefix内の通常ファイルが
+実行ファイル、LICENSE（1066バイト）、README.txt（666バイト）の3件と確認。
+製品の同梱アセットは0件・0バイト。local previewの成果物証拠:
+
+| Target | Archive bytes | Archive SHA-256 |
+| --- | --- | --- |
+| windows/amd64 | 5987108 | `9be4d04228ca32af770ad5670a0e2b09e3dd936a9c7ee83593841b610348583f` |
+| windows/arm64 | 5480060 | `3c2c1234eb76f5d98549b582e9b05c6d87ae8f466547d7cd521170d140e09cb0` |
+| darwin/amd64 | 5841444 | `2713340792056c9ff8da31a34fb7148ddfb42519eeaa71c0929cd42d6ab88433` |
+| darwin/arm64 | 5529771 | `4071f2711ad111a2a9b323f46f74129e715f3b520d50d3956e5cb695243a5ed1` |
+| linux/amd64 | 5776247 | `0e6cdb1fe1e2f948231743e7c373fec6293e2434826b76f0c4506f58ce1a8e09` |
+| linux/arm64 | 5354856 | `a5570300a648eb9668f4001ca87cc47c7f85079c82b2d79b2eb440d271f18045` |
 
 development output例:
 

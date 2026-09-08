@@ -60,7 +60,7 @@ func Materialize(root string, info AssetInfo, data []byte) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if err = os.Rename(tmpPath, path); err != nil {
+	if err = publishAsset(tmpPath, path); err != nil {
 		if st, statErr := os.Lstat(path); statErr == nil && st.Mode().IsRegular() {
 			got, readErr := os.ReadFile(path)
 			if readErr == nil && string(got) == string(data) {

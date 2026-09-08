@@ -82,8 +82,9 @@ A future helper integrates by embedding trusted build-time bytes with `go:embed`
 using `assets.Describe(name, version, bytes)` to compute exact metadata, and calling
 `assets.Materialize(resolvedStateRoot, info, bytes)` only when selected. The caller
 owns capability identity, license review and expected-version checks; assets owns
-only immutable byte verification/publication. The returned regular file has mode
-0600 (APK input is not a host executable). No downloader or target-app build is
+only immutable byte verification/publication. New materializations request mode
+0600; native filesystem permission semantics apply. APK inputs need no host
+executable bit. No downloader or target-app build is
 part of this contract. The existing external UI helper path is unchanged until a
 separate feature explicitly replaces it. Tests exercise embedded bytes with no
 Android SDK, Flutter, target application or runtime initialization.
@@ -104,7 +105,7 @@ must not have hostile concurrent filesystem mutation; this is not a sandbox.
 | Environment descriptor, Compose configuration | `leases/<lease>/` |
 | Command logs, results, copied artifacts, UI recovery evidence | `leases/<lease>/artifacts/` |
 | Android ownership marker, private AVD, emulator/ADB logs and startup identity | `leases/<lease>/android/<runtime>/` |
-| Emulator host data and temporary directory | Runtime's private `emulator-data/` and `Temp/` |
+| Emulator host data and temporary directory | `leases/<lease>/android/<runtime>/avd/emulator-data/` and its `Temp/` child |
 | Verified helper install copy | Temporary APK in the owned runtime directory, removed on success/error |
 | Immutable bundle cache | `assets/<name>/<sha256>/<name>` |
 
@@ -119,3 +120,8 @@ are external-tool state governed by their existing contracts. Target-defined
 commands run in owned worktrees and can have other trusted-code side effects.
 Developer release/helper builders use explicit output paths, outside the runtime
 state contract. The audit does not claim containment of arbitrary external tools.
+
+On Windows, publication uses MoveFileEx without replacement. A losing writer
+verifies and reuses the winner; it never replaces a file another reader may have
+open. Unix uses atomic rename of identical content. Embedded fixture bytes are
+marked -text in Git attributes to prevent checkout newline conversion.

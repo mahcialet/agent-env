@@ -145,6 +145,8 @@ revision and outcome at each meaningful checkpoint.
 
 ## Surprises & Discoveries
 
+- 2026-09-08: Native Windows CI 34196175504 exposed two gaps hidden by Linux/macOS: Git autocrlf changed the embedded fixture from 17 to 18 bytes, and replacing an already published immutable file caused sharing/access-denied failures under stress. Preserve fixture bytes with a scoped -text attribute and publish without replacement on Windows; keep the same stress assertions. Native revalidation is required.
+
 - 2026-09-08: Resumption at merge `16afc83` found three gaps using new regressions: concurrent asset mkdir rejected legitimate EEXIST winners (five child failures), an absolute state override still needed HOME, and UI helper staging used OS temporary storage on both install success/error. Fixed each without weakening checks. Asset race stress passed ten repetitions: 120 children, 10,800 materializations, 300 fresh roots. Intermediate combined tests saw duplicate AssetInfo while files were being integrated and the intentionally failing staging test; final validation must use the integrated tree.
 
 - 2026-09-08: The supplied Japanese active plan lacked translation metadata,
@@ -171,6 +173,8 @@ Record at least:
 Preserve failed approaches when they influence the final design.
 
 ## Decision Log
+
+- Decision: Reconcile the original open distribution choices with the completed child: strict numeric Git tags alone, no wall-clock identity, linker identity plus ReleaseRecord for trimmed release inspection, six CGO-disabled targets, versioned top-level directories, tagged-commit mtimes, AGENT_ENV_HOME and assets beneath that root, direct test-only go:embed, Go 1.27.1 pinned in release CI, and same-source/toolchain byte comparison for all eight files. No cross-process asset lock is needed after verified EEXIST handling. Signing/SBOM/attestations and extra native tuples are follow-up work. The first public version remains a maintainer publication choice, not a second version source or implementation blocker. Rationale: these are the implemented, directly tested child/parent contracts; no unresolved packaging mechanism remains. Date/Author: 2026-09-08 / maintainers.
 
 - Decision: Keep the production asset inventory explicitly empty; describe future embedded consumers through the existing Describe/Materialize API and a test-only embedded fixture. Adding an actual helper must update CLI/manifest provenance together. Reject corruption rather than silently repairing it; revalidate mkdir race winners without adding locks. Rationale: identical immutable bytes can publish concurrently, and no production helper should be invented for a packaging task. Date/Author: 2026-09-08 / maintainers.
 
@@ -552,18 +556,18 @@ including Docker, Android or Flutter.
 | --- | --- | --- |
 | S1 | Extracted release runs `version`/help without Go or repository files. | Child R15 and preview 34190701402: extracted version/help/list run with empty PATH outside source on all three native OS runners. |
 | S2 | Core CLI startup does not require Docker, Android, Flutter, Java, Python, Node or shell. | The same native smoke runs core commands with no optional tools on PATH. |
-| S3 | Capability-specific commands report missing prerequisites lazily and honestly. | Pending |
-| S4 | `version --output json` reports documented version/commit/toolchain/platform/asset metadata. | 2026-09-08: `internal/buildinfo.Current` and CLI JSON output report version, commit, dirty marker, Go version and GOOS/GOARCH without optional-provider initialization; asset list integration remains pending. |
+| S3 | Capability-specific commands report missing prerequisites lazily and honestly. | 2026-09-08, `8eb92d5`: `TestStandaloneCommandsRequestGitOnlyWhenSourcesAreNeeded` (empty PATH) and existing Compose/Android/Flutter doctor/plan regressions pass: actionable missing tools, exit 3, no premature state or unrelated discovery. |
+| S4 | `version --output json` reports documented version/commit/toolchain/platform/asset metadata. | 2026-09-08, `8eb92d5`: `TestVersionReportsBundledInventoryWithoutState` passes JSON `assets: []` and table inventory; buildinfo tests retain honest development/release identity. |
 | S5 | Development builds have an honest identity without release metadata. | 2026-09-08: development defaults report `devel`/`unknown` identity through `agent-env version`; unit test passes. |
 | S6 | Release builds reject mismatched tag/version/commit or dirty release input. | Child R1–R4: strict Git identity and negative fixtures, including private committed-source isolation. |
 | S7 | Release builds use `CGO_ENABLED=0` and no shell packaging tools. | Child R5: all six binaries statically verify CGO_ENABLED=0; Go-only archive mechanics pass. |
 | S8 | The fixed matrix produces exactly the documented archive set. | Child R6–R7: exact six archive names and three prefixed regular members. |
 | S9 | Checksums and release manifest match exact archive/executable bytes. | Child R9–R11: real checksums/manifest/binary identity verified and mismatch fixtures rejected. |
 | S10 | Archives contain only safe relative regular files; no symlink/traversal. | Child R12: traversal/symlink/member tests plus ZIP local/central-name regression pass. |
-| S11 | Bundled asset materialization is content-addressed, digest-verified, atomic, concurrency-safe and idempotent. | 2026-09-08: `internal/assets` tests pass content-addressed reuse and atomic creation; cross-process stress evidence remains pending. |
+| S11 | Bundled asset materialization is content-addressed, digest-verified, atomic, concurrency-safe and idempotent. | 2026-09-08, `8eb92d5`: `TestEmbeddedFixture`, tamper/path tests and `go test -race ./internal/assets -count=10` pass: 120 children, 10,800 calls, 300 fresh roots, identical final bytes and no temporary residue. |
 | S12 | Corrupted materialized asset content is detected and never silently trusted. | 2026-09-08: `TestMaterializeIsContentAddressedAndIdempotent` rejects tampered bytes. |
-| S13 | Bundled asset metadata is available without capability initialization. | Pending |
-| S14 | Persistent runtime state follows documented state-root precedence and does not leak into target repositories. | Pending |
+| S13 | Bundled asset metadata is available without capability initialization. | 2026-09-08, `8eb92d5`: `assets.Inventory` feeds buildinfo without I/O; CLI test uses empty PATH and verifies state stays absent. Test-only fixture is not shipped. |
+| S14 | Persistent runtime state follows documented state-root precedence and does not leak into target repositories. | 2026-09-08, `8eb92d5`: Design persistent-path audit plus `TestResolveOverrideWithoutUserHome`, `TestLifecyclePersistentStateStaysUnderOverride`, `TestNamedCommandEvidenceStaysUnderStateRoot`, `TestUIHelperStagingStaysInOwnedRuntimeAndCleansUp` and existing Android private-environment tests pass. External-tool state is explicitly distinguished. |
 | S15 | Explicit state root works on native Windows/macOS/Linux paths including spaces; non-ASCII is tested where practical. | Child R16: Unicode/space state-root smoke on Windows/amd64, macOS/arm64 and Linux/amd64. |
 | S16 | Repeated same-source/toolchain release construction is compared for deterministic binary/archive output and any gap is documented. | Child R14: two same-source/toolchain builds at 641cb49 produce eight identical files. |
 | S17 | Extracted release artifacts are smoke-tested on native Windows/macOS/Linux. | Preview 34190701402 passes native smoke on Windows/amd64, macOS/arm64 and Linux/amd64. |
@@ -574,7 +578,7 @@ including Docker, Android or Flutter.
 | S22 | Full harness, docs/translation checks and Go race suite pass at final revision. | Child R26: final code 641cb49 passes local race and all hosted harness jobs; parent-specific remaining work still needs its own final check. |
 | S23 | Standalone product/design/ExecPlan docs exist in English and Japanese and are indexed. | Bilingual indexed docs exist and docs-check passes after child archival. |
 | S24 | Roadmap no longer describes archive-based release packaging as undecided after completion. | Updated bilingual roadmap settles archive-based GitHub Release packaging. |
-| S25 | The distribution contract is sufficient for `android-ui-observer` to consume a future embedded helper without a separate downloader design. | Pending |
+| S25 | The distribution contract is sufficient for `android-ui-observer` to consume a future embedded helper without a separate downloader design. | 2026-09-08, `8eb92d5`: Design documents the future go:embed → Describe → Materialize consumer contract; `TestEmbeddedFixture` proves it without SDK/target app/downloader. Current external helper remains unchanged; actual production embedding is follow-up work. |
 
 Every acceptance item requires direct evidence. File/workflow existence alone is
 not evidence until corresponding validation passes.
@@ -604,6 +608,24 @@ Do not add automatic network repair for missing embedded assets. Standalone
 assets come from the installed executable.
 
 ## Artifacts and Notes
+
+2026-09-08 parent validation at `8eb92d528c8d0f49f15b7a5c99e6a99f08c7c042`,
+Go 1.27.1, private preview `v0.1.0` (no public tag):
+`go run ./tools/repoctl release-verify --out dist/parent-final-candidate` passed
+all six builds twice, eight byte-identical files and Linux/amd64 native smoke.
+`AGENT_ENV_RELEASE_CANDIDATE=../../dist/parent-final-candidate go test ./tools/repoctl -run TestReleaseCandidate -count=1 -v`
+passed all 18 cases. Manual archive inspection found exactly three regular members
+per versioned prefix: executable, LICENSE (1066 bytes), README.txt (666 bytes).
+Production bundled assets: 0, 0 bytes. Local preview artifact evidence:
+
+| Target | Archive bytes | Archive SHA-256 |
+| --- | --- | --- |
+| windows/amd64 | 5987108 | `9be4d04228ca32af770ad5670a0e2b09e3dd936a9c7ee83593841b610348583f` |
+| windows/arm64 | 5480060 | `3c2c1234eb76f5d98549b582e9b05c6d87ae8f466547d7cd521170d140e09cb0` |
+| darwin/amd64 | 5841444 | `2713340792056c9ff8da31a34fb7148ddfb42519eeaa71c0929cd42d6ab88433` |
+| darwin/arm64 | 5529771 | `4071f2711ad111a2a9b323f46f74129e715f3b520d50d3956e5cb695243a5ed1` |
+| linux/amd64 | 5776247 | `0e6cdb1fe1e2f948231743e7c373fec6293e2434826b76f0c4506f58ce1a8e09` |
+| linux/arm64 | 5354856 | `a5570300a648eb9668f4001ca87cc47c7f85079c82b2d79b2eb440d271f18045` |
 
 Development release output should be ignored by Git, for example:
 

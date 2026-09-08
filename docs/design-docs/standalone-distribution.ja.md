@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/design-docs/standalone-distribution.md
-source_sha256: 8b91dbe4271af7eee872140ef10108d5afaa8de880859fd66dd3955780e272a4
+source_sha256: 6f6a168cfdc228cdbba9f2b9ed58eca3cffad222580b0c09141c205ab9fba24d
 ---
 
 # スタンドアロン配布の設計
@@ -80,8 +80,8 @@ companionを追加するときは、両方の一覧と検証を同じ変更で�
 選択された機能が必要とするときだけ
 `assets.Materialize(resolvedStateRoot, info, bytes)` を呼び出します。
 機能の識別、ライセンス確認、期待するバージョンの検証は呼び出し側が担当し、
-assetsは不変のバイト列の検証と保存だけを担当します。返される通常ファイルの
-modeは0600です。APKはホスト上の実行ファイルではありません。
+assetsは不変のバイト列の検証と保存だけを担当します。新規保存時にmode 0600を指定します。
+実際の権限はOSのファイルシステムに従います。APKにはホスト上の実行権限は不要です。
 この契約にダウンローダーや対象アプリのビルドは含みません。既存の外部UI
 helper指定は、別の機能変更で明示的に置き換えるまで維持します。
 テストはAndroid SDK、Flutter、対象アプリ、runtimeの初期化なしで埋め込みを検証します。
@@ -102,7 +102,7 @@ helper指定は、別の機能変更で明示的に置き換えるまで維持�
 | 環境記述、Compose設定 | `leases/<lease>/` |
 | コマンドログ、結果、コピーした成果物、UI復旧証拠 | `leases/<lease>/artifacts/` |
 | Android所有者マーカー、専用AVD、emulator/ADBログ、起動識別情報 | `leases/<lease>/android/<runtime>/` |
-| Emulatorのホストデータと一時ディレクトリ | runtime専用の `emulator-data/` と `Temp/` |
+| Emulatorのホストデータと一時ディレクトリ | `leases/<lease>/android/<runtime>/avd/emulator-data/` とその配下の `Temp/` |
 | 検証済みhelperのインストール用コピー | 所有runtimeディレクトリ内の一時APK。成功時も失敗時も削除 |
 | 不変アセットのキャッシュ | `assets/<name>/<sha256>/<name>` |
 
@@ -118,3 +118,8 @@ Dockerリソース、共有ADBサービスと鍵、SDK/Flutter/Gradleキャッ�
 所有worktree内で実行され、信頼するコードとして他の副作用を持つ場合があります。
 開発者向けrelease/helperビルダーの明示的な出力先は、実行時の状態保存先とは
 別の契約です。この監査は任意の外部ツールの書き込みを封じ込める保証ではありません。
+
+Windowsでは置換フラグなしのMoveFileExで公開します。先行する書き込みが
+完了していれば内容を検証して再利用し、別の読み取りが開いているファイルを
+置き換えません。Unixでは同一内容をatomic renameします。埋め込みfixtureは
+Git属性の-textを指定し、checkout時の改行変換を防ぎます。
