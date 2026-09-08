@@ -1,5 +1,5 @@
 ---
-status: active
+status: completed
 owner: maintainers
 last_verified: 2026-09-08
 ---
@@ -19,8 +19,8 @@ Make release-verify enforce the documented caller cleanliness policy before buil
 
 - [x] 2026-09-08: Read harness, confirm clean branch and one unresolved thread.
 - [x] 2026-09-08: Reproduce the entry-point gap and share the cleanliness guard.
-- [ ] 2026-09-08: Validate locally and in native CI, push, reply and resolve.
-- [ ] 2026-09-08: Record outcomes and archive both languages.
+- [x] 2026-09-08: Validate locally and in native CI, push, reply and resolve.
+- [x] 2026-09-08: Record outcomes and archive both languages.
 
 ## Surprises & Discoveries
 
@@ -34,7 +34,7 @@ The previous regression tested releaseVersion only. release-verify validated the
 
 ## Outcomes & Retrospective
 
-Pending implementation and validation.
+Completed in code revision `2c6ff8f`. Shared validation closes the caller/clone gap without changing release identity or runtime behavior. The thread was replied to with evidence and resolved. Future cleanliness regressions must exercise command entry points as well as identity helpers. No merge, public tag or release was created.
 
 ## Context and Orientation
 
@@ -58,7 +58,9 @@ Fixtures use temporary repositories only. Do not rewrite published history, muta
 
 ## Artifacts and Notes
 
-Local `go run ./tools/repoctl check` and `go test -race ./tools/repoctl` passed on 2026-09-08, including the four entry-point regressions. Native CI and preview remain pending.
+Local `go run ./tools/repoctl check` and `go test -race ./tools/repoctl` passed on 2026-09-08, including the four entry-point regressions. Local `release-verify --out dist/pr6-index-guard-candidate` built all six targets twice, compared eight identical files and passed Linux native smoke. `AGENT_ENV_RELEASE_CANDIDATE=../../dist/pr6-index-guard-candidate go test ./tools/repoctl -run TestReleaseCandidate -count=1` passed. Independent read-only review found no confirmed defects.
+
+Verify https://github.com/mahcialet/agent-env/actions/runs/34208637620 passed all 12 jobs (six native OS/Go checks, five cross-builds, full race and Docker integration). Release preview https://github.com/mahcialet/agent-env/actions/runs/34208637650 passed repeat-build/candidate validation and Windows/macOS/Linux native smoke. Both runs tested `2c6ff8f`. Thread reply: https://github.com/mahcialet/agent-env/pull/6#discussion_r3956287032 ; thread resolved.
 
 Review: https://github.com/mahcialet/agent-env/pull/6#discussion_r3956143329 . Evidence belongs here and in the thread reply.
 

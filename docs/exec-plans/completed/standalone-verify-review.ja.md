@@ -1,9 +1,9 @@
 ---
-status: active
+status: completed
 owner: maintainers
 last_verified: 2026-09-08
-translation_of: docs/exec-plans/active/standalone-verify-review.md
-source_sha256: e8db1ae59302ac95761b80a54aa17f3bb06bc16697e7295db71aa808ce6e3823
+translation_of: docs/exec-plans/completed/standalone-verify-review.md
+source_sha256: 0fdd7a3b4be1edb4493ddd56e17acf4239fd405edb5484c319cac6b6b3d10d9f
 ---
 
 # release検証で呼び出し元の隠れたindexフラグを拒否する
@@ -21,8 +21,8 @@ release-verifyでbuild開始前に、文書に定めた呼び出し元のclean�
 
 - [x] 2026-09-08: harness、cleanなブランチ、未解決1Threadを確認。
 - [x] 2026-09-08: コマンド入口の検査漏れを再現し、clean検査を共通化。
-- [ ] 2026-09-08: localとnative CIで検証し、push・返信・Resolve。
-- [ ] 2026-09-08: 成果を記録し日英をcompletedへ移動。
+- [x] 2026-09-08: localとnative CIで検証し、push・返信・Resolve。
+- [x] 2026-09-08: 成果を記録し日英をcompletedへ移動。
 
 ## 想定外の発見
 
@@ -36,7 +36,7 @@ release-verifyでbuild開始前に、文書に定めた呼び出し元のclean�
 
 ## 成果と振り返り
 
-実装と検証は未完了です。
+コードrevision `2c6ff8f`で完了しました。検査の共通化で呼び出し元とcloneの検査漏れを解消し、release識別情報とruntime動作は維持しました。Threadへ証拠付きで返信・Resolve済みです。今後のclean検査の回帰テストでは識別情報helperに加え、コマンド入口も検証します。merge、公開tag、release作成は行っていません。
 
 ## 背景と構成
 
@@ -60,7 +60,9 @@ fixtureは一時repositoryだけを使います。公開履歴の書き換え、
 
 ## 成果物と注記
 
-2026-09-08にlocalの`go run ./tools/repoctl check`と`go test -race ./tools/repoctl`が成功しました。入口の回帰4ケースも含みます。native CIとpreviewは未確認です。
+2026-09-08にlocalの`go run ./tools/repoctl check`と`go test -race ./tools/repoctl`が成功しました。入口の回帰4ケースも含みます。localの`release-verify --out dist/pr6-index-guard-candidate`で6ターゲット各2回のbuild、8ファイルのバイト一致、Linux native smokeが成功しました。`AGENT_ENV_RELEASE_CANDIDATE=../../dist/pr6-index-guard-candidate go test ./tools/repoctl -run TestReleaseCandidate -count=1`も成功しました。読み取り専用の独立レビューで確認済みの不具合はありませんでした。
+
+Verify https://github.com/mahcialet/agent-env/actions/runs/34208637620 は全12 job（native OS/Go検査6、cross-build 5、全体raceとDocker統合）が成功しました。Release preview https://github.com/mahcialet/agent-env/actions/runs/34208637650 は繰り返しbuild・candidate検証とWindows/macOS/Linux native smokeが成功しました。両runの対象は`2c6ff8f`です。Thread返信: https://github.com/mahcialet/agent-env/pull/6#discussion_r3956287032 。ThreadはResolve済みです。
 
 指摘: https://github.com/mahcialet/agent-env/pull/6#discussion_r3956143329 。証拠は本PlanとThread返信に残します。
 
