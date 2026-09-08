@@ -1,9 +1,9 @@
 ---
-status: active
+status: completed
 owner: maintainers
 last_verified: 2026-09-08
-translation_of: docs/exec-plans/active/standalone-release-filter-review.md
-source_sha256: 7e1c1c772772da1028249c90cc887cb4d46adf0047db779fadbf77ad039c4113
+translation_of: docs/exec-plans/completed/standalone-release-filter-review.md
+source_sha256: b88b35a0ea773ea6da75063d94484b75b9867f071370d3817c123906e588508c
 ---
 
 # リリースcheckoutのfilterを隔離する
@@ -18,7 +18,7 @@ PR #7のrelease checkoutが外部のGit属性・filterで変換されないよ�
 
 - [x] 未解決のfilter指摘を確認。
 - [x] 2026-09-08: global/system fixtureが修正前に両方失敗し、設定隔離後に成功。
-- [ ] 検証・push・返信・Resolveを行う。
+- [x] 2026-09-08: 検証して3010931をpush。discussion_r3954932030へ返信し、thread PRRT_kwDOURHsR86gHb58のResolveを確認。
 
 ## Surprises & Discoveries
 
@@ -30,7 +30,7 @@ smudgeがコンパイラ入力を変えても、対応するclean filterがGit s
 
 ## Outcomes & Retrospective
 
-未完了。
+2026-09-08完了。release checkoutはglobal/system filter設定・外部属性・templateを継承しない。両filter回帰、source guard、実候補、harness、repoctl raceが成功。指摘に返信してResolve済み。隔離処理とテストはユーザーのGit設定や公開refsを変更していない。hosted CIは下記の成功済みローカル証拠と区別する。
 
 ## Context and Orientation
 

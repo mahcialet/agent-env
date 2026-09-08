@@ -1,5 +1,5 @@
 ---
-status: active
+status: completed
 owner: maintainers
 last_verified: 2026-09-08
 ---
@@ -16,7 +16,7 @@ Keep PR #7 release checkout bytes independent of ambient Git attributes and filt
 
 - [x] Inspected the unresolved filter review.
 - [x] 2026-09-08: Global/system fixtures both failed before the fix and passed after configuration isolation.
-- [ ] Validate, push, reply and resolve.
+- [x] 2026-09-08: Validated and pushed 3010931; replied in discussion_r3954932030 and confirmed thread PRRT_kwDOURHsR86gHb58 resolved.
 
 ## Surprises & Discoveries
 
@@ -28,7 +28,7 @@ A smudge filter can change compiler input while a matching clean filter hides th
 
 ## Outcomes & Retrospective
 
-Not completed.
+Completed on 2026-09-08. Release checkout no longer inherits global/system filter configuration, external attributes or templates. Both active-filter regressions pass, as do source guards, real candidates, harness and repoctl race. The review thread was answered and resolved; user Git configuration and public refs remain unchanged by the isolation/tests. Hosted CI is distinct from the successful local evidence below.
 
 ## Context and Orientation
 
