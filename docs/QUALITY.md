@@ -160,3 +160,22 @@ coexistence and a browser-shaped state/CDP-like fixture. No browser semantics ar
 implemented by that fixture. Native Windows/macOS/Linux execution is required;
 cross-compilation alone cannot complete this acceptance. Local adapter, race, integration and cross-build evidence, plus successful native
 Windows/macOS/Linux CI at `f588960` (Verify 34226859965), are recorded in the completed plan.
+
+## Browser/CDP verification
+
+The [active browser ExecPlan](exec-plans/active/browser-cdp-automation.md) owns
+acceptance evidence. `TestBrowserManifestContract`,
+`TestBrowserManifestNegativeFixtures`, `TestBrowserRequiresProcessRuntime` and
+`TestBrowserAbsentPreservesLegacyCanonicalShape` cover explicit bindings, exact
+private-profile/debugging flags, YAML null/merge/alias variants and compatibility.
+Config unit and race tests passed locally. Baseline `go test -race ./...` passed;
+the initial harness reached docs-check after unit/vet success and failed because
+the supplied Japanese plan lacked translation metadata. That failure is recorded
+and corrected in the bilingual plan.
+
+Native browser coverage must run real headless Chrome for Testing on all three
+OSes and record exact product/protocol versions. The selected pin is
+152.0.7977.82 with Go 1.27. The fixture must exercise AX/DOM, screenshots, Unicode
+input, stale rejection, iframe/shadow observation, bounded diagnostics, a
+lease-hosted backend and safe profile cleanup. A planned job, fake transport test
+or cross-build is not a native pass; current results remain in the active plan.

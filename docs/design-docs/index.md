@@ -21,3 +21,5 @@ last_verified: 2026-09-08
 - [standalone-distribution](standalone-distribution.md) / [日本語](standalone-distribution.ja.md)
 - [compose-providers](compose-providers.md) / [日本語](compose-providers.ja.md)
 - [persistent-process-runtime](persistent-process-runtime.md) / [日本語](persistent-process-runtime.ja.md)
+
+- [Browser/CDP automation](browser-cdp-automation.md) / [日本語](browser-cdp-automation.ja.md)

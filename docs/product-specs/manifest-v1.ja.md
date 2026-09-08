@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/product-specs/manifest-v1.md
-source_sha256: 22704b579c6f421c7d673a1fcf8297ac4404d22b09e14a8dd5f98a8dfc4483a7
+source_sha256: 0beec1c56873393b4258083b163c27c7c0f5d53bc6d7dc78407f9169708ad786
 ---
 
 [English（翻訳元）](manifest-v1.md)
@@ -174,3 +174,12 @@ process componentは`compose_services`を省略し、宣言したruntime portを
 service/target/protocol fieldを禁止します。共通の観測endpoint mapは引き続き`host:port`を
 持ち、数値のreadiness参照とは区別します。foregroundの寿命、専用可変状態、実行ファイル証拠、
 保守的なcleanupは[process契約全文](persistent-process-runtime.ja.md)を参照してください。
+
+## 明示的browser binding
+
+任意の`browsers.<name>`に`type: chromium-cdp`、`process` runtime、名前付きTCP `cdp_port`を
+宣言します。名前の大文字・小文字衝突は禁止し、1 runtimeにつきbindingは1つです。
+対象リポジトリはheadless、automation、loopback debugging、`${runtime_dir}/profile`の
+正確なflagをnative argvに1回ずつ宣言します。空/null bindingと、保護対象switchの別表記・重複は
+検証で拒否します。port名からbrowserを推測しません。
+完全な[browser manifest契約](browser-cdp-automation.ja.md)を参照してください。

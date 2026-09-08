@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/product-specs/index.md
-source_sha256: 740e530aee7e929b2e4915443ecdb0e1bd5f18fce09edea4110424bea90cbce2
+source_sha256: 0491e4b6959264532fc2c544b0a17bf129b1c798b14baa933af37a3a97dbbf37
 ---
 
 [English（翻訳元）](index.md)
@@ -20,3 +20,5 @@ source_sha256: 740e530aee7e929b2e4915443ecdb0e1bd5f18fce09edea4110424bea90cbce2
 - [standalone-distribution](standalone-distribution.ja.md) · [English](standalone-distribution.md)
 - [compose-providers](compose-providers.ja.md) · [English](compose-providers.md)
 - [persistent-process-runtime](persistent-process-runtime.ja.md) / [English](persistent-process-runtime.md)
+
+- [Browser/CDP自動操作](browser-cdp-automation.ja.md) / [English](browser-cdp-automation.md)

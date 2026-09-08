@@ -87,3 +87,12 @@ even if their current bytes match. Clear these flags explicitly before releasing
 release commands never alter the caller index. Development binaries use embedded
 Go VCS revision/modified settings when explicit linker identity is absent, and
 retain unknown values when VCS metadata is unavailable.
+
+## Browser prerequisite
+
+Browser/CDP commands additionally require a compatible native headless
+Chromium-family executable declared by the target manifest. Chrome for Testing is
+preferred for verification and is not bundled. No browser download, Node, Python,
+Playwright, Selenium or ChromeDriver becomes a core runtime dependency. Version,
+help and unrelated capabilities continue to work without a browser. See the
+[browser contract](browser-cdp-automation.md) and [prerequisite matrix](../../README.md).

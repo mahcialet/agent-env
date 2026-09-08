@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/product-specs/cli-contract.md
-source_sha256: ff80303855ffe62430a011cf579ccb39fcdc1a081db4fec8bac98d55303d0c82
+source_sha256: 67f2278a047f48a0cf276de6b9a5242f3b1c34be0f20a6df077604a9420e0a11
 ---
 
 [English（翻訳元）](cli-contract.md)
@@ -145,7 +145,7 @@ UI error は共通の終了コード仕様に従います。前提条件の不�
 
 ## 延期されたコマンド
 
-Expand/shrink、書き込み可能な fork、checkpoint/reproduce、browser 観測、artifact promotion は未実装です。placeholder の成功は返しません。[ロードマップ](../roadmap.ja.md)を参照してください。
+Expand/shrink、書き込み可能な fork、checkpoint/reproduce、artifact promotion は未実装です。placeholder の成功は返しません。[ロードマップ](../roadmap.ja.md)を参照してください。
 
 ## キャンセルと manifest の由来
 
@@ -167,3 +167,11 @@ process readiness内の`${endpoint:localName}`は数値portで、`capabilities`/
 起動後に証拠が欠落・不一致なら出力を拒否します。最終process logはcleanup artifactとして
 保持できますが、専用の未加工logや可変状態を無条件でartifactへexportするものではありません。
 [process契約](persistent-process-runtime.ja.md)を参照してください。
+
+## Browser/CDPコマンド
+
+`browser`はleaseの明示的bindingに対し、capabilities、pages、page-create/page-close、navigate、
+snapshot、dom-snapshot、screenshot、click、set-text、key、scroll、wait、console、networkを提供します。
+`--browser`と`--page`で正確な対象を選び、semantic入力には登録済み`--snapshot`と`--node`が必要です。
+共通の出力契約でrun、observation、artifactの証拠を返します。flag・上限・privacy・古い参照の検証・
+入力不明時のcleanup barrierは[browser契約](browser-cdp-automation.ja.md)を参照してください。

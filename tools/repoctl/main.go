@@ -502,17 +502,19 @@ func archCheck(root string) error {
 				external := strings.Contains(first, ".") && !strings.HasPrefix(dependency, module+"/")
 				bad = strings.HasPrefix(local, "internal/") && !inDomain || dependency == "database/sql" || external
 			case rel == "internal/app" || strings.HasPrefix(rel, "internal/app/"):
-				bad = local == "internal/cli" || strings.HasPrefix(local, "internal/cli/")
+				bad = local == "internal/cli" || strings.HasPrefix(local, "internal/cli/") || strings.HasPrefix(local, "internal/browser/")
+			case strings.HasPrefix(rel, "internal/browser/"):
+				bad = dependency == "os/exec" || strings.HasPrefix(local, "internal/") && local != "internal/domain" && local != "internal/evidence" && !strings.HasPrefix(local, "internal/browser/")
 			case strings.HasPrefix(rel, "internal/runtime/"):
 				// Each adapter (including Flutter builds) is independent; app coordinates them.
-				bad = local == "internal/cli" || strings.HasPrefix(local, "internal/cli/")
+				bad = strings.HasPrefix(local, "internal/browser/") || local == "internal/cli" || strings.HasPrefix(local, "internal/cli/")
 				if strings.HasPrefix(local, "internal/runtime/") {
 					own := strings.Split(rel, "/")[2]
 					other := strings.Split(local, "/")[2]
 					bad = bad || own != other
 				}
 			case strings.HasPrefix(rel, "internal/store/"):
-				bad = local == "internal/app" || strings.HasPrefix(local, "internal/app/") || local == "internal/cli" || strings.HasPrefix(local, "internal/cli/") || strings.HasPrefix(local, "internal/runtime/")
+				bad = strings.HasPrefix(local, "internal/browser/") || local == "internal/app" || strings.HasPrefix(local, "internal/app/") || local == "internal/cli" || strings.HasPrefix(local, "internal/cli/") || strings.HasPrefix(local, "internal/runtime/")
 			}
 			if bad {
 				return fmt.Errorf("AGENTENV-ARCH-002: %s imports %s; move orchestration to app and external dependencies behind domain/app interfaces", rel, dependency)

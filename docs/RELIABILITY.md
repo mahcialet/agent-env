@@ -110,3 +110,17 @@ writing `launch.json` fails. A later CLI does not depend on the current host sec
 environment. A typed `ErrProcessNotStarted` plus zero PID permits recovery to
 prepared state; an untyped zero-identity failure remains uncertain. See the
 [process lifecycle design](design-docs/persistent-process-runtime.md).
+
+## Browser operation recovery
+
+All browser operations retain the lease fence through CDP work and evidence
+finalization. Active unexpired ready leases permit input; degraded leases permit
+only read-only diagnostics with proven native identity. Quarantine, dead or
+ambiguous processes and unfinished command runs block operations. Port reuse,
+changed browser/page/document/node identity and truncated snapshots never authorize
+input. Mutations attempt once and are not automatically replayed after disconnect.
+Unconfirmed completion or failed evidence finalization retains a running command
+barrier; inspect the actual outcome and evidence before reviewed recovery.
+Destroy/GC still requires generic process-tree absence before deleting profiles,
+with no browser-specific cleanup or auto-restart. See the
+[browser design](design-docs/browser-cdp-automation.md).

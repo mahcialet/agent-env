@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: ARCHITECTURE.md
-source_sha256: 67bea10fad923eeb9fcf7be02d802c1c7da2b7882353d46f853af1c537f8f39d
+source_sha256: 4f967ecc55a9ec7f8e493cc8ae473b13469364b60a91deded7d9537515a42460
 ---
 
 [英語版（翻訳元）](ARCHITECTURE.md)
@@ -91,3 +91,14 @@ pathのみです。起動receiptはregistry保存失敗後の識別情報復旧�
 cleanupがtree全体の不在を証明する必要があります。[process設計](docs/design-docs/persistent-process-runtime.ja.md)
 と[完了した実行証拠](docs/exec-plans/completed/persistent-process-runtime.ja.md)を参照してください。
 native Windows/macOS/Linuxの受け入れは成功しました。
+
+## Browser/CDPの観測と操作
+
+`app.BrowserProvider`と`internal/browser/cdp`はpersistent process契約の上に型付きCDP操作を
+追加します。configは明示的binding、domainはpage/snapshot/identityを定義します。
+appはlease fence保持、process providerでの再検査、登録snapshotの出所検証、run/artifact保存を担当します。
+browser adapterはdiscovery、WebSocket target session、CDP identity、古いnodeの検査を担当し、
+具体的runtime adapterをimportせず、process/profile/portのlifecycleを所有しません。
+CLIが具体的な接続を担当します。transportはgorilla/websocketを使い、Node/Python helperは不要です。
+[browser設計](docs/design-docs/browser-cdp-automation.ja.md)と
+[実行中の実装証拠](docs/exec-plans/active/browser-cdp-automation.ja.md)を参照してください。

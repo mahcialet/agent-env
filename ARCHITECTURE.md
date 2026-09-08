@@ -94,3 +94,16 @@ must prove whole-tree absence before deleting mutable state or releasing ports a
 worktrees. See the [process design](docs/design-docs/persistent-process-runtime.md)
 and its [completed execution evidence](docs/exec-plans/completed/persistent-process-runtime.md);
 native Windows/macOS/Linux acceptance passed.
+
+## Browser/CDP observation and control
+
+`app.BrowserProvider` and `internal/browser/cdp` add typed CDP operations above the
+persistent-process contract. Config owns explicit browser bindings; domain owns
+page/snapshot/identity values. App holds the lease fence, rechecks the process
+provider, validates registered snapshot provenance and persists run/artifact
+results. The browser adapter owns discovery, WebSocket target sessions, CDP
+identity and stale-node checks. It does not import concrete runtime adapters or
+own process/profile/port lifecycle. CLI provides concrete wiring. The transport
+uses gorilla/websocket without a Node/Python helper. See the
+[browser design](docs/design-docs/browser-cdp-automation.md) and
+[active implementation evidence](docs/exec-plans/active/browser-cdp-automation.md).

@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/roadmap.md
-source_sha256: 057a53825e83a8fab933cad1ceacb8019ba6cd3fa90f08b41d5d5fc1646e7a49
+source_sha256: 2e15148463e8d3952d39e72e41ca3430739159b70ca130f7e39d2200091d97d5
 ---
 
 [英語版（翻訳元）](roadmap.md)
@@ -26,7 +26,7 @@ moduleは`github.com/mahcialet/agent-env`で、既存のMITライセンスを保
 
 ## runtimeの拡張
 
-iOS、browser/CDPの自動操作・snapshot、分散・複数ホストの調整は未実装です。Android Emulatorリースは専用AVD状態とローカルSDKプロセスを所有します。追加の実機CIにはアクセラレーションを利用できるrunnerが必要です。Browser観測と操作には汎用process所有の上に別の契約が必要です。
+iOS、分散・複数ホストの調整は引き続き延期しています。Android Emulatorリースは専用AVD状態とローカルSDKプロセスを所有し、追加の実機CIにはアクセラレーションを利用できるrunnerが必要です。Browser/CDP観測・操作は汎用process所有の上に独立した[契約](product-specs/browser-cdp-automation.ja.md)を定義し、実装とnative受け入れを[実行中browser plan](exec-plans/active/browser-cdp-automation.ja.md)で追跡します。外部browser接続、headful、download、Firefox/BiDi、Safari/WebKit、Android/Browser共通UI抽象化は今回の対象外です。
 
 [常駐process runtime](product-specs/persistent-process-runtime.ja.md)は、argv直接実行、
 専用可変状態、名前付きloopback TCP port、保守的なnative tree cleanupを実装しています。

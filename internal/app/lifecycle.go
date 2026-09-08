@@ -77,6 +77,7 @@ type SourceDiff interface {
 }
 
 type Service struct {
+	BrowserProvider     BrowserProvider
 	AndroidUI           AndroidUIProvider
 	Flutter             FlutterProvider
 	AndroidApplications AndroidApplicationProvider

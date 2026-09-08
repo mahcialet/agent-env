@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/SECURITY.md
-source_sha256: 6a49fed49d58dba821926d397b3a8b73874621773ed4d120ff55dd0b474a268c
+source_sha256: 911974ecf8c525d3844c947875079c670257f0eaab1541d5f37a251b78179a04
 ---
 
 [英語版（翻訳元）](SECURITY.md)
@@ -103,3 +103,18 @@ CLIのlog読み取りは上限付きで、独立した起動前`redaction.json`�
 なく、専用storageでの保護が必要です。未知のapplication secretや変換済みsecret値の検出は
 保証しません。可変profile/databaseを自動で証拠へcopyせず、tree不在確認後にのみ削除します。
 [process契約](product-specs/persistent-process-runtime.ja.md)を参照してください。
+
+## browser profileと証拠
+
+Browser/CDPはlease所有native processへ明示的に結び付けた機能です。
+adapterはprotocol副作用前に記録済みroot PID・専用profile・予約loopback portを検証し、
+ユーザーの既存browserを探索しません。HTTP discoveryはredirectとproxyを禁止します。
+これはlease間の誤接続を防ぐもので、同一ユーザーの悪意あるserverによるCDP応答偽装を防ぐものではありません。
+リポジトリが指定するbrowser実行ファイルは信頼するhost codeです。
+
+profileはprivateな可変stateであり、自動収集する証拠ではありません。
+semantic/DOM証拠ではeditable/password valueを除き、入力textは一時的に扱って操作metadataからredactします。
+networkはheader/bodyを保存せず、URL query・認証情報をredactします。console captureは接続期間内に限定し、
+認識した継承secretをredactします。screenshotは有効なPNGとして保存しますが、pixelや未認識のpage/console textは
+秘密を漏らし得るためartifactをprivateに保持します。型付き操作に任意JavaScriptやraw CDPの公開経路はありません。
+[browser契約](product-specs/browser-cdp-automation.ja.md)を参照してください。

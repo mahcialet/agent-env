@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: README.md
-source_sha256: 5fc80a1ca6517a956e312a3dc1da3e29e6e626a63665f5755f6817542caf38da
+source_sha256: 406f4d667578eb0b0abe4f918e0e3818bbf7e9f7b1178e47e62dc4280a483541
 ---
 
 [英語版（翻訳元）](README.md)
@@ -31,6 +31,7 @@ GitHub Releases から OS と CPU に合うアーカイブを取得し、バー�
 | Docker Compose リース（既定） | Git、Docker daemon、Compose v2 plugin |
 | Podman Compose リース | Git、Podman 5.x、独立したpodman-compose >=1.6.0,<2.0.0。5.4.2 / 1.6.0でLinux rootless受け入れを検証済み |
 | 常駐processリース | Gitと宣言したnative実行ファイル。container daemonやSDKは不要 |
+| Browser/CDP自動操作 | process leaseと、直接起動できる互換headless Chromium系browser。同梱しない |
 | Android Emulator リース | Git、Android SDK、Emulator、adb、インストール済み system image/AVD テンプレート、ホストのアクセラレーション |
 | Flutter Android アプリ | Android の前提条件に加え、Flutter と互換性のある Java/Android ビルドツールチェーン |
 | Android UI 観測 | Android リースと別途ビルドした任意の UI companion。そのビルドには SDK/JDK と Go が必要 |
@@ -96,7 +97,8 @@ podman-compose 1.6.0で、並行leaseとDocker共存を含む実Linux rootless�
 foreground processはcreate CLI終了後も存続し、readiness、show/logs、保守的destroyに
 参加します。予期しない終了でも再起動しません。
 [process契約](docs/product-specs/persistent-process-runtime.ja.md)を参照してください。
-最終native integration受け入れはactive ExecPlanで追跡しています。
+native integration受け入れはWindows・macOS・Linuxで成功しました。
+[完了済みExecPlan](docs/exec-plans/completed/persistent-process-runtime.ja.md)を参照してください。
 
 ## Android Emulatorリース
 
@@ -136,6 +138,17 @@ helper run が中断した場合、cleanup 前に `ui recover <lease-id> --run <
 
 状態は対象リポジトリの外に保存されます。`AGENT_ENV_HOME`に絶対パスを指定すると、OS標準の保存先（LinuxのXDG state、macOSのApplication Support、WindowsのLOCALAPPDATA）を上書きできます。このhomeには`state.db`、管理対象worktree、正規化したruntime設定、リースの成果物、診断用の`leases/<id>/environment.json`記述子が入ります。リース状態の判断では、診断用記述子よりSQLiteの記録を優先します。既定のTTLは4時間、最大TTLは24時間、有効な予約数の上限は8です。quarantinedのリースは予約を保持します。ホストポリシー設定ファイルはまだ公開していません。
 
-iOS、browser/CDPの自動操作、リモートGitキャッシュ、registry promotion、書き込み可能な修正リースは[ロードマップ項目](docs/roadmap.ja.md)です。
+iOS、リモートGitキャッシュ、registry promotion、書き込み可能な修正リースは[ロードマップ項目](docs/roadmap.ja.md)です。
 
 貢献者は[AGENTS.md](AGENTS.md)と[文書索引](docs/index.ja.md)から始めてください。既存の[MITライセンス](LICENSE)を適用します。
+
+## Browser/CDP自動操作
+
+`browsers.<name>`からprocess runtimeと名前付きTCP CDP portを明示的に参照します。
+manifestにheadless、automation、loopback debugging、専用profileの正確なflagを宣言し、
+browser層は別processを起動しません。`browser pages`、`snapshot`、`screenshot`、`navigate`と、
+snapshotに限定したsemantic入力を使えます。console/network captureには上限があり、
+profileとartifactはprivateです。PNG pixelの自動redactionはしません。
+完全なmanifestとコマンドは[browser契約](docs/product-specs/browser-cdp-automation.ja.md)、
+native受け入れ状況は[実行中plan](docs/exec-plans/active/browser-cdp-automation.ja.md)を参照してください。
+Chromeは外部の前提ツールであり、同梱しません。

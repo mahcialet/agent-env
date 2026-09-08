@@ -3,6 +3,7 @@ module github.com/mahcialet/agent-env
 go 1.26.0
 
 require (
+	github.com/gorilla/websocket v1.5.3
 	github.com/oklog/ulid/v2 v2.1.2
 	github.com/spf13/cobra v1.10.2
 	golang.org/x/sys v0.47.0

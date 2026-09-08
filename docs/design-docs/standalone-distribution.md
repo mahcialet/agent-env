@@ -142,3 +142,8 @@ a bounded metadata/path check, not a universal binary path scanner. Source guard
 reject assume-unchanged/skip-worktree index entries before porcelain status; the
 private build checkout additionally protects compiler inputs and does not prove
 the caller working tree is clean by itself.
+
+Browser/CDP adds a Go WebSocket transport to the executable, not a browser asset
+or helper runtime. Browser binaries remain external manifest-declared tools;
+release packaging and the empty bundled-asset inventory are unchanged. See the
+[browser design](browser-cdp-automation.md).

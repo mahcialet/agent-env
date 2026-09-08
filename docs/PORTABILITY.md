@@ -108,3 +108,17 @@ socket activation or inherited listening socket. Native adapter tests, race test
 and cross-compilation passed during implementation. Real persistent-process
 Windows/macOS/Linux integration passed at `f588960` (Verify 34226859965); see
 the [completed process plan](exec-plans/completed/persistent-process-runtime.md).
+
+## Browser/CDP prerequisites
+
+Browser automation needs a compatible native headless Chromium-family executable,
+launched directly by the process runtime. Shell wrappers and launchers whose CDP
+browser root differs from the owned native root are unsupported. Required argv
+flags include `--enable-automation` and a private `${runtime_dir}/profile`; the
+adapter verifies actual CDP command-line and PID observations on every connection.
+The Go WebSocket transport adds no Node, Python, browser driver, CGO or shell
+requirement to core commands. Chrome is not bundled. The selected native matrix is
+Chrome for Testing 152.0.7977.82, Go 1.27, Windows/macOS/Linux. Actual browser and
+protocol versions and native pass/failure evidence belong in the
+[active browser plan](exec-plans/active/browser-cdp-automation.md); selecting this
+matrix and cross-building are not native acceptance.

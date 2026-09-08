@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/PORTABILITY.md
-source_sha256: c14ae07ee55946ceec2b7480a67a5ad7c5dcb71aa519b83a6d1d2cb9e5c147d2
+source_sha256: 1e694a23226fae0e808f0f2930857df67b8e0e9d3e465e93cedb40c6d34eef7f
 ---
 
 [英語版（翻訳元）](PORTABILITY.md)
@@ -107,3 +107,15 @@ native adapter test、race test、cross-buildは成功しています。実常�
 Windows/macOS/Linux integrationも`f588960`（Verify 34226859965）で成功しました。
 最終CI証拠は[完了process plan](exec-plans/completed/persistent-process-runtime.ja.md)
 で別途追跡します。
+
+## Browser/CDPの前提条件
+
+browser自動操作には、process runtimeから直接起動できる互換native headless Chromium系実行ファイルが
+必要です。shell wrapperや、CDP browser rootが所有native rootと異なるlauncherは非対応です。
+argvには`--enable-automation`と専用`${runtime_dir}/profile`などを必須とし、接続ごとにCDPから
+実際のcommand lineとPIDを検証します。Go WebSocket transportを使い、coreコマンドに
+Node、Python、browser driver、CGO、shellの要件を追加しません。Chromeは同梱しません。
+選定したnative matrixはChrome for Testing 152.0.7977.82、Go 1.27、Windows/macOS/Linuxです。
+実測browser/protocol versionとnative成功・失敗の証拠は
+[実行中browser plan](exec-plans/active/browser-cdp-automation.ja.md)へ記録します。
+matrix選定やcross-buildだけでnative受け入れ完了とはしません。

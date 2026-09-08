@@ -23,6 +23,7 @@ Release availability and native verification are recorded in the
 | Docker Compose leases (default) | Git, Docker daemon and Compose v2 plugin |
 | Podman Compose leases | Git, Podman 5.x and standalone podman-compose >=1.6.0,<2.0.0; Linux rootless acceptance verified with 5.4.2 / 1.6.0 |
 | Persistent process leases | Git and the declared native executable; no container daemon or SDK |
+| Browser/CDP automation | Process lease plus a compatible directly executable headless Chromium-family browser; not bundled |
 | Android Emulator leases | Git, Android SDK, Emulator, adb, installed system image/AVD template and host acceleration |
 | Flutter Android applications | Android prerequisites plus Flutter and a compatible Java/Android build toolchain |
 | Android UI observation | Android lease and separately built optional UI companion; SDK/JDK and Go are needed to build that companion |
@@ -86,7 +87,8 @@ private profile state without Compose. Use `doctor --runtime process` for proces
 diagnostics. The foreground process survives create CLI exit and participates in
 readiness, show/logs and conservative destroy; unexpected exit does not restart it.
 See the [process contract](docs/product-specs/persistent-process-runtime.md).
-Final native integration acceptance is tracked in its active ExecPlan.
+Native integration acceptance passed on Windows, macOS and Linux; see its
+[completed ExecPlan](docs/exec-plans/completed/persistent-process-runtime.md).
 
 ## Android Emulator leases
 
@@ -129,6 +131,18 @@ state restrictions, navigation, waits and recovery.
 
 State lives outside target repositories. Set `AGENT_ENV_HOME` to an absolute path to override the native defaults: Linux XDG state, macOS Application Support, or Windows LOCALAPPDATA. The home contains `state.db`, managed worktrees, normalized runtime configuration, lease artifacts, and a diagnostic `leases/<id>/environment.json` descriptor. SQLite remains authoritative. Defaults are a 4-hour TTL, a 24-hour maximum TTL, and 8 active reservations; quarantined leases retain reservations. A host policy configuration file is not exposed yet.
 
-iOS and browser/CDP automation, remote Git caching, registry promotion, and writable fix leases are [roadmap items](docs/roadmap.md).
+iOS, remote Git caching, registry promotion, and writable fix leases are [roadmap items](docs/roadmap.md).
 
 Contributors start at [AGENTS.md](AGENTS.md) and the [documentation index](docs/index.md). Licensed under the existing [MIT license](LICENSE).
+
+## Browser/CDP automation
+
+Bind `browsers.<name>` explicitly to a process runtime and its named TCP CDP port.
+The manifest declares the exact headless, automation, loopback debugging and private
+profile flags; the browser layer never launches another process. Use `browser
+pages`, `snapshot`, `screenshot`, `navigate` and snapshot-scoped semantic input.
+Console/network captures are bounded; profile state and artifacts are private,
+and PNG pixels are not automatically redacted. See the
+[browser contract](docs/product-specs/browser-cdp-automation.md) for a complete
+manifest and commands, and the [active plan](docs/exec-plans/active/browser-cdp-automation.md)
+for native acceptance status. Chrome is an external prerequisite, not bundled.

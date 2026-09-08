@@ -1,0 +1,194 @@
+package cdp
+
+import (
+	"context"
+	"errors"
+	"runtime"
+
+	"github.com/mahcialet/agent-env/internal/domain"
+)
+
+func act(ctx context.Context, c *connection, s string, id domain.BrowserIdentity, p domain.BrowserPage, q domain.BrowserRequest, verify func() error) (performed, readback bool, err error) {
+	if q.Prior == nil || q.Node == "" {
+		return false, false, errors.New("semantic input requires snapshot and node")
+	}
+	if q.Prior.Truncated {
+		return false, false, errors.New("truncated snapshot cannot authorize input")
+	}
+	var old *domain.BrowserNode
+	for i := range q.Prior.Nodes {
+		if q.Prior.Nodes[i].Ref == q.Node {
+			if old != nil {
+				return false, false, errors.New("ambiguous snapshot reference")
+			}
+			old = &q.Prior.Nodes[i]
+		}
+	}
+	if old == nil || old.BackendID <= 0 || old.Ignored || old.Disabled {
+		return false, false, errors.New("node is diagnostic-only or unavailable")
+	}
+	fresh, e := snapshot(ctx, c, s, id, p)
+	if e != nil {
+		return false, false, e
+	}
+	if fresh.Truncated {
+		return false, false, errors.New("truncated fresh snapshot cannot authorize input")
+	}
+	if fresh.Document != q.Prior.Document {
+		return false, false, errors.New("stale document")
+	}
+	if !uniqueFreshNode(fresh.Nodes, *old) {
+		return false, false, errors.New("stale or ambiguous semantic node")
+	}
+	tree, e := frameDocument(ctx, c, s)
+	if e != nil {
+		return false, false, e
+	}
+	if old.Frame != tree.Frame.ID {
+		return false, false, errors.New("iframe input is unsupported")
+	}
+	var resolved struct {
+		Object struct {
+			ObjectID string `json:"objectId"`
+		}
+	}
+	if e = c.call(ctx, s, "DOM.resolveNode", map[string]any{"backendNodeId": old.BackendID}, &resolved); e != nil {
+		return false, false, e
+	}
+	object := resolved.Object.ObjectID
+	if object == "" {
+		return false, false, errors.New("node cannot be resolved")
+	}
+	defer c.call(ctx, s, "Runtime.releaseObject", map[string]any{"objectId": object}, nil)
+	x, y, e := nodeHit(ctx, c, s, object, old.BackendID)
+	if e != nil {
+		return false, false, e
+	}
+	if q.Operation == "set-text" && !old.Editable {
+		return false, false, errors.New("node is not editable")
+	}
+	if q.Operation == "key" && !allowedKey(q.Key) {
+		return false, false, errors.New("unsupported key")
+	}
+	if e = verify(); e != nil {
+		return false, false, e
+	}
+	latest, e := frameDocument(ctx, c, s)
+	if e != nil {
+		return false, false, e
+	}
+	if documentIdentity(latest) != fresh.Document {
+		return false, false, errors.New("document changed before input")
+	}
+	final, e := snapshot(ctx, c, s, id, p)
+	if e != nil {
+		return false, false, e
+	}
+	if final.Document != fresh.Document || final.Truncated {
+		return false, false, errors.New("document changed before input")
+	}
+	if !uniqueFreshNode(final.Nodes, *old) {
+		return false, false, errors.New("semantic node changed during ownership verification")
+	}
+	x, y, e = nodeHit(ctx, c, s, object, old.BackendID)
+	if e != nil {
+		return false, false, e
+	}
+	performed = true
+	switch q.Operation {
+	case "click":
+		e = c.call(ctx, s, "Input.dispatchMouseEvent", map[string]any{"type": "mousePressed", "x": x, "y": y, "button": "left", "clickCount": 1}, nil)
+		if e == nil {
+			e = c.call(ctx, s, "Input.dispatchMouseEvent", map[string]any{"type": "mouseReleased", "x": x, "y": y, "button": "left", "clickCount": 1}, nil)
+		}
+	case "scroll":
+		e = c.call(ctx, s, "Input.dispatchMouseEvent", map[string]any{"type": "mouseWheel", "x": x, "y": y, "deltaX": q.DeltaX, "deltaY": q.DeltaY}, nil)
+	case "key", "set-text":
+		e = c.call(ctx, s, "DOM.focus", map[string]any{"backendNodeId": old.BackendID}, nil)
+		if e != nil {
+			return true, false, e
+		}
+		if q.Operation == "key" {
+			e = key(ctx, c, s, q.Key, 0)
+		} else {
+			modifier := 2
+			if runtime.GOOS == "darwin" {
+				modifier = 4
+			}
+			e = key(ctx, c, s, "a", modifier)
+			if e == nil {
+				if q.Text == "" {
+					e = key(ctx, c, s, "Backspace", 0)
+				} else {
+					e = c.call(ctx, s, "Input.insertText", map[string]any{"text": q.Text}, nil)
+				}
+			}
+			if e == nil {
+				var rb struct{ Result struct{ Value bool } }
+				e = c.call(ctx, s, "Runtime.callFunctionOn", map[string]any{"objectId": object, "functionDeclaration": "function(expected){return this.isConnected && (typeof this.value==='string'?this.value:this.textContent)===expected;}", "arguments": []map[string]any{{"value": q.Text}}, "returnByValue": true}, &rb)
+				readback = rb.Result.Value
+				if e == nil && !readback {
+					e = confirmedError{errors.New("text replacement readback differs")}
+				}
+			}
+		}
+	}
+	return performed, readback, e
+}
+func allowedKey(k string) bool {
+	switch k {
+	case "Enter", "Tab", "Escape", "Backspace", "Delete", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End", "PageUp", "PageDown", "Space":
+		return true
+	}
+	return false
+}
+func key(ctx context.Context, c *connection, s, k string, mod int) error {
+	codes := map[string]int{"Enter": 13, "Tab": 9, "Escape": 27, "Backspace": 8, "Delete": 46, "ArrowLeft": 37, "ArrowRight": 39, "ArrowUp": 38, "ArrowDown": 40, "Home": 36, "End": 35, "PageUp": 33, "PageDown": 34, "Space": 32, "a": 65}
+	p := map[string]any{"type": "keyDown", "key": k, "windowsVirtualKeyCode": codes[k], "modifiers": mod}
+	if e := c.call(ctx, s, "Input.dispatchKeyEvent", p, nil); e != nil {
+		return e
+	}
+	p["type"] = "keyUp"
+	return c.call(ctx, s, "Input.dispatchKeyEvent", p, nil)
+}
+
+func nodeHit(ctx context.Context, c *connection, s, object string, backend int) (float64, float64, error) {
+	var box struct{ Model struct{ Content []float64 } }
+	if e := c.call(ctx, s, "DOM.getBoxModel", map[string]any{"backendNodeId": backend}, &box); e != nil {
+		return 0, 0, e
+	}
+	if len(box.Model.Content) != 8 {
+		return 0, 0, errors.New("node has no current layout")
+	}
+	x := (box.Model.Content[0] + box.Model.Content[4]) / 2
+	y := (box.Model.Content[1] + box.Model.Content[5]) / 2
+	var hit struct{ Result struct{ Value bool } }
+	if e := c.call(ctx, s, "Runtime.callFunctionOn", map[string]any{"objectId": object, "functionDeclaration": "function(x,y){let h=this.ownerDocument.elementFromPoint(x,y);while(h&&h.shadowRoot){let n=h.shadowRoot.elementFromPoint(x,y);if(!n||n===h)break;h=n;}return this.isConnected && !!h && (h===this||this.contains(h));}", "arguments": []map[string]any{{"value": x}, {"value": y}}, "returnByValue": true}, &hit); e != nil {
+		return 0, 0, e
+	}
+	if !hit.Result.Value {
+		return 0, 0, errors.New("node is obscured or outside the viewport")
+	}
+	return x, y, nil
+}
+
+func uniqueFreshNode(nodes []domain.BrowserNode, old domain.BrowserNode) bool {
+	var candidate domain.BrowserNode
+	matches := 0
+	for _, n := range nodes {
+		if n.Frame == old.Frame && n.BackendID == old.BackendID && n.Fingerprint == old.Fingerprint {
+			candidate = n
+			matches++
+		}
+	}
+	if matches != 1 {
+		return false
+	}
+	semantic := 0
+	for _, n := range nodes {
+		if n.Frame == candidate.Frame && n.Role == candidate.Role && n.Name == candidate.Name && !n.Ignored {
+			semantic++
+		}
+	}
+	return semantic == 1
+}
