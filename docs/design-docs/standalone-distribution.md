@@ -100,7 +100,7 @@ must not have hostile concurrent filesystem mutation; this is not a sandbox.
 
 | Owned data | Location below resolved state root |
 | --- | --- |
-| Registry, WAL and shared-memory sidecars | `registry.sqlite*` |
+| Registry, WAL and shared-memory sidecars | `state.db*` |
 | Pinned source worktrees and build outputs | `worktrees/<lease>/<source>/` |
 | Environment descriptor, Compose configuration | `leases/<lease>/` |
 | Command logs, results, copied artifacts, UI recovery evidence | `leases/<lease>/artifacts/` |
@@ -130,3 +130,15 @@ Windows verification uses Go file reads (preserving long-path support) and retri
 only sharing/lock violations every 10 ms for at most two seconds. Other open errors and byte
 mismatches fail immediately. The limit avoids treating permanent interference as
 success and does not promise progress against a hostile state-directory writer.
+
+Asset names apply Windows device-name, forbidden-character and trailing dot/space
+restrictions on every OS. Cached file sizes are compared with trusted metadata
+before reading; reads are bounded even if a file changes afterwards. Both normal
+reuse and concurrent publication verify exact bytes within that bound.
+
+Release path checks distinguish known checkout/temporary prefixes from exact
+module paths identified in embedded Go build metadata. This remains
+a bounded metadata/path check, not a universal binary path scanner. Source guards
+reject assume-unchanged/skip-worktree index entries before porcelain status; the
+private build checkout additionally protects compiler inputs and does not prove
+the caller working tree is clean by itself.

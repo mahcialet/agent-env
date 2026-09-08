@@ -81,3 +81,9 @@ An absolute `AGENT_ENV_HOME` works even when no user home can be discovered.
 Runtime staging files, including the verified UI helper installation copy, stay
 under the resolved state root. External tools retain their documented host-owned
 state, such as Git worktree registration and the shared ADB server.
+
+Release validation rejects tracked entries marked assume-unchanged or skip-worktree,
+even if their current bytes match. Clear these flags explicitly before releasing;
+release commands never alter the caller index. Development binaries use embedded
+Go VCS revision/modified settings when explicit linker identity is absent, and
+retain unknown values when VCS metadata is unavailable.

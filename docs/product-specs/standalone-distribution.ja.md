@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/product-specs/standalone-distribution.md
-source_sha256: 1624d813f6c0d96cb6b873a28d821c2d68d80c0e1efab656fb252905678ade55
+source_sha256: a8a606f11d23d8a5d1fb22b3b1e60b8f9e2a815591104bd94dfb45cc80bdf0a3
 ---
 
 # スタンドアロン配布
@@ -86,3 +86,9 @@ Git index のフラグで隠れたローカル編集が実行ファイルに混�
 使用できます。検証済みUI helperのインストール用コピーを含む実行時の一時
 ファイルは、解決済みの状態保存先内に置きます。Gitのworktree登録情報や
 共有ADBサーバーなど、外部ツールが管理するホスト側の状態は既存の契約に従います。
+
+release検証はassume-unchangedまたはskip-worktreeが設定されたtracked項目を、
+現在の内容が一致していても拒否します。release前に明示的にflagを解除してください。
+releaseコマンドは呼び出し元のindexを変更しません。開発用実行ファイルはlinkerで
+識別情報が明示されていなければ、Goに埋め込まれたVCS revision/modifiedを使い、
+VCS metadataがない場合はunknownを維持します。

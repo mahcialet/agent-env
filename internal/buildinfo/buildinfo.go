@@ -4,13 +4,15 @@ package buildinfo
 import (
 	"regexp"
 	"runtime"
+	"runtime/debug"
 	"strings"
 
 	"github.com/mahcialet/agent-env/internal/assets"
 )
 
 // These variables are populated by release builds with -ldflags. Development
-// binaries intentionally retain honest defaults.
+// binaries fall back to embedded Go VCS settings and otherwise retain honest
+// unknown defaults. No runtime Git invocation or checkout discovery is needed.
 var (
 	Version = "devel"
 	Commit  = "unknown"
@@ -44,8 +46,34 @@ type Info struct {
 }
 
 func Current() Info {
+	var settings []debug.BuildSetting
+	if build, ok := debug.ReadBuildInfo(); ok {
+		settings = build.Settings
+	}
+	return current(settings)
+}
+
+func current(settings []debug.BuildSetting) Info {
 	version := strings.TrimSpace(Version)
 	commit, dirty := Commit, Dirty
+	for _, setting := range settings {
+		switch setting.Key {
+		case "vcs.revision":
+			if (commit == "" || commit == "unknown") && setting.Value != "" {
+				commit = setting.Value
+			}
+		case "vcs.modified":
+			if (dirty == "" || dirty == "unknown") && (setting.Value == "true" || setting.Value == "false") {
+				dirty = setting.Value
+			}
+		}
+	}
+	if commit == "" {
+		commit = "unknown"
+	}
+	if dirty == "" {
+		dirty = "unknown"
+	}
 	if releaseVersion, releaseCommit, ok := ParseReleaseRecord(ReleaseRecord); ok {
 		version, commit, dirty = releaseVersion, releaseCommit, "false"
 	}

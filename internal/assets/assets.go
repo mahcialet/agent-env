@@ -5,17 +5,76 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
 )
 
 func Describe(name, version string, data []byte) (AssetInfo, error) {
-	if name == "" || filepath.Base(name) != name || name == "." || name == ".." || version == "" || strings.ContainsAny(name, `/\\:`) {
+	if !portableName(name) || version == "" {
 		return AssetInfo{}, fmt.Errorf("invalid asset identity")
 	}
 	sum := sha256.Sum256(data)
 	return AssetInfo{Name: name, Version: version, SHA256: hex.EncodeToString(sum[:]), Size: int64(len(data))}, nil
+}
+
+// portableName applies Windows filename restrictions on every host so an asset
+// identity cannot become a device, stream, or normalized alias on another OS.
+func portableName(name string) bool {
+	if name == "" || name == "." || name == ".." || strings.ContainsAny(name, `/\\:<>"|?*`) || strings.HasSuffix(name, ".") || strings.HasSuffix(name, " ") {
+		return false
+	}
+	for _, r := range name {
+		if r < 32 {
+			return false
+		}
+	}
+	base, _, _ := strings.Cut(name, ".")
+	base = strings.ToUpper(strings.TrimRight(base, " "))
+	switch base {
+	case "CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$":
+		return false
+	}
+	for _, prefix := range []string{"COM", "LPT"} {
+		if suffix, ok := strings.CutPrefix(base, prefix); ok && (len(suffix) == 1 && suffix[0] >= '1' && suffix[0] <= '9' || suffix == "¹" || suffix == "²" || suffix == "³") {
+			return false
+		}
+	}
+	return true
+}
+
+// readAssetOnce checks the opened file before allocating and bounds the read
+// even if its length changes afterwards. Callers validate its exact bytes.
+func readAssetOnce(path string, expectedSize int64) ([]byte, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	st, err := f.Stat()
+	if err != nil {
+		return nil, err
+	}
+	if !st.Mode().IsRegular() {
+		return nil, fmt.Errorf("asset path is not regular")
+	}
+	if expectedSize < 0 || st.Size() != expectedSize {
+		return nil, fmt.Errorf("materialized asset size mismatch")
+	}
+	data, err := io.ReadAll(io.LimitReader(f, expectedSize))
+	if err != nil {
+		return nil, err
+	}
+	var extra [1]byte
+	n, err := f.Read(extra[:])
+	if err != nil && err != io.EOF {
+		return nil, err
+	}
+	if int64(len(data)) != expectedSize || n != 0 {
+		return nil, fmt.Errorf("materialized asset size mismatch")
+	}
+	return data, nil
 }
 
 // Materialize verifies or atomically creates a content-addressed asset. The
@@ -34,7 +93,10 @@ func Materialize(root string, info AssetInfo, data []byte) (string, error) {
 		if st.Mode()&os.ModeSymlink != 0 || !st.Mode().IsRegular() {
 			return "", fmt.Errorf("asset path is not regular")
 		}
-		got, err := readAsset(path)
+		if st.Size() != info.Size {
+			return "", fmt.Errorf("materialized asset size mismatch")
+		}
+		got, err := readAsset(path, info.Size)
 		if err != nil {
 			return "", err
 		}
@@ -62,7 +124,10 @@ func Materialize(root string, info AssetInfo, data []byte) (string, error) {
 	}
 	if err = publishAsset(tmpPath, path); err != nil {
 		if st, statErr := os.Lstat(path); statErr == nil && st.Mode().IsRegular() {
-			got, readErr := readAsset(path)
+			if st.Size() != info.Size {
+				return "", fmt.Errorf("materialized asset size mismatch")
+			}
+			got, readErr := readAsset(path, info.Size)
 			if readErr != nil {
 				return "", readErr
 			}

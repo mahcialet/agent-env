@@ -2,7 +2,6 @@ package assets
 
 import (
 	"errors"
-	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -42,24 +41,20 @@ func assetMovePath(path string) (*uint16, error) {
 	return windows.UTF16PtrFromString(abs)
 }
 
-func readAsset(path string) ([]byte, error) {
-	return readAssetUntil(path, time.Now().Add(2*time.Second))
+func readAsset(path string, expectedSize int64) ([]byte, error) {
+	return readAssetUntil(path, expectedSize, time.Now().Add(2*time.Second))
 }
 
 // Even a losing non-replacing move can briefly hold a conflicting Windows
 // handle. Retry only native sharing or byte-range locking conflicts. Keep Go's
 // file opening so extended Windows paths retain their standard support.
 // Persistent locks remain errors.
-func readAssetUntil(path string, deadline time.Time) ([]byte, error) {
+func readAssetUntil(path string, expectedSize int64, deadline time.Time) ([]byte, error) {
 	for {
-		data, err := readAssetOnce(path)
+		data, err := readAssetOnce(path, expectedSize)
 		if err == nil || (!errors.Is(err, windows.ERROR_SHARING_VIOLATION) && !errors.Is(err, windows.ERROR_LOCK_VIOLATION)) || !time.Now().Before(deadline) {
 			return data, err
 		}
 		time.Sleep(min(10*time.Millisecond, time.Until(deadline)))
 	}
-}
-
-func readAssetOnce(path string) ([]byte, error) {
-	return os.ReadFile(path)
 }

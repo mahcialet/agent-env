@@ -101,6 +101,18 @@ func releaseVersion(root, requested string) (string, time.Time, error) {
 	if !releaseTag.MatchString("v" + requested) {
 		return "", time.Time{}, fmt.Errorf("invalid release version %q: expected canonical X.Y.Z", requested)
 	}
+	// Porcelain trusts assume-unchanged and skip-worktree bits. Reject these
+	// configurations conservatively rather than mutate the caller's index or
+	// mistake a private clean build snapshot for proof of a clean source tree.
+	entries, err := gitOut(root, "ls-files", "-v", "-z")
+	if err != nil {
+		return "", time.Time{}, err
+	}
+	for _, entry := range strings.Split(entries, "\x00") {
+		if len(entry) > 0 && (entry[0] == 'S' || entry[0] >= 'a' && entry[0] <= 'z') {
+			return "", time.Time{}, fmt.Errorf("cannot verify clean working tree: index flags assume-unchanged and skip-worktree are unsupported for releases")
+		}
+	}
 	status, err := gitOut(root, "status", "--porcelain=v1", "--untracked-files=all", "--ignore-submodules=none")
 	if err != nil {
 		return "", time.Time{}, err

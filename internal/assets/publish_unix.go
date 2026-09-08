@@ -10,4 +10,6 @@ func publishAsset(source, destination string) error {
 	return os.Rename(source, destination)
 }
 
-func readAsset(path string) ([]byte, error) { return os.ReadFile(path) }
+func readAsset(path string, expectedSize int64) ([]byte, error) {
+	return readAssetOnce(path, expectedSize)
+}

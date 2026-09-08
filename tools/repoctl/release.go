@@ -399,7 +399,7 @@ func checkRelease(root, dir, version, tag, commit string, mt time.Time) (release
 			return m, fmt.Errorf("license/readme mismatch")
 		}
 		for _, p := range []string{root, os.TempDir()} {
-			if len(p) > 3 && (bytes.Contains(binary, []byte(p+string(filepath.Separator))) || bytes.Contains(binary, []byte(filepath.ToSlash(p)+"/"))) {
+			if releaseBinaryContainsPath(binary, p) {
 				return m, fmt.Errorf("local path leaked in binary")
 			}
 		}
@@ -428,4 +428,59 @@ func repeatRelease(root, dir, version, tag, commit string, mt time.Time, out, er
 		return e
 	}
 	return compareReleaseDirectories(dir, next)
+}
+
+// releaseBinaryContainsPath checks known host directory prefixes, exempting
+// only their occurrences within module/import identities embedded by Go.
+func releaseBinaryContainsPath(binary []byte, path string) bool {
+	var modules []string
+	if info, err := buildinfo.Read(bytes.NewReader(binary)); err == nil {
+		modules = append(modules, info.Path, info.Main.Path)
+		for _, dep := range info.Deps {
+			modules = append(modules, dep.Path)
+		}
+	}
+	return releaseBinaryContainsPathWithModules(binary, path, modules)
+}
+
+func releaseBinaryContainsPathWithModules(binary []byte, path string, modules []string) bool {
+	if len(path) <= 3 {
+		return false
+	}
+	for _, prefix := range []string{path + string(filepath.Separator), filepath.ToSlash(path) + "/"} {
+		for offset := 0; offset < len(binary); {
+			i := bytes.Index(binary[offset:], []byte(prefix))
+			if i < 0 {
+				break
+			}
+			i += offset
+			knownModule := false
+			for _, module := range modules {
+				// Host paths can occur within a longer module path. Exempt only
+				// the exact bytes proven to be part of that known identity.
+				identity := module + "/"
+				for from := 0; module != "" && from < len(identity); {
+					within := strings.Index(identity[from:], prefix)
+					if within < 0 {
+						break
+					}
+					within += from
+					start := i - within
+					if start >= 0 && bytes.HasPrefix(binary[start:], []byte(identity)) {
+						knownModule = true
+						break
+					}
+					from = within + 1
+				}
+				if knownModule {
+					break
+				}
+			}
+			if !knownModule {
+				return true
+			}
+			offset = i + 1
+		}
+	}
+	return false
 }

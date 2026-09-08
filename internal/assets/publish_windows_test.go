@@ -66,11 +66,11 @@ func TestReadAssetWindowsSharingConflict(t *testing.T) {
 			windows.CloseHandle(lock)
 		}
 	})
-	if _, err := readAssetOnce(path); !errors.Is(err, windows.ERROR_SHARING_VIOLATION) {
+	if _, err := readAssetOnce(path, 6); !errors.Is(err, windows.ERROR_SHARING_VIOLATION) {
 		t.Fatalf("fixture does not block reads: %v", err)
 	}
 	start := time.Now()
-	if _, err := readAssetUntil(path, start.Add(30*time.Millisecond)); !errors.Is(err, windows.ERROR_SHARING_VIOLATION) {
+	if _, err := readAssetUntil(path, 6, start.Add(30*time.Millisecond)); !errors.Is(err, windows.ERROR_SHARING_VIOLATION) {
 		t.Fatalf("persistent conflict must propagate: %v", err)
 	}
 	if time.Since(start) < 30*time.Millisecond {
@@ -78,7 +78,7 @@ func TestReadAssetWindowsSharingConflict(t *testing.T) {
 	}
 	result := make(chan error, 1)
 	go func() {
-		_, err := readAsset(path)
+		_, err := readAsset(path, 6)
 		result <- err
 	}()
 	// Keep the conflicting handle alive long enough to exercise retries before
@@ -91,7 +91,7 @@ func TestReadAssetWindowsSharingConflict(t *testing.T) {
 	if err := <-result; err != nil {
 		t.Fatalf("released sharing conflict did not recover: %v", err)
 	}
-	got, err := readAsset(path)
+	got, err := readAsset(path, 6)
 	if err != nil || string(got) != "winner" {
 		t.Fatalf("read changed immutable content: %q, %v", got, err)
 	}
@@ -100,7 +100,7 @@ func TestReadAssetWindowsSharingConflict(t *testing.T) {
 func TestReadAssetWindowsDoesNotRetryMissingFile(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "missing")
 	start := time.Now()
-	_, err := readAssetUntil(path, start.Add(2*time.Second))
+	_, err := readAssetUntil(path, 6, start.Add(2*time.Second))
 	if !errors.Is(err, windows.ERROR_FILE_NOT_FOUND) {
 		t.Fatalf("missing file error not propagated: %v", err)
 	}

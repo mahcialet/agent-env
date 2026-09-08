@@ -1,9 +1,35 @@
 package buildinfo
 
 import (
+	"runtime/debug"
 	"strings"
 	"testing"
 )
+
+func TestCurrentVCSFallback(t *testing.T) {
+	oldVersion, oldCommit, oldDirty, oldRecord := Version, Commit, Dirty, ReleaseRecord
+	t.Cleanup(func() { Version, Commit, Dirty, ReleaseRecord = oldVersion, oldCommit, oldDirty, oldRecord })
+	Version, ReleaseRecord = "devel", ""
+	for _, test := range []struct {
+		name, commit, dirty, wantCommit, wantDirty string
+		settings                                   []debug.BuildSetting
+	}{
+		{name: "absent", commit: "unknown", dirty: "unknown", wantCommit: "unknown", wantDirty: "unknown"},
+		{name: "empty defaults", wantCommit: "unknown", wantDirty: "unknown"},
+		{name: "revision only", commit: "unknown", dirty: "unknown", wantCommit: "abc", wantDirty: "unknown", settings: []debug.BuildSetting{{Key: "vcs.revision", Value: "abc"}}},
+		{name: "modified only", commit: "unknown", dirty: "unknown", wantCommit: "unknown", wantDirty: "true", settings: []debug.BuildSetting{{Key: "vcs.modified", Value: "true"}}},
+		{name: "invalid modified", wantCommit: "unknown", wantDirty: "unknown", settings: []debug.BuildSetting{{Key: "vcs.modified", Value: "invalid"}, {Key: "vcs.revision", Value: ""}}},
+		{name: "partial override", commit: "explicit", dirty: "unknown", wantCommit: "explicit", wantDirty: "true", settings: []debug.BuildSetting{{Key: "vcs.revision", Value: "abc"}, {Key: "vcs.modified", Value: "true"}}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			Commit, Dirty = test.commit, test.dirty
+			got := current(test.settings)
+			if got.Version != "devel" || got.Commit != test.wantCommit || got.Dirty != test.wantDirty {
+				t.Fatalf("unexpected identity: %+v", got)
+			}
+		})
+	}
+}
 
 func TestCurrentHasHonestDevelopmentIdentity(t *testing.T) {
 	got := Current()

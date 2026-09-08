@@ -128,6 +128,33 @@ func TestReleaseSourceRejectsDirtRegardlessGitConfig(t *testing.T) {
 	}
 }
 
+func TestReleaseSourceRejectsHiddenIndexEntries(t *testing.T) {
+	for _, flag := range []string{"--assume-unchanged", "--skip-worktree"} {
+		for _, changed := range []bool{false, true} {
+			t.Run(flag+map[bool]string{false: "/unchanged", true: "/modified"}[changed], func(t *testing.T) {
+				root := sourceTestRepo(t)
+				sourceTestGit(t, root, "tag", "v0.1.0")
+				sourceTestGit(t, root, "update-index", flag, "tracked.txt")
+				if changed {
+					if err := os.WriteFile(filepath.Join(root, "tracked.txt"), []byte("hidden change\n"), 0644); err != nil {
+						t.Fatal(err)
+					}
+				}
+				if status := sourceTestGit(t, root, "status", "--porcelain"); status != "" {
+					t.Fatalf("fixture is visibly dirty: %s", status)
+				}
+				before := sourceTestGit(t, root, "ls-files", "-v")
+				if _, _, err := releaseVersion(root, "0.1.0"); err == nil || !strings.Contains(err.Error(), "index flags") {
+					t.Fatalf("expected unsupported index flags error, got %v", err)
+				}
+				if after := sourceTestGit(t, root, "ls-files", "-v"); after != before {
+					t.Fatal("validation changed caller index flags")
+				}
+			})
+		}
+	}
+}
+
 func TestReleaseTimestampRejectsMalformedOutput(t *testing.T) {
 	for _, raw := range []string{"", "not a time", "123 extra", "123\n456", "9223372036854775808"} {
 		if _, err := releaseTimestamp(raw); err == nil {

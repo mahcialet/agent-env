@@ -1,9 +1,9 @@
 ---
-status: active
+status: completed
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/exec-plans/completed/standalone-distribution.md
-source_sha256: be3bc1abbcacfdb49f64c589246ab6936d896fa4200398aa7783de8283e2e4fb
+source_sha256: c2247dd2774aadd30ec70fc141ac172df4beb87332f42ab14cc8c6ee5962deb7
 ---
 
 # agent-env をクロスプラットフォームのスタンドアロン配布物にする

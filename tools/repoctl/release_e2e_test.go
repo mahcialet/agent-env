@@ -47,6 +47,26 @@ func TestReleaseCandidate(t *testing.T) {
 	if e = smokeRelease(source, candidate, "0.1.0", tag, commit, mt, io.Discard); e != nil {
 		t.Fatal(e)
 	}
+	t.Run("module_path_is_not_checkout_leak", func(t *testing.T) {
+		for _, artifact := range original.Artifacts {
+			prefix, _, exe := archiveNames("0.1.0", artifact.releaseTarget)
+			files, err := readReleaseArchive(filepath.Join(candidate, artifact.Archive), prefix, artifact.GOOS == "windows", mt)
+			if err != nil {
+				t.Fatal(err)
+			}
+			binary := files[exe]
+			if !bytes.Contains(binary, []byte("github.com/mahcialet/agent-env/")) {
+				t.Fatal("fixture lacks module paths")
+			}
+			if releaseBinaryContainsPath(binary, "/agent-env") {
+				t.Fatalf("%s: module path mistaken for checkout leak", artifact.Archive)
+			}
+			withLeak := append(append([]byte(nil), binary...), []byte("\x00/agent-env/internal/cli.go")...)
+			if !releaseBinaryContainsPath(withLeak, "/agent-env") {
+				t.Fatalf("%s: actual checkout path accepted", artifact.Archive)
+			}
+		}
+	})
 	sandbox := filepath.Join(t.TempDir(), "candidate")
 	if e = copyVerifiedRelease(candidate, sandbox); e != nil {
 		t.Fatal(e)

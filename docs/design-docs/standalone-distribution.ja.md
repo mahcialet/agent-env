@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/design-docs/standalone-distribution.md
-source_sha256: 12c0adc8716420d5f3c51c351185b66fe30f8ad38bb35bff1bab0e3079bb4285
+source_sha256: 23cdec04257369aa3a07b083a7968b99dfbe984c22aace524a26a4cc796cd957
 ---
 
 # スタンドアロン配布の設計
@@ -97,7 +97,7 @@ helper指定は、別の機能変更で明示的に置き換えるまで維持�
 
 | agent-envが所有するデータ | 解決済み状態保存先からの相対位置 |
 | --- | --- |
-| registry、WAL、共有メモリ用ファイル | `registry.sqlite*` |
+| registry、WAL、共有メモリ用ファイル | `state.db*` |
 | 固定したソースのworktreeとビルド出力 | `worktrees/<lease>/<source>/` |
 | 環境記述、Compose設定 | `leases/<lease>/` |
 | コマンドログ、結果、コピーした成果物、UI復旧証拠 | `leases/<lease>/artifacts/` |
@@ -128,3 +128,14 @@ Windowsでの内容検証は長いパスに対応するGoのファイル読み�
 共有/lock違反だけを10ms間隔、最大2秒で再試行します。他のopenエラーと内容不一致は直ちに失敗します。
 期限を設けることで永続的な干渉を成功と扱わず、状態ディレクトリに対する
 悪意ある書き込みがある状況での進行も保証しません。
+
+アセット名は全OSでWindowsのdevice名、禁止文字、末尾のドット/空白を拒否します。
+キャッシュは読み取り前に信頼するmetadataとサイズを比較し、その後にファイルが
+変わっても読み取り量を制限します。通常の再利用と公開競合時の両方で、その上限内の
+正確なバイト列を検証します。
+
+releaseのパス検査は、既知のcheckout/一時パスと、Go build metadataで
+識別できる正確なmoduleパスを区別します。全binaryのパスを網羅する
+scannerではなく限定的なmetadata/パス検査です。source検査はporcelain statusより
+前にassume-unchanged/skip-worktreeのindex項目を拒否します。private checkoutは
+compiler入力を追加で保護しますが、それだけで呼び出し元のclean状態を証明しません。
