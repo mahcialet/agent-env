@@ -30,3 +30,5 @@ Design, product, ADR and plan documents carry status, owner and last_verified me
 - [Generated database schema](generated/db-schema.md): mechanically derived from embedded migrations.
 
 - [Language policy](design-docs/bilingual-documentation.md) / [日本語](design-docs/bilingual-documentation.ja.md): canonical English, maintained Japanese translations, and explicit exceptions.
+
+Browser/CDP: [product contract](product-specs/browser-cdp-automation.md) / [日本語](product-specs/browser-cdp-automation.ja.md), [design](design-docs/browser-cdp-automation.md) / [日本語](design-docs/browser-cdp-automation.ja.md), and [completed execution evidence](exec-plans/completed/browser-cdp-automation.md) / [日本語](exec-plans/completed/browser-cdp-automation.ja.md).

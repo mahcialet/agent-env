@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/RELIABILITY.md
-source_sha256: 92428534bd0b3b9de62800ca9badeee55938876cf8c4915a97d2d7b28ea5d861
+source_sha256: 2eee6d841939ae68c11c782d14ee93076f19325c9a6e7c99e1b2fef3bea29aff
 ---
 
 [英語版（翻訳元）](RELIABILITY.md)
@@ -98,3 +98,14 @@ version付き所有情報とsecret fingerprintをnative Start前に保存する�
 型付きの`ErrProcessNotStarted`と0のPIDがそろう場合はpreparedへ戻せます。型による証明のない
 識別情報0の失敗は不確実なまま扱います。
 [process lifecycle設計](design-docs/persistent-process-runtime.ja.md)を参照してください。
+
+## browser操作の復旧
+
+すべてのbrowser操作でCDP処理と証拠確定までlease fenceを保持します。
+active・期限内・readyのleaseでは入力を許可し、degradedではnative identityを証明できるread-only診断のみ許可します。
+quarantine、停止済み・曖昧なprocess、未完了command runがある場合は操作を拒否します。
+port再利用、browser/page/document/node identityの変化、切り詰めたsnapshotは入力の根拠になりません。
+変更操作は1回だけ試み、切断後に自動再実行しません。完了不明や証拠確定失敗ならrunning commandのbarrierを残し、
+実際の結果と証拠を確認してreviewを伴う復旧を判断します。destroy/GCはgeneric process treeの不在確認後に
+profileを削除し、browser独自cleanupや自動再起動は行いません。
+[browser設計](design-docs/browser-cdp-automation.ja.md)を参照してください。

@@ -133,7 +133,7 @@ the user's choice. No target-manifest change or automatic download is required.
 
 ## Deferred commands
 
-Expand/shrink, writable forks, checkpoint/reproduce, browser observation, and artifact promotion are not implemented. They do not return placeholder success; see the [roadmap](../roadmap.md).
+Expand/shrink, writable forks, checkpoint/reproduce, and artifact promotion are not implemented. They do not return placeholder success; see the [roadmap](../roadmap.md).
 
 ## Cancellation and manifest provenance
 
@@ -157,3 +157,13 @@ independent prelaunch `redaction.json`, not on successful `launch.json` creation
 missing or mismatched proof fails closed after launch. Final process logs can be
 retained as cleanup artifacts; raw private logs and mutable state are not an
 unconditional artifact export. See the [process contract](persistent-process-runtime.md).
+
+## Browser/CDP commands
+
+`browser` provides capabilities, pages, page-create/page-close, navigate, snapshot,
+dom-snapshot, screenshot, click, set-text, key, scroll, wait, console and network
+operations on an explicit lease browser binding. `--browser` and `--page` select
+exact targets; semantic input requires registered `--snapshot` and `--node`.
+Commands return run, observation and artifact evidence using the common output
+contract. See the [browser contract](browser-cdp-automation.md) for flags, bounds,
+privacy, stale-reference checks and uncertain-input cleanup barriers.

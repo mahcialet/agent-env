@@ -1,0 +1,23 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Native browser fixture</title>
+<style>body{font:18px sans-serif}input,button{margin:5px}#scroll{height:100px;overflow:auto;border:1px solid}#scroll>div{height:700px}</style>
+<h1>Browser fixture</h1>
+<label>Unicode text<input id="text" aria-label="Unicode text"></label>
+<label>Email<input type="email" aria-label="Email"></label>
+<label>Password<input type="password" aria-label="Password" value="native-password-secret"></label>
+<button id="send">Send request</button><output id="result" aria-live="polite">No requests</output>
+<button id="replace">Replace node</button><button id="victim">Replaceable action</button>
+<button>Duplicate label</button><button>Duplicate label</button>
+<div id="shadow"></div><iframe title="Local frame" src="/frame"></iframe>
+<div id="scroll" role="region" aria-label="Scrollable area" tabindex="0"><div>Scroll beginning</div><p>Scroll ending</p></div>
+<p id="scroll-status" role="status">Scroll unchanged</p><p id="key-status" role="status">Key unchanged</p>
+<a href="/next">Navigate next</a>
+<script>
+const text=document.querySelector('#text');
+text.addEventListener('keydown',e=>{if(e.key==='Enter') document.querySelector('#key-status').textContent='Enter received'});
+document.querySelector('#send').onclick=async()=>{const r=await fetch('/click',{method:'POST',body:text.value});document.querySelector('#result').textContent='Request count '+await r.text()};
+document.querySelector('#replace').onclick=()=>{const old=document.querySelector('#victim');const replacement=old.cloneNode(true);old.replaceWith(replacement);const duplicate=replacement.cloneNode(true);duplicate.removeAttribute('id');replacement.after(duplicate)};
+document.addEventListener('click',e=>{if(e.target.textContent==='Replaceable action') fetch('/click',{method:'POST',body:'wrong stale target'})});
+document.querySelector('#shadow').attachShadow({mode:'open'}).innerHTML='<button>Shadow action</button>';
+document.querySelector('#scroll').onscroll=()=>document.querySelector('#scroll-status').textContent='Scrolled '+document.querySelector('#scroll').scrollTop;
+setInterval(()=>{console.log('fixture-console-heartbeat');if(text.value)console.log(text.value);fetch('/tick',{headers:{Authorization:'Bearer native-header-secret'}})},150);
+</script></html>

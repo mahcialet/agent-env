@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/PORTABILITY.md
-source_sha256: c14ae07ee55946ceec2b7480a67a5ad7c5dcb71aa519b83a6d1d2cb9e5c147d2
+source_sha256: 5796f99945780d92b107e0317433dcc2181ff072328486bccf2f38de2d23c08d
 ---
 
 [英語版（翻訳元）](PORTABILITY.md)
@@ -107,3 +107,35 @@ native adapter test、race test、cross-buildは成功しています。実常�
 Windows/macOS/Linux integrationも`f588960`（Verify 34226859965）で成功しました。
 最終CI証拠は[完了process plan](exec-plans/completed/persistent-process-runtime.ja.md)
 で別途追跡します。
+
+## Browser/CDPの前提条件
+
+browser自動操作には、process runtimeから直接起動できる互換native headless Chromium系実行ファイルが
+必要です。shell wrapperや、CDP browser rootが所有native rootと異なるlauncherは非対応です。
+argvには`--enable-automation`と専用`${runtime_dir}/profile`などを必須とし、接続ごとにCDPから
+実際のcommand lineとPIDを検証します。Go WebSocket transportを使い、coreコマンドに
+Node、Python、browser driver、CGO、shellの要件を追加しません。Chromeは同梱しません。
+選定したnative matrixはChrome for Testing 152.0.7977.82、Go 1.27、Windows/macOS/Linuxです。
+実測browser/protocol versionとnative成功・失敗の証拠は
+[完了browser plan](exec-plans/completed/browser-cdp-automation.ja.md)に記録しています。
+`391288c`の3 native jobがすべて成功し（Browser native 34247636411）、CDP 1.3を報告しました。
+この実行結果はcross-buildの証拠と分けて扱います。
+
+Linuxでは、導入したbrowserのsandboxを利用できる必要があります。UbuntuのAppArmorは、
+package profileの対象外へ展開したChrome for Testingのuser namespace利用を拒否する
+場合があります。native CIでは[Chromiumの手順](https://chromium.googlesource.com/chromium/src/+/main/docs/security/apparmor-userns-restrictions.md)
+に基づき、固定versionのChrome実行ファイルだけを対象にAppArmorで利用を許可します。
+host全体のuser namespace制限とChrome sandboxは有効に保ちます。これはUbuntu runner
+の準備処理であり、agent-env自体はhostのsecurity policyを変更しません。
+
+Windowsでは、downloadしたCfTのインストール先に、ChromiumのLPAC sandboxが必要とする
+read/execute ACLがない場合があります。native CIではChromium公式testの設定に従い、
+制限付きapplication-package SID（S-1-15-2-2）へbrowserインストール先の権限だけを
+付与します。lease profileや無関係なdirectoryには権限を付与せず、sandboxも無効化しません。
+
+native process treeの不在を証明した後、汎用process state cleanupはWindows共有違反を
+呼出し側context内・最大2秒で再試行し、毎回所有権とpathを再検査します。持続するfile lockを
+cleanup成功とせず、無関係なerrorは再試行しません。通常のresource保持・隔離が適用されます。
+filesystemのcleanupとして扱い、browserのlifecycle管理をCDP adapterへ移しません。
+
+2秒の予算は再試行の開始を制限します。実行中の同期filesystem削除を中断するものではありません。

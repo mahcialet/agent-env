@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: ARCHITECTURE.md
-source_sha256: 67bea10fad923eeb9fcf7be02d802c1c7da2b7882353d46f853af1c537f8f39d
+source_sha256: 32ce58720ab1b74996c9b2fc6377dbc83b5d69e61ea618f6f122ad35b1d3bb5e
 ---
 
 [英語版（翻訳元）](ARCHITECTURE.md)
@@ -44,7 +44,7 @@ cleanupで、削除済みcontainerの接続を再構成する必要がありま�
 
 開発harnessと対象マニフェストは別物です。[エージェント向け指示](AGENTS.md)、索引付き文書、計画、repoctl、CIはこのリポジトリを説明し、`.agent-env.yaml`は対象リポジトリの起動方法を説明します。
 
-Android Emulatorリソースは、独立した`app.AndroidProvider`と`internal/runtime/android`アダプターを通じて、Composeに加えて利用できます。このアダプターはdomainの識別情報、appの観測結果、`execx`のネイティブプロセス境界を使い、Composeをimportしません。SQLiteはAVDとポートの排他的予約を担い、appは補償と準備完了判定を担います。detached processと実行時間を制限したコマンドのプロセスツリーは別の仕組みです。[Android設計](docs/design-docs/android-emulator.ja.md)と[完了済みの実行証拠](docs/exec-plans/completed/android-emulator-lease.md)を参照してください。ブラウザー統合は別の作業です。
+Android Emulatorリソースは、独立した`app.AndroidProvider`と`internal/runtime/android`アダプターを通じて、Composeに加えて利用できます。このアダプターはdomainの識別情報、appの観測結果、`execx`のネイティブプロセス境界を使い、Composeをimportしません。SQLiteはAVDとポートの排他的予約を担い、appは補償と準備完了判定を担います。detached processと実行時間を制限したコマンドのプロセスツリーは別の仕組みです。[Android設計](docs/design-docs/android-emulator.ja.md)と[完了済みの実行証拠](docs/exec-plans/completed/android-emulator-lease.md)を参照してください。Browser/CDP自動化は、後述する専用providerとadapterで実装しています。AndroidのライフサイクルやUI動作とは分離しています。
 
 Flutterのビルドには `app.FlutterProvider` と独立した
 `internal/runtime/flutter` アダプターを使います。Androidのパッケージ確認、インストール、
@@ -91,3 +91,14 @@ pathのみです。起動receiptはregistry保存失敗後の識別情報復旧�
 cleanupがtree全体の不在を証明する必要があります。[process設計](docs/design-docs/persistent-process-runtime.ja.md)
 と[完了した実行証拠](docs/exec-plans/completed/persistent-process-runtime.ja.md)を参照してください。
 native Windows/macOS/Linuxの受け入れは成功しました。
+
+## Browser/CDPの観測と操作
+
+`app.BrowserProvider`と`internal/browser/cdp`はpersistent process契約の上に型付きCDP操作を
+追加します。configは明示的binding、domainはpage/snapshot/identityを定義します。
+appはlease fence保持、process providerでの再検査、登録snapshotの出所検証、run/artifact保存を担当します。
+browser adapterはdiscovery、WebSocket target session、CDP identity、古いnodeの検査を担当し、
+具体的runtime adapterをimportせず、process/profile/portのlifecycleを所有しません。
+CLIが具体的な接続を担当します。transportはgorilla/websocketを使い、Node/Python helperは不要です。
+[browser設計](docs/design-docs/browser-cdp-automation.ja.md)と
+[完了の実装証拠](docs/exec-plans/completed/browser-cdp-automation.ja.md)を参照してください。

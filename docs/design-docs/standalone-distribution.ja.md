@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/design-docs/standalone-distribution.md
-source_sha256: 23cdec04257369aa3a07b083a7968b99dfbe984c22aace524a26a4cc796cd957
+source_sha256: 7ac709e799a59625ed8497c8fd7d2449f3f3176bd142c2217b4b21412d7df36b
 ---
 
 # スタンドアロン配布の設計
@@ -139,3 +139,7 @@ releaseのパス検査は、既知のcheckout/一時パスと、Go build metadat
 scannerではなく限定的なmetadata/パス検査です。source検査はporcelain statusより
 前にassume-unchanged/skip-worktreeのindex項目を拒否します。private checkoutは
 compiler入力を追加で保護しますが、それだけで呼び出し元のclean状態を証明しません。
+
+Browser/CDPは実行ファイルへGo WebSocket transportを加えますが、browser assetやhelper runtimeは
+追加しません。browser binaryはmanifestで宣言する外部toolです。release packagingと空の同梱asset inventoryは
+変わりません。[browser設計](browser-cdp-automation.ja.md)を参照してください。

@@ -20,6 +20,7 @@ import (
 )
 
 type Manifest struct {
+	Browsers     map[string]Browser     `yaml:"browsers,omitempty" json:"browsers,omitempty"`
 	Applications map[string]Application `yaml:"applications,omitempty" json:"applications,omitempty"`
 	Version      int                    `yaml:"version" json:"version"`
 	Sources      map[string]Source      `yaml:"sources" json:"sources"`
@@ -129,6 +130,9 @@ func Parse(data []byte) (*Manifest, error) {
 				return nil, fmt.Errorf("manifest: runtime %s provider must be docker-compose or podman-compose", name)
 			}
 		}
+	}
+	if err := validateBrowserPresence(data); err != nil {
+		return nil, err
 	}
 	if err := validateProcessPresence(data, &m); err != nil {
 		return nil, err
@@ -385,6 +389,9 @@ func Validate(m *Manifest) error {
 				return fmt.Errorf("manifest: component %s endpoint %s requires a selected service, target port 1..65535, and tcp/udp protocol", n, en)
 			}
 		}
+	}
+	if err := validateBrowsers(m); err != nil {
+		return err
 	}
 	if err := validateApplications(m); err != nil {
 		return err

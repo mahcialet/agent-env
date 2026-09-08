@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/QUALITY.md
-source_sha256: 902e16d02474105ef9c1c6b6ef011f09cb7fc1c5ec40cf2014a3b8ff285b295f
+source_sha256: 55700d38679271e227d8658f8a96427a32bf8fa58e90909c28125542d7c66ff5
 ---
 
 # 品質と検証
@@ -150,3 +150,19 @@ Browser状の状態/CDP状fixtureも必要です。このfixtureでBrowser自体
 native Windows/macOS/Linux実行が必須であり、cross-buildだけでは受け入れ完了にできません。
 local adapter、race、integration、cross-buildの証拠と、`f588960`のnative
 Windows/macOS/Linux CI成功（Verify 34226859965）を完了Planに記録しています。
+
+## Browser/CDPの検証
+
+受け入れ証拠は[完了browser ExecPlan](exec-plans/completed/browser-cdp-automation.ja.md)で管理します。
+`TestBrowserManifestContract`、`TestBrowserManifestNegativeFixtures`、
+`TestBrowserRequiresProcessRuntime`、`TestBrowserAbsentPreservesLegacyCanonicalShape`は、
+明示的binding、正確な専用profile/debugging flag、YAML null/merge/alias、互換性を検証します。
+config単体・race testはローカルで成功しました。baselineの`go test -race ./...`も成功しました。
+初回harnessはunit/vet成功後、提示された日本語planに翻訳metadataがなくdocs-checkで失敗しました。
+この失敗と修正を英日planに記録します。
+
+実際のheadless Chrome for Testing 152.0.7977.82 / CDP 1.3をGo 1.27で動かし、
+`391288c`の3 OSすべてで成功しました（Browser native 34247636411）。fixtureではAX/DOM、
+screenshot、Unicode入力と消去、古い参照の拒否、iframe/shadow観測、上限付き診断、
+lease所有backend、永続的な入力redaction、安全なprofile cleanupを検証しました。
+Planにはnativeの証拠とCI修正履歴を、mock testやcross-buildと分けて記録しています。

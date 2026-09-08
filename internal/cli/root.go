@@ -125,6 +125,7 @@ func New(out, errOut io.Writer) *cobra.Command {
 	root.AddCommand(plan)
 	addLifecycle(root, &output, emit, out, errOut)
 	root.AddCommand(uiCommand(&output, emit, out, errOut))
+	root.AddCommand(browserCommand(&output, emit, out, errOut))
 	return root
 }
 

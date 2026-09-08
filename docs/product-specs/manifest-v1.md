@@ -163,3 +163,13 @@ service/target/protocol fields are forbidden in this variant. Common observed
 endpoint maps still contain `host:port`, distinct from numeric readiness references.
 See the [complete process contract](persistent-process-runtime.md) for foreground
 lifetime, private mutable state, executable evidence and conservative cleanup.
+
+## Explicit browser bindings
+
+Optional `browsers.<name>` declares `type: chromium-cdp`, a `process` runtime and
+its named TCP `cdp_port`. Names are case-safe and each runtime has at most one
+binding. The repository must declare exact singleton headless, automation,
+loopback debugging and `${runtime_dir}/profile` flags in native argv. Empty/null
+bindings and alternate/duplicate protected switches fail validation. No browser
+is inferred from a port name. See the complete
+[browser manifest contract](browser-cdp-automation.md).

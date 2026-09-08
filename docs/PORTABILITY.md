@@ -108,3 +108,42 @@ socket activation or inherited listening socket. Native adapter tests, race test
 and cross-compilation passed during implementation. Real persistent-process
 Windows/macOS/Linux integration passed at `f588960` (Verify 34226859965); see
 the [completed process plan](exec-plans/completed/persistent-process-runtime.md).
+
+## Browser/CDP prerequisites
+
+Browser automation needs a compatible native headless Chromium-family executable,
+launched directly by the process runtime. Shell wrappers and launchers whose CDP
+browser root differs from the owned native root are unsupported. Required argv
+flags include `--enable-automation` and a private `${runtime_dir}/profile`; the
+adapter verifies actual CDP command-line and PID observations on every connection.
+The Go WebSocket transport adds no Node, Python, browser driver, CGO or shell
+requirement to core commands. Chrome is not bundled. The selected native matrix is
+Chrome for Testing 152.0.7977.82, Go 1.27, Windows/macOS/Linux. Actual browser and
+protocol versions and native pass/failure evidence belong in the
+[completed browser plan](exec-plans/completed/browser-cdp-automation.md). All three
+native jobs passed at `391288c` (Browser native 34247636411), reporting CDP 1.3;
+these direct results are separate from cross-build evidence.
+
+On Linux the installed browser must have usable sandbox support. Ubuntu AppArmor
+may deny user namespaces to unpacked Chrome for Testing executables outside a
+package profile. The native CI provisions an exact-executable AppArmor allowance
+for the pinned Chrome binary, following
+[Chromium guidance](https://chromium.googlesource.com/chromium/src/+/main/docs/security/apparmor-userns-restrictions.md).
+It keeps the host's global user-namespace restriction and Chrome sandbox enabled.
+This is Ubuntu runner provisioning; agent-env does not change host security policy.
+
+On Windows, CfT's downloaded installation may lack the read/execute ACLs required
+by Chromium's LPAC sandbox. Native CI grants those rights only to the browser's
+installation subtree for the restricted application-package SID (S-1-15-2-2),
+following Chromium's own test setup. It does not grant access to lease profiles
+or unrelated directories, and does not disable sandboxing.
+
+After native process-tree absence is proven, generic process state cleanup retries
+Windows sharing violations for at most two seconds within the caller's context,
+rechecking ownership and paths before each attempt. It neither treats persistent
+file locks as successful cleanup nor retries unrelated errors; normal resource
+retention/quarantine applies. This handles filesystem cleanup without moving
+browser lifecycle management into the CDP adapter.
+
+The two-second budget bounds retry scheduling; it does not interrupt a synchronous
+filesystem removal already in progress.

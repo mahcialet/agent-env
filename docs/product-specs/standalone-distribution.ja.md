@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/product-specs/standalone-distribution.md
-source_sha256: a8a606f11d23d8a5d1fb22b3b1e60b8f9e2a815591104bd94dfb45cc80bdf0a3
+source_sha256: 392aa3fe8c7c2d68ec92eb883fe851c733ff9957e72caf35b9fa06f7f4049c76
 ---
 
 # スタンドアロン配布
@@ -92,3 +92,10 @@ release検証はassume-unchangedまたはskip-worktreeが設定されたtracked�
 releaseコマンドは呼び出し元のindexを変更しません。開発用実行ファイルはlinkerで
 識別情報が明示されていなければ、Goに埋め込まれたVCS revision/modifiedを使い、
 VCS metadataがない場合はunknownを維持します。
+
+## browserの前提条件
+
+Browser/CDPコマンドには、対象manifestが宣言する互換native headless Chromium系実行ファイルが追加で必要です。
+検証にはChrome for Testingを推奨しますが、同梱しません。browserのdownload、Node、Python、Playwright、
+Selenium、ChromeDriverをcore runtimeの依存にはしません。version、help、無関係な機能はbrowserなしで動きます。
+[browser契約](browser-cdp-automation.ja.md)と[前提条件matrix](../../README.ja.md)を参照してください。

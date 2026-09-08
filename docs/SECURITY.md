@@ -115,3 +115,21 @@ still require private storage. Unknown application secrets and transformed secre
 values are not guaranteed to be recognized. Mutable profiles/databases are not
 automatically copied to evidence and are removed only after confirmed tree absence.
 See the [process contract](product-specs/persistent-process-runtime.md).
+
+## Browser profiles and evidence
+
+Browser/CDP is an explicitly bound capability of a lease-owned native process.
+The adapter proves the recorded root PID, private profile and reserved loopback
+port before protocol effects; it never discovers a user's existing browser.
+HTTP discovery disallows redirects and proxies. These checks prevent accidental
+cross-lease attachment, not a malicious same-user server forging CDP responses.
+Repository-controlled browser executables remain trusted host code.
+
+Browser profiles are private mutable state, never automatic evidence. Semantic
+and DOM evidence suppress editable/password values; input text is transient and
+redacted from action metadata. Network evidence stores no headers or bodies and
+redacts URL query/credential data. Console capture is bounded to attachment and
+redacts recognized inherited secrets. Screenshots are valid PNG evidence, but
+pixels and unrecognized page/console text can expose secrets; keep artifacts
+private. Typed operations provide no public raw-CDP or arbitrary JavaScript
+escape hatch. See the [browser contract](product-specs/browser-cdp-automation.md).
