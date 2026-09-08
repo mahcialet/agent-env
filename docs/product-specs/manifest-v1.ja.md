@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/product-specs/manifest-v1.md
-source_sha256: cc244ba4a4cacd504a158f016196af795917aa834e4d7c0c1d74e92dcd5262e9
+source_sha256: 7bbac67169c308d5c5061773c664a29cfb6959377d9cde820595cb389a111ce0
 ---
 
 [English（翻訳元）](manifest-v1.md)
@@ -111,7 +111,8 @@ fieldはエラーです。planとlease snapshotには実効providerを記録し�
 canonical manifestへ追加しません。providerを持たない旧snapshotはDockerとして扱います。
 選択したproviderから他engineへのfallbackはありません。PodmanにはPodman 5.xと独立した
 podman-compose >=1.6.0,<2.0.0が必要です。5.4.2 / 1.6.0で実Linux rootless受け入れが
-成功しました。最終native CIは未完了であり、実機のMachine環境はありません。
+成功しました。Windows/macOS/Linuxのnative CIは4a5de3d（run 34216579481）で成功しました。
+実機のMachine環境はありません。
 [provider契約](compose-providers.ja.md)を参照してください。
 
 ## Readiness probe

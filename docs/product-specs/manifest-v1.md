@@ -104,8 +104,8 @@ the effective provider without adding an omitted field to the canonical manifest
 Old snapshots without provider retain Docker semantics. The selected provider never
 falls back to another engine. Podman requires Podman 5.x and standalone
 podman-compose >=1.6.0,<2.0.0. Real Linux rootless acceptance passed with
-5.4.2 / 1.6.0; final native CI remains pending and real Machine infrastructure is
-unavailable. See the
+5.4.2 / 1.6.0. Native Windows/macOS/Linux CI passed on 4a5de3d
+(run 34216579481); real Machine infrastructure is unavailable. See the
 [provider contract](compose-providers.md).
 
 ## Readiness probes
