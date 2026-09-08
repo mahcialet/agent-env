@@ -248,8 +248,10 @@ func (s *Service) UI(ctx context.Context, id string, o UIOptions) (result UIResu
 		req.Operation = "snapshot"
 	}
 	var effectErr error
+	helperInstalled := false
 	for {
 		result.Observation, effectErr = s.AndroidUI.ObserveUI(deadline, r, req)
+		helperInstalled = helperInstalled || result.Observation.HelperInstalled
 		if effectErr != nil || o.Operation != "wait" || result.Observation.Status != "ok" || uiContains(result.Observation.Snapshot, o.Contains) {
 			break
 		}
@@ -266,6 +268,7 @@ func (s *Service) UI(ctx context.Context, id string, o UIOptions) (result UIResu
 			break
 		}
 	}
+	result.Observation.HelperInstalled = helperInstalled
 	if result.Observation.HelperInstalled {
 		result.Run.Notes = append(result.Run.Notes, "Observer companion installed on this owned runtime during this operation; backend="+result.Observation.Backend)
 	} else if result.Observation.Backend != "" {
