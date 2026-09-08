@@ -12,7 +12,7 @@ This ExecPlan is a living document. Maintain it according to `docs/PLANS.md`.
 
 Parent ExecPlan:
 
-`docs/exec-plans/active/standalone-distribution.md`
+`docs/exec-plans/completed/standalone-distribution.md`
 
 This plan completes the remaining release-engineering milestones required by the
 parent standalone-distribution plan. It does not supersede or replace the parent.

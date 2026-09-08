@@ -122,7 +122,7 @@ its Outcomes & Retrospective.
       materialization with idempotence and traversal/symlink checks in
       `internal/assets`; tests cover reuse and tamper rejection.
 - [x] 2026-09-08: Completed child `docs/exec-plans/completed/standalone-release-finalization.md`; release-build/check, deterministic packaging, native smoke and GitHub Release workflow delivered and validated at `641cb49`.
-- [x] 2026-09-08: Completed capability prerequisite tests, CLI inventory, asset stress, persistent-path audit and future helper contract; local harness/race passed. Native final-revision CI remains below.
+- [x] 2026-09-08: Completed capability prerequisite tests, CLI inventory, asset stress, persistent-path audit and future helper contract; local harness/race passed. Native final-revision CI is recorded below.
 - [x] 2026-09-08: TestEmbeddedFixture verifies 17 embedded bytes and fixed SHA-256 without a target app; asset race stress passed ten times.
 - [x] 2026-09-08: Retain AGENT_ENV_HOME as the sole explicit override; an additional --home flag is not justified (existing Decision Log).
 - [x] 2026-09-08: Audited persistent paths in the design document; state override, lifecycle, command evidence and helper staging regression tests pass.
@@ -135,10 +135,10 @@ its Outcomes & Retrospective.
 - [x] 2026-09-08: Add a GitHub tag/release workflow that delegates mechanics to repoctl. Child evidence: `641cb49`, preview 34190701402, Verify 34190701428.
 - [x] 2026-09-08: Update architecture/portability/quality/security/roadmap docs in both languages. Child evidence: `641cb49`, preview 34190701402, Verify 34190701428.
 - [x] 2026-09-08: Verify existing manifests, leases and development workflows are unchanged. Child evidence: `641cb49`, preview 34190701402, Verify 34190701428.
-- [x] 2026-09-08: Integrated `go run ./tools/repoctl check` and `go test -race ./...` passed on Linux Go 1.27.1. Independent review of production changes found no confirmed defect. Final native CI/release evidence still required before archival.
+- [x] 2026-09-08: Integrated `go run ./tools/repoctl check` and `go test -race ./...` passed on Linux Go 1.27.1. Independent review of production changes found no confirmed defect. Final native CI/release evidence passed at `a1013b5` (runs 34197046022 and 34197049188).
 - [x] 2026-09-08: Record native-platform and release evidence honestly. Child evidence: `641cb49`, preview 34190701402, Verify 34190701428.
-- [ ] Complete acceptance evidence and retrospective.
-- [ ] Move both ExecPlans to `docs/exec-plans/completed/`.
+- [x] 2026-09-08: Completed acceptance evidence and retrospective.
+- [x] 2026-09-08: Moved both ExecPlans to `docs/exec-plans/completed/`.
 
 A checked item means observed completion. Record date, exact command/run,
 revision and outcome at each meaningful checkpoint.
@@ -240,8 +240,8 @@ Preserve failed approaches when they influence the final design.
 
 ## Outcomes & Retrospective
 
-Implementation and local validation finished on 2026-09-08 at `611da29`.
-Final native CI is pending before archival.
+Implementation and local validation finished on 2026-09-08 at `a1013b5`.
+Final native CI passed: Verify [34197046022](https://github.com/mahcialet/agent-env/actions/runs/34197046022) and Release preview [34197049188](https://github.com/mahcialet/agent-env/actions/runs/34197049188). The parent is complete and archived.
 
 The completed child supplies strict Git-tag validation, isolated immutable build
 sources, static artifact validation and GitHub Release publication gates. The
@@ -272,7 +272,7 @@ tag or Release was created by this work; preview v0.1.0 is private test input.
 The key lesson is that Linux race testing alone missed Windows replacement-sharing
 semantics and Git newline conversion. Native CI caught both; scoped byte attributes
 and no-replace Windows publication fixed them without relaxing the stress test.
-A separate reviewer found no confirmed production defect after both revisions.
+A separate reviewer found no confirmed production defect after the final revision.
 
 Signing, notarization, package managers, SBOM/attestations and additional native
 architectures remain explicitly future work. Android UI observation may consume
@@ -626,23 +626,25 @@ assets come from the installed executable.
 
 ## Artifacts and Notes
 
-2026-09-08 parent validation at `611da29b2661f94d7556137e727d8e443dab4cfc`,
+- 2026-09-08: Final revision `a1013b5` passed local harness, full race, six-target release-verify (two builds/eight identical files/Linux native smoke), and all 18 candidate cases. Verify 34197046022 passed all native Go 1.26/1.27 jobs, cross-build and integration/race. Release preview 34197049188 passed candidate build and Linux/amd64, Windows/amd64, macOS/arm64 smoke. Windows held-handle, >280-character path, winner-preservation and process stress regressions now pass without relaxing assertions. No other native tuples are claimed.
+
+2026-09-08 parent validation at `a1013b58a3e4e1e98b4d741237e193f8013eec65`,
 Go 1.27.1, private preview `v0.1.0` (no public tag):
-`go run ./tools/repoctl release-verify --out dist/parent-windows-candidate` passed
+`go run ./tools/repoctl release-verify --out dist/parent-final-verified` passed
 all six builds twice, eight byte-identical files and Linux/amd64 native smoke.
-`AGENT_ENV_RELEASE_CANDIDATE=../../dist/parent-windows-candidate go test ./tools/repoctl -run TestReleaseCandidate -count=1 -v`
+`AGENT_ENV_RELEASE_CANDIDATE=../../dist/parent-final-verified go test ./tools/repoctl -run TestReleaseCandidate -count=1 -v`
 passed all 18 cases. Manual archive inspection found exactly three regular members
 per versioned prefix: executable, LICENSE (1066 bytes), README.txt (666 bytes).
 Production bundled assets: 0, 0 bytes. Local preview artifact evidence:
 
 | Target | Archive bytes | Archive SHA-256 |
 | --- | --- | --- |
-| windows/amd64 | 5987112 | `0ff631598dfc22c96c3a305832048b54b300eea7996ef4fbde7f032b75aec081` |
-| windows/arm64 | 5480061 | `f7b25a14b50100f060603a175088a33c4e871a39cbbc2e87e5d3f55ad4397efb` |
-| darwin/amd64 | 5841444 | `0032a9a3dba329d56cb5f3a27891791c4001abe0f2b7ba9da72d5da7135ec15f` |
-| darwin/arm64 | 5529774 | `7f2a3f2cf96e80066f071e5268c6383c64f0e44ca0a9e83b14283bd35292eb0d` |
-| linux/amd64 | 5776255 | `af0e7a1c43470d9d21db95b4e0d58e249e4fe5c707952a82c2c411d39f2c8bf9` |
-| linux/arm64 | 5354865 | `a5d8ebb075c20d46a560bbdf27b220e1b16c7dffc94302f052f0e316d3f7b9a9` |
+| windows/amd64 | 5987107 | `467a0026c23a1f4c0c34986f7d8f86da009a7e819eb0919c83edb1c23cc9b635` |
+| windows/arm64 | 5480058 | `c9635cc44b41ce2a4269a40d41b3a59d23ca1129d1e34e2c4a5d77374ff2967f` |
+| darwin/amd64 | 5841440 | `3fe24eb6516977e7a8ad07ad3e04dfa087cdb440284195371de5ca1b176619f7` |
+| darwin/arm64 | 5529771 | `e963f6700047f860795ffa849d87816b4f69c4f0ece3a74db654540cb67e9956` |
+| linux/amd64 | 5776247 | `20d8936a9383479de523b60ca4740e32a2041198e71f2d67e6a3588aa4e4f3cc` |
+| linux/arm64 | 5354850 | `cf759872d158328443398a4476e07a325eea68ff8a69507e4778f6ad0d5ccb23` |
 
 Development release output should be ignored by Git, for example:
 

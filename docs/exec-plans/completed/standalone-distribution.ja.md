@@ -2,8 +2,8 @@
 status: active
 owner: maintainers
 last_verified: 2026-09-08
-translation_of: docs/exec-plans/active/standalone-distribution.md
-source_sha256: 9cd165330ba01c280543f9a06ba69540cb4f500d8d66c9a1cbc80f9e071bf1ae
+translation_of: docs/exec-plans/completed/standalone-distribution.md
+source_sha256: be3bc1abbcacfdb49f64c589246ab6936d896fa4200398aa7783de8283e2e4fb
 ---
 
 # agent-env をクロスプラットフォームのスタンドアロン配布物にする
@@ -111,7 +111,7 @@ compatibility burdenが小さい今の段階では、長期standalone contract�
 - [x] 2026-09-08: 子 `docs/exec-plans/completed/standalone-release-finalization.ja.md`
   を完了。release-build/check・packaging・native smoke・GitHub workflowを
   `641cb49`、preview 34190701402、Verify 34190701428で検証した。
-- [x] 2026-09-08: 前提エラー、CLI一覧、asset stress、永続パスaudit、将来helper契約を実装・検証。local harness/race成功。最終revisionのnative CIは下記で記録する。
+- [x] 2026-09-08: 前提エラー、CLI一覧、asset stress、永続パスaudit、将来helper契約を実装・検証。local harness/race成功。最終revisionのnative CIも下記に記録済み。
 - [x] 2026-09-08: TestEmbeddedFixtureで17バイトと固定SHA-256を対象appなしで検証。asset race stressは10回成功。
 - [x] 2026-09-08: 既存判断通りAGENT_ENV_HOMEのみをoverrideとし、--homeは追加しない。
 - [x] 2026-09-08: design文書に全永続パス監査を記録。override、lifecycle、command evidence、helper stagingの回帰テストが成功。
@@ -120,10 +120,10 @@ compatibility burdenが小さい今の段階では、長期standalone contract�
 - [x] 2026-09-08: 子で3OSの展開済みnative smokeとrepoctlに委ねるtag workflowを検証。
 - [x] 2026-09-08: 子でarchitecture/portability/quality/security/roadmapを英日更新。
 - [x] 2026-09-08: Verify 34190701428で既存manifest/lease/workflowの回帰検査も成功。
-- [x] 2026-09-08: 統合後の `go run ./tools/repoctl check` と `go test -race ./...` がLinux Go 1.27.1で成功。production変更の独立レビューに確認済み不具合なし。archival前に最終native CI/release証拠を確認する。
+- [x] 2026-09-08: 統合後の `go run ./tools/repoctl check` と `go test -race ./...` がLinux Go 1.27.1で成功。production変更の独立レビューに確認済み不具合なし。`a1013b5` の最終native CI/release証拠（34197046022と34197049188）も成功。
 - [x] 2026-09-08: native/crossの範囲とリリース証拠を子から引き継いだ。
-- [ ] 親の受け入れ証拠と振り返りを完成する。
-- [ ] 親の英日Planをcompletedへ移動する。
+- [x] 2026-09-08: 親の受け入れ証拠と振り返りを完成。
+- [x] 2026-09-08: 親の英日Planをcompletedへ移動。
 
 チェックは観測済み完了を示す。子の完了で親の未検証条件を完了扱いにしない。
 
@@ -213,8 +213,8 @@ compatibility burdenが小さい今の段階では、長期standalone contract�
 
 ## 成果と振り返り
 
-実装とlocal検証は2026-09-08の `611da29` で完了しました。
-archival前の最終native CIを待っています。
+実装とlocal検証は2026-09-08の `a1013b5` で完了しました。
+最終native CIのVerify [34197046022](https://github.com/mahcialet/agent-env/actions/runs/34197046022) とRelease preview [34197049188](https://github.com/mahcialet/agent-env/actions/runs/34197049188) が成功しました。親Planは完了しarchival済みです。
 
 完了した子Planは、厳密なGit tag検証、隔離した不変のbuild source、静的な
 成果物検証、GitHub Release公開のgateを提供します。親Planでは前提ツールの
@@ -245,7 +245,7 @@ candidateを再buildせず公開します。今回の作業では公開tagもRel
 
 主な教訓は、Linuxのrace検証だけではWindowsの置換時の共有制約とGit改行変換を
 検出できなかったことです。native CIで両方を検出し、fixture限定の属性とWindowsの
-置換なし公開で、stress条件を弱めず修正しました。別担当による両revisionの
+置換なし公開で、stress条件を弱めず修正しました。別担当による最終revisionの
 production変更レビューで、確認済み不具合はありません。
 
 署名、notarization、package manager、SBOM/attestation、追加native architectureは
@@ -497,23 +497,25 @@ repoctlはtag作成/移動/削除/force updateしない。missing embedded asset
 
 ## 成果物と注記
 
-2026-09-08の親検証は `611da29b2661f94d7556137e727d8e443dab4cfc`、
+- 2026-09-08: 最終revision `a1013b5` でlocal harness、全体race、6ターゲットrelease-verify（2回build・8ファイル一致・Linux native smoke）、candidate全18ケースが成功。Verify 34197046022はGo 1.26/1.27全native、cross-build、integration/race成功。Release preview 34197049188はcandidate buildとLinux/amd64、Windows/amd64、macOS/arm64 smoke成功。Windowsのhandle保持、280文字超パス、先行保存保持、process stress回帰も条件を弱めず成功。他のnative tupleの成功は主張しない。
+
+2026-09-08の親検証は `a1013b58a3e4e1e98b4d741237e193f8013eec65`、
 Go 1.27.1、private preview `v0.1.0` を使用（公開tagなし）。
-`go run ./tools/repoctl release-verify --out dist/parent-windows-candidate` は
+`go run ./tools/repoctl release-verify --out dist/parent-final-verified` は
 6ターゲット各2回、8ファイルのバイト一致、Linux/amd64 native smokeに成功。
-`AGENT_ENV_RELEASE_CANDIDATE=../../dist/parent-windows-candidate go test ./tools/repoctl -run TestReleaseCandidate -count=1 -v`
+`AGENT_ENV_RELEASE_CANDIDATE=../../dist/parent-final-verified go test ./tools/repoctl -run TestReleaseCandidate -count=1 -v`
 は全18ケース成功。archiveを直接確認し、version付きprefix内の通常ファイルが
 実行ファイル、LICENSE（1066バイト）、README.txt（666バイト）の3件と確認。
 製品の同梱アセットは0件・0バイト。local previewの成果物証拠:
 
 | Target | Archive bytes | Archive SHA-256 |
 | --- | --- | --- |
-| windows/amd64 | 5987112 | `0ff631598dfc22c96c3a305832048b54b300eea7996ef4fbde7f032b75aec081` |
-| windows/arm64 | 5480061 | `f7b25a14b50100f060603a175088a33c4e871a39cbbc2e87e5d3f55ad4397efb` |
-| darwin/amd64 | 5841444 | `0032a9a3dba329d56cb5f3a27891791c4001abe0f2b7ba9da72d5da7135ec15f` |
-| darwin/arm64 | 5529774 | `7f2a3f2cf96e80066f071e5268c6383c64f0e44ca0a9e83b14283bd35292eb0d` |
-| linux/amd64 | 5776255 | `af0e7a1c43470d9d21db95b4e0d58e249e4fe5c707952a82c2c411d39f2c8bf9` |
-| linux/arm64 | 5354865 | `a5d8ebb075c20d46a560bbdf27b220e1b16c7dffc94302f052f0e316d3f7b9a9` |
+| windows/amd64 | 5987107 | `467a0026c23a1f4c0c34986f7d8f86da009a7e819eb0919c83edb1c23cc9b635` |
+| windows/arm64 | 5480058 | `c9635cc44b41ce2a4269a40d41b3a59d23ca1129d1e34e2c4a5d77374ff2967f` |
+| darwin/amd64 | 5841440 | `3fe24eb6516977e7a8ad07ad3e04dfa087cdb440284195371de5ca1b176619f7` |
+| darwin/arm64 | 5529771 | `e963f6700047f860795ffa849d87816b4f69c4f0ece3a74db654540cb67e9956` |
+| linux/amd64 | 5776247 | `20d8936a9383479de523b60ca4740e32a2041198e71f2d67e6a3588aa4e4f3cc` |
+| linux/arm64 | 5354850 | `cf759872d158328443398a4476e07a325eea68ff8a69507e4778f6ad0d5ccb23` |
 
 development output例:
 

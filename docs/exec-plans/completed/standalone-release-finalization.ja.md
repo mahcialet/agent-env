@@ -3,7 +3,7 @@ status: completed
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/exec-plans/completed/standalone-release-finalization.md
-source_sha256: 5873102e5335acfc37a10266b9d2635dcb842923ee2bbb2bb82e3be001dd4868
+source_sha256: 269b638cbcd2da93dda62f485dbb8a344b6f0800129c0ff65fbc31c7eb96bdb5
 ---
 
 # スタンドアロン配布のリリース工程を完成させる
@@ -14,7 +14,7 @@ source_sha256: 5873102e5335acfc37a10266b9d2635dcb842923ee2bbb2bb82e3be001dd4868
 
 親ExecPlan:
 
-`docs/exec-plans/active/standalone-distribution.ja.md`
+`docs/exec-plans/completed/standalone-distribution.ja.md`
 
 本Planは親Planを置き換えるものではなく、親Planを完了するために残っている
 release engineering作業を実装・検証する子ExecPlanである。
