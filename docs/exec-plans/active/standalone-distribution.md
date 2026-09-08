@@ -91,11 +91,11 @@ documented and migrated deliberately.
       repoctl, CI and cross-build boundaries.
 - [x] 2026-09-08: Added bilingual standalone product/design contracts and
       indexed them; docs-check metadata is synchronized.
-- [ ] Decide release version source/tag policy and record it.
+- [x] 2026-09-08: Git tag is the sole release-version authority; enforce exact `v<semver>`, clean tree, `HEAD == tag commit`, and requested-version equality after removing `v`.
 - [x] 2026-09-08: Added `internal/buildinfo` and expanded `agent-env version`
       table/JSON output with development-safe version, commit, dirty, Go and
       platform identity; no optional provider is initialized.
-- [ ] Define the release target matrix and archive naming/layout.
+- [x] 2026-09-08: Fixed six-target matrix and top-level archive directory layout; archive mtimes use the tagged commit timestamp.
 - [x] 2026-09-08: Added generic content-addressed, digest-verified atomic asset
       materialization with idempotence and traversal/symlink checks in
       `internal/assets`; tests cover reuse and tamper rejection.

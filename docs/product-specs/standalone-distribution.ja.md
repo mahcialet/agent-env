@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/product-specs/standalone-distribution.md
-source_sha256: bba29aba335224686e1e32bea003c6cf08f3887f487b41e88410d1e3abade9e3
+source_sha256: f4d5d3ef583f1374cbdad3741cb3537c847e533b1242cc12d2deaec121f06345
 ---
 
 # スタンドアロン配布
@@ -28,3 +28,8 @@ amd64/arm64、macOS amd64/arm64、Linux amd64/arm64の6通りとする。アー�
 
 最初の配布面はGitHub archive downloadとする。署名、notarization、package
 manager recipe、SBOM、attestationは後続作業とする。
+
+
+リリースバージョンの唯一の根拠は Git tag とする。リリース要求は、`HEAD` が tag の commit と一致し、作業ツリーが clean で、tag が厳密な `v<semver>` 形式で、要求バージョンが先頭の `v` を除いた tag と一致する場合だけ有効とする。
+
+アーカイブ名は `agent-env_v0.1.0_linux_amd64.tar.gz` のようにし、`agent-env_v0.1.0_linux_amd64/` のトップレベルディレクトリに実行ファイル、`LICENSE`、`README.txt` を含める。全ファイルの mtime は tag 対象 commit の timestamp に統一し、wall clock は使わない。
