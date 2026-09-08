@@ -37,12 +37,8 @@ func executeReleaseVerify(root string, args []string, out, errOut io.Writer) err
 		if _, err := os.Lstat(dest); !os.IsNotExist(err) {
 			return fmt.Errorf("output must not exist: %s", dest)
 		}
-		status, err := gitOut(root, "status", "--porcelain=v1", "--untracked-files=all", "--ignore-submodules=none")
-		if err != nil {
-			return err
-		}
-		if status != "" {
-			return fmt.Errorf("release verification requires a clean source working tree and index, including untracked files")
+		if err := releaseSourceClean(root); err != nil {
+			return fmt.Errorf("release verification: %w", err)
 		}
 	}
 	commit, err := gitOut(root, "rev-parse", "--verify", "HEAD^{commit}")

@@ -95,30 +95,38 @@ func privateReleaseSource(root, commit, tag string) (string, func(), error) {
 	return clone, cleanup, nil
 }
 
+// releaseSourceClean validates the caller tree without requiring a release tag.
+func releaseSourceClean(root string) error {
+	// Porcelain trusts assume-unchanged and skip-worktree bits. Reject these
+	// configurations conservatively rather than mutate the caller's index or
+	// mistake a private clean build snapshot for proof of a clean source tree.
+	entries, err := gitOut(root, "ls-files", "-v", "-z")
+	if err != nil {
+		return err
+	}
+	for _, entry := range strings.Split(entries, "\x00") {
+		if len(entry) > 0 && (entry[0] == 'S' || entry[0] >= 'a' && entry[0] <= 'z') {
+			return fmt.Errorf("cannot verify clean working tree: index flags assume-unchanged and skip-worktree are unsupported for releases")
+		}
+	}
+	status, err := gitOut(root, "status", "--porcelain=v1", "--untracked-files=all", "--ignore-submodules=none")
+	if err != nil {
+		return err
+	}
+	if status != "" {
+		return fmt.Errorf("working tree and index must be clean, including untracked files")
+	}
+	return nil
+}
+
 // releaseVersion validates identity before callers create any release output.
 // Untracked files are dirt; ignored build output is intentionally excluded.
 func releaseVersion(root, requested string) (string, time.Time, error) {
 	if !releaseTag.MatchString("v" + requested) {
 		return "", time.Time{}, fmt.Errorf("invalid release version %q: expected canonical X.Y.Z", requested)
 	}
-	// Porcelain trusts assume-unchanged and skip-worktree bits. Reject these
-	// configurations conservatively rather than mutate the caller's index or
-	// mistake a private clean build snapshot for proof of a clean source tree.
-	entries, err := gitOut(root, "ls-files", "-v", "-z")
-	if err != nil {
+	if err := releaseSourceClean(root); err != nil {
 		return "", time.Time{}, err
-	}
-	for _, entry := range strings.Split(entries, "\x00") {
-		if len(entry) > 0 && (entry[0] == 'S' || entry[0] >= 'a' && entry[0] <= 'z') {
-			return "", time.Time{}, fmt.Errorf("cannot verify clean working tree: index flags assume-unchanged and skip-worktree are unsupported for releases")
-		}
-	}
-	status, err := gitOut(root, "status", "--porcelain=v1", "--untracked-files=all", "--ignore-submodules=none")
-	if err != nil {
-		return "", time.Time{}, err
-	}
-	if status != "" {
-		return "", time.Time{}, fmt.Errorf("working tree and index must be clean, including untracked files")
 	}
 	head, err := gitOut(root, "rev-parse", "--verify", "HEAD^{commit}")
 	if err != nil {
