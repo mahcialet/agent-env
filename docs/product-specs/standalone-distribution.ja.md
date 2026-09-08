@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/product-specs/standalone-distribution.md
-source_sha256: bba29aba335224686e1e32bea003c6cf08f3887f487b41e88410d1e3abade9e3
+source_sha256: db25708b69b3da825b840449e72d4da374a81d068f03283813cef3636b124da5
 ---
 
 # スタンドアロン配布
@@ -18,7 +18,8 @@ Java、Python、Node.jsは必要ない。機能ごとの外部前提は維持し
 
 リリースアーカイブはGo製リポジトリハーネスが作成・検証する。対象はWindows
 amd64/arm64、macOS amd64/arm64、Linux amd64/arm64の6通りとする。アーカイブは
-相対パスの通常ファイルだけを含み、checksumsとrelease manifestを同梱する。
+相対パスのトップレベルディレクトリと通常ファイルを含む。checksum と release manifest は
+6 アーカイブの外に添付する。
 バージョンとソース識別子はリリースビルドのメタデータから与え、開発ビルドは
 `devel`と正直に表示する。
 
@@ -28,3 +29,46 @@ amd64/arm64、macOS amd64/arm64、Linux amd64/arm64の6通りとする。アー�
 
 最初の配布面はGitHub archive downloadとする。署名、notarization、package
 manager recipe、SBOM、attestationは後続作業とする。
+
+
+リリースバージョンの唯一の根拠は Git tag とする。リリース要求は、`HEAD` が tag の commit と一致し、作業ツリーが clean で、tag が厳密な `v<semver>` 形式で、要求バージョンが先頭の `v` を除いた tag と一致する場合だけ有効とする。
+
+アーカイブ名は `agent-env_v0.1.0_linux_amd64.tar.gz` のようにし、`agent-env_v0.1.0_linux_amd64/` のトップレベルディレクトリに実行ファイル、`LICENSE`、`README.txt` を含める。全ファイルの mtime は tag 対象 commit の timestamp に統一し、wall clock は使わない。
+
+## リリースの作成と検証
+
+受け付ける tag は `vMAJOR.MINOR.PATCH` で、各要素は 10 進整数とし、`0` 自体を除き
+先頭のゼロを認めない。prerelease や build suffix は受け付けない。有効なバージョン tag のうち
+HEAD に解決されるものが、ちょうど一つ必要である。軽量 tag と注釈付き tag を受け付けるが、
+署名検証は対象外とする。要求バージョンは tag から `v` を除いた値であり、VERSION ファイルなど
+別のバージョン管理元は持たない。clean とは、追跡対象の作業ツリー変更、ステージ済み変更、
+ignore 対象以外の未追跡ファイルがない状態を指す。ignore 対象の出力は妨げにならない。
+
+```text
+go run ./tools/repoctl release-build --version X.Y.Z --out <new-directory>
+go run ./tools/repoctl release-check --dir <directory> --version X.Y.Z
+go run ./tools/repoctl release-repeat --dir <directory> --version X.Y.Z
+go run ./tools/repoctl release-smoke --dir <directory> --version X.Y.Z
+```
+
+ビルドは既存の出力ディレクトリを拒否し、専用の一時領域で作成してから完全な成果物一式を
+ローカルの出力先に配置する。Windows は `.zip`、darwin と linux は `.tar.gz` とし、
+それぞれ amd64 と arm64 を用意する。各アーカイブに含めるのはトップレベルディレクトリ、
+ネイティブ実行ファイル、MIT の `LICENSE`、`README.txt` だけである。
+README.txt はハーネス内の英日テキストから決定的に生成する。
+
+`checksums.txt` はファイル名順に並べ、各行を小文字の SHA-256、空白二つ、アーカイブの
+ファイル名、LF で構成する。`release-manifest.json` は schema version 1 を使い、
+製品・バージョン・tag・commit、ソース時刻、実際の builder の Go バージョン、対象識別情報、
+アーカイブと実行ファイルの名前・digest、実行ファイルのビルド識別情報、埋め込み資産の
+メタデータを記録する。現在のリリースは runtime companion の資産を埋め込まないため、
+資産一覧は空である。任意の Android UI helper は引き続き外部ビルドとする。
+静的検査では、他プラットフォームの実行ファイルを起動せずにビルド情報を確認する。
+クロスビルドの成功はネイティブ実行の証拠にはならない。
+
+リリースコマンドは `--version X.Y.Z` の代わりに `--tag vX.Y.Z` も受け付ける。
+CI は `--tag-env` で `AGENT_ENV_RELEASE_TAG` を直接読み、tag をシェルコマンドへ展開しない。
+最終出力は 6 アーカイブ、`checksums.txt`、`release-manifest.json` の計 8 ファイルに限る。
+`release-repeat` は既存の tag 対応成果物を検証し、新たなビルドと比較する。
+作成には厳密なコミットの専用 checkout を使うため、ignore 対象のソースや
+Git index のフラグで隠れたローカル編集が実行ファイルに混入することはない。

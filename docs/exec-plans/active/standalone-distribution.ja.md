@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/exec-plans/active/standalone-distribution.md
-source_sha256: e63136964eb80b0e42bafb7bb053ce8f6bb6e3ce43f45886c509663fa2e25387
+source_sha256: 4af6e888d23ba2b869d17d61d17b0506ae8bedc3d6d2801883031ad40c1da5f0
 ---
 
 # agent-env をクロスプラットフォームのスタンドアロン配布物にする
@@ -73,40 +73,67 @@ compatibility burdenが小さい今の段階では、長期standalone contract�
 ための内部package/build layoutの大きな変更を許容する。ただしpublic behavior
 変更は明示的にdocument/migrationする。
 
+## 子 ExecPlan
+
+[standalone-release-finalization.ja.md](../completed/standalone-release-finalization.ja.md) は、本計画の完了した子 ExecPlan である。
+
+残っている具体的なリリース実装・検証のうち、次を担当する。
+
+- 厳密な Git tag のリリース検証
+- `repoctl release-build`
+- `repoctl release-check`
+- 6 対象のアーカイブ生成
+- 決定性・再現性の検証
+- ネイティブ smoke test
+- GitHub Release workflow
+- 最終的なリリース文書と証拠
+
+子計画の完了は必要条件であるが、それだけで親計画を完了してよいわけではない。
+子計画を完了済みへ移動した後、親計画の受け入れ条件に照らして実装された動作と証拠を
+整理し直し、「成果と振り返り」を記入する必要がある。
+
 ## 進捗
 
-- [ ] PR #4 merge、`master`更新、開始revision記録、`feat/standalone-distribution`作成。
-- [ ] baseline `repoctl check` とdocumented race suiteを記録。
-- [ ] build info/state root/CI/release/cross-buildを調査。
-- [ ] standalone product/design docsを英日作成。
-- [ ] release version source/tag policy確定。
-- [ ] central build-info APIと`agent-env version`定義。
-- [ ] release target matrix / archive naming/layout確定。
-- [ ] generic bundled asset metadata/materialization実装。
-- [ ] target-app dependencyを作らないembedded asset test追加。
-- [x] 2026-09-08: 既存の`AGENT_ENV_HOME`をstate-root overrideとして維持し、
-      重複する`--home` flagは追加しない判断を記録。
-- [ ] 全persistent writable pathがstate-root contractへ従うことを検証。
-- [ ] `repoctl release-build`実装。
-- [ ] `repoctl release-check`実装。
-- [ ] normalized archive/release manifest/checksum生成。
-- [ ] exact version/tag/clean-tree release guard追加。
-- [ ] same-source deterministic build/package regression追加。
-- [ ] native Windows/macOS/Linux extracted-artifact smoke追加。
-- [ ] mechanicsをrepoctlへ委譲するGitHub tag/release workflow追加。
-- [ ] architecture/portability/quality/security/roadmapを英日更新。
-- [ ] 既存manifest/lease/development workflowの非回帰確認。
-- [ ] full harness/race validation。
-- [ ] native platform/release evidenceを正直に記録。
-- [ ] acceptance/retrospective完成。
-- [ ] 英日planをcompletedへ移動。
+- [x] 2026-09-08: master `938e584`（PR #5を含む）から作業ブランチを作成。
+- [x] 2026-09-08: baseline Go 1.27.1 raceが成功。初回checkは日本語Planの
+  metadata欠落で失敗し、修復後のcheckが成功。
+- [x] 2026-09-08: CLI/bootstrap・state root・repoctl・CI・cross-buildを確認。
+- [x] 2026-09-08: 英日のproduct/design契約とindexを追加し、翻訳metadataを同期。
+- [x] 2026-09-08: Git tagだけをversionの根拠とし、厳密な形式・clean tree・
+  HEAD一致・要求version一致を方針とした。
+- [x] 2026-09-08: buildinfoとversion出力に開発用default、commit、dirty、Go、
+  platformを追加。任意providerは初期化しない。
+- [x] 2026-09-08: 6ターゲットとtop-level directory付きarchive、commit mtimeを確定。
+- [x] 2026-09-08: generic assetのcontent-addressed・digest検証・atomic生成、
+  再利用、traversal/symlink/tamper拒否を実装した。
+- [x] 2026-09-08: 子 `docs/exec-plans/completed/standalone-release-finalization.ja.md`
+  を完了。release-build/check・packaging・native smoke・GitHub workflowを
+  `641cb49`、preview 34190701402、Verify 34190701428で検証した。
+- [ ] 子の証拠を下記へ照合した上で、親に残る前提エラー・CLI asset一覧・asset
+  並行stress・広範な永続パスaudit・将来helper契約を検証する。
+- [ ] target appに依存しないdeterministic embedded-assetテストを追加。
+- [x] 2026-09-08: 既存判断通りAGENT_ENV_HOMEのみをoverrideとし、--homeは追加しない。
+- [ ] 全永続書込先が解決済みstate-root契約に従うことをauditする。
+- [x] 2026-09-08: 子でrelease-build/check、正規化archive/manifest/checksums、
+  厳密なtag/version/clean guard、再現性比較を実装・検証した。
+- [x] 2026-09-08: 子で3OSの展開済みnative smokeとrepoctlに委ねるtag workflowを検証。
+- [x] 2026-09-08: 子でarchitecture/portability/quality/security/roadmapを英日更新。
+- [x] 2026-09-08: Verify 34190701428で既存manifest/lease/workflowの回帰検査も成功。
+- [ ] 親Plan最終のfull harnessとraceを実行する。
+- [x] 2026-09-08: native/crossの範囲とリリース証拠を子から引き継いだ。
+- [ ] 親の受け入れ証拠と振り返りを完成する。
+- [ ] 親の英日Planをcompletedへ移動する。
 
-checkboxは観測済み完了を表す。checkpointごとに日付、revision、command/run、
-resultを記録する。
+チェックは観測済み完了を示す。子の完了で親の未検証条件を完了扱いにしない。
 
 ## 想定外の発見
 
-現時点ではなし。
+- 2026-09-08: 提供された日本語の active plan に翻訳 metadata がなく、実装前の
+  baseline docs-check が失敗した。正確な翻訳 metadata を追加して hash を同期した。
+  検査は弱めていない。
+- 2026-09-08: 既存の `AGENT_ENV_HOME` が、OS 固有の絶対パスによる状態保存先の
+  優先順位を既に定義していた。別の `--home` flag は同じ方針を重複させるため、
+  今回は既存の override を維持し、その判断を記録する。
 
 少なくとも以下を記録する。
 
@@ -165,7 +192,19 @@ resultを記録する。
   理由: bilingual documentation policyに従うため。
   日付/担当: 2026-09-08 / maintainers.
 
+- 判断: スタンドアロンの状態保存先 override は `AGENT_ENV_HOME` のままとし、
+  今回は別の `--home` flag を追加しない。
+  理由: 既存のパス解決が OS 固有の絶対パスを必須にし、lifecycle コードもその結果を使っている。
+  CLI に優先順位を重複実装すると、状態保存先の仕様が二つできてしまうため。
+  日付/担当: 2026-09-08 / maintainers.
+
 ## 成果と振り返り
+
+2026-09-08 子との照合: `641cb49` でリリース工程を完了した。子の受け入れ証拠を
+下記の S1/S2、S6–S10、S15–S24 に対応付けた。親はactiveのままとし、S3、
+S4/S13のasset一覧、S11のcross-process stress、S14の広範な永続パスaudit、
+S25の将来helper契約は直接的な証拠を引き続き必要とする。子の完了をこれらの
+親の検証の代わりにしない。
 
 未完了。
 
@@ -382,30 +421,30 @@ README install、architecture、portability、quality、security必要箇所、r
 
 | ID | 必須動作 | 証拠 |
 | --- | --- | --- |
-| S1 | release展開後Go/source tree無しで`version`/help実行可能。 | Pending |
-| S2 | core startupにDocker/Android/Flutter/Java/Python/Node/shell不要。 | Pending |
+| S1 | release展開後Go/source tree無しで`version`/help実行可能。 | 子R15・preview 34190701402で3OSの展開済みversion/help/listを空PATH・ソース外で確認。 |
+| S2 | core startupにDocker/Android/Flutter/Java/Python/Node/shell不要。 | 同じnative smokeで任意の外部ツールなしにcore commandを実行。 |
 | S3 | capability commandがmissing prerequisiteをlazy/正直に報告。 | Pending |
-| S4 | `version --output json`がversion/commit/toolchain/platform/asset metadataを返す。 | Pending |
-| S5 | development buildがrelease metadata無しでも正直なidentity。 | Pending |
-| S6 | tag/version/commit mismatchまたはdirty release inputを拒否。 | Pending |
-| S7 | release buildが`CGO_ENABLED=0`かつshell packaging tool不要。 | Pending |
-| S8 | fixed matrixからdocumented archive setだけ生成。 | Pending |
-| S9 | checksum/manifestがarchive/executable bytesと一致。 | Pending |
-| S10 | archiveはsafe relative regular filesのみでsymlink/traversal無し。 | Pending |
-| S11 | bundled assetがcontent-addressed/digest verified/atomic/concurrency-safe/idempotent。 | Pending |
-| S12 | corrupt materialized assetを検出しsilent trustしない。 | Pending |
+| S4 | `version --output json`がversion/commit/toolchain/platform/asset metadataを返す。 | buildinfo.CurrentとCLI JSONはversion/commit/dirty/Go/platformをprovider初期化なしで表示。asset一覧は未完了。 |
+| S5 | development buildがrelease metadata無しでも正直なidentity。 | 開発defaultはdevel/unknownと表示し、単体テストが成功。 |
+| S6 | tag/version/commit mismatchまたはdirty release inputを拒否。 | 子R1–R4の厳密なGit検証と専用commit checkoutの負例が成功。 |
+| S7 | release buildが`CGO_ENABLED=0`かつshell packaging tool不要。 | 子R5で6バイナリのCGO=0とGoのみのarchive生成を確認。 |
+| S8 | fixed matrixからdocumented archive setだけ生成。 | 子R6–R7で6つの名前とprefix配下の3通常memberを確認。 |
+| S9 | checksum/manifestがarchive/executable bytesと一致。 | 子R9–R11で実bytesのchecksum/manifest/identityと不一致拒否を確認。 |
+| S10 | archiveはsafe relative regular filesのみでsymlink/traversal無し。 | 子R12のtraversal/symlink/memberとZIP local/central名の回帰が成功。 |
+| S11 | bundled assetがcontent-addressed/digest verified/atomic/concurrency-safe/idempotent。 | assetsのcontent-addressed再利用とatomic生成のテスト成功。cross-process stress証拠は未完了。 |
+| S12 | corrupt materialized assetを検出しsilent trustしない。 | TestMaterializeIsContentAddressedAndIdempotentで改ざんbytesを拒否。 |
 | S13 | capability initialize無しでasset metadata取得可能。 | Pending |
 | S14 | persistent stateがstate-root precedenceへ従いtarget repoへ漏れない。 | Pending |
-| S15 | explicit state rootがnative OS path/spaceで動き可能ならnon-ASCIIも検証。 | Pending |
-| S16 | same-source/toolchain repeated releaseのdigest比較とgap記録。 | Pending |
-| S17 | extracted releaseをnative Windows/macOS/Linuxでsmoke test。 | Pending |
-| S18 | cross-build-onlyとnative evidenceを区別。 | Pending |
-| S19 | GitHub release workflowがmechanicsをrepoctlへ委譲しvalidation failure後publishしない。 | Pending |
-| S20 | maintainer-created tagを使いCIがGit historyを変更しない。 | Pending |
-| S21 | 既存manifest/lease/development command非回帰。 | Pending |
-| S22 | full harness/docs/translation/race pass。 | Pending |
-| S23 | standalone docs/ExecPlan英日双方が存在しindex済み。 | Pending |
-| S24 | 完了後roadmapのarchive release undecided表現解消。 | Pending |
+| S15 | explicit state rootがnative OS path/spaceで動き可能ならnon-ASCIIも検証。 | 子R16でWindows/amd64・macOS/arm64・Linux/amd64のUnicode/空白state rootを確認。 |
+| S16 | same-source/toolchain repeated releaseのdigest比較とgap記録。 | 子R14で641cb49の同source/toolchainによる8ファイル一致を確認。 |
+| S17 | extracted releaseをnative Windows/macOS/Linuxでsmoke test。 | preview 34190701402でWindows/amd64・macOS/arm64・Linux/amd64のnative成功。 |
+| S18 | cross-build-onlyとnative evidenceを区別。 | Windows/arm64・macOS/amd64・Linux/arm64はcross-build/静的検査のみ。 |
+| S19 | GitHub release workflowがmechanicsをrepoctlへ委譲しvalidation failure後publishしない。 | 子R22–R24でrepoctl処理とvalidation/repeat/native公開gateを検証。公開releaseは作成していない。 |
+| S20 | maintainer-created tagを使いCIがGit historyを変更しない。 | 子R21でmaintainer tag起動。tag作成はprivate cloneのみで、caller refs保護をテスト。 |
+| S21 | 既存manifest/lease/development command非回帰。 | Verify 34190701428の12 job（既存nativeとLinux Docker実integrationを含む）が成功。 |
+| S22 | full harness/docs/translation/race pass。 | 子R26で641cb49のローカルraceとhosted harness成功。親の残作業には別途最終検査が必要。 |
+| S23 | standalone docs/ExecPlan英日双方が存在しindex済み。 | 英日文書・indexがあり、子archival後のdocs-check成功。 |
+| S24 | 完了後roadmapのarchive release undecided表現解消。 | 英日roadmapでarchiveによるGitHub Releaseを決定済みとした。 |
 | S25 | `android-ui-observer`がseparate downloader無しでfuture embedded helper利用可能。 | Pending |
 
 すべてdirect evidence必須。workflow/file存在だけではacceptance evidenceではない。

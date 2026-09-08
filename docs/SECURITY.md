@@ -54,3 +54,26 @@ reserved serial explicitly. These guards do not lock out concurrent host changes
 or make a hostile local server trustworthy.
 
 The ADB protocol check is an observation of the current shared server, not a host-wide lock. Direct external server replacement or SDK version changes between that observation and an SDK command can still race with the SDK's own version handling. Keep a compatible shared server stable while leases are active; cross-tool server replacement is outside agent-env coordination.
+
+## Release integrity
+
+Git tags identify release versions; checksums detect changed bytes but do not
+provide signatures or independent provenance. Signing, notarization and attestation
+remain outside the initial archive release. Obtain archives and their manifest
+from the trusted release channel. Static validation is not a malicious-binary
+sandbox, and native smoke executes the candidate executable.
+
+Release construction rejects changed tracked/index files, non-ignored untracked
+files, missing or ambiguous version tags, and mismatched HEAD/version. Ignored
+build outputs do not make the tree dirty. Construction stages privately and refuses
+an existing output directory. Validation rejects unexpected archive members,
+unsafe paths and links, and mismatched executable or metadata digests. Manifest
+fields must not contain host paths, temporary paths or credentials. Release commands never mutate caller or public Git refs; preview verification
+creates its test tag only in a private clone. Maintainers control publication.
+Builds use the exact commit in a private checkout to exclude ignored sources and
+local edits hidden by index flags.
+
+Runtime prerequisites remain trusted host tools and are not installed by the
+release CLI. The optional Android UI helper is externally built, not embedded in
+the current release. Generic asset digest checks detect corruption, not hostile
+host modification beyond the existing local trust boundary.

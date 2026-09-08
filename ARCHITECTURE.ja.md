@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: ARCHITECTURE.md
-source_sha256: 5769103c6ddaa21d705f0f7b14dd016249092f08bf7e00fbea6dff3c86f00758
+source_sha256: 55102f127e64e284720717fb17a7c1af84aa9afc1dc614a574bb0492a4b7f651
 ---
 
 [英語版（翻訳元）](ARCHITECTURE.md)
@@ -51,3 +51,15 @@ domain は直列化できる UI 値を定義し、adapter は accessibility/ADB 
 操作意図と cleanup barrier には既存の `CommandRun` row を使い、SQL migration や対象 manifest の
 section は追加しません。`tools/uihelper` が native tool の argv を使って companion を明示的に build します。
 runtime adapter 同士の import はありません。[observer 設計](docs/design-docs/android-ui-observer.ja.md)を参照してください。
+
+## スタンドアロンリリースの責務境界
+
+`internal/buildinfo` は実行ファイルの識別情報を公開し、`internal/assets` は digest を
+検証する汎用のファイル配置を担当します。Android や Flutter の lifecycle は扱いません。
+現在の CLI は runtime companion の資産を埋め込みません。Android UI helper は
+明示的に別途ビルドする外部入力です。`tools/repoctl` は Git リリース条件の検証、
+CGO 無効のクロスビルド、アーカイブの正規化、checksum、manifest 検証、
+展開した実行ファイルのネイティブ smoke test を担当します。リリースのメタデータは
+lease/domain のモデルに入れません。GitHub Actions はこれらのコマンドを呼び出し、
+検証済みのバイト列を公開します。別のパッケージ生成処理は持ちません。
+[配布設計](docs/design-docs/standalone-distribution.ja.md)を参照してください。

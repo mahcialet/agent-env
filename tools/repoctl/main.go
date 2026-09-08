@@ -24,7 +24,7 @@ import (
 func main() { os.Exit(run(os.Args[1:], os.Stdout, os.Stderr)) }
 
 func run(args []string, out, errOut io.Writer) int {
-	if len(args) != 1 {
+	if len(args) < 1 {
 		fmt.Fprintln(errOut, "AGENTENV-USAGE-001: use repoctl doctor|check|test-unit|test-integration|docs-check|generated-check|generate|arch-check")
 		return 2
 	}
@@ -33,11 +33,24 @@ func run(args []string, out, errOut io.Writer) int {
 		fmt.Fprintln(errOut, err)
 		return 1
 	}
-	if err = execute(root, args[0], out, errOut); err != nil {
+	if err = executeArgs(root, args, out, errOut); err != nil {
 		fmt.Fprintln(errOut, err)
 		return 1
 	}
 	return 0
+}
+
+func executeArgs(root string, args []string, out, errOut io.Writer) error {
+	if args[0] == "release-verify" || args[0] == "release-preview-smoke" {
+		return executeReleaseVerify(root, args, out, errOut)
+	}
+	if args[0] == "release-build" || args[0] == "release-check" || args[0] == "release-smoke" || args[0] == "release-repeat" {
+		return executeRelease(root, args, out, errOut)
+	}
+	if len(args) != 1 {
+		return fmt.Errorf("AGENTENV-USAGE-001: command takes no arguments")
+	}
+	return execute(root, args[0], out, errOut)
 }
 
 func repositoryRoot() (string, error) {
