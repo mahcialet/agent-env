@@ -84,6 +84,7 @@ func (a Adapter) ObserveUI(ctx context.Context, r domain.Runtime, q domain.UIReq
 				return o, fmt.Errorf("AGENTENV-UI-UNAVAILABLE: helper installation unconfirmed")
 			}
 			o.Confirmed = true
+			o.HelperInstalled = true
 			path, e = a.uiHelperPath(ctx, r)
 			if e != nil {
 				return o, e
@@ -193,7 +194,10 @@ func (a Adapter) ObserveUI(ctx context.Context, r domain.Runtime, q domain.UIReq
 			return o, fmt.Errorf("AGENTENV-UI-UNAVAILABLE: invalid device clock")
 		}
 		cutoff := epoch - int64(q.SinceSeconds)
-		v, e = call(uiResponseLimit, "shell", "logcat", "-d", "-v", "epoch", "--pid", strconv.Itoa(pid), "-t", "2000")
+		// Capture a bounded envelope larger than the final 256 KiB artifact limit.
+		// Logcat is reduced locally after the process has completed, so ordinary
+		// high-volume output does not become an unconfirmed running command.
+		v, e = call(16<<20, "shell", "logcat", "-d", "-v", "epoch", "--pid", strconv.Itoa(pid), "-t", "2000")
 		if e != nil {
 			return o, e
 		}

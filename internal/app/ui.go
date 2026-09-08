@@ -171,7 +171,7 @@ func (s *Service) UI(ctx context.Context, id string, o UIOptions) (result UIResu
 	if o.Snapshot != "" {
 		prior, err = s.loadUISnapshot(ctx, l, o.Snapshot)
 		if err != nil {
-			return
+			return result, errors.Join(domain.ErrUIInput, err)
 		}
 		if o.Runtime != "" && o.Runtime != prior.Runtime {
 			return result, errors.New("snapshot runtime selection mismatch")
@@ -214,10 +214,13 @@ func (s *Service) UI(ctx context.Context, id string, o UIOptions) (result UIResu
 		req.Package = prior.Package
 		req.ExpectedBackend = prior.Backend
 	}
-	result.Run = domain.CommandRun{ID: newID(), LeaseID: id, Name: "ui-" + o.Operation, Argv: []string{"ui", o.Operation, "--runtime", r.Name}, Status: "running", StartedAt: time.Now().UTC(), ExitCode: -1, Notes: []string{"Android serial: " + r.Android.Serial, "Requested UI operation may verify/install the observer companion on this owned runtime."}}
+	result.Run = domain.CommandRun{ID: newID(), LeaseID: id, Name: "ui-" + o.Operation, Argv: []string{"ui", o.Operation, "--runtime", r.Name}, Status: "running", StartedAt: time.Now().UTC(), ExitCode: -1, Notes: []string{"Android serial: " + r.Android.Serial}}
 
 	if req.Package != "" {
-		result.Run.Notes = append(result.Run.Notes, "Package scope: "+req.Package)
+		result.Run.Notes = append(result.Run.Notes, "Application selector package: "+req.Package)
+		if o.Operation == "snapshot" || o.Operation == "tap" || o.Operation == "set-text" || o.Operation == "wait" || o.Operation == "logcat" {
+			result.Run.Notes = append(result.Run.Notes, "Package scope enforced: "+req.Package)
+		}
 	}
 	if prior != nil {
 		result.Run.Argv = append(result.Run.Argv, "--snapshot", prior.ID, "--node", o.Node)
@@ -260,6 +263,11 @@ func (s *Service) UI(ctx context.Context, id string, o UIOptions) (result UIResu
 		if effectErr != nil {
 			break
 		}
+	}
+	if result.Observation.HelperInstalled {
+		result.Run.Notes = append(result.Run.Notes, "Observer companion installed on this owned runtime during this operation; backend="+result.Observation.Backend)
+	} else if result.Observation.Backend != "" {
+		result.Run.Notes = append(result.Run.Notes, "Observer companion verified on this owned runtime; backend="+result.Observation.Backend)
 	}
 	// A local request deadline may interrupt self-targeting instrumentation while
 	// the operation fence remains held. Quiesce only that verified companion, never

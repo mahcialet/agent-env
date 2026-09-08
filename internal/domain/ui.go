@@ -90,5 +90,6 @@ type UIObservation struct {
 	PID       int    `json:"pid,omitempty"`
 	Since     string `json:"since,omitempty"`
 	// Confirmed means remote completion is known, including refusal.
-	Confirmed bool `json:"-"`
+	Confirmed       bool `json:"-"`
+	HelperInstalled bool `json:"helper_installed,omitempty"`
 }
