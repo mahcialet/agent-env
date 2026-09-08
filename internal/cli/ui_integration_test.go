@@ -44,6 +44,7 @@ class _ObserverFixtureState extends State<ObserverFixture> {
   body: ListView(padding: const EdgeInsets.all(16), children: [
    Text('Count$count'),
    ElevatedButton(onPressed: () { setState(() { count++; }); debugPrint('agent-env-ui-count-$count'); }, child: Text('Increment$count')),
+   ElevatedButton(onPressed: () { showDialog<void>(context: context, builder: (context) => const AlertDialog(title: Text('Observer dialog'))); }, child: const Text('Open observer dialog')),
    TextField(controller: entry, autofocus: true, decoration: const InputDecoration(labelText: 'Observer input')),
    TextField(controller: password, obscureText: true, decoration: const InputDecoration(labelText: 'Observer password')),
    for (int i = 0; i < 30; i++) Padding(padding: const EdgeInsets.all(12), child: Text('Scrollable item $i')),
@@ -218,9 +219,34 @@ func exerciseRealAndroidUI(t *testing.T, ctx context.Context, s *app.Service, le
 		t.Fatal("PNG dimensions mismatch")
 	}
 	realUICommand(t, ctx, "tap-coordinate", leases[0].ID, "--runtime", "phone", "--x", "1", "--y", "1")
+	// UiAutomation can suppress the IME; Back is tested against an explicit
+	// dialog rather than assuming it only dismisses a keyboard.
+	dialogScreen := realUICommand(t, ctx, "snapshot", leases[0].ID, "--application", "mobile-app")
+	dialogButton := realUINode(t, dialogScreen, func(n domain.UINode) bool {
+		return n.Clickable && strings.Contains(n.Text+" "+n.Description, "Open observer dialog")
+	}, "dialog button")
+	realUICommand(t, ctx, "tap", leases[0].ID, "--snapshot", dialogScreen.Snapshot.ID, "--node", dialogButton.Ref)
+	dialog := realUICommand(t, ctx, "wait", leases[0].ID, "--application", "mobile-app", "--contains", "Observer dialog", "--timeout", "20s")
+	realUINode(t, dialog, func(n domain.UINode) bool {
+		return n.Visible && (n.Text == "Observer dialog" || n.Description == "Observer dialog")
+	}, "visible dialog title")
 	realUICommand(t, ctx, "back", leases[0].ID, "--runtime", "phone")
+	realUICommand(t, ctx, "wait", leases[0].ID, "--application", "mobile-app", "--contains", "Count1", "--timeout", "20s")
 	beforeSwipe := realUICommand(t, ctx, "snapshot", leases[0].ID, "--application", "mobile-app")
-	realUICommand(t, ctx, "swipe", leases[0].ID, "--runtime", "phone", "--x", strconv.Itoa(screenshot.Width/2), "--y", strconv.Itoa(screenshot.Height*3/4), "--to-x", strconv.Itoa(screenshot.Width/2), "--to-y", strconv.Itoa(screenshot.Height/3), "--duration", "300ms")
+	for _, node := range beforeSwipe.Snapshot.Tree.Nodes {
+		if node.Visible && (node.Text == "Observer dialog" || node.Description == "Observer dialog") {
+			t.Fatal("Back did not dismiss the dialog")
+		}
+	}
+	// The IME may resize the viewport. Derive this explicit gesture from the
+	// current scroll container, not from the full screenshot dimensions.
+	scroll := realUINode(t, beforeSwipe, func(n domain.UINode) bool { return n.Visible && n.Scrollable }, "visible scroll container")
+	x := (scroll.Bounds[0] + scroll.Bounds[2]) / 2
+	height := scroll.Bounds[3] - scroll.Bounds[1]
+	if height < 80 {
+		t.Fatal("scroll viewport too small for the fixture gesture")
+	}
+	realUICommand(t, ctx, "swipe", leases[0].ID, "--runtime", "phone", "--x", strconv.Itoa(x), "--y", strconv.Itoa(scroll.Bounds[3]-height/8), "--to-x", strconv.Itoa(x), "--to-y", strconv.Itoa(scroll.Bounds[1]+height/8), "--duration", "300ms")
 	// A genuine scroll must expose later fixture content, not merely exit zero.
 	scrolled := realUICommand(t, ctx, "snapshot", leases[0].ID, "--application", "mobile-app")
 	beforeLabels := map[string]bool{}
@@ -243,6 +269,9 @@ func exerciseRealAndroidUI(t *testing.T, ctx context.Context, s *app.Service, le
 	home := realUICommand(t, ctx, "snapshot", leases[0].ID, "--runtime", "phone")
 	outside := false
 	for _, node := range home.Snapshot.Tree.Nodes {
+		if node.Visible && node.Package == "dev.agentenv.lease_fixture" {
+			t.Fatal("Home left application semantics visible")
+		}
 		if node.Visible && node.Package != "" && node.Package != "dev.agentenv.lease_fixture" {
 			outside = true
 		}

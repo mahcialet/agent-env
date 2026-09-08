@@ -82,7 +82,11 @@ func realFlutterAndroidBackendLease(t *testing.T, observe bool) {
 		}
 		return r.Stdout
 	}
-	run(root, "flutter", "create", "--platforms", "android", "--org", "dev.agentenv", "--project-name", "lease_fixture", repository)
+	createArgs := []string{"create", "--platforms", "android", "--org", "dev.agentenv", "--project-name", "lease_fixture", repository}
+	if os.Getenv("AGENT_ENV_FLUTTER_OFFLINE_FIXTURE") == "1" {
+		createArgs = append(createArgs, "--offline")
+	}
+	run(root, "flutter", createArgs...)
 	write := func(name, contents string) {
 		t.Helper()
 		if err := os.WriteFile(filepath.Join(repository, filepath.FromSlash(name)), []byte(contents), 0600); err != nil {
