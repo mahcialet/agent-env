@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/PORTABILITY.md
-source_sha256: 44c8585ed6d9db65b1819e3e1a0d845366bb77b4b973c9fa0994938cdee1a1dd
+source_sha256: 82fbe6dfeff71b3486220d27dfb6e584653be9f3d9c1b8c565766e144dd0c58d
 ---
 
 [英語版（翻訳元）](PORTABILITY.md)
@@ -132,3 +132,10 @@ Windowsでは、downloadしたCfTのインストール先に、ChromiumのLPAC s
 read/execute ACLがない場合があります。native CIではChromium公式testの設定に従い、
 制限付きapplication-package SID（S-1-15-2-2）へbrowserインストール先の権限だけを
 付与します。lease profileや無関係なdirectoryには権限を付与せず、sandboxも無効化しません。
+
+native process treeの不在を証明した後、汎用process state cleanupはWindows共有違反を
+呼出し側context内・最大2秒で再試行し、毎回所有権とpathを再検査します。持続するfile lockを
+cleanup成功とせず、無関係なerrorは再試行しません。通常のresource保持・隔離が適用されます。
+filesystemのcleanupとして扱い、browserのlifecycle管理をCDP adapterへ移しません。
+
+2秒の予算は再試行の開始を制限します。実行中の同期filesystem削除を中断するものではありません。

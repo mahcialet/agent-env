@@ -137,3 +137,13 @@ by Chromium's LPAC sandbox. Native CI grants those rights only to the browser's
 installation subtree for the restricted application-package SID (S-1-15-2-2),
 following Chromium's own test setup. It does not grant access to lease profiles
 or unrelated directories, and does not disable sandboxing.
+
+After native process-tree absence is proven, generic process state cleanup retries
+Windows sharing violations for at most two seconds within the caller's context,
+rechecking ownership and paths before each attempt. It neither treats persistent
+file locks as successful cleanup nor retries unrelated errors; normal resource
+retention/quarantine applies. This handles filesystem cleanup without moving
+browser lifecycle management into the CDP adapter.
+
+The two-second budget bounds retry scheduling; it does not interrupt a synchronous
+filesystem removal already in progress.

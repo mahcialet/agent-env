@@ -1,5 +1,5 @@
 ---
-source_sha256: c45984cdc2e95baeb8119d7b3fc891e35fed11c4c77bc4219ba101b50aa3756b
+source_sha256: 413ffc303f5cb8c4a0124f7710890afe95da87e3f2b62b1af0bdd23d61ded485
 translation_of: docs/exec-plans/active/browser-cdp-automation.md
 status: active
 owner: maintainers
@@ -78,6 +78,8 @@ port名だけからbrowserをimplicit推測しない。
 ## 進捗
 
 ### PR #10 review対応（2026-09-09）
+
+- [ ] native process tree不在確認後のWindows共有違反cleanupを上限付きで検証し、汎用processの所有権と失敗時barrierを維持。
 
 再開した本Planを`feat/browser-cdp-automation`の実行根拠とする。下の以前の完了記録は
 履歴であり、その後Windows native run 34236523326がtext待機中のcross-origin frame
@@ -166,6 +168,13 @@ Windows/macOSのbrowser実行と公開最終CIは未完了のため、Planはact
 
 ## 想定外の発見
 
+- 2026-09-09 — `3d3fce5`のpush Browser native 34246852839は3 OSすべて成功したが、
+  PR Browser native 34246856039のWindowsは最後のprofile削除で共有違反に失敗した
+  （`Cache_Data/sqldb0`）。全browser操作と新しいsandboxアクセスlog検査は成功していた。
+  process Destroyはnative tree不在と所有pathを確認済みで、RemoveAllを1回だけ呼んでいた。
+  logからfilesystemを保持していた主体は分からず、特定processやkernel要因と断定しない。
+  別native runの成功があってもcleanup受け入れ失敗としてPlanをactiveに保つ。
+
 - 2026-09-09 — 継承originの実証後、sandbox付き`srcdoc` iframeが`Page.getFrameTree`に
   現れず、選択pageのparent IDを持つiframe targetとしてのみ存在することが分かった。
   rootだけのsnapshotを返すと、完全な観測であると誤って示してしまう。target一覧で関連OOPIF
@@ -246,6 +255,12 @@ OS executable差、WebSocket teardown等を記録する。
 dynamic page対応のためidentity/stale checkを弱めない。
 
 ## 判断の記録
+
+- 2026-09-09 — 既存のnative不在証明後に限り、汎用process state cleanup内でWindowsの
+  一時的な共有違反を扱う。そのOS errorだけを最大2秒・呼出し側cancel期限内で再試行し、
+  毎回所有pathを再検証する。他のerrorと持続する共有違反は失敗のまま、既存の保持・隔離動作を
+  維持する。Chromeのlifecycle処理追加、error無視、停止猶予の延長、既存の所有権・不在検査より
+  前のresource解放は行わない。
 
 - 2026-09-09 — frame判定はCDP SecurityOriginを優先する。Chromeがopaqueの代用値を返す
   継承`about:blank`/`about:srcdoc`は、検証済みの親のisolated worldでnative
@@ -746,3 +761,10 @@ app・CDP全raceも成功（36.887秒 / 1.735秒）。capture/transportの回帰
 取得競合の指摘解消を確認し、追加不具合は見つからなかった。統合後の最終全harness/raceも成功。
 Windows fixtureは以前の実行ファイルsandboxアクセス拒否ログも検出・拒否する。
 完了には新しい複数OS CIとThread返信が引き続き必要。
+
+2026-09-09 cleanup checkpoint: process race成功（1.964秒）、cleanup/Destroyの
+回帰race 10回反復成功（2.916秒）、Windows amd64/arm64 test binaryのcrosscompile成功。
+Windows native testはdelete sharingなしで実fileを保持し、RemoveAllの共有違反を確認して
+から解放し、cleanup成功を検証する。独立reviewで新たな不具合は見つからなかった。2秒の
+予算は再試行の開始を制限し、実行中の同期filesystem呼出しを中断しない。最終local harnessと
+強化したLinux native検証は成功。Windows実行と新しい全CIは未完了。

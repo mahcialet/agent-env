@@ -282,7 +282,7 @@ func (c Client) Destroy(ctx context.Context, r domain.Runtime) error {
 	if err = validatePaths(r, false); err != nil {
 		return err
 	}
-	return os.RemoveAll(r.Process.StateDirectory)
+	return removeStateDirectory(ctx, r, os.RemoveAll, retryableStateRemoval, 2*time.Second)
 }
 
 func (c Client) Logs(ctx context.Context, r domain.Runtime) (string, error) {

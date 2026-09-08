@@ -141,6 +141,8 @@ Out of scope:
 
 ### PR #10 review follow-up (2026-09-09)
 
+- [ ] Validate bounded Windows sharing-violation cleanup after native process-tree absence, preserving generic process ownership and failure barriers.
+
 Execution authority remains this reopened plan on `feat/browser-cdp-automation`.
 The prior completion checkpoint below is historical: Windows native run
 34236523326 later failed during text wait with cross-origin frame classification.
@@ -240,6 +242,15 @@ browser execution and published final CI remain pending; this plan stays active.
 
 ## Surprises & Discoveries
 
+- 2026-09-09 — At `3d3fce5`, push Browser native 34246852839 passed all three
+  OSes, but PR Browser native 34246856039 failed Windows during final profile
+  deletion (`Cache_Data/sqldb0`: sharing violation). All browser operations and
+  the new sandbox-access log guard had passed. Process Destroy already confirmed
+  native tree absence and validated owned paths before its one RemoveAll call.
+  The log does not identify the remaining filesystem holder, so do not attribute
+  it to a specific process or kernel component. This is a cleanup acceptance
+  failure despite the other native run passing; keep the plan active.
+
 - 2026-09-09 — Real inherited-origin proof then exposed a sandboxed `srcdoc`
   iframe absent from `Page.getFrameTree` but present as an iframe target with
   selected-page parent IDs. Returning a root-only snapshot would falsely present
@@ -338,6 +349,14 @@ executable differences.
 Do not weaken identity or stale-reference checks to make dynamic pages easier.
 
 ## Decision Log
+
+- 2026-09-09 — Handle transient Windows sharing violations inside generic process
+  state cleanup, only after existing native absence proof. Retry only that OS
+  error, at most two seconds and bounded by caller cancellation; revalidate owned
+  paths before every attempt. Other errors and persistent sharing violations
+  remain failures with normal retention/quarantine behavior. Do not add Chrome
+  lifecycle logic, ignore errors, lengthen process-stop grace, or release resources
+  before the existing ownership and death checks pass.
 
 - 2026-09-09 — Prefer CDP SecurityOrigin for frame classification. For inherited
   `about:blank`/`about:srcdoc` with Chrome's opaque placeholder, prove access using
@@ -1018,3 +1037,12 @@ Independent review verified closure of the collection-race finding and found no
 additional defect. Final full harness/race passed after integration. The Windows
 fixture now also rejects the previously observed executable sandbox access-denial
 log. Fresh multi-OS CI and thread replies remain required before completion.
+
+2026-09-09 cleanup checkpoint: process race passed (1.964s), targeted cleanup/
+Destroy regressions passed ten race repetitions (2.916s), and Windows amd64/arm64
+test binaries cross-compiled. A native Windows test holds an actual file without
+delete sharing, verifies RemoveAll's sharing failure, then releases it to exercise
+successful cleanup. Independent review found no new defect. The two-second
+budget bounds retry scheduling, not a synchronous filesystem call in progress.
+Final local harness and strengthened Linux native validation passed; Windows
+execution and fresh full CI remain pending.
