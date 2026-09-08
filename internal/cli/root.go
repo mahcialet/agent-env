@@ -10,14 +10,13 @@ import (
 	"time"
 
 	"github.com/mahcialet/agent-env/internal/app"
+	"github.com/mahcialet/agent-env/internal/buildinfo"
 	"github.com/mahcialet/agent-env/internal/config"
 	"github.com/mahcialet/agent-env/internal/domain"
 	"github.com/mahcialet/agent-env/internal/execx"
 	"github.com/mahcialet/agent-env/internal/source/gitcli"
 	"github.com/spf13/cobra"
 )
-
-const Version = "0.1.0-dev"
 
 type Envelope struct {
 	SchemaVersion int `json:"schema_version"`
@@ -76,10 +75,11 @@ func New(out, errOut io.Writer) *cobra.Command {
 		return nil
 	}
 	root.AddCommand(&cobra.Command{Use: "version", Args: cobra.NoArgs, RunE: func(*cobra.Command, []string) error {
+		info := buildinfo.Current()
 		if output == "json" {
-			return emit(map[string]string{"version": Version})
+			return emit(info)
 		}
-		_, err := fmt.Fprintln(out, "agent-env "+Version)
+		_, err := fmt.Fprintf(out, "agent-env %s\nCommit: %s\nGo: %s\nPlatform: %s/%s\n", info.Version, info.Commit, info.GoVersion, info.GOOS, info.GOARCH)
 		return err
 	}})
 	root.AddCommand(&cobra.Command{Use: "validate [repository]", Args: cobra.MaximumNArgs(1), RunE: func(_ *cobra.Command, args []string) error {

@@ -18,3 +18,4 @@ last_verified: 2026-09-08
 
 - [flutter-android-runtime](flutter-android-runtime.md) / [日本語](flutter-android-runtime.ja.md)
 - [android-ui-observer](android-ui-observer.md) / [日本語](android-ui-observer.ja.md)
+- [standalone-distribution](standalone-distribution.md) / [日本語](standalone-distribution.ja.md)
