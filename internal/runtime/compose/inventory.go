@@ -12,7 +12,7 @@ import (
 
 // Inventory observes labelled resources in an explicit Docker context. It never
 // changes projects or adopts resources whose ownership is not established.
-func (c Client) Inventory(ctx context.Context, contextName string) ([]domain.Resource, error) {
+func (c dockerClient) Inventory(ctx context.Context, contextName string) ([]domain.Resource, error) {
 	result := []domain.Resource{}
 	if contextName == "" || strings.ContainsAny(contextName, "\x00\r\n") {
 		return result, fmt.Errorf("inventory requires a recorded Docker context")

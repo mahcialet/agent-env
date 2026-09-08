@@ -18,6 +18,20 @@ type RuntimeInventory interface {
 	Inventory(context.Context, string) ([]domain.Resource, error)
 }
 
+// ComposeProviderInventory observes an explicit provider and persisted engine identity.
+type ComposeProviderInventory interface {
+	InventoryFor(context.Context, domain.ComposeProviderName, string) ([]domain.Resource, error)
+}
+
+type composeInventoryTarget struct {
+	provider domain.ComposeProviderName
+	identity string
+}
+
+func (t composeInventoryTarget) projectKey(project string) string {
+	return string(t.provider) + "\x00" + t.identity + "\x00" + project
+}
+
 // Inventory returns anomalous resources only. It does not save rows, emit
 // mutating reconciliation events, adopt resources, or perform cleanup.
 func (s *Service) Inventory(ctx context.Context) ([]domain.Resource, error) {
@@ -32,16 +46,19 @@ func (s *Service) Inventory(ctx context.Context) ([]domain.Resource, error) {
 	byID := map[string]domain.Lease{}
 	projects := map[string]string{}
 	paths := map[string]domain.Source{}
-	contexts := map[string]bool{}
+	contexts := map[composeInventoryTarget]bool{}
+	providers := map[domain.ComposeProviderName]bool{}
 	for _, l := range leases {
 		byID[l.ID] = l
 		for _, r := range l.Runtimes {
 			if r.Type == "android-emulator" {
 				continue
 			}
-			projects[r.Context+"\x00"+r.Project] = l.ID
+			target := composeInventoryTarget{domain.EffectiveComposeProvider(r.Provider), r.Context}
+			providers[target.provider] = true
+			projects[target.projectKey(r.Project)] = l.ID
 			if r.Context != "" {
-				contexts[r.Context] = true
+				contexts[target] = true
 			}
 		}
 		for _, source := range l.Sources {
@@ -59,18 +76,46 @@ func (s *Service) Inventory(ctx context.Context) ([]domain.Resource, error) {
 		if !ok {
 			failures = append(failures, fmt.Errorf("runtime provider does not support global inventory"))
 		} else {
-			doctor, e := s.Runtime.Doctor(ctx)
-			if e != nil {
-				failures = append(failures, e)
-			} else if doctor["context"] == "" {
-				failures = append(failures, fmt.Errorf("runtime doctor returned no active Docker context"))
-			} else {
-				contexts[doctor["context"]] = true
+			if len(providers) == 0 {
+				providers[domain.ComposeProviderDocker] = true
 			}
-			for _, contextName := range sortedKeys(contexts) {
-				items, e := inventory.Inventory(ctx, contextName)
+			for provider := range providers {
+				var doctor map[string]string
+				var e error
+				if selected, ok := s.Runtime.(ComposeProviderDoctor); ok {
+					doctor, e = selected.DoctorFor(ctx, provider)
+				} else if provider == domain.ComposeProviderDocker {
+					doctor, e = s.Runtime.Doctor(ctx)
+				} else {
+					e = fmt.Errorf("inventory cannot discover provider %s", provider)
+				}
 				if e != nil {
-					failures = append(failures, fmt.Errorf("inventory context %s: %w", contextName, e))
+					failures = append(failures, e)
+				} else if doctor["context"] == "" {
+					failures = append(failures, fmt.Errorf("runtime doctor returned no active %s connection identity", provider))
+				} else {
+					contexts[composeInventoryTarget{provider, doctor["context"]}] = true
+				}
+			}
+			targets := make([]composeInventoryTarget, 0, len(contexts))
+			for target := range contexts {
+				targets = append(targets, target)
+			}
+			sort.Slice(targets, func(i, j int) bool { return targets[i].projectKey("") < targets[j].projectKey("") })
+			for _, target := range targets {
+				contextName := target.identity
+				var items []domain.Resource
+				var e error
+				selected, explicit := s.Runtime.(ComposeProviderInventory)
+				if explicit {
+					items, e = selected.InventoryFor(ctx, target.provider, contextName)
+				} else if target.provider == domain.ComposeProviderDocker {
+					items, e = inventory.Inventory(ctx, contextName)
+				} else {
+					e = fmt.Errorf("runtime inventory cannot select provider %s", target.provider)
+				}
+				if e != nil {
+					failures = append(failures, fmt.Errorf("inventory provider %s context %s: %w", target.provider, contextName, e))
 				}
 				// Project ownership can be established by an explicit agent label on
 				// a container, never by an ae-style project-name guess.
@@ -90,10 +135,12 @@ func (s *Service) Inventory(ctx context.Context) ([]domain.Resource, error) {
 						item.Metadata = map[string]string{}
 					}
 					p := item.Metadata["project"]
-					known := projects[contextName+"\x00"+p]
+					known := projects[target.projectKey(p)]
 					owner := item.LeaseID
 					status, diagnostic := "", ""
 					switch {
+					case explicit && item.Metadata["provider"] != string(target.provider):
+						status, diagnostic = "identity_mismatch", "provider returned a resource from a different provider"
 					case item.Metadata["context"] != contextName:
 						status, diagnostic = "identity_mismatch", "provider returned a resource from a different context"
 					case ambiguous[p]:

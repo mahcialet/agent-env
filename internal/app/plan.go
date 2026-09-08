@@ -194,6 +194,9 @@ func BuildPlan(ctx context.Context, o PlanOptions, source SourceProvider) (Plan,
 			i = len(p.Runtimes)
 			byRuntime[c.Runtime] = i
 			p.Runtimes = append(p.Runtimes, domain.Runtime{Name: c.Runtime, Type: r.Type, Source: r.Source, Directory: r.ProjectDirectory, Files: r.Files, Services: []string{}})
+			if r.Type == "compose" {
+				p.Runtimes[i].Provider = domain.EffectiveComposeProvider(domain.ComposeProviderName(r.Provider))
+			}
 			if r.Type == "android-emulator" {
 				p.Runtimes[i].Android = &domain.AndroidEmulator{Template: r.AVD, State: "planned"}
 			}

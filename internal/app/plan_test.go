@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/mahcialet/agent-env/internal/domain"
@@ -82,5 +83,75 @@ func TestExplicitManifestUsesControlRepositoryForSources(t *testing.T) {
 		if p.Repository != repo || p.Sources[0].RepositoryPath != repo {
 			t.Fatalf("manifest filename used as source base: %+v", p)
 		}
+	}
+}
+
+func TestPlanComposeProviderSelection(t *testing.T) {
+	fixture, err := os.ReadFile("../../testdata/manifests/api-dashboard.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	repo := t.TempDir()
+	var defaultRuntimes []domain.Runtime
+	for _, provider := range []string{"", "docker-compose", "podman-compose"} {
+		body := string(fixture)
+		if provider != "" {
+			body = strings.Replace(body, "type: compose", "type: compose\n    provider: "+provider, 1)
+		}
+		if err := os.WriteFile(filepath.Join(repo, ".agent-env.yaml"), []byte(body), 0600); err != nil {
+			t.Fatal(err)
+		}
+		p, err := BuildPlan(context.Background(), PlanOptions{Repository: repo, Stack: "api"}, &planningSource{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := domain.ComposeProviderDocker
+		if provider == "podman-compose" {
+			want = domain.ComposeProviderPodman
+		}
+		if len(p.Runtimes) != 1 || p.Runtimes[0].Provider != want {
+			t.Fatalf("provider %q: %+v", provider, p.Runtimes)
+		}
+		if provider == "" {
+			defaultRuntimes = p.Runtimes
+		}
+		if provider == "docker-compose" && !reflect.DeepEqual(defaultRuntimes, p.Runtimes) {
+			t.Fatalf("explicit Docker differs from default: %+v", p.Runtimes)
+		}
+		if p.Manifest.Runtimes["backend"].Provider != provider {
+			t.Fatal("plan mutated canonical manifest provider")
+		}
+	}
+	body := strings.Replace(string(fixture), "type: compose", "type: compose\n    provider: unknown", 1)
+	if err := os.WriteFile(filepath.Join(repo, ".agent-env.yaml"), []byte(body), 0600); err != nil {
+		t.Fatal(err)
+	}
+	source := &planningSource{}
+	if _, err := BuildPlan(context.Background(), PlanOptions{Repository: repo, Stack: "api"}, source); err == nil || len(source.calls) != 0 {
+		t.Fatalf("invalid provider reached source resolution: %v, calls %v", err, source.calls)
+	}
+}
+
+func TestPlanAndroidHasNoComposeProvider(t *testing.T) {
+	repo := t.TempDir()
+	body := `version: 1
+sources:
+  mobile: {repository: ., default_ref: HEAD}
+runtimes:
+  emulator: {type: android-emulator, source: mobile, avd: Pixel}
+components:
+  mobile: {runtime: emulator}
+stacks:
+  mobile: {roots: [mobile]}
+`
+	if err := os.WriteFile(filepath.Join(repo, ".agent-env.yaml"), []byte(body), 0600); err != nil {
+		t.Fatal(err)
+	}
+	p, err := BuildPlan(context.Background(), PlanOptions{Repository: repo, Stack: "mobile"}, &planningSource{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(p.Runtimes) != 1 || p.Runtimes[0].Provider != "" {
+		t.Fatalf("Android acquired Compose provider: %+v", p.Runtimes)
 	}
 }

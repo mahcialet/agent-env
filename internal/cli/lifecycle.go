@@ -86,6 +86,13 @@ func (r runtimeAdapter) Inventory(ctx context.Context, name string) ([]domain.Re
 	return r.client.Inventory(ctx, name)
 }
 
+func (r runtimeAdapter) DoctorFor(ctx context.Context, name domain.ComposeProviderName) (map[string]string, error) {
+	return r.client.DoctorFor(ctx, name)
+}
+func (r runtimeAdapter) InventoryFor(ctx context.Context, name domain.ComposeProviderName, identity string) ([]domain.Resource, error) {
+	return r.client.InventoryFor(ctx, name, identity)
+}
+
 func (r runtimeAdapter) Doctor(ctx context.Context) (map[string]string, error) {
 	return r.client.Doctor(ctx)
 }
@@ -346,12 +353,19 @@ func addLifecycle(root *cobra.Command, output *string, emit func(any) error, out
 		})
 	}})
 	doctorRuntime := "compose"
+	doctorProvider := ""
 	doctor := &cobra.Command{Use: "doctor [repository|lease-id]", Args: cobra.MaximumNArgs(1), RunE: func(cmd *cobra.Command, args []string) error {
 		if doctorRuntime != "compose" && doctorRuntime != "android-emulator" && doctorRuntime != "flutter-android" {
 			return coded(2, errors.New("--runtime must be compose, android-emulator or flutter-android"))
 		}
+		if cmd.Flags().Changed("provider") && (doctorRuntime != "compose" || doctorProvider == "") {
+			return coded(2, errors.New("--provider requires a nonempty Compose provider"))
+		}
 		if len(args) == 1 {
 			if _, e := ulid.ParseStrict(args[0]); e == nil {
+				if cmd.Flags().Changed("provider") {
+					return coded(2, errors.New("lease doctor uses the recorded provider; --provider cannot override it"))
+				}
 				return with(func(s *app.Service) error {
 					lease, err := s.Show(cmd.Context(), args[0])
 					if err != nil {
@@ -371,7 +385,27 @@ func addLifecycle(root *cobra.Command, output *string, emit func(any) error, out
 		var issues []string
 		tools := []string{"git"}
 		if doctorRuntime == "compose" {
-			tools = append(tools, "docker")
+			selected := map[string]bool{}
+			if doctorProvider != "" {
+				if doctorProvider != "docker-compose" && doctorProvider != "podman-compose" {
+					return coded(2, fmt.Errorf("unknown Compose provider %q", doctorProvider))
+				}
+				selected[doctorProvider] = true
+			} else if len(args) == 0 {
+				selected["docker-compose"] = true
+			} else if m, e := config.Load(args[0]); e == nil {
+				for _, r := range m.Runtimes {
+					if r.Type == "compose" {
+						selected[string(domain.EffectiveComposeProvider(domain.ComposeProviderName(r.Provider)))] = true
+					}
+				}
+			}
+			if selected["docker-compose"] {
+				tools = append(tools, "docker")
+			}
+			if selected["podman-compose"] {
+				tools = append(tools, "podman", "podman-compose")
+			}
 		}
 		for _, name := range tools {
 			p, err := execx.LookPath(name)
@@ -389,7 +423,18 @@ func addLifecycle(root *cobra.Command, output *string, emit func(any) error, out
 			} else if doctorRuntime == "flutter-android" {
 				d, err = doctorFlutterHost(cmd.Context(), flutterruntime.Adapter{}, androidruntime.Adapter{Runner: execx.OSRunner{}, Processes: execx.NativeDetached{}})
 			} else {
-				d, err = (compose.Client{Runner: execx.OSRunner{}, Policy: policy.Defaults()}).Doctor(cmd.Context())
+				path := ""
+				if len(args) > 0 {
+					path = args[0]
+				}
+				var report map[string]any
+				report, err = doctorCompose(cmd.Context(), path, doctorProvider, compose.Client{Runner: execx.OSRunner{}, Policy: policy.Defaults()})
+				checks["providers"] = report
+				if len(args) == 0 {
+					if data, ok := report[string(domain.EffectiveComposeProvider(domain.ComposeProviderName(doctorProvider)))].(map[string]string); ok {
+						d = data
+					}
+				}
 			}
 			checks["runtime"] = d
 			if err != nil {
@@ -423,6 +468,7 @@ func addLifecycle(root *cobra.Command, output *string, emit func(any) error, out
 		}
 		return nil
 	}}
+	doctor.Flags().StringVar(&doctorProvider, "provider", "", "Compose provider to diagnose (defaults to manifest providers, or docker-compose)")
 	doctor.Flags().StringVar(&doctorRuntime, "runtime", "compose", "prerequisites for compose, android-emulator or flutter-android")
 	root.AddCommand(doctor)
 	root.AddCommand(&cobra.Command{Use: "test <lease-id> <test-name>", Args: cobra.ExactArgs(2), RunE: func(cmd *cobra.Command, args []string) error {
