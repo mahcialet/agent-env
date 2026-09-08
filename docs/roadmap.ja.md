@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/roadmap.md
-source_sha256: e9ee32d11bc06c3b2d6132ada052b71b7499cb222ae92f6f427c9dc494288d33
+source_sha256: f2cd054c170afa1c42dd67bd05d27519c30b13237a574495e568a4c507c8b84b
 ---
 
 [英語版（翻訳元）](roadmap.md)
@@ -35,10 +35,11 @@ OCR、visual regression、より豊富な gesture、物理デバイス、remote 
 observer の最終受け入れ確認と platform 別の証拠は[完了した計画](exec-plans/completed/android-ui-observer.ja.md)で管理します。
 
 Compose provider選択とPodman adapterは
-[provider plan](exec-plans/active/compose-provider-podman.ja.md)で実装中です。
+実装済みであり、証拠は[provider plan](exec-plans/completed/compose-provider-podman.ja.md)に
+記録しています。
 既定はDockerのままで、自動fallbackはありません。Podman 5.4.2 / podman-compose
-1.6.0で、Docker共存を含む実Linux rootless受け入れが成功しました。最終native provider CIは
-未完了であり、実機のMachine環境はありません。`podman compose` wrapper、
+1.6.0で、Docker共存を含む実Linux rootless受け入れが成功しました。Windows/macOS/Linuxのnative provider CIは
+4a5de3d（run 34216579481）で成功であり、実機のMachine環境はありません。`podman compose` wrapper、
 Quadlet/Kubernetes、pod作成、任意のprovider実行ファイルは今回の対象外です。
 
 ## 成果物とリリース

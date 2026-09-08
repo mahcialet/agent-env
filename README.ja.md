@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: README.md
-source_sha256: 263c141e3218486e8384ecd253387a52b11f743590566deeb9680fca9ced161d
+source_sha256: 3cd303a596f9094e3d961870cb386238c95a90c33d3eac7072c12764dbf5e14e
 ---
 
 [英語版（翻訳元）](README.md)
@@ -84,7 +84,7 @@ Compose runtimeには`provider: docker-compose`（省略時の既定値）また
 fallbackしません。`doctor --provider podman-compose`はそのproviderを検査し、
 `doctor <repository>`はmanifestで宣言したproviderを検査します。Podman 5.4.2と
 podman-compose 1.6.0で、並行leaseとDocker共存を含む実Linux rootless受け入れが
-成功しました。最終native provider CIは未完了で、実機のPodman Machine環境はありません。[provider契約](docs/product-specs/compose-providers.ja.md)を
+成功しました。Windows/macOS/Linuxのnative provider CIは4a5de3d（run 34216579481）で成功で、実機のPodman Machine環境はありません。[provider契約](docs/product-specs/compose-providers.ja.md)を
 参照してください。
 
 ## Android Emulatorリース

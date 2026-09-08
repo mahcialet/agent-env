@@ -3,16 +3,16 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/product-specs/compose-providers.md
-source_sha256: ce843fd41d75e6b2436ca2052fdbe425227b8f2752c0dc416ef71a12d067c0a6
+source_sha256: 3e5cd0b748245a25cd7a0e1928fb6c2d9403d596cd0a71189aa70d67e273a29b
 ---
 
 [English（翻訳元）](compose-providers.md)
 
 # Compose provider
 
-この文書は[進行中のExecPlan](../exec-plans/active/compose-provider-podman.ja.md)
-で実装するproviderの契約を定める。Podman 5.4.2とpodman-compose 1.6.0で、Docker共存を
-含む実Linux rootless受け入れが成功した。最終native provider CIは未完了であり、実機の
+この文書は[完了済みExecPlan](../exec-plans/completed/compose-provider-podman.ja.md)
+で実装したproviderの契約を定める。Podman 5.4.2とpodman-compose 1.6.0で、Docker共存を
+含む実Linux rootless受け入れが成功した。Windows/macOS/Linuxのnative provider CIは4a5de3d（run 34216579481）で成功であり、実機の
 Podman Machine環境はない。
 
 ## 選択と前提条件

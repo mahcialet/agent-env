@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/design-docs/compose-providers.md
-source_sha256: 9c590194b4d432872c6f1c6f0c3272a558540e9f49a5c86f496c31f3bc998fc2
+source_sha256: 075b95f5b78c92c1dd0c6f3503cbff369ada32ffcb555ccebe24ae3fc1b81423
 ---
 
 [English（翻訳元）](compose-providers.md)
@@ -11,9 +11,9 @@ source_sha256: 9c590194b4d432872c6f1c6f0c3272a558540e9f49a5c86f496c31f3bc998fc2
 # Compose providerの設計
 
 [製品契約](../product-specs/compose-providers.ja.md)が選択と安全性の要件を定める。
-実装と受け入れは[進行中のExecPlan](../exec-plans/active/compose-provider-podman.ja.md)
-に従う。以下の構成は実装中であり、backendの正規化の詳細と実providerの検証証拠は、
-同Planの判断と検証で確定する。
+[完了済みExecPlan](../exec-plans/completed/compose-provider-podman.ja.md)に、
+以下の構成と正規化についての実装判断と受け入れ証拠を記録している。
+実機のMachine検証環境は利用できていない。
 
 ## 責務と永続化
 
@@ -59,7 +59,7 @@ digestとともにcanonical JSONで記録する。podman-composeが変更操作�
 Podmanは指定したloopback制限のまま動的portを割り当てる。canonical設定とdigestは変えない。
 受け付けるホスト構成はPodman 5.xとpodman-compose >=1.6.0,<2.0.0である。
 5.4.2 / 1.6.0でDocker共存を含む実Linux rootless受け入れが成功した。以前の1.3 providerは
-この条件で拒否した。最終native provider CIは未完了で、実機のMachine環境はない。
+この条件で拒否した。Windows/macOS/Linuxのnative provider CIは4a5de3d（run 34216579481）で成功で、実機のMachine環境はない。
 
 最初のCompose fileの親を`project_directory`と一致させ、Podmanの基準directoryの
 意味の違いを避ける。`env_file`とconfig/secretのfile参照は、symlink解決後もそのdirectory

@@ -9,10 +9,9 @@ last_verified: 2026-09-08
 [日本語](compose-providers.ja.md)
 
 The [product contract](../product-specs/compose-providers.md) defines selection and
-safety requirements. The [active ExecPlan](../exec-plans/active/compose-provider-podman.md)
-owns implementation and acceptance. The architecture below is under implementation;
-backend normalization details and real-provider evidence remain subject to that
-plan's decisions and validation.
+safety requirements. The [completed ExecPlan](../exec-plans/completed/compose-provider-podman.md)
+records implementation decisions and acceptance evidence for the architecture and
+normalization described below. Real Machine validation remains unavailable.
 
 ## Responsibility and persistence
 
@@ -64,7 +63,7 @@ Podman then assigns a dynamic port with the intended loopback restriction. The
 canonical configuration and digest remain unchanged. The accepted host range
 is Podman 5.x with podman-compose >=1.6.0,<2.0.0. Real Linux rootless acceptance
 passed with 5.4.2 / 1.6.0 and Docker coexistence; the earlier 1.3 provider was
-rejected by that gate. Final native provider CI remains pending, and real Machine
+rejected by that gate. Native Windows/macOS/Linux provider CI passed on 4a5de3d (run 34216579481), and real Machine
 infrastructure is unavailable.
 
 The first Compose file's parent must match `project_directory`, avoiding Podman's

@@ -21,8 +21,8 @@ with recorded engine arguments; no shell wrapper or Python dependency enters the
 core. Domain runtime snapshots retain provider identity and `cleanup_evidence`;
 app persists pre-down ownership evidence so interrupted cleanup can resume without
 reconstructing deleted container attachments. See the
-[provider design](docs/design-docs/compose-providers.md); real-provider acceptance
-is still tracked by the active plan.
+[provider design](docs/design-docs/compose-providers.md) and its completed
+implementation evidence; real Podman Machine infrastructure was unavailable.
 
 ## Dependency direction
 

@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: ARCHITECTURE.md
-source_sha256: 1af4f5b93e3bc10da55f1a58c8c8a6e3cc2504e9a524875624dc1f810f5bb1d3
+source_sha256: ae62af9dd6876136c509b87974c17c1560946b1fe3ce98b8efeb5ff8858d803f
 ---
 
 [英語版（翻訳元）](ARCHITECTURE.md)
@@ -23,7 +23,8 @@ coreにshell wrapperやPython依存を追加しません。domainのruntime snap
 情報と`cleanup_evidence`を保持します。appはdown前の所有証拠を永続化するため、中断後の
 cleanupで、削除済みcontainerの接続を再構成する必要がありません。
 [provider設計](docs/design-docs/compose-providers.ja.md)を参照してください。
-実providerの受け入れは引き続きactive planで管理します。
+実providerの受け入れは完了済みの実装証拠を参照してください。実機のPodman Machine環境は
+利用できませんでした。
 
 ## 依存方向
 

@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/QUALITY.md
-source_sha256: c0e7e62848e3161058785028d51430fbd9b8449b25749a7a2629be9d7ffa31ce
+source_sha256: ffd05dff38af22b283bc62a1b0aa055c09e9e6d321e4c84ee8393fe18facb973
 ---
 
 # 品質と検証
@@ -73,8 +73,13 @@ global pruneは実行しない。
 component logs、named pass/fail test、伏字化、artifact保持を確認した。image宣言のvolumeは
 nativeの匿名かつlabelなしであり、destroy後の不在を確認した。destroyは兄弟lease、外部volume、
 稼働中のDocker leaseを保持した。Dockerでも同じnamed testが期待どおり成功・失敗した。
-最終native provider CIは未完了であり、実機のMachine環境はない。正確な証拠は
-[provider plan](exec-plans/active/compose-provider-podman.ja.md)に記録する。
+Windows/macOS/Linuxのnative provider CIは4a5de3d（run 34216579481）で成功した。実機のMachine環境はない。正確な証拠は
+[provider plan](exec-plans/completed/compose-provider-podman.ja.md)に記録する。
+
+4a5de3dのrun [34216579481](https://github.com/mahcialet/agent-env/actions/runs/34216579481)
+では、Go 1.26/1.27のWindows/macOS/Linux native job全6件、CGO無効cross-build全5件、
+Linuxのrace／Docker integration jobが成功し、全12 jobが成功した。
+前述のlocal DockerおよびPodman/Docker共存runも成功した。
 
 ## CIと完了の証拠
 

@@ -48,9 +48,9 @@ successful host-side reachability checks.
 
 Real Linux rootless integration passed with Podman 5.4.2 and podman-compose 1.6.0,
 including Docker coexistence, dynamic endpoints and anonymous-volume cleanup.
-Final native provider CI remains pending; no real Podman Machine environment is
+Native Windows/macOS/Linux provider CI passed on 4a5de3d (run 34216579481); no real Podman Machine environment is
 available. Cross-builds or fake connection tests do not replace Machine evidence. Exact evidence belongs to the
-[provider plan](exec-plans/active/compose-provider-podman.md).
+[provider plan](exec-plans/completed/compose-provider-podman.md).
 
 ## Verification coverage
 

@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/PORTABILITY.md
-source_sha256: 5e44228f99ae6fdb5ee785359ac27cc3ce60ee35b484779466faaf67b8bf7587
+source_sha256: 713e69fde4e3373f2941f13514ddcb533451d027f27a68996fa02311d8a733ad
 ---
 
 [英語版（翻訳元）](PORTABILITY.md)
@@ -48,9 +48,9 @@ local Linuxではlocal engineを固定し、remote/Machine呼出しでは可変�
 あります。remote loopback endpointを報告するにはhost側の到達性確認が必要です。
 
 Podman 5.4.2とpodman-compose 1.6.0で、Docker共存、動的endpoint、匿名volume cleanupを
-含む実Linux rootless integrationが成功しました。最終native provider CIは未完了です。
+含む実Linux rootless integrationが成功しました。Windows/macOS/Linuxのnative provider CIは4a5de3d（run 34216579481）で成功です。
 実機のPodman Machine環境はなく、cross-buildやfake接続testではMachine証拠を代替できません。正確な証拠は
-[provider plan](exec-plans/active/compose-provider-podman.ja.md)に記録します。
+[provider plan](exec-plans/completed/compose-provider-podman.ja.md)に記録します。
 
 ## 検証範囲
 

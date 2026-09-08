@@ -68,10 +68,16 @@ selected service closure and reachable HTTP endpoints. Component logs, named
 pass/fail tests, redaction and retained artifacts passed. Image-declared volumes
 were natively anonymous and unlabelled, then absent after destroy. Destroy
 preserved the sibling lease, foreign volume and live Docker lease; the same named
-tests also passed/failed as expected on Docker. Final native provider CI remains
-pending, and real Machine infrastructure is unavailable. Exact evidence remains
+tests also passed/failed as expected on Docker. Native Windows/macOS/Linux provider CI passed on 4a5de3d
+(run 34216579481), and real Machine infrastructure is unavailable. Exact evidence remains
 in the
-[provider plan](exec-plans/active/compose-provider-podman.md).
+[provider plan](exec-plans/completed/compose-provider-podman.md).
+
+Run [34216579481](https://github.com/mahcialet/agent-env/actions/runs/34216579481)
+on 4a5de3d passed all six native Windows/macOS/Linux jobs across Go 1.26/1.27,
+all five CGO-disabled cross-builds, and the Linux race/Docker integration job.
+All 12 jobs succeeded. The local Docker and Podman/Docker coexistence runs above
+also passed.
 
 ## CI and completion evidence
 

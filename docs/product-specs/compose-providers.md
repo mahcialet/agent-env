@@ -8,9 +8,9 @@ last_verified: 2026-09-08
 
 [日本語](compose-providers.ja.md)
 
-This is the provider contract being implemented by the
-[active ExecPlan](../exec-plans/active/compose-provider-podman.md). Real Linux rootless acceptance has passed with Podman 5.4.2 and podman-compose
-1.6.0, including Docker coexistence. Final native provider CI remains pending;
+This is the provider contract delivered by the
+[completed ExecPlan](../exec-plans/completed/compose-provider-podman.md). Real Linux rootless acceptance has passed with Podman 5.4.2 and podman-compose
+1.6.0, including Docker coexistence. Native Windows/macOS/Linux provider CI passed on 4a5de3d (run 34216579481);
 real Podman Machine infrastructure is unavailable.
 
 ## Selection and prerequisites

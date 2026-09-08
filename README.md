@@ -74,8 +74,8 @@ or `provider: podman-compose`. Selection is pinned in each lease; missing tools
 never trigger fallback. `doctor --provider podman-compose` checks that provider,
 while `doctor <repository>` checks the providers declared by its manifest.
 Real Linux rootless acceptance passed with Podman 5.4.2 and podman-compose 1.6.0,
-including concurrent leases and Docker coexistence. Final native provider CI is
-pending; real Podman Machine infrastructure is unavailable. See the [provider contract](docs/product-specs/compose-providers.md).
+including concurrent leases and Docker coexistence. Native Windows/macOS/Linux provider CI passed on 4a5de3d
+(run 34216579481); real Podman Machine infrastructure is unavailable. See the [provider contract](docs/product-specs/compose-providers.md).
 
 ## Android Emulator leases
 

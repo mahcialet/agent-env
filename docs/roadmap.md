@@ -33,10 +33,10 @@ instrumentation. OCR, visual regression, richer gestures, physical devices and r
 Emulator hosts remain deferred. Final observer acceptance and platform evidence are
 tracked in the [completed plan](exec-plans/completed/android-ui-observer.md).
 
-Compose provider selection and the Podman adapter are being implemented under the
-[provider plan](exec-plans/active/compose-provider-podman.md). Docker remains the
+Compose provider selection and the Podman adapter are implemented; evidence is in the
+[provider plan](exec-plans/completed/compose-provider-podman.md). Docker remains the
 default with no automatic fallback. Real Linux rootless acceptance passed with Podman 5.4.2 / podman-compose 1.6.0
-and Docker coexistence. Final native provider CI remains pending; real Machine
+and Docker coexistence. Native Windows/macOS/Linux provider CI passed on 4a5de3d (run 34216579481); real Machine
 infrastructure is unavailable.
 `podman compose` wrappers, Quadlet/Kubernetes, pod creation and arbitrary provider
 executables remain outside this work.
