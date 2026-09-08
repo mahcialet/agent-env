@@ -111,7 +111,11 @@ func validateBrowserOptions(o *BrowserOptions) error {
 	if o.Operation == "wait" {
 		switch o.WaitFor {
 		case "load":
-		case "url", "text", "gone":
+		case "url":
+			if o.Contains == "" || o.Role != "" {
+				return errors.New("URL wait requires a nonempty --contains and does not accept --role")
+			}
+		case "text", "gone":
 			if o.Contains == "" && o.Role == "" {
 				return errors.New("wait requires contains or role")
 			}
@@ -260,6 +264,11 @@ func (s *Service) Browser(ctx context.Context, id string, o BrowserOptions) (res
 		}
 	}
 	result.Run = domain.CommandRun{ID: newID(), LeaseID: id, Name: "browser-" + o.Operation, Argv: []string{"browser", o.Operation, "--browser", b.Name}, Status: "running", StartedAt: time.Now().UTC(), ExitCode: -1}
+	if browserSemantic(o.Operation) {
+		// Record the validated target before input, including when CDP later
+		// disconnects and no post-action snapshot can be obtained.
+		result.Run.Argv = append(result.Run.Argv, "--page", o.Page, "--snapshot", o.Snapshot, "--node", o.Node)
+	}
 	if o.Operation == "set-text" {
 		result.Run.Argv = append(result.Run.Argv, "--text", "[REDACTED]")
 	}

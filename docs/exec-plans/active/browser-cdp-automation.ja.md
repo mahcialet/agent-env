@@ -1,9 +1,9 @@
 ---
-source_sha256: 76bc6ee62237232c33f8aaa581c737ab1baca5371b025b8328254a384dcaf766
-translation_of: docs/exec-plans/completed/browser-cdp-automation.md
-status: completed
+source_sha256: c45984cdc2e95baeb8119d7b3fc891e35fed11c4c77bc4219ba101b50aa3756b
+translation_of: docs/exec-plans/active/browser-cdp-automation.md
+status: active
 owner: maintainers
-last_verified: 2026-09-08
+last_verified: 2026-09-09
 ---
 
 # Lease所有Browser/CDP自動操作とsemantic snapshotを追加する
@@ -77,6 +77,23 @@ port名だけからbrowserをimplicit推測しない。
 
 ## 進捗
 
+### PR #10 review対応（2026-09-09）
+
+再開した本Planを`feat/browser-cdp-automation`の実行根拠とする。下の以前の完了記録は
+履歴であり、その後Windows native run 34236523326がtext待機中のcross-origin frame
+判定で失敗した。PR起動の34240370827は変更なしで成功したが、判定の不具合や新たな
+review指摘の解決にはならない。修正と最新native/Verify gateの成功までactiveを維持する。
+
+- [x] browser報告のsecurity originでiframeを判定。継承・blob・opaque originとnative timingの回帰を検証。
+- [x] URL waitに空でないsubstringを必須とし、roleを拒否。
+- [x] 保存network文字列すべてに上限を適用し、DOM名の省略をtruncatedに反映。
+- [x] 省略されたsnapshotから消失を断定しない。
+- [x] captureに必要なeventだけを購読し、無関係eventで通常操作を切断しない。
+- [x] 不確定runを含め、入力前にpage/snapshot/nodeの根拠を保存。textは開示しない。
+- [x] architectureの英日statusを修正し、契約と判断の証拠を更新。
+- [ ] 回帰・race・harnessと実3 OS native CIを完了し、最新証拠を照合してからarchive。
+- [ ] PR #10の対応済みThreadすべてへ返信しResolve。
+
 - [x] PR #9 merge / exact revision記録
 - [x] branchを作成。
 - [x] baselineの`go test -race ./...`成功（app 33.292秒）。
@@ -149,6 +166,30 @@ Windows/macOSのbrowser実行と公開最終CIは未完了のため、Planはact
 
 ## 想定外の発見
 
+- 2026-09-09 — 継承originの実証後、sandbox付き`srcdoc` iframeが`Page.getFrameTree`に
+  現れず、選択pageのparent IDを持つiframe targetとしてのみ存在することが分かった。
+  rootだけのsnapshotを返すと、完全な観測であると誤って示してしまう。target一覧で関連OOPIF
+  と所属を証明できないiframe targetを拒否し、その内容は調べない。
+- 別の実navigationでは、child URLが空でorigin不明の状態を確認した。確定したopaque frame
+  と異なり、waitの既存期限内で再観測できる。独立reviewでは、AX取得前だけのorigin検証では
+  navigation後の文書に古いframe識別情報を付ける競合も見つかった。取得後のframe/tree/origin
+  とtargetの整合確認で変化を検出したら、全証拠を破棄する。決定的な回帰testでこの変化を模擬する。
+
+- 2026-09-09 — PR #10回帰testで修正前の失敗を確認した。URL待機はroleだけでも成功し、
+  semantic入力はpage/snapshot/nodeの根拠を保存していなかった。AX上限で対象nodeが落ちても
+  `gone`が成功し、DOM名の省略はtruncationに反映されなかった。network metadataにより
+  65,536-byte予算に対して1,230,500 bytesの文字列を保持できた。未購読や別sessionのeventも
+  512-event queueを埋め、通常commandを切断していた。
+- CDP security originを厳密に判定すると、実browserのprotocol上の挙動が判明した。
+  同一originを継承する`about:blank`でも、load後かつloader IDありで`securityOrigin="://"`
+  を返す。新たなnative 3回反復はすべて失敗し、protocol mock成功だけでは不十分だった。
+  継承frameにはURLによる例外許可ではなく、browserの同一origin制約に基づく追加確認が必要。
+- Windowsの記録済み失敗は、両leaseでCfT実行ファイルへのLPACアクセス拒否と、続く
+  network-service crashを含む。Chromiumのsandbox文書はinstallerまたは手動のACL設定を
+  要求し、公式test helperはSID S-1-15-2-2へインストール先のread/executeを許可している。
+  失敗runにはframe originを保存していないため、その後の観測拒否の正確な原因は未確定であり、
+  新しいnative検証で確認する。
+
 - Verify 34234714195のLinux integration/race jobは、
   `TestBrowserLifecycleGuards/dead`のfixture作成時に
   `sql: transaction has already been committed or rolled back`で失敗した。
@@ -205,6 +246,28 @@ OS executable差、WebSocket teardown等を記録する。
 dynamic page対応のためidentity/stale checkを弱めない。
 
 ## 判断の記録
+
+- 2026-09-09 — frame判定はCDP SecurityOriginを優先する。Chromeがopaqueの代用値を返す
+  継承`about:blank`/`about:srcdoc`は、検証済みの親のisolated worldでnative
+  `contentDocument` getterを使いアクセスを証明する。`grantUniveralAccess: false`
+  （CDPのparameter表記）を指定し、page realmのgetter上書きでは許可できない。
+  512-target上限の一覧で選択pageのOOPIFと所属不明iframeを拒否し、外部targetを接続・
+  採用しない。取得後もframeを再確認し、識別情報が変わった・得られない場合に部分証拠を返さない。
+  未commitのoriginや取得中の文書変化という一時的なerrorだけを、waitの既存期限内で再試行する。
+
+- 2026-09-09 — semantic入力前のCommandRunへpage ID・参照元snapshot run ID・node参照を
+  保存する。不確定な結果とrun.jsonでも保持するが、set-text内容は保存しない。回帰providerは
+  入力中にstoreを検査し、click/set-text/key/scrollの成功・不確定の両方で同じ根拠を検証する。
+  URL待機は空でないsubstringを必須とし、roleのみ・role併用の要求を接続前に拒否する。
+- capture queueはdomain有効化前に、1操作のsessionと対象eventだけを購読し、全returnで
+  購読を解除する。無関係な通知は容量を使わず、購読対象があふれたら引き続き拒否する。
+  console/networkのmetadataを含む全文字列で1文字列4 KiB・合計64 KiBを共有し、
+  全体を置換して機密prefixを残さない。不完全なAX観測から消失を証明しない。
+- WindowsのCfTインストール先だけに、制限付きapplication-package SIDのread/executeを
+  許可する。[Chromium sandbox手順](https://chromium.googlesource.com/chromium/src/+/main/docs/design/sandbox.md)
+  と`testing/scripts/common.py`の`set_lpac_acls`に従う。sandboxを無効化せず、user/profileや
+  無関係な親pathへは許可しない。runnerだけの変更であり、local LinuxではWindows ACLを
+  検証できないため、native CIで確認する。
 
 - 2026-09-08 — browser fixtureが継承する50 ms readiness期限を、検査対象の操作に
   限定する。fixtureの`Create`時だけ5秒を許可し、browserのassertion前に元の設定へ戻す。
@@ -329,6 +392,9 @@ macOS/WindowsおよびLinuxのnative CIは未完了。既存のmacOS readiness t
   引数省略が意図しない空文字列への置換になることを防ぐ。これらの最終調整は受け入れ前の再検証が必要。
 
 ## 成果と振り返り
+
+2026-09-09、PR #10 review対応のため再開した。以下は初回milestoneの成果の履歴であり、
+最終受け入れは上のreview進捗gateが完了するまで保留する。
 
 2026-09-08、`feat/browser-cdp-automation`で完了した。既存の常駐process runtimeの上に、
 明示的なChromium-CDP bindingを実装した。processの所有・寿命管理はruntimeに残し、
@@ -662,3 +728,21 @@ JSON privacy検査の回帰testも3 OSで成功した。この結果は以前の
 Browser native 34235476126と合わせ、以前の日付付きcheckpointに残っていた受け入れgateは
 すべて完了した。この検証済みrevisionからの最終変更は、英日文書の照合とPlanのarchiveのみ。
 archiveの区切りではruntimeやtestの動作を変更していない。
+
+2026-09-09 review checkpoint: appのURL/provenance対象raceは成功（2.056秒）。
+app・CDP全raceも成功（36.887秒 / 1.735秒）。capture/transportの回帰はrace 10回反復
+成功（4.392秒）。app/provenance・transport/capture・限定したWindows ACL準備の
+独立reviewで追加不具合は見つからず、文書検査も成功した。originの証明とnative受け入れは
+引き続き実装・検証中であり、Planをactiveに維持する。
+
+2026-09-09、最後の取得競合guard追加前の統合checkpoint: 全`repoctl check`と
+`go test -race ./...`は成功。sandbox有効のLinux Chrome 152.0.7977.64 / CDP 1.3で、
+強化したnative raceを3回反復して成功（25.160秒）。実fixtureは継承blank/srcdoc、
+同一origin blob、page realm getterの悪意ある上書きがあってもopaque OOPIFを拒否する動作を
+検証した。最後の競合guardとWindows LPAC準備は、受け入れgate完了前に改めて検証する。
+
+2026-09-09、review修正の最終local検証: 取得後の整合guardを含むCDP全raceは成功
+（2.331秒）、sandbox有効のLinux実native fixtureも成功（8.457秒）。独立reviewで
+取得競合の指摘解消を確認し、追加不具合は見つからなかった。統合後の最終全harness/raceも成功。
+Windows fixtureは以前の実行ファイルsandboxアクセス拒否ログも検出・拒否する。
+完了には新しい複数OS CIとThread返信が引き続き必要。

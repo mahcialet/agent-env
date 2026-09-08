@@ -1,7 +1,7 @@
 ---
-status: completed
+status: active
 owner: maintainers
-last_verified: 2026-09-08
+last_verified: 2026-09-09
 ---
 
 # Add lease-owned Browser/CDP automation and semantic snapshots
@@ -139,6 +139,25 @@ Out of scope:
 
 ## Progress
 
+### PR #10 review follow-up (2026-09-09)
+
+Execution authority remains this reopened plan on `feat/browser-cdp-automation`.
+The prior completion checkpoint below is historical: Windows native run
+34236523326 later failed during text wait with cross-origin frame classification.
+PR-triggered run 34240370827 subsequently passed unchanged, but that does not
+resolve the classification defect or the new review findings. Keep this plan
+active until fixes and fresh native/Verify gates pass.
+
+- [x] Classify iframe access by browser-reported security origins; cover inherited, blob and opaque origins and the native timing regression.
+- [x] Require a nonempty URL wait substring and reject role on URL waits.
+- [x] Bound every persisted network string and mark DOM-name truncation.
+- [x] Reject disappearance conclusions from truncated snapshots.
+- [x] Subscribe only to required capture events; ignore unrelated events without disconnecting ordinary operations.
+- [x] Persist semantic page/snapshot/node provenance before input, including uncertain runs, without text disclosure.
+- [x] Correct bilingual architecture status and update contract/decision evidence.
+- [ ] Complete regression/race/harness and real three-OS native CI; reconcile final evidence before archival.
+- [ ] Reply to and resolve every addressed PR #10 review thread.
+
 - [x] Merge PR #9 and record exact `master` revision.
 - [x] Create `feat/browser-cdp-automation`.
 - [x] Establish baseline validation evidence before implementation: full
@@ -221,6 +240,36 @@ browser execution and published final CI remain pending; this plan stays active.
 
 ## Surprises & Discoveries
 
+- 2026-09-09 — Real inherited-origin proof then exposed a sandboxed `srcdoc`
+  iframe absent from `Page.getFrameTree` but present as an iframe target with
+  selected-page parent IDs. Returning a root-only snapshot would falsely present
+  complete observation. A target census now rejects related OOPIFs (and iframe
+  targets whose ownership cannot be established), without inspecting their content.
+- Another real navigation showed an empty child URL with unknown origin. Unlike
+  committed opaque frames, this can be retried by wait under the existing deadline.
+  Independent review also found a collection-time race: origins checked only before
+  AX retrieval could label a navigated document with old frame identity. Final
+  frame/tree/origin and target consistency checks must discard all evidence if
+  collection crosses that change; the deterministic regression simulates it.
+
+- 2026-09-09 — PR #10 regression tests failed before repair: URL waits accepted
+  a role-only predicate; semantic input persisted no page/snapshot/node provenance;
+  `gone` succeeded when AX bounds omitted the target; DOM names were shortened
+  without reporting truncation; network metadata allowed 1,230,500 retained string
+  bytes against the 65,536-byte budget; unsolicited or unrelated-session events
+  could exhaust the 512-event queue and disconnect ordinary commands.
+- Strict CDP security-origin classification exposed an actual browser protocol
+  wrinkle: a same-origin inherited `about:blank` reports `securityOrigin="://"`
+  even after load and with a loader ID. Three new native repetitions failed, so
+  a protocol-mock pass was insufficient. Origin proof for these inherited frames
+  requires an additional browser-enforced same-origin check, not a URL exemption.
+- The recorded Windows failure includes explicit LPAC access denial for the
+  installed CfT executable on both leases, followed by network-service crashes.
+  Chromium's sandbox documentation requires installer/manual ACL setup; its own
+  test helper grants the installation tree read/execute access for SID S-1-15-2-2.
+  No frame-origin data was retained in that failed run, so the precise cause of
+  its later observation refusal remains unproven until fresh native validation.
+
 - Verify 34234714195's Linux integration/race job failed while constructing the
   `TestBrowserLifecycleGuards/dead` fixture: `sql: transaction has already been
   committed or rolled back`. This occurred before the browser assertion and is
@@ -289,6 +338,35 @@ executable differences.
 Do not weaken identity or stale-reference checks to make dynamic pages easier.
 
 ## Decision Log
+
+- 2026-09-09 — Prefer CDP SecurityOrigin for frame classification. For inherited
+  `about:blank`/`about:srcdoc` with Chrome's opaque placeholder, prove access using
+  the native `contentDocument` getter in a verified parent's isolated world, with
+  `grantUniveralAccess: false` (the CDP parameter spelling). Page-realm getter
+  overrides cannot authorize access. A 512-target census rejects selected-page
+  OOPIFs and unprovable iframe ownership. No external target is attached or adopted.
+  Frame collection is checked again before publishing; changed or unavailable
+  identity cannot produce partial evidence. Only wait may retry a transient
+  uncommitted-origin/document-change error within its existing deadline.
+
+- 2026-09-09 — Persist semantic page ID, source snapshot run ID and node reference
+  in CommandRun before input. Preserve them for uncertain results and run.json,
+  but never persist set-text content. Regression providers inspect the store
+  during input, and successful/uncertain click, set-text, key and scroll results
+  must retain the same provenance. URL waits separately require a nonempty
+  substring and reject role-only or role-plus-substring requests before attachment.
+- Capture queues subscribe to exactly one operation's session and supported
+  event methods before enabling its domain; unsubscribe on all exits. Irrelevant
+  notifications do not consume capacity, but subscribed overflow still fails
+  closed. All console/network strings, including metadata, share the 4 KiB
+  per-string and 64 KiB aggregate budgets; whole-field truncation avoids secret
+  prefixes. Disappearance cannot be proven by an incomplete AX observation.
+- Provision Windows CfT's own installation subtree with read/execute only for
+  the restricted application-package SID, following
+  [Chromium sandbox guidance](https://chromium.googlesource.com/chromium/src/+/main/docs/design/sandbox.md)
+  and `testing/scripts/common.py`'s `set_lpac_acls`. Do not disable sandboxing or
+  grant access to user/profile directories or unrelated parent paths. Native CI
+  must validate this runner-only change; local Linux cannot validate Windows ACLs.
 
 - 2026-09-08 — Limit the browser fixture's inherited 50 ms readiness deadline
   to the operations whose behavior it tests: permit five seconds only during
@@ -456,6 +534,9 @@ the same published commit; no timeout or readiness assertion has been relaxed.
   These latest refinements require final revalidation before acceptance.
 
 ## Outcomes & Retrospective
+
+Reopened on 2026-09-09 for PR #10 review. The previous outcomes below record the
+initial milestone; final acceptance is pending the review Progress gates above.
 
 Completed on 2026-09-08 on `feat/browser-cdp-automation`. This slice delivers
 explicit Chromium-CDP bindings above the existing persistent process runtime.
@@ -916,3 +997,24 @@ with all 12 jobs passing. Combined with Browser native 34235476126, this closes
 all acceptance gates left open in earlier dated checkpoints. The final change
 from that verified revision only reconciles bilingual documentation and archives
 this plan; no runtime or test behavior changes are part of the archive milestone.
+
+2026-09-09 review checkpoint: targeted app URL/provenance race passed (2.056s);
+full app and CDP race passed (36.887s / 1.735s). Capture/transport regressions
+passed ten race repetitions (4.392s). Independent review found no additional
+defect in app/provenance, transport/capture or scoped Windows ACL provisioning.
+Documentation checks passed. Origin proof/native acceptance is still being
+implemented and tested; the plan stays active.
+
+2026-09-09 integrated checkpoint before the final collection-race guard: full
+`repoctl check` and `go test -race ./...` passed; actual sandboxed Linux Chrome
+152.0.7977.64 / CDP 1.3 passed three strengthened native race repetitions (25.160s).
+The real fixture covers inherited blank/srcdoc, same-origin blob and opaque OOPIF
+refusal despite a malicious page-realm getter override. The final race guard and
+Windows LPAC setup still require fresh validation before the acceptance gate closes.
+
+2026-09-09 final local review repair: the post-collection consistency guard passed
+full CDP race (2.331s) and the actual sandboxed Linux native fixture (8.457s).
+Independent review verified closure of the collection-race finding and found no
+additional defect. Final full harness/race passed after integration. The Windows
+fixture now also rejects the previously observed executable sandbox access-denial
+log. Fresh multi-OS CI and thread replies remain required before completion.

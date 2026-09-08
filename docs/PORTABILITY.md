@@ -120,7 +120,7 @@ The Go WebSocket transport adds no Node, Python, browser driver, CGO or shell
 requirement to core commands. Chrome is not bundled. The selected native matrix is
 Chrome for Testing 152.0.7977.82, Go 1.27, Windows/macOS/Linux. Actual browser and
 protocol versions and native pass/failure evidence belong in the
-[completed browser plan](exec-plans/completed/browser-cdp-automation.md). All three
+[active browser plan](exec-plans/active/browser-cdp-automation.md). All three
 native jobs passed at `b48ab64` (Browser native 34235476126), reporting CDP 1.3;
 these direct results are separate from cross-build evidence.
 
@@ -131,3 +131,9 @@ for the pinned Chrome binary, following
 [Chromium guidance](https://chromium.googlesource.com/chromium/src/+/main/docs/security/apparmor-userns-restrictions.md).
 It keeps the host's global user-namespace restriction and Chrome sandbox enabled.
 This is Ubuntu runner provisioning; agent-env does not change host security policy.
+
+On Windows, CfT's downloaded installation may lack the read/execute ACLs required
+by Chromium's LPAC sandbox. Native CI grants those rights only to the browser's
+installation subtree for the restricted application-package SID (S-1-15-2-2),
+following Chromium's own test setup. It does not grant access to lease profiles
+or unrelated directories, and does not disable sandboxing.

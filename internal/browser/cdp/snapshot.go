@@ -80,30 +80,91 @@ func axState(v any) (string, bool) {
 	}
 	return "", false
 }
+
+// Prefer browser-reported serialized origins over document URLs: sandboxing
+// can make a same-URL document opaque. Chromium inherited-origin placeholders
+// require the separate native same-origin access proof below, never a URL guess.
+var errIncompleteFrameOrigin = errors.New("iframe origin is not yet available")
+var errFrameObservationChanged = errors.New("frame identity changed during semantic observation")
+
+func serializedOrigin(raw string) (string, bool) {
+	u, err := url.Parse(raw)
+	if err != nil || u.Scheme == "" || u.Host == "" || u.Opaque != "" || u.User != nil || (u.Path != "" && u.Path != "/") || u.RawQuery != "" || u.Fragment != "" {
+		return "", false
+	}
+	return u.Scheme + "://" + u.Host, true
+}
+
+// Chromium can report "://" for an inherited about:blank document. Ask its
+// own same-origin access check instead of inferring permission from that URL.
+// The isolated parent world has no universal access and cannot see page-script
+// overrides of the native contentDocument getter. Sandboxed opaque frames yield
+// null even though CDP itself could inspect them with debugger privileges.
+func inheritedFrameAccess(ctx context.Context, c *connection, session, parent, child string) bool {
+	if parent == "" {
+		return false
+	}
+	var owner struct{ BackendNodeID int }
+	if c.call(ctx, session, "DOM.getFrameOwner", map[string]any{"frameId": child}, &owner) != nil || owner.BackendNodeID <= 0 {
+		return false
+	}
+	var world struct{ ExecutionContextID int }
+	if c.call(ctx, session, "Page.createIsolatedWorld", map[string]any{"frameId": parent, "worldName": "agent-env-origin-check", "grantUniveralAccess": false}, &world) != nil || world.ExecutionContextID <= 0 {
+		return false
+	}
+	var resolved struct{ Object struct{ ObjectID string } }
+	if c.call(ctx, session, "DOM.resolveNode", map[string]any{"backendNodeId": owner.BackendNodeID, "executionContextId": world.ExecutionContextID}, &resolved) != nil || resolved.Object.ObjectID == "" {
+		return false
+	}
+	defer c.call(ctx, session, "Runtime.releaseObject", map[string]any{"objectId": resolved.Object.ObjectID}, nil)
+	var result struct {
+		Result           struct{ Value bool }
+		ExceptionDetails json.RawMessage
+	}
+	err := c.call(ctx, session, "Runtime.callFunctionOn", map[string]any{"objectId": resolved.Object.ObjectID, "functionDeclaration": "function(){const p=this instanceof HTMLIFrameElement?HTMLIFrameElement.prototype:this instanceof HTMLFrameElement?HTMLFrameElement.prototype:null;return !!p && Object.getOwnPropertyDescriptor(p,'contentDocument').get.call(this)!==null;}", "returnByValue": true}, &result)
+	return err == nil && len(result.ExceptionDetails) == 0 && result.Result.Value
+}
+
 func snapshot(ctx context.Context, c *connection, s string, id domain.BrowserIdentity, p domain.BrowserPage) (*domain.BrowserSnapshot, error) {
 	tree, e := frameDocument(ctx, c, s)
 	if e != nil {
 		return nil, e
 	}
 	p.URL = scrubURL(tree.Frame.URL)
+
 	sn := &domain.BrowserSnapshot{Version: 1, Identity: id, Page: p, Document: documentIdentity(tree), CapturedAt: time.Now().UTC(), Nodes: []domain.BrowserNode{}}
 	var frames []frameTree
-	var walk func(frameTree) error
-	rootURL, _ := url.Parse(tree.Frame.URL)
-	walk = func(f frameTree) error {
-		u, _ := url.Parse(f.Frame.URL)
-		if f.Frame.ID != tree.Frame.ID && u != nil && u.Scheme != "about" && rootURL != nil && (u.Scheme != rootURL.Scheme || u.Host != rootURL.Host) {
-			return errors.New("cross-origin iframe observation is unsupported")
+	var walk func(frameTree, string) error
+	rootOrigin, rootKnown := serializedOrigin(tree.Frame.SecurityOrigin)
+	walk = func(f frameTree, parent string) error {
+		if f.Frame.ID != tree.Frame.ID {
+			childOrigin, childKnown := serializedOrigin(f.Frame.SecurityOrigin)
+			if !childKnown && f.Frame.URL == "" {
+				return errIncompleteFrameOrigin
+			}
+			inherited := false
+			if rootKnown && !childKnown && (f.Frame.URL == "about:blank" || f.Frame.URL == "about:srcdoc") {
+				inherited = inheritedFrameAccess(ctx, c, s, parent, f.Frame.ID)
+			}
+			if !rootKnown || (!inherited && (!childKnown || childOrigin != rootOrigin)) {
+				return errors.New("cross-origin or opaque iframe observation is unsupported")
+			}
+		}
+		if len(frames) >= 32 {
+			return errors.New("browser frame limit exceeded")
 		}
 		frames = append(frames, f)
 		for _, ch := range f.ChildFrames {
-			if e := walk(ch); e != nil {
+			if e := walk(ch, f.Frame.ID); e != nil {
 				return e
 			}
 		}
 		return nil
 	}
-	if e = walk(tree); e != nil {
+	if e = walk(tree, ""); e != nil {
+		return nil, e
+	}
+	if e = validateFrameTargets(ctx, c, frames, p.ID); e != nil {
 		return nil, e
 	}
 	if len(frames) > 32 {
@@ -198,6 +259,24 @@ func snapshot(ctx context.Context, c *connection, s string, id domain.BrowserIde
 	if len(raw) > 1<<20 {
 		return nil, errors.New("semantic snapshot metadata exceeds byte limit")
 	}
+	latest, e := frameDocument(ctx, c, s)
+	if e != nil {
+		return nil, e
+	}
+	before, _ := json.Marshal(tree)
+	after, _ := json.Marshal(latest)
+	if sha256.Sum256(before) != sha256.Sum256(after) {
+		return nil, errFrameObservationChanged
+	}
+	// Re-prove inherited access and target topology after AX collection. Never
+	// publish collected text under an identity approved before a navigation.
+	frames = nil
+	if e = walk(latest, ""); e != nil {
+		return nil, e
+	}
+	if e = validateFrameTargets(ctx, c, frames, p.ID); e != nil {
+		return nil, e
+	}
 	return sn, nil
 }
 
@@ -263,6 +342,7 @@ func domSnapshot(ctx context.Context, c *connection, s string) ([]byte, bool, er
 			}
 			if len(n.Name) > 128 {
 				n.Name = "[truncated]"
+				out.Truncated = true
 			}
 			out.Nodes = append(out.Nodes, n)
 		}
@@ -275,4 +355,31 @@ func domSnapshot(ctx context.Context, c *connection, s string) ([]byte, bool, er
 		return nil, false, errors.New("DOM snapshot byte limit exceeded")
 	}
 	return raw, out.Truncated, e
+}
+
+func validateFrameTargets(ctx context.Context, c *connection, frames []frameTree, page string) error {
+	var targets struct {
+		TargetInfos []struct {
+			Type          string
+			TargetID      string
+			ParentID      string
+			ParentFrameID string
+		}
+	}
+	if e := c.call(ctx, "", "Target.getTargets", nil, &targets); e != nil {
+		return e
+	}
+	if len(targets.TargetInfos) > 512 {
+		return errors.New("browser target census limit exceeded")
+	}
+	frameIDs := map[string]bool{}
+	for _, f := range frames {
+		frameIDs[f.Frame.ID] = true
+	}
+	for _, t := range targets.TargetInfos {
+		if t.Type == "iframe" && (t.ParentID == page || frameIDs[t.ParentFrameID] || (t.ParentID == "" && t.ParentFrameID == "")) {
+			return errors.New("cross-origin or opaque iframe observation is unsupported: out-of-process frame")
+		}
+	}
+	return nil
 }

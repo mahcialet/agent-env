@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/PORTABILITY.md
-source_sha256: 10dca832d9c194c728bcc2c986822440c4b4eb8d1583452c416c0bd0b850810c
+source_sha256: 44c8585ed6d9db65b1819e3e1a0d845366bb77b4b973c9fa0994938cdee1a1dd
 ---
 
 [英語版（翻訳元）](PORTABILITY.md)
@@ -117,7 +117,7 @@ argvには`--enable-automation`と専用`${runtime_dir}/profile`などを必須�
 Node、Python、browser driver、CGO、shellの要件を追加しません。Chromeは同梱しません。
 選定したnative matrixはChrome for Testing 152.0.7977.82、Go 1.27、Windows/macOS/Linuxです。
 実測browser/protocol versionとnative成功・失敗の証拠は
-[完了browser plan](exec-plans/completed/browser-cdp-automation.ja.md)に記録しています。
+[実行中browser plan](exec-plans/active/browser-cdp-automation.ja.md)に記録しています。
 `b48ab64`の3 native jobがすべて成功し（Browser native 34235476126）、CDP 1.3を報告しました。
 この実行結果はcross-buildの証拠と分けて扱います。
 
@@ -127,3 +127,8 @@ package profileの対象外へ展開したChrome for Testingのuser namespace利
 に基づき、固定versionのChrome実行ファイルだけを対象にAppArmorで利用を許可します。
 host全体のuser namespace制限とChrome sandboxは有効に保ちます。これはUbuntu runner
 の準備処理であり、agent-env自体はhostのsecurity policyを変更しません。
+
+Windowsでは、downloadしたCfTのインストール先に、ChromiumのLPAC sandboxが必要とする
+read/execute ACLがない場合があります。native CIではChromium公式testの設定に従い、
+制限付きapplication-package SID（S-1-15-2-2）へbrowserインストール先の権限だけを
+付与します。lease profileや無関係なdirectoryには権限を付与せず、sandboxも無効化しません。

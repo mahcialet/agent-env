@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/design-docs/browser-cdp-automation.md
-source_sha256: d30a90093636eb004c2d61b4ba0b8597a55d65463fde4a2acef5c14c8933cae1
+source_sha256: 63bb978d251af3d6dba2a861bcbe7a0b3a2e22bd15da71dcead036e722bc7749
 ---
 
 # Browser/CDP設計
@@ -11,7 +11,7 @@ source_sha256: d30a90093636eb004c2d61b4ba0b8597a55d65463fde4a2acef5c14c8933cae1
 [英語版（翻訳元）](browser-cdp-automation.md)
 
 コマンドと上限は[製品契約](../product-specs/browser-cdp-automation.ja.md)、
-実装判断とnative環境での直接証拠は[完了ExecPlan](../exec-plans/completed/browser-cdp-automation.ja.md)に記録します。
+実装判断とnative環境での直接証拠は[実行中ExecPlan](../exec-plans/active/browser-cdp-automation.ja.md)に記録します。
 
 ## 所有権と依存関係
 
@@ -75,3 +75,24 @@ cross-buildの結果と分けて記録しています。
 raw URLのdigest（query文字列そのものは保存しない）、node fingerprintは許可した非text AX stateを含みます。
 set-textは明示的な`--text`が必須で、明示した空文字列はfieldを消去します。CLIは操作の必須引数を検証し、
 明示zero durationはstoreを開く前に拒否します。
+
+### reviewで強化した証拠と待機の境界
+
+semantic入力では、検証済みのpage ID、参照元snapshotのrun ID、node参照をCDP呼出し前に
+永続CommandRunへ記録します。入力結果が不確定な場合も`run.json`へ同じ根拠を保存し、
+set-textの内容はredactします。URL待機には空でない`--contains`が必須で、text/nodeの
+条件に使う`--role`は指定できません。省略のあるAX観測では、一致するnodeの消失を証明
+できません。DOM名を短縮した場合もtruncation flagを設定します。
+
+console/networkで保持するすべての文字列（IDやmetadataも含む）に、1文字列4 KiB、
+文字列内容の合計64 KiBの予算を適用します。長すぎる文字列は機密を含み得る先頭部分を
+残さず、全体を置き換えます。上限付きqueueには、実行中captureのsessionと必要なevent
+種別だけを入れ、無関係な通知は無視します。購読対象eventがあふれた場合は引き続き拒否します。
+
+frameへのアクセスはbrowser報告のsecurity originで判定します。継承した`about:blank`や
+`about:srcdoc`でChromeがopaqueの代用値を返す場合、分離した親world内の非公開・固定
+predicateで、nativeの`contentDocument` getterへのアクセスがChromiumの同一origin制約で
+許されるか確認します。worldにはuniversal accessを与えず、page scriptによる上書きを
+信用しません。上限付きtarget一覧で、frame treeから省かれた選択pageの別process iframeを
+拒否します。origin不明かつ未commitでURLが空のframeは、waitの既存期限内でのみ再観測し、
+その状態で観測や入力を許可しません。

@@ -302,6 +302,14 @@ func wait(ctx context.Context, c *connection, s string, id domain.BrowserIdentit
 	}
 	for {
 		sn, e := snapshot(ctx, c, s, id, p)
+		if errors.Is(e, errIncompleteFrameOrigin) || errors.Is(e, errFrameObservationChanged) {
+			select {
+			case <-ctx.Done():
+				return nil, fmt.Errorf("%w: %v", ctx.Err(), e)
+			case <-time.After(50 * time.Millisecond):
+				continue
+			}
+		}
 		if e != nil {
 			return nil, e
 		}
@@ -316,6 +324,9 @@ func wait(ctx context.Context, c *connection, s string, id domain.BrowserIdentit
 				}
 			}
 			if q.WaitFor == "gone" {
+				if sn.Truncated {
+					return nil, errors.New("cannot confirm absence from a truncated semantic snapshot")
+				}
 				matched = !matched
 			}
 		case "load":

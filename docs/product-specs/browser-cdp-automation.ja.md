@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/product-specs/browser-cdp-automation.md
-source_sha256: 139eb77567409f45cc2b068cc69d28d587158ed18e369eb1748fd3115e35bda3
+source_sha256: 246e38b33249b8cdf87bf29ec0e3fdf1c00412a28a28e6dbc190d547400c1dad
 ---
 
 # Browser/CDP自動操作
@@ -12,7 +12,7 @@ source_sha256: 139eb77567409f45cc2b068cc69d28d587158ed18e369eb1748fd3115e35bda3
 
 browserコマンドは、persistent process leaseが所有する明示的なChromium系ブラウザーを
 観測・操作します。別のブラウザーの起動、外部ブラウザーへの接続、個人用profileの再利用は
-行いません。実装とnative環境での受け入れ状況は[完了ExecPlan](../exec-plans/completed/browser-cdp-automation.ja.md)に記録します。
+行いません。実装とnative環境での受け入れ状況は[実行中ExecPlan](../exec-plans/active/browser-cdp-automation.ja.md)に記録します。
 
 ## manifestと前提条件
 
@@ -157,3 +157,7 @@ fingerprintはprivateな復旧証拠であり、暗号化ではありません�
 raw URLのdigest（query文字列そのものは保存しない）、node fingerprintは許可した非text AX stateを含みます。
 set-textは明示的な`--text`が必須で、明示した空文字列はfieldを消去します。CLIは操作の必須引数を検証し、
 明示zero durationはstoreを開く前に拒否します。
+
+URL待機には空でない`--contains`が必要です。`--role`はtextやnode消失の条件でのみ使えます。
+不完全なsnapshotからnodeの消失を断定しません。入力runの証拠には操作前にpage・参照元
+snapshot・nodeを記録し、browserの応答が失われても残します。入力textは引き続きredactします。

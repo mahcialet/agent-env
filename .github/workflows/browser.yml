@@ -46,6 +46,25 @@ jobs:
           printf 'abi <abi/4.0>,\ninclude <tunables/global>\nprofile agent-env-cft "%s" flags=(unconfined) {\n  userns,\n}\n' "$chrome_path" | sudo tee /etc/apparmor.d/agent-env-cft >/dev/null
           sudo apparmor_parser --replace /etc/apparmor.d/agent-env-cft
           test "$(cat /proc/sys/kernel/apparmor_restrict_unprivileged_userns)" = "$restriction_before"
+      - name: Grant the Windows sandbox read and execute access to Chrome
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          AGENT_ENV_BROWSER_EXECUTABLE: ${{ steps.chrome.outputs.chrome-path }}
+        run: |
+          # CfT archives do not run Chrome's installer, which sets LPAC ACLs.
+          # Apply Chromium's test-install allowance only to this Chrome tree.
+          # https://chromium.googlesource.com/chromium/src/+/main/docs/design/sandbox.md
+          # https://chromium.googlesource.com/chromium/src/+/main/testing/scripts/common.py
+          $chromeExecutable = Get-Item -LiteralPath $env:AGENT_ENV_BROWSER_EXECUTABLE -ErrorAction Stop
+          if ($chromeExecutable.PSIsContainer -or $chromeExecutable.Name -ne 'chrome.exe') {
+            throw 'Expected the installed native Chrome executable'
+          }
+          $chromeDirectory = $chromeExecutable.Directory.FullName
+          & icacls.exe $chromeDirectory /grant '*S-1-15-2-2:(OI)(CI)(RX)' /T /Q
+          if ($LASTEXITCODE -ne 0) { throw 'Could not grant Chrome sandbox read/execute access' }
+          & icacls.exe $chromeExecutable.FullName
+          if ($LASTEXITCODE -ne 0) { throw 'Could not inspect Chrome executable ACL' }
       - name: Run real lease-owned Browser/CDP integration
         run: go test -tags=browserintegration ./internal/cli -run '^TestBrowser(NativeCLI|EvidenceSecretDetection)$' -count=1 -v -timeout=12m
         env:

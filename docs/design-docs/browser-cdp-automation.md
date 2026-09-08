@@ -9,7 +9,7 @@ last_verified: 2026-09-08
 [日本語](browser-cdp-automation.ja.md)
 
 The [product contract](../product-specs/browser-cdp-automation.md) defines commands
-and limits. The [completed ExecPlan](../exec-plans/completed/browser-cdp-automation.md)
+and limits. The [active ExecPlan](../exec-plans/active/browser-cdp-automation.md)
 records implementation decisions and direct native evidence.
 
 ## Ownership and dependencies
@@ -88,3 +88,28 @@ node fingerprints include allowlisted nontext AX state flags. Set-text requires
 an explicit `--text`; an explicit empty string clears the field. CLI validates
 required operation arguments and refuses explicit zero durations before opening
 the store.
+
+### Review-hardened evidence and wait boundaries
+
+Semantic input records the validated page ID, source snapshot run ID and node
+reference in the durable CommandRun before calling CDP. The same provenance is
+retained in `run.json` when the input result is uncertain; set-text content remains
+redacted. URL waits require a nonempty `--contains` and reject `--role`, which
+only applies to text/node predicates. A truncated AX observation cannot prove
+that a matching node is gone. DOM-name shortening sets the truncation flag.
+
+Every retained console/network string, including IDs and metadata, participates
+in the 4 KiB per-string and 64 KiB aggregate string-content budgets. Oversized
+strings are replaced in full rather than retaining a potentially sensitive prefix.
+Only the active capture's session and required event methods enter its bounded
+queue; unrelated notifications are ignored. Overflow of subscribed events still
+fails closed.
+
+Frame access uses browser-reported security origins. For inherited `about:blank`
+or `about:srcdoc` where Chrome reports an opaque placeholder, a fixed private
+predicate in an isolated parent world checks Chromium's same-origin access to
+the frame's native `contentDocument` getter. The world has no universal access
+and does not trust page-script overrides. A bounded target census rejects
+selected-page out-of-process iframes that the frame tree omits. An unknown origin
+with an empty, not-yet-committed frame URL can only be retried by wait within its
+existing deadline; it cannot authorize observation or input.

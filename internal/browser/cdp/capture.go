@@ -16,10 +16,17 @@ func capture(ctx context.Context, c *connection, s string, q domain.BrowserReque
 		return errors.New("capture duration must be greater than zero and at most 10 seconds")
 	}
 	method := "Runtime.enable"
+	methods := []string{"Runtime.consoleAPICalled"}
 	started := float64(time.Now().UnixMilli())
 	if q.Operation == "network" {
 		method = "Network.enable"
+		methods = []string{"Network.requestWillBeSent", "Network.responseReceived", "Network.loadingFailed"}
 	}
+	events, unsubscribe, err := c.subscribe(s, methods...)
+	if err != nil {
+		return err
+	}
+	defer unsubscribe()
 	if e := c.call(ctx, s, method, nil, nil); e != nil {
 		return e
 	}
@@ -34,7 +41,7 @@ func capture(ctx context.Context, c *connection, s string, q domain.BrowserReque
 			return errors.New("browser disconnected during capture")
 		case <-timer.C:
 			return nil
-		case ev := <-c.events:
+		case ev := <-events:
 			if ev.Session != s {
 				continue
 			}
@@ -64,15 +71,12 @@ func capture(ctx context.Context, c *connection, s string, q domain.BrowserReque
 					}
 				}
 				v := strings.Join(parts, " ")
-				if len(v) > 4096 {
-					v = "[TRUNCATED]"
-					o.Truncated = true
-				}
-				if bytes+len(v) > 65536 || len(o.Console) >= 256 {
+				size := boundCaptureStrings(o, &x.Type, &v)
+				if bytes+size > 65536 || len(o.Console) >= 256 {
 					o.Truncated = true
 					continue
 				}
-				bytes += len(v)
+				bytes += size
 				o.Console = append(o.Console, domain.BrowserConsole{Type: x.Type, Text: v, Timestamp: x.Timestamp})
 			}
 			if q.Operation == "network" {
@@ -106,17 +110,28 @@ func capture(ctx context.Context, c *connection, s string, q domain.BrowserReque
 				default:
 					continue
 				}
-				if len(n.URL) > 4096 {
-					n.URL = "[TRUNCATED]"
-					o.Truncated = true
-				}
-				if bytes+len(n.URL) > 65536 || len(o.Network) >= 256 {
+				size := boundCaptureStrings(o, &n.ID, &n.URL, &n.Method, &n.Type, &n.Failure)
+				if bytes+size > 65536 || len(o.Network) >= 256 {
 					o.Truncated = true
 					continue
 				}
-				bytes += len(n.URL)
+				bytes += size
 				o.Network = append(o.Network, n)
 			}
 		}
 	}
+}
+
+// Every retained string participates in both limits, including metadata. Replacing
+// oversized values preserves UTF-8 and avoids leaking partial sensitive strings.
+func boundCaptureStrings(o *domain.BrowserObservation, fields ...*string) int {
+	size := 0
+	for _, field := range fields {
+		if len(*field) > 4096 {
+			*field = "[TRUNCATED]"
+			o.Truncated = true
+		}
+		size += len(*field)
+	}
+	return size
 }

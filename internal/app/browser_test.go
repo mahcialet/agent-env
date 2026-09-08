@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -335,5 +336,126 @@ func TestBrowserNavigateInvalidatesSameDocumentSnapshot(t *testing.T) {
 	_, e = s.Browser(ctx, l.ID, BrowserOptions{BrowserRequest: domain.BrowserRequest{Operation: "click", Node: "n1"}, Snapshot: snap.Run.ID})
 	if e == nil || p.calls != calls {
 		t.Fatal("pre-navigation snapshot authorized input")
+	}
+}
+
+func TestBrowserURLWaitRequiresSubstring(t *testing.T) {
+	for _, tc := range []struct {
+		name, contains, role string
+		valid                bool
+	}{
+		{"missing", "", "", false},
+		{"role-only", "", "heading", false},
+		{"role-with-substring", "/ready", "heading", false},
+		{"substring", "/ready", "", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			o := BrowserOptions{BrowserRequest: domain.BrowserRequest{Operation: "wait", WaitFor: "url", Contains: tc.contains, Role: tc.role}}
+			if err := validateBrowserOptions(&o); (err == nil) != tc.valid {
+				t.Fatalf("URL predicate validation: %v, valid=%t", err, tc.valid)
+			}
+			if !tc.valid {
+				// Invalid URL predicates must fail before lease lookup or CDP attachment.
+				_, err := (&Service{}).Browser(context.Background(), "lease", o)
+				if err == nil || !strings.Contains(err.Error(), "AGENTENV-BROWSER-INPUT") {
+					t.Fatalf("invalid URL wait reached service dependencies: %v", err)
+				}
+			}
+		})
+	}
+}
+
+func TestBrowserSemanticProvenanceSurvivesUncertainInput(t *testing.T) {
+	for _, operation := range []string{"click", "set-text", "key", "scroll"} {
+		for _, uncertain := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/uncertain=%t", operation, uncertain), func(t *testing.T) {
+				s, l, p, _ := browserFixture(t)
+				ctx := context.Background()
+				snapshot, err := s.Browser(ctx, l.ID, BrowserOptions{BrowserRequest: domain.BrowserRequest{Operation: "snapshot"}})
+				if err != nil {
+					t.Fatal(err)
+				}
+				const secret = "provenance-secret-日本語"
+				q := domain.BrowserRequest{Operation: operation, Node: "n1"}
+				if operation == "set-text" {
+					q.Text = secret
+				}
+				if operation == "key" {
+					q.Key = "Enter"
+				}
+				if operation == "scroll" {
+					q.DeltaY = 123
+				}
+				check := func(run domain.CommandRun) {
+					t.Helper()
+					for flag, want := range map[string]string{"--browser": "web", "--page": snapshot.Snapshot.Page.ID, "--snapshot": snapshot.Run.ID, "--node": "n1"} {
+						found := false
+						for i := 0; i+1 < len(run.Argv); i++ {
+							if run.Argv[i] == flag && run.Argv[i+1] == want {
+								found = true
+							}
+						}
+						if !found {
+							t.Fatalf("missing provenance %s=%s in %v", flag, want, run.Argv)
+						}
+					}
+					data, err := json.Marshal(run)
+					if err != nil || strings.Contains(string(data), secret) {
+						t.Fatal("run contains input or invalid JSON")
+					}
+				}
+				p.fn = func(ctx context.Context, request domain.BrowserRequest) (domain.BrowserObservation, error) {
+					runs, err := s.Store.Runs(ctx, l.ID)
+					if err != nil {
+						t.Fatal(err)
+					}
+					found := false
+					for _, run := range runs {
+						if run.Name == "browser-"+operation && run.Status == "running" {
+							check(run)
+							found = true
+						}
+					}
+					if !found {
+						t.Fatal("input happened before intent and provenance persisted")
+					}
+					if uncertain {
+						return domain.BrowserObservation{ActionPerformed: true}, errors.New("CDP disconnected after input")
+					}
+					return domain.BrowserObservation{Confirmed: true, ActionPerformed: true}, nil
+				}
+				result, err := s.Browser(ctx, l.ID, BrowserOptions{BrowserRequest: q, Snapshot: snapshot.Run.ID})
+				if (err != nil) != uncertain {
+					t.Fatalf("unexpected action outcome: %v", err)
+				}
+				check(result.Run)
+				wantStatus := "passed"
+				if uncertain {
+					wantStatus = "running"
+				}
+				if result.Run.Status != wantStatus {
+					t.Fatalf("status=%s", result.Run.Status)
+				}
+				found := false
+				for _, a := range result.Artifacts {
+					if a.Kind != "browser-result" {
+						continue
+					}
+					data, err := os.ReadFile(a.Path)
+					if err != nil {
+						t.Fatal(err)
+					}
+					var saved BrowserResult
+					if err = json.Unmarshal(data, &saved); err != nil {
+						t.Fatal(err)
+					}
+					check(saved.Run)
+					found = true
+				}
+				if !found {
+					t.Fatal("run.json missing")
+				}
+			})
+		}
 	}
 }

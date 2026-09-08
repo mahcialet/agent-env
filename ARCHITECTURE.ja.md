@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: ARCHITECTURE.md
-source_sha256: bcd636d4d1f813c2041ffb3d466e7d99a84b4bd0733bf9e7935946bf046ffea3
+source_sha256: ae4ce0997d628aaf80efc505088a66b82f1ba5750f791c6b3524af4103955f0b
 ---
 
 [英語版（翻訳元）](ARCHITECTURE.md)
@@ -44,7 +44,7 @@ cleanupで、削除済みcontainerの接続を再構成する必要がありま�
 
 開発harnessと対象マニフェストは別物です。[エージェント向け指示](AGENTS.md)、索引付き文書、計画、repoctl、CIはこのリポジトリを説明し、`.agent-env.yaml`は対象リポジトリの起動方法を説明します。
 
-Android Emulatorリソースは、独立した`app.AndroidProvider`と`internal/runtime/android`アダプターを通じて、Composeに加えて利用できます。このアダプターはdomainの識別情報、appの観測結果、`execx`のネイティブプロセス境界を使い、Composeをimportしません。SQLiteはAVDとポートの排他的予約を担い、appは補償と準備完了判定を担います。detached processと実行時間を制限したコマンドのプロセスツリーは別の仕組みです。[Android設計](docs/design-docs/android-emulator.ja.md)と[完了済みの実行証拠](docs/exec-plans/completed/android-emulator-lease.md)を参照してください。ブラウザー統合は別の作業です。
+Android Emulatorリソースは、独立した`app.AndroidProvider`と`internal/runtime/android`アダプターを通じて、Composeに加えて利用できます。このアダプターはdomainの識別情報、appの観測結果、`execx`のネイティブプロセス境界を使い、Composeをimportしません。SQLiteはAVDとポートの排他的予約を担い、appは補償と準備完了判定を担います。detached processと実行時間を制限したコマンドのプロセスツリーは別の仕組みです。[Android設計](docs/design-docs/android-emulator.ja.md)と[完了済みの実行証拠](docs/exec-plans/completed/android-emulator-lease.md)を参照してください。Browser/CDP自動化は、後述する専用providerとadapterで実装しています。AndroidのライフサイクルやUI動作とは分離しています。
 
 Flutterのビルドには `app.FlutterProvider` と独立した
 `internal/runtime/flutter` アダプターを使います。Androidのパッケージ確認、インストール、
@@ -101,4 +101,4 @@ browser adapterはdiscovery、WebSocket target session、CDP identity、古いno
 具体的runtime adapterをimportせず、process/profile/portのlifecycleを所有しません。
 CLIが具体的な接続を担当します。transportはgorilla/websocketを使い、Node/Python helperは不要です。
 [browser設計](docs/design-docs/browser-cdp-automation.ja.md)と
-[完了の実装証拠](docs/exec-plans/completed/browser-cdp-automation.ja.md)を参照してください。
+[実行中の実装証拠](docs/exec-plans/active/browser-cdp-automation.ja.md)を参照してください。

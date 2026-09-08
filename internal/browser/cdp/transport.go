@@ -32,12 +32,18 @@ type envelope struct {
 		Message string
 	} `json:"error,omitempty"`
 }
+type eventSubscription struct {
+	session string
+	methods map[string]bool
+	events  chan envelope
+}
+
 type connection struct {
 	ws      *websocket.Conn
 	mu      sync.Mutex
 	next    int
 	pending map[int]chan envelope
-	events  chan envelope
+	capture *eventSubscription
 	done    chan struct{}
 	once    sync.Once
 }
@@ -51,7 +57,7 @@ func dial(ctx context.Context, endpoint string) (*connection, error) {
 	if e != nil {
 		return nil, errors.New("browser websocket connection failed")
 	}
-	c := &connection{ws: w, pending: map[int]chan envelope{}, events: make(chan envelope, 512), done: make(chan struct{})}
+	c := &connection{ws: w, pending: map[int]chan envelope{}, done: make(chan struct{})}
 	w.SetReadLimit(maxMessage)
 	go c.read()
 	return c, nil
@@ -75,15 +81,52 @@ func (c *connection) read() {
 				}
 			}
 		} else {
-			select {
-			case c.events <- m:
-			default:
-				c.close()
+			c.mu.Lock()
+			subscription := c.capture
+			overflow := false
+			if subscription != nil && subscription.session == m.Session && subscription.methods[m.Method] {
+				select {
+				case subscription.events <- m:
+				default:
+					overflow = true
+				}
+			}
+			c.mu.Unlock()
+			if overflow {
 				return
 			}
 		}
 	}
 }
+
+// subscribe installs the sole operation-local capture before its CDP domain is
+// enabled. Ordinary commands and unrelated sessions never accumulate events.
+func (c *connection) subscribe(session string, methods ...string) (<-chan envelope, func(), error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.capture != nil {
+		return nil, nil, errors.New("CDP capture already subscribed")
+	}
+	select {
+	case <-c.done:
+		return nil, nil, errors.New("CDP disconnected")
+	default:
+	}
+	subscription := &eventSubscription{session: session, methods: map[string]bool{}, events: make(chan envelope, 512)}
+	for _, method := range methods {
+		subscription.methods[method] = true
+	}
+	c.capture = subscription
+	cancel := func() {
+		c.mu.Lock()
+		defer c.mu.Unlock()
+		if c.capture == subscription {
+			c.capture = nil
+		}
+	}
+	return subscription.events, cancel, nil
+}
+
 func (c *connection) call(ctx context.Context, session, method string, p any, out any) error {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()

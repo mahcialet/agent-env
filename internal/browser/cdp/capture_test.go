@@ -7,20 +7,23 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"github.com/mahcialet/agent-env/internal/domain"
 )
 
 func TestConsoleIgnoresHistoryAndOmitsOversizeValues(t *testing.T) {
-	c, done := mockBrowser(t, func(envelope) any { return map[string]any{} })
-	defer done()
-	for _, x := range []struct {
-		stamp int64
-		text  string
-	}{{time.Now().Add(-time.Hour).UnixMilli(), "old-secret"}, {time.Now().Add(time.Minute).UnixMilli(), strings.Repeat("secret-prefix", 400)}} {
-		raw, _ := json.Marshal(map[string]any{"type": "log", "timestamp": x.stamp, "args": []any{map[string]any{"type": "string", "value": x.text}}})
-		c.events <- envelope{Session: "s", Method: "Runtime.consoleAPICalled", Params: raw}
-	}
+	c := eventBrowser(t, func(string) []envelope {
+		var events []envelope
+		for _, x := range []struct {
+			stamp int64
+			text  string
+		}{{time.Now().Add(-time.Hour).UnixMilli(), "old-secret"}, {time.Now().Add(time.Minute).UnixMilli(), strings.Repeat("secret-prefix", 400)}} {
+			raw, _ := json.Marshal(map[string]any{"type": "log", "timestamp": x.stamp, "args": []any{map[string]any{"type": "string", "value": x.text}}})
+			events = append(events, envelope{Session: "s", Method: "Runtime.consoleAPICalled", Params: raw})
+		}
+		return events
+	})
 	var o domain.BrowserObservation
 	e := capture(context.Background(), c, "s", domain.BrowserRequest{Operation: "console", Duration: 20 * time.Millisecond}, &o)
 	if e != nil {
@@ -72,5 +75,52 @@ func TestWaitUsesOperationDeadlineRatherThanCaptureDuration(t *testing.T) {
 	sn, e := wait(ctx, c, "s", domain.BrowserIdentity{}, domain.BrowserPage{}, domain.BrowserRequest{WaitFor: "text", Contains: "ready", Duration: time.Millisecond})
 	if e != nil || sn == nil || calls.Load() < 2 {
 		t.Fatalf("wait prematurely ended: %v", e)
+	}
+}
+
+func TestNetworkCaptureBoundsEveryPersistedString(t *testing.T) {
+	huge := strings.Repeat("é", 5000)
+	c := eventBrowser(t, func(string) []envelope {
+		raw, _ := json.Marshal(map[string]any{"requestId": huge, "type": huge, "request": map[string]any{"url": "http://localhost/", "method": huge}})
+		failure, _ := json.Marshal(map[string]any{"requestId": huge, "errorText": huge})
+		return []envelope{{Session: "s", Method: "Network.requestWillBeSent", Params: raw}, {Session: "s", Method: "Network.loadingFailed", Params: failure}}
+	})
+	var obs domain.BrowserObservation
+	err := capture(context.Background(), c, "s", domain.BrowserRequest{Operation: "network", Duration: 20 * time.Millisecond}, &obs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !obs.Truncated {
+		t.Fatal("oversized network fields not marked truncated")
+	}
+	for _, e := range obs.Network {
+		for _, v := range []string{e.ID, e.URL, e.Method, e.Type, e.Failure} {
+			if len(v) > 4096 || !utf8.ValidString(v) {
+				t.Fatalf("unbounded or invalid UTF-8 network field: %d", len(v))
+			}
+		}
+	}
+}
+func TestNetworkCaptureCountsAllStringsAgainstTotalBudget(t *testing.T) {
+	large := strings.Repeat("m", 4096)
+	c := eventBrowser(t, func(string) []envelope {
+		var events []envelope
+		for range 100 {
+			raw, _ := json.Marshal(map[string]any{"requestId": large, "type": large, "request": map[string]any{"url": "http://localhost/", "method": large}})
+			events = append(events, envelope{Session: "s", Method: "Network.requestWillBeSent", Params: raw})
+		}
+		return events
+	})
+	var obs domain.BrowserObservation
+	err := capture(context.Background(), c, "s", domain.BrowserRequest{Operation: "network", Duration: 20 * time.Millisecond}, &obs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	total := 0
+	for _, e := range obs.Network {
+		total += len(e.ID) + len(e.URL) + len(e.Method) + len(e.Type) + len(e.Failure)
+	}
+	if total > 65536 || !obs.Truncated {
+		t.Fatalf("network budget: bytes=%d truncated=%v", total, obs.Truncated)
 	}
 }

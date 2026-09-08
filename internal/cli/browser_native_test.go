@@ -225,6 +225,13 @@ stacks:
 		t.Fatalf("missing browser identity: %+v", cap)
 	}
 	t.Logf("native OS=%s arch=%s product=%s protocol=%s", runtime.GOOS, runtime.GOARCH, cap.Observation.Identity.Product, cap.Observation.Identity.Protocol)
+	if runtime.GOOS == "windows" {
+		for _, lease := range leases {
+			if bytes.Contains(must("logs", lease.ID), []byte("Sandbox cannot access executable")) {
+				t.Fatal("Chrome LPAC sandbox cannot read its installed executable")
+			}
+		}
+	}
 	pages := call("pages").Observation.Pages
 	if len(pages) != 1 {
 		t.Fatalf("initial pages: %+v", pages)
@@ -473,6 +480,21 @@ stacks:
 	}
 	if _, err := invoke("browser", "click", leases[0].ID, "--browser", "web", "--page", newPage, "--snapshot", s.ID, "--node", find(s, "button", "Send request").Ref); err == nil {
 		t.Fatal("cross-page snapshot accepted")
+	}
+	call("navigate", "--page", newPage, "--url", fmt.Sprintf("http://127.0.0.1:%d/origin-frames", backend.Ports["http"]))
+	call("wait", "--page", newPage, "--wait-for", "load", "--timeout", "5s")
+	originSnapshot := call("snapshot", "--page", newPage).Snapshot
+	for _, label := range []string{"Inherited origin marker", "Srcdoc origin marker", "Blob origin marker"} {
+		find(originSnapshot, "heading", label)
+	}
+	call("navigate", "--page", newPage, "--url", fmt.Sprintf("http://127.0.0.1:%d/opaque-frame", backend.Ports["http"]))
+	for _, args := range [][]string{
+		{"browser", "wait", leases[0].ID, "--browser", "web", "--page", newPage, "--wait-for", "load", "--timeout", "5s"},
+		{"browser", "snapshot", leases[0].ID, "--browser", "web", "--page", newPage},
+	} {
+		if raw, err := invoke(args...); err == nil || !strings.Contains(string(raw)+err.Error(), "iframe observation is unsupported") || strings.Contains(string(raw), "Opaque content must not leak") {
+			t.Fatalf("opaque origin was not explicitly refused without content: %s %v", raw, err)
+		}
 	}
 	call("page-close", "--page", newPage)
 	call("navigate", "--page", page, "--url", fmt.Sprintf("http://127.0.0.1:%d/next", backend.Ports["http"]))

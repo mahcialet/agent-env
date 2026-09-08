@@ -44,6 +44,19 @@ func main() {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		fmt.Fprint(w, "<h2>Iframe heading</h2><button>Iframe action</button>")
 	})
+	mux.HandleFunc("/origin-frames", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		fmt.Fprint(w, `<title>Origin fixture</title><iframe id="blank"></iframe><iframe srcdoc="<h2>Srcdoc origin marker</h2>"></iframe><script>
+blank.contentDocument.body.innerHTML = '<h2>Inherited origin marker</h2>';
+const blobFrame = document.createElement('iframe');
+blobFrame.src = URL.createObjectURL(new Blob(['<h2>Blob origin marker</h2>'], {type:'text/html'}));
+document.body.append(blobFrame);
+</script>`)
+	})
+	mux.HandleFunc("/opaque-frame", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		fmt.Fprint(w, `<title>Opaque fixture</title><script>Object.defineProperty(HTMLIFrameElement.prototype, 'contentDocument', {get() { return document; }});</script><iframe sandbox srcdoc="<h2>Opaque content must not leak</h2>"></iframe>`)
+	})
 	mux.HandleFunc("/next", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		fmt.Fprint(w, "<title>Next page</title><h1>Navigation complete</h1>")

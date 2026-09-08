@@ -103,7 +103,7 @@ func TestStaleAndAmbiguousNodeNeverInputs(t *testing.T) {
 						loader = "other"
 					}
 					return map[string]any{"frameTree": map[string]any{"frame": map[string]any{"id": "main", "loaderId": loader, "url": "http://localhost/"}}}
-				case "Accessibility.enable":
+				case "Accessibility.enable", "Target.getTargets":
 					return map[string]any{}
 				case "Accessibility.getFullAXTree":
 					backend := 4
@@ -152,7 +152,7 @@ func TestAXPasswordPrivacyAndCrossOriginRefusal(t *testing.T) {
 						tree["childFrames"] = []any{map[string]any{"frame": map[string]any{"id": "child", "url": "http://foreign.invalid/"}}}
 					}
 					return map[string]any{"frameTree": tree}
-				case "Accessibility.enable":
+				case "Accessibility.enable", "Target.getTargets":
 					return map[string]any{}
 				case "Accessibility.getFullAXTree":
 					return map[string]any{"nodes": []any{map[string]any{"nodeId": "1", "backendDOMNodeId": 4, "role": map[string]any{"value": "textbox"}, "name": map[string]any{"value": "Password"}, "value": map[string]any{"value": "secret"}}}}

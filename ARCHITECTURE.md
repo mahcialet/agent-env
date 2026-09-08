@@ -42,7 +42,7 @@ Allocation is a saga across separate authorities. Save intent before effects, re
 
 The development harness is separate from the target manifest: [agent instructions](AGENTS.md), indexed docs, plans, repoctl and CI describe this repository; `.agent-env.yaml` describes target-repository startup.
 
-Android Emulator resources extend Compose through a separate `app.AndroidProvider` and `internal/runtime/android` adapter. The adapter uses domain identities, app observations and `execx` native process boundaries; it never imports Compose. SQLite owns exclusive AVD/port reservations, and app owns compensation and readiness. Detached processes are distinct from bounded command process trees. See the [Android design](docs/design-docs/android-emulator.md) and [completed execution evidence](docs/exec-plans/completed/android-emulator-lease.md). Browser integration remains separate work.
+Android Emulator resources extend Compose through a separate `app.AndroidProvider` and `internal/runtime/android` adapter. The adapter uses domain identities, app observations and `execx` native process boundaries; it never imports Compose. SQLite owns exclusive AVD/port reservations, and app owns compensation and readiness. Detached processes are distinct from bounded command process trees. See the [Android design](docs/design-docs/android-emulator.md) and [completed execution evidence](docs/exec-plans/completed/android-emulator-lease.md). Browser/CDP automation is implemented through its own provider and adapter, described below; it does not share Android lifecycle or UI behavior.
 
 Flutter builds use `app.FlutterProvider` and the independent
 `internal/runtime/flutter` adapter. Android package/install/reverse/launch effects
@@ -106,4 +106,4 @@ identity and stale-node checks. It does not import concrete runtime adapters or
 own process/profile/port lifecycle. CLI provides concrete wiring. The transport
 uses gorilla/websocket without a Node/Python helper. See the
 [browser design](docs/design-docs/browser-cdp-automation.md) and
-[completed implementation evidence](docs/exec-plans/completed/browser-cdp-automation.md).
+[active implementation evidence](docs/exec-plans/active/browser-cdp-automation.md).

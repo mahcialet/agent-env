@@ -11,7 +11,7 @@ last_verified: 2026-09-08
 Browser commands observe and control an explicitly declared Chromium-family
 browser owned by a persistent process lease. They do not launch a second browser,
 attach to an external browser, or reuse a personal profile. Implementation and
-native acceptance are tracked in the [completed ExecPlan](../exec-plans/completed/browser-cdp-automation.md).
+native acceptance are tracked in the [active ExecPlan](../exec-plans/active/browser-cdp-automation.md).
 
 ## Manifest and prerequisites
 
@@ -176,3 +176,8 @@ node fingerprints include allowlisted nontext AX state flags. Set-text requires
 an explicit `--text`; an explicit empty string clears the field. CLI validates
 required operation arguments and refuses explicit zero durations before opening
 the store.
+
+URL waits require a nonempty `--contains`; `--role` is only available for text or
+node-disappearance predicates. An incomplete snapshot cannot establish that a
+node is gone. Input run evidence records the page, source snapshot and node before
+acting, including when the browser response is lost; entered text stays redacted.
