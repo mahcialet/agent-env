@@ -459,3 +459,86 @@ func TestProcessKnownNoSpawnCompensatesPreparedState(t *testing.T) {
 		t.Fatal("known no-spawn state became ambiguous")
 	}
 }
+
+func TestProcessDestroyPreviewReportsCleanupWithoutEffects(t *testing.T) {
+	for _, state := range []string{"live", "exited", "uncertain"} {
+		for _, force := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/force=%t", state, force), func(t *testing.T) {
+				s, options, process, source := processLifecycleFixture(t, false)
+				ctx := context.Background()
+				lease, err := s.Create(ctx, options, CreateOptions{Owner: "tester"})
+				if err != nil {
+					t.Fatal(err)
+				}
+				r := lease.Runtimes[0]
+				if state == "exited" {
+					delete(process.alive, lease.ID+":"+r.Name)
+				}
+				if state == "uncertain" {
+					process.inspectErr = errors.New("process ownership is uncertain")
+				}
+				if err := os.MkdirAll(r.Process.StateDirectory, 0700); err != nil {
+					t.Fatal(err)
+				}
+				privateFile := filepath.Join(r.Process.StateDirectory, "profile")
+				if err := os.WriteFile(privateFile, []byte("retain private state"), 0600); err != nil {
+					t.Fatal(err)
+				}
+				before, err := s.Store.Get(ctx, lease.ID)
+				if err != nil {
+					t.Fatal(err)
+				}
+				events, err := s.Store.Events(ctx, lease.ID)
+				if err != nil {
+					t.Fatal(err)
+				}
+				artifacts, err := s.Store.Artifacts(ctx, lease.ID)
+				if err != nil {
+					t.Fatal(err)
+				}
+				preview, err := s.Destroy(ctx, lease.ID, force, true)
+				if err != nil {
+					t.Fatal(err)
+				}
+				text := strings.Join(preview.Diagnostics, "\n")
+				if strings.Contains(text, "Compose") {
+					t.Errorf("process preview describes Compose: %s", text)
+				}
+				if state == "uncertain" {
+					if !strings.Contains(text, "would quarantine runtime "+r.Name) || strings.Contains(text, "stop process runtime") {
+						t.Errorf("unsafe uncertain preview: %s", text)
+					}
+				} else {
+					for _, want := range []string{"verify native identity", "stop process runtime " + r.Name, "if running", "retain process logs", "whole-tree absence", "remove private state at " + r.Process.StateDirectory} {
+						if !strings.Contains(text, want) {
+							t.Errorf("preview missing %q: %s", want, text)
+						}
+					}
+				}
+				after, err := s.Store.Get(ctx, lease.ID)
+				if err != nil {
+					t.Fatal(err)
+				}
+				afterEvents, err := s.Store.Events(ctx, lease.ID)
+				if err != nil {
+					t.Fatal(err)
+				}
+				afterArtifacts, err := s.Store.Artifacts(ctx, lease.ID)
+				if err != nil {
+					t.Fatal(err)
+				}
+				wantLive := 1
+				if state == "exited" {
+					wantLive = 0
+				}
+				if !reflect.DeepEqual(before, after) || !reflect.DeepEqual(events, afterEvents) || !reflect.DeepEqual(artifacts, afterArtifacts) || process.starts != 1 || process.destroys != 0 || len(process.alive) != wantLive || len(source.states) != 1 {
+					t.Fatal("dry-run changed registry, evidence or resources")
+				}
+				data, err := os.ReadFile(privateFile)
+				if err != nil || string(data) != "retain private state" {
+					t.Fatalf("private state changed: %q %v", data, err)
+				}
+			})
+		}
+	}
+}
