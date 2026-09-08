@@ -23,6 +23,29 @@ jobs:
           chrome-version: '152.0.7977.82'
           install-dependencies: true
           install-chromedriver: false
+      - name: Allow this Chrome executable to create sandbox user namespaces
+        if: runner.os == 'Linux'
+        shell: bash
+        env:
+          AGENT_ENV_BROWSER_EXECUTABLE: ${{ steps.chrome.outputs.chrome-path }}
+        run: |
+          # Downloaded CfT is outside Ubuntu's packaged Chrome AppArmor profile.
+          # Follow Chromium's per-executable allowance, preserving both Chrome's
+          # sandbox and the host-wide unprivileged-userns restriction.
+          # https://chromium.googlesource.com/chromium/src/+/main/docs/security/apparmor-userns-restrictions.md
+          chrome_path="$(realpath -- "$AGENT_ENV_BROWSER_EXECUTABLE")"
+          test -f "$chrome_path"
+          test -x "$chrome_path"
+          safe_path='^/[a-zA-Z0-9/._ -]+$'
+          if [[ ! "$chrome_path" =~ $safe_path ]]; then
+            echo "Chrome installation path contains unsupported AppArmor syntax" >&2
+            exit 1
+          fi
+          restriction_before="$(cat /proc/sys/kernel/apparmor_restrict_unprivileged_userns)"
+          test "$restriction_before" = 1
+          printf 'abi <abi/4.0>,\ninclude <tunables/global>\nprofile agent-env-cft "%s" flags=(unconfined) {\n  userns,\n}\n' "$chrome_path" | sudo tee /etc/apparmor.d/agent-env-cft >/dev/null
+          sudo apparmor_parser --replace /etc/apparmor.d/agent-env-cft
+          test "$(cat /proc/sys/kernel/apparmor_restrict_unprivileged_userns)" = "$restriction_before"
       - name: Run real lease-owned Browser/CDP integration
         run: go test -tags=browserintegration ./internal/cli -run '^TestBrowser(NativeCLI|EvidenceSecretDetection)$' -count=1 -v -timeout=12m
         env:

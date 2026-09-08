@@ -168,8 +168,10 @@ Out of scope:
   Chrome 152.0.7977.64, CDP 1.3, amd64, sandbox enabled: initial 7.072s pass,
   three subsequent repetitions passed, latest race run passed (package 8.489s,
   native test 7.47s). Windows/macOS native gates remain unchecked below.
-- [ ] Run real macOS browser integration.
-- [ ] Run real Windows browser integration.
+- [x] Run real macOS browser integration: `9b94b42`, run 34234714187,
+  darwin/arm64, Chrome 152.0.7977.82 / CDP 1.3, native test 20.98s PASS.
+- [x] Run real Windows browser integration: `9b94b42`, run 34234714187,
+  windows/amd64, Chrome 152.0.7977.82 / CDP 1.3, native test 25.54s PASS.
 - [x] Run browser + lease-hosted backend E2E.
 - [x] Update and validate durable documentation in English and Japanese: product,
   design, architecture, security/reliability, portability, quality, manifest/CLI,
@@ -216,6 +218,23 @@ Earlier pending local refinement checks are closed by this result. Windows/macOS
 browser execution and published final CI remain pending; this plan stays active.
 
 ## Surprises & Discoveries
+
+- Verify 34234714195's Linux integration/race job failed while constructing the
+  `TestBrowserLifecycleGuards/dead` fixture: `sql: transaction has already been
+  committed or rolled back`. This occurred before the browser assertion and is
+  being investigated separately from Linux Chrome startup. Do not infer successful
+  final harness acceptance from the native Windows/macOS passes.
+
+- 2026-09-08 — Native CI [34234714187](https://github.com/mahcialet/agent-env/actions/runs/34234714187)
+  confirmed macOS and Windows acceptance after `9b94b42`. Linux startup diagnostics
+  revealed Chrome's fatal `No usable sandbox!` error, consistent with Ubuntu's
+  AppArmor user-namespace restriction on unpacked Chrome for Testing. The initial
+  readiness error alone had not exposed that host prerequisite.
+- Verify [34233867022](https://github.com/mahcialet/agent-env/actions/runs/34233867022),
+  retry of only the failed unchanged macOS readiness job at `506ed32`, passed.
+  No code, timeout, or assertion changed for the retry. Full local race also passed
+  after the CI repair (CLI 4.798s); independent review of `9b94b42` found no
+  additional defects. Final revision CI remains required.
 
 - 2026-09-08 — First published CI at `506ed3286e66fe0602c3d68189cbca5a13164dc6`
   failed native browser acceptance on all three platforms
@@ -268,6 +287,13 @@ executable differences.
 Do not weaken identity or stale-reference checks to make dynamic pages easier.
 
 ## Decision Log
+
+- 2026-09-08 — Provision an exact-path AppArmor profile for the pinned downloaded
+  Chrome executable in the disposable Ubuntu CI runner, using Chromium's documented
+  user-namespace allowance. This enables Chrome's sandbox while retaining the
+  global restriction. Reject global sysctl relaxation and `--no-sandbox`. Host
+  provisioning remains isolated to the Ubuntu workflow; core Go behavior and
+  Windows/macOS execution are unchanged.
 
 - 2026-09-08 — Send CDP's explicit `selectAll` editing command on the private
   selection keydown, retaining native Input events and transient equality readback.

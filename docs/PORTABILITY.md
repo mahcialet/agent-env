@@ -122,3 +122,11 @@ Chrome for Testing 152.0.7977.82, Go 1.27, Windows/macOS/Linux. Actual browser a
 protocol versions and native pass/failure evidence belong in the
 [active browser plan](exec-plans/active/browser-cdp-automation.md); selecting this
 matrix and cross-building are not native acceptance.
+
+On Linux the installed browser must have usable sandbox support. Ubuntu AppArmor
+may deny user namespaces to unpacked Chrome for Testing executables outside a
+package profile. The native CI provisions an exact-executable AppArmor allowance
+for the pinned Chrome binary, following
+[Chromium guidance](https://chromium.googlesource.com/chromium/src/+/main/docs/security/apparmor-userns-restrictions.md).
+It keeps the host's global user-namespace restriction and Chrome sandbox enabled.
+This is Ubuntu runner provisioning; agent-env does not change host security policy.

@@ -1,5 +1,5 @@
 ---
-source_sha256: 700ead5706a561f1310bfeaf3adaa34b050b7466c724de75a761765f4340db41
+source_sha256: 178d68cd5f6a5c03781295864b6f1612ac225a4aab03e5425119a38d76d7cbd2
 translation_of: docs/exec-plans/active/browser-cdp-automation.md
 status: active
 owner: maintainers
@@ -104,8 +104,10 @@ port名だけからbrowserをimplicit推測しない。
 - [x] lease所有backendを含むLinux native fixtureを実行。
   Chrome 152.0.7977.64、CDP 1.3、amd64、sandbox有効。初回7.072秒、後続3反復が成功。
   最新raceも成功（package 8.489秒、native test 7.47秒）。Windows/macOSは下の未完了gateで追跡。
-- [ ] macOS real integration
-- [ ] Windows real integration
+- [x] macOS real integration: `9b94b42`、run 34234714187、darwin/arm64、
+  Chrome 152.0.7977.82 / CDP 1.3、native test 20.98秒で成功。
+- [x] Windows real integration: `9b94b42`、run 34234714187、windows/amd64、
+  Chrome 152.0.7977.82 / CDP 1.3、native test 25.54秒で成功。
 - [x] browser+lease backend E2E
 - [x] 製品・設計・architecture・security/reliability・portability・quality・manifest/CLI・
   distribution・index・roadmapを英日更新し、今回の`repoctl docs-check`が成功。
@@ -146,6 +148,23 @@ Windows/macOSのbrowser実行と公開最終CIは未完了のため、Planはact
 
 ## 想定外の発見
 
+- Verify 34234714195のLinux integration/race jobは、
+  `TestBrowserLifecycleGuards/dead`のfixture作成時に
+  `sql: transaction has already been committed or rolled back`で失敗した。
+  browserのassertion前の失敗で、Linux Chrome起動とは別に調査する。
+  native Windows/macOSの成功だけで最終harnessの受け入れ成功とはしない。
+
+- 2026-09-08 — Native CI [34234714187](https://github.com/mahcialet/agent-env/actions/runs/34234714187)
+  で`9b94b42`修正後のmacOS・Windows受け入れが成功した。Linuxの起動診断では
+  Chromeのfatal `No usable sandbox!`が確認でき、展開したChrome for Testingに対する
+  UbuntuのAppArmor user namespace制限に該当した。最初のreadiness errorだけでは
+  このhost前提条件が分からなかった。
+- Verify [34233867022](https://github.com/mahcialet/agent-env/actions/runs/34233867022)
+  で`506ed32`の失敗したmacOS readiness jobだけを再実行し、成功した。
+  この再実行ではcode・timeout・assertionを変更していない。CI修正後の全local raceも
+  成功した（CLI 4.798秒）。`9b94b42`の独立レビューで追加不具合は見つからなかった。
+  最終revisionでのCIは引き続き必要。
+
 - 2026-09-08 — 最初の公開CI（`506ed3286e66fe0602c3d68189cbca5a13164dc6`）では
   3 OSともnative browser受け入れに失敗した
   （[run 34233867023](https://github.com/mahcialet/agent-env/actions/runs/34233867023)）。
@@ -185,6 +204,12 @@ OS executable差、WebSocket teardown等を記録する。
 dynamic page対応のためidentity/stale checkを弱めない。
 
 ## 判断の記録
+
+- 2026-09-08 — 使い捨てのUbuntu CI runnerで、固定versionのdownload済みChrome
+  実行ファイルのpathだけに適用するAppArmor profileを用意する。Chromiumが文書化した
+  user namespace利用許可に従い、host全体の制限を保ったままChrome sandboxを使えるようにする。
+  全体のsysctl制限緩和や`--no-sandbox`は採用しない。host準備はUbuntu workflow内に
+  限定し、core Goの動作とWindows/macOS実行は変更しない。
 
 - 2026-09-08 — 非公開の全選択keydownでCDPの明示的な`selectAll`編集commandを送る。
   native Inputと入力後の一時的な一致検証を維持する。macOSではplatform shortcutだけでは

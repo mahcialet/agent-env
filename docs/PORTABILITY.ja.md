@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/PORTABILITY.md
-source_sha256: 1e694a23226fae0e808f0f2930857df67b8e0e9d3e465e93cedb40c6d34eef7f
+source_sha256: 49340d58126ae72e874216ce8e8a2e7e8c7e038c773fb5372e0024dacf125274
 ---
 
 [英語版（翻訳元）](PORTABILITY.md)
@@ -119,3 +119,10 @@ Node、Python、browser driver、CGO、shellの要件を追加しません。Chr
 実測browser/protocol versionとnative成功・失敗の証拠は
 [実行中browser plan](exec-plans/active/browser-cdp-automation.ja.md)へ記録します。
 matrix選定やcross-buildだけでnative受け入れ完了とはしません。
+
+Linuxでは、導入したbrowserのsandboxを利用できる必要があります。UbuntuのAppArmorは、
+package profileの対象外へ展開したChrome for Testingのuser namespace利用を拒否する
+場合があります。native CIでは[Chromiumの手順](https://chromium.googlesource.com/chromium/src/+/main/docs/security/apparmor-userns-restrictions.md)
+に基づき、固定versionのChrome実行ファイルだけを対象にAppArmorで利用を許可します。
+host全体のuser namespace制限とChrome sandboxは有効に保ちます。これはUbuntu runner
+の準備処理であり、agent-env自体はhostのsecurity policyを変更しません。
