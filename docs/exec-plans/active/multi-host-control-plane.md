@@ -656,6 +656,8 @@ A future secret-provider design may add explicit secret delivery.
 
 ## Surprises & Discoveries
 
+- 2026-09-09: Verify 34317326990 still failed the Windows deep source lifecycle: Git rejects the long `-C` directory. Upstream Git for Windows `are_long_paths_enabled` returns false before repository configuration initialization, so command-line `core.longpaths` cannot fix the early chdir. Native multi-host 34317327009 and Browser 34317326997 both passed all three OSes. Investigating Windows extended-prefix process cwd; no reliance on optional 8.3 names or reduced-depth tests is introduced.
+
 - 2026-09-09: Windows Git now selects its working directory with `-C`, avoiding CreateProcess long-cwd rejection without changing source layout or the regression. Browser CI exposed asynchronous `Target.closeTarget` inventory: the test now waits up to five seconds for exactly the original sibling page, rejecting sibling loss or unexpected targets immediately. Three real Linux Chrome runs passed (28.929s). Full local harness/race and updated worker UI tests passed; remote Browser/Docker/Podman E2E passed again (33.142s). Native CI revalidation is required.
 
 - 2026-09-09: Relative clone paths alone still failed Verify 34316762287 on Windows: CreateProcess rejected the >260-character working directory before Git ran. Native multi-host 34316762301 still passed all three OSes. Browser native 34316762319 failed the macOS page-close inventory assertion; its asynchronous target visibility is being investigated separately from the source change. Both failures remain open until verified fixes.
@@ -743,13 +745,36 @@ Preserve failed approaches that affect authority/recovery design.
 
 ## Outcomes & Retrospective
 
-Not completed.
+Implementation and local acceptance are complete; final native CI is in progress.
 
-At completion summarize the final CLI, authority split, protocol/auth model,
-source transport, CAS, capability/scheduler model, assignment/operation fencing,
-outage behavior, evidence delivery, remote operation coverage, native OS evidence,
-real multi-host evidence, limitations, and next steps for split-host leases,
-endpoint tunneling, HA and secrets.
+Delivered one persistent controller authority, mutually authenticated client/worker
+roles, durable host identity, capability/capacity scheduling and one-worker lease
+placement. Exact committed Git bundles and digest-verified CAS carry source and
+registered evidence. The CLI routes lifecycle, named tests, logs, artifacts,
+Android UI and Browser operations through the worker's existing app boundaries.
+Ordinary local commands cannot take over controller-managed leases.
+
+The two persistence authorities recover independently: controller state preserves
+placement, while worker state/journal preserves local ownership and delivery.
+Lost heartbeats retain UNKNOWN assignments and capacity; lost acknowledgments
+retry evidence delivery, and ambiguous effects are never blindly repeated. A
+create failure before reservation has durable no-effect proof; once reservation
+is attempted, a missing row alone never proves cleanup.
+
+Local mode remains daemon-free. Worker endpoints remain worker-local; one worker
+executes remote operations serially while multiple leases can remain live. Remote
+active-test cancellation, HA, migration, split-host leases, endpoint tunnels,
+secret distribution, LFS/submodule transport and automatic CAS GC are deferred.
+Every native two-worker test uses separate role processes on one physical host.
+No separate physical-machine or VM-network evidence is available or claimed.
+
+The most useful regressions crossed boundaries: JSON transport normalization,
+pre-reservation journal fencing, managed-record immutability, Windows executable
+and long-path behavior, and asynchronous Browser target removal. Compile-only
+portability checks did not reveal native OS behavior; real role processes and
+fail-before negative tests were necessary. Independent review covered controller/
+worker recovery and create fencing; worker UI routing tests additionally closed a
+gap where transport-only coverage had been described too broadly.
 
 ## Context and Orientation
 
@@ -920,7 +945,7 @@ Use the supported Go toolchain on PATH. Run `go run ./tools/repoctl check`, `go 
 | M26 | Global RELEASED requires worker-local cleanup/absence proof. | Controller release-proof negatives and journal pre-effect destroy proof (restart/dry-run/invalid input) passed. |
 | M27 | Worker-local endpoints are not mislabeled as client-local. | Worker responses mark endpoint_scope=worker-local; native tests inspect worker-owned endpoint metadata. |
 | M28 | Test/log/artifact remote operations work without raw shell. | Extended native TLS named-test, idempotency, run/live logs, artifact digest download and no-overwrite passed on all three OSes in 34316121492. |
-| M29 | Android UI remote actions preserve existing local stale/device/fence checks. | Typed remote UI option tests invoke existing app UI boundary; managed stale/device/fence regressions and real local Android UI integration passed. |
+| M29 | Android UI remote actions preserve existing local stale/device/fence checks. | Worker AppExecutor tests invoke real app UI routing with a fake Android provider, including stale/digest-tampered snapshots, device drift, wrong runtime and managed-assignment fencing; real local Android UI baseline also passed. |
 | M30 | Browser remote actions preserve existing process/page/snapshot/focus/stale checks. | Real remote Chrome/CDP snapshot/pages and artifact download passed; existing Browser stale/focus/process tests and native integration passed. |
 | M31 | Two workers can run isolated concurrent leases; destroying one preserves the other. | Real two-worker fixture proves distinct worktrees/ports and that destroying one lease leaves the other responding. |
 | M32 | Drain prevents new placements without migration/destruction. | Real TLS drain/undrain and unit safety tests passed without migration/destruction. |
@@ -957,6 +982,8 @@ Source/artifact transfers are retryable by digest. Host OFFLINE is never a
 cleanup event.
 
 ## Artifacts and Notes
+
+Final implementation checkpoint `e46f807`: local `repoctl check` and `go test -race ./...` passed. The real release-candidate fixture passed in 20.385s, building/checking all six archives and running native smoke plus tamper negatives. Updated remote Browser/Docker/Podman E2E passed in 33.142s. Native multi-host 34317327009 and Browser 34317326997 passed Windows, macOS and Linux. Verify 34317326990 is being checked before archival.
 
 Additional acceptance evidence: real remote Browser/Docker/Podman fixture passed in 35.659s; expanded two-worker named-test/log/artifact/renew fixture passed in 18.907s, and client/worker environment isolation in 18.394s. `AGENT_ENV_RELEASE_CANDIDATE=build go test ./tools/repoctl -run '^TestReleaseCandidate$' -count=1 -v -timeout=20m` passed on `b1a7df6`: six real target archives, verification, native smoke and negative tamper tests used an isolated private source/tag fixture; no public tag or release was created. Native multi-host CI 34314956327 passed all three OSes on `d993965`. The expanded fixture passed Linux/macOS on 34315479224; Windows revealed relative executable lookup before child cwd. Full Windows harness additionally exposed a >300-character Git path case. Both failures remain recorded until their targeted native checks pass.
 

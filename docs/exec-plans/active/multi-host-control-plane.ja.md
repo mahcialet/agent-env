@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/exec-plans/active/multi-host-control-plane.md
-source_sha256: 06042047d16d2a49c8d84d866842ae10ddbd38e133064ea2829760096aae7561
+source_sha256: dcf432ee024d6fccb5aef29058bbe0939797b28e6507afd217f26dfe9ae63a4c
 ---
 
 # Single-authority multi-host control planeを追加する
@@ -482,6 +482,8 @@ client env secretを自動forwardしない。
 
 ## 想定外の発見
 
+- 2026-09-09: Verify 34317326990でもWindowsの深いsource lifecycleが失敗し、Gitが長い`-C`ディレクトリを拒否した。Git for Windowsの実装ではrepository config初期化前の`are_long_paths_enabled`がfalseとなるため、command-lineの`core.longpaths`では早期chdirを解決できない。native multi-host 34317327009とBrowser 34317326997は3 OSすべて成功した。Windowsの拡張prefix付きprocess cwdを調査し、任意の8.3名への依存やテストの深さ削減は導入しない。
+
 - 2026-09-09: WindowsのGitは`-C`で作業ディレクトリを選び、source配置と回帰テストを維持したままCreateProcessの長いcwd制限を回避する。Browser CIでは`Target.closeTarget`後の一覧反映が非同期だったため、元のページだけになるまで最大5秒待つ検査に変更した。元のページの消失や未知のtargetは即失敗とする。Linuxの実Chromeを3回実行して成功（28.929s）。ローカル全harness/raceとworker UIテストが成功し、remote Browser/Docker/Podman E2Eも再成功した（33.142s）。native CIで再検証する。
 
 - 2026-09-09: 相対cloneパスだけではVerify 34316762287のWindows検査は通らず、Git起動前にCreateProcessが260文字超の作業ディレクトリを拒否した。native multi-host 34316762301は引き続き3 OSすべて成功した。Browser native 34316762319ではmacOSのpage-close後の一覧検査が失敗し、source変更とは別に非同期のtarget反映を調査している。いずれも修正の検証が終わるまでは未解決として扱う。
@@ -528,12 +530,31 @@ client env secretを自動forwardしない。
 
 ## 成果と振り返り
 
-未完了。
+実装とローカルの受け入れ検証は完了し、最終native CIを実行中である。
 
-完了時にCLI、authority split、protocol/auth、source transport、CAS、capability/scheduler、
-assignment/operation fencing、outage/reconnect、evidence delivery、remote operation、
-native OS evidence、real multi-host evidence、limitations、split-host/tunnel/HA/secretの
-次段階をまとめる。
+永続的なcontroller管理主体、相互認証するclient/workerの役割、host identity、
+capability/capacityによる配置と、lease全体を一つのworkerへ置く仕組みを実装した。
+厳密なcommitのGit bundleとdigest検証付きCASでsourceと登録済み証拠を運ぶ。
+CLIのlifecycle、named test、logs、artifacts、Android UI、Browser操作は、
+workerの既存app境界を通る。通常のlocalコマンドはcontroller管理のleaseを引き継げない。
+
+controllerは配置を、workerのstate/journalはlocal所有権と結果配送を保持し、
+二つの永続化主体が個別に復旧する。heartbeat喪失時もUNKNOWNのassignmentとcapacityを保持し、
+ack喪失時は証拠の配送を再試行する。作用が不確実な操作は無条件に再実行しない。
+予約前のcreate失敗には作用未開始の永続証拠があるが、予約を試行した後は、
+行がないという理由だけでcleanup完了とは判断しない。
+
+local modeはdaemon不要のままである。endpointはworker-localであり、複数leaseを
+稼働させられるが、各workerのremote操作は直列に実行する。実行中remote testのcancel、
+HA、migration、split-host lease、endpoint tunnel、secret配送、LFS/submodule転送、
+CASの自動GCは後続課題とする。nativeの2-worker検証はすべて、一台の物理host上で
+役割ごとにprocessを分けたものであり、別の物理機やVM間ネットワークの証拠はない。
+
+特に有効だった回帰検証は、JSON転送の正規化、予約前のjournal境界、管理情報の不変性、
+Windowsの実行ファイル検索と長いパス、Browser target削除の非同期反映という境界を扱った。
+クロスコンパイルだけではnative OSの挙動を検出できず、実processと修正前に失敗する
+negative testが必要だった。独立レビューでcontroller/workerの復旧とcreateのfenceを確認した。
+worker UI経路のテストを追加し、transportだけの検証を広く説明していた証拠の不足も補った。
 
 ## 背景と構成
 
@@ -646,7 +667,7 @@ PR #11のescaped-defect guardrailをprotocol/state boundary testへ適用。
 | M26 | remote destroyはworker cleanup proof後のみglobal RELEASED | controllerの解放証拠負例と、作用前journal証明のrestart/dry-run/不正入力テストが成功。 |
 | M27 | worker local endpointをclient localと偽らない | worker応答はendpoint_scope=worker-localを表示し、native fixtureでも所有情報を検査。 |
 | M28 | test/log/artifact remote、raw shell無し | 実TLSのnamed test、冪等再試行、run/live log、artifact digest取得・上書き拒否がLinux/macOSで成功。Windows相対実行pathは修正検証中。 |
-| M29 | Android UI既存stale/device/fence維持 | 型付きremote UI入力から既存app UI境界を呼ぶ。managed stale/device/fence回帰と実local Android UI統合が成功。 |
+| M29 | Android UI既存stale/device/fence維持 | Worker AppExecutorから実appのUI経路をfake Android providerで検証し、stale・digest改変snapshot、device変更、runtime不一致、managed assignmentのfenceを確認した。local実Android UI baselineも成功。 |
 | M30 | Browser既存process/page/snapshot/focus/stale維持 | 実remote Chrome/CDP snapshot/pagesとartifact取得が成功。既存Browserのstale/focus/process検査も維持。 |
 | M31 | two worker concurrent lease isolation | 実2-workerで別worktree/portを使用し、片方を破棄しても他方が応答。 |
 | M32 | drainはnew placement停止のみ | 実TLS drain/undrainと安全性テストが成功し、移動・破棄を行わない。 |
@@ -675,6 +696,8 @@ source/artifact transferはdigestでretry。
 host OFFLINEはcleanup eventではない。
 
 ## 成果物と注記
+
+最終実装のチェックポイント`e46f807`で、ローカルの`repoctl check`と`go test -race ./...`が成功した。実release-candidate fixtureは20.385sで成功し、6種類すべてのarchiveを生成・検証してnative smokeと改変拒否の検査を行った。更新後のremote Browser/Docker/Podman E2Eは33.142sで成功した。native multi-host 34317327009とBrowser 34317326997はWindows、macOS、Linuxすべてで成功した。archive前にVerify 34317326990を確認している。
 
 追加証拠: 実remote Browser/Docker/Podmanが35.659s、拡張2-worker named-test/log/artifact/renewが18.907s、client/worker環境分離が18.394sで成功。`b1a7df6`で`AGENT_ENV_RELEASE_CANDIDATE=build go test ./tools/repoctl -run '^TestReleaseCandidate$' -count=1 -v -timeout=20m`が成功し、隔離したprivate source/tag fixtureを使って実6target archive、検査、native smoke、改変負例を検証した。公開tag/releaseは作成していない。`d993965`のnative multi-host CI 34314956327は3OSすべて成功。拡張fixtureの34315479224はLinux/macOSで成功し、Windowsでは子processのcwd適用前の相対実行path検索が失敗した。Windows全harnessでは300文字を超えるGit pathの追加ケースも失敗した。どちらも対応するnative検証が成功するまで失敗記録を維持する。
 
