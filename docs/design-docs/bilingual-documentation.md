@@ -18,7 +18,7 @@ maintained artifacts, not optional summaries.
 All repository-root Markdown and Markdown under `docs/` follow this policy.
 Japanese siblings replace `.md` with `.ja.md`, for example `README.ja.md` or
 `docs/product-specs/android-emulator.ja.md`. This includes indexes, agent guidance,
-ADRs and new living/completed ExecPlans. Source comments, CLI messages, third-party
+ADRs and new ExecPlans in all five lifecycle states. Source comments, CLI messages, third-party
 code and test fixtures outside this documentation scope are not localized.
 
 English and Japanese changes belong in the same coherent change. Translate the
@@ -76,8 +76,13 @@ translation_of: docs/design-docs/bilingual-documentation.md
 source_sha256: <64 lowercase hexadecimal characters>
 ```
 
-Metadata fields use single-line plain strings or balanced quoted strings; nested
-or multiline YAML is outside the harness metadata format.
+Ordinary document metadata fields use single-line plain strings or balanced
+quoted strings; nested or multiline YAML is outside that metadata format.
+ExecPlans additionally use the lifecycle YAML lists and objects defined in
+[plan policy](../PLANS.md). Both languages must agree on lifecycle fields,
+including Plan ID, state, dependencies and merge policy. Keep the pair in the
+same draft, active, paused, completed or abandoned directory. The historical
+lifecycle-schema allowlist does not grant a translation exception.
 
 `translation_of` is the exact repository-relative, forward-slash English path.
 `source_sha256` is SHA-256 of the complete English file, including front matter,

@@ -1,5 +1,14 @@
 ---
 status: active
+plan_id: EP-OPS-001
+plan_type: implementation
+priority: 10
+merge_policy: guarded
+base_branch: master
+branch: feat/execplan-lifecycle-orchestration
+workstreams:
+  - repoctl
+  - documentation
 owner: maintainers
 last_verified: 2026-09-09
 ---
@@ -41,7 +50,7 @@ COMPLETED
 
 Implementation unit = ExecPlan. Human validation unit = coherent product milestone.
 
-Deliver M1-M5 first, then split the multi-host control-plane plan into child plans and dogfood M6-M8 on that work.
+Deliver M1-M5 first. M6 reconstructs completed multi-host history without rewriting it; M7 creates a new human-validation Plan for the delivered product; M8 combines historical replay, explicit human validation and forward live dogfooding on the next new ExecPlan.
 
 ## Scope
 
@@ -70,7 +79,7 @@ In scope:
 - human-validation plans, checklists, preflight, evidence and explicit human kick;
 - PASS/FINDING/BLOCKED feedback into the plan graph;
 - bilingual policy/check enforcement;
-- multi-host dogfooding.
+- historical multi-host replay and new Human Validation dogfooding.
 
 Out of scope initially:
 
@@ -87,24 +96,24 @@ Out of scope initially:
 ## Progress
 
 - [x] 2026-09-09: Record exact base and create `feat/execplan-lifecycle-orchestration`.
-- [ ] Run baseline repoctl/docs/race checks.
-- [ ] M1: lifecycle policy, directories and metadata schema.
-- [ ] M1: draft/paused/abandoned bilingual validators and negative fixtures.
-- [ ] M1: self-migrate this plan to `EP-OPS-001`.
-- [ ] M2: stable Plan ID, parent/dependency graph, cycle checks.
-- [ ] M2: merged default and explicit stacked dependency semantics.
-- [ ] M3: `repoctl plans list/check/graph/ready`.
-- [ ] M4: deterministic selection, workstream conflicts and Git provenance.
-- [ ] M5: merge-policy schema, latest-HEAD review gate, CI/thread/blocker gates.
-- [ ] M5: automatic merge where machine-verifiable; guarded/manual fallback otherwise.
+- [x] 2026-09-09: Run baseline repoctl/docs/race checks.
+- [x] 2026-09-09: M1: lifecycle policy, directories and metadata schema.
+- [x] 2026-09-09: M1: draft/paused/abandoned bilingual validators and negative fixtures.
+- [x] 2026-09-09: M1: self-migrate this plan to `EP-OPS-001`.
+- [x] 2026-09-09: M2: stable Plan ID, parent/dependency graph, cycle checks.
+- [x] 2026-09-09: M2: merged default and explicit stacked dependency semantics.
+- [x] 2026-09-09: M3: `repoctl plans list/check/graph/ready`.
+- [x] 2026-09-09: M4: deterministic selection, workstream conflicts and Git provenance.
+- [x] 2026-09-09: M5: merge-policy schema, latest-HEAD review gate, CI/thread/blocker gates.
+- [x] 2026-09-09: M5: automatic merge where machine-verifiable; guarded/manual fallback otherwise.
 - [ ] Complete M1-M5 acceptance.
-- [ ] Split multi-host into child ExecPlans using the new model.
-- [ ] M6: parent/child orchestration and multi-host dogfood.
-- [ ] M7: human-validation plan/preflight/evidence framework.
+- [x] 2026-09-09: Map completed multi-host history into a derived lifecycle/dependency replay.
+- [x] 2026-09-09: M6: historical orchestration replay of multi-host.
+- [x] 2026-09-09: M7: human-validation plan/preflight/evidence framework.
 - [ ] M7: first multi-host human-validation checkpoint.
-- [ ] M8: merge -> completion -> graph reevaluation -> next-plan loop.
+- [ ] M8: historical replay + Human Validation + next new ExecPlan forward live dogfood.
 - [ ] M8: feed human FINDING/BLOCKED results back into plans.
-- [ ] Update bilingual durable docs.
+- [x] 2026-09-09: Update bilingual durable docs.
 - [ ] Final repoctl/docs/translation/race/native checks.
 - [ ] Complete retrospective and archive both plans.
 
@@ -151,7 +160,7 @@ Read before implementation:
 - `docs/QUALITY.md` / `.ja.md`;
 - `docs/roadmap.md` / `.ja.md`;
 - GitHub Actions workflows and current review/check behavior;
-- active `multi-host-control-plane` ExecPlan.
+- completed `multi-host-control-plane` ExecPlan and its actual branch/commit/PR/merge history.
 
 Current policy already requires a dedicated branch, active ExecPlan, direct acceptance evidence and retrospective before completion. Preserve those principles while generalizing lifecycle and automation.
 
@@ -212,23 +221,30 @@ Automatic eligibility requires current-HEAD review, required checks/native/integ
 
 Never parse free-form review prose as authorization. If Codex review lacks a reliable machine-readable current-HEAD signal, retain a guarded/manual fallback.
 
-### Milestone 6 — Parent/child orchestration
+### Milestone 6 — Historical orchestration replay
 
-Split multi-host into child plans. After each merged child, reevaluate graph and expose newly runnable plans. Completed children do not auto-complete parent; parent must reconcile integration/acceptance/docs/retrospective.
+Use completed multi-host ExecPlan, branch, commits, PR and merge history as inputs.
+Reconstruct and validate how the new lifecycle/dependency model would have
+progressed. Derived parent/child nodes are replay data, not rewritten historical
+Plans. Validate graph reevaluation after child merge and explicit parent-level
+acceptance; completed children alone never complete a parent.
 
-### Milestone 7 — Human validation
+### Milestone 7 — Human Validation dogfood
 
-Add `plan_type: human-validation`, `execution_mode: human-kick`, stable scenario IDs and PASS/FINDING/BLOCKED.
+Create a new `plan_type: human-validation` ExecPlan for the already delivered
+multi-host product. Require `execution_mode: human-kick`, stable scenario IDs,
+prerequisites, actions, expected observations, evidence and PASS criteria.
+The human prepares the environment and explicitly kicks; only then may preflight
+report READY/BLOCKED. Evidence has readable and structured forms. PASS/FINDING/
+BLOCKED feeds back into tracked Plans rather than ad-hoc fixes.
 
-Every human-validation plan contains prerequisites, actions, expected observations, evidence/logs, PASS criteria and follow-up rules. Human prepares the environment and explicitly kicks. Agent then performs machine-checkable preflight and reports READY/BLOCKED.
+### Milestone 8 — End-to-end acceptance
 
-Provide purpose-built human-readable + structured evidence instead of unbounded debug logs.
-
-### Milestone 8 — End-to-end orchestration
-
-Connect plan selection -> branch -> implementation -> review -> merge gate -> merge -> archive -> dependency reevaluation -> next plan -> human checkpoint.
-
-Invocation may remain explicit/CLI-driven; no scheduler daemon is required.
+Combine historical replay, real Human Validation and forward live dogfooding on
+the next new normal ExecPlan. Exercise selection, branch/commit/PR provenance,
+current-HEAD review, merge, post-merge archival, graph reevaluation and next-plan
+selection. Invocation may remain explicit/CLI-driven; no scheduler daemon is
+required. Keep future-plan and human-kick evidence pending until actually observed.
 
 ## Concrete Steps
 
@@ -246,13 +262,13 @@ Invocation may remain explicit/CLI-driven; no scheduler daemon is required.
 12. Prove post-review commit invalidates review gate.
 13. Prove safe auto-merge or document guarded fallback.
 14. Complete M1-M5 acceptance.
-15. Reconcile and split multi-host plan.
-16. Dogfood M6 child progression.
+15. Reconstruct multi-host history without rewriting completed Plans.
+16. Validate M6 historical parent/child progression.
 17. Implement M7 human-validation/evidence/preflight.
 18. Create first multi-host human-validation plan.
 19. Run it only after explicit human kick.
 20. Feed findings back into plan graph.
-21. Dogfood M8 end-to-end.
+21. Combine replay, Human Validation and next new ExecPlan forward live dogfood.
 22. Update durable docs and run final checks.
 23. Complete retrospective/archive.
 
@@ -260,45 +276,45 @@ Invocation may remain explicit/CLI-driven; no scheduler daemon is required.
 
 | ID | Required behavior | Evidence |
 | --- | --- | --- |
-| E1 | Existing plans have a documented migration path. | Pending |
-| E2 | Five lifecycle states have strict semantics. | Pending |
-| E3 | status/path mismatch fails validation. | Pending |
-| E4 | paused requires reason and resume condition. | Pending |
-| E5 | draft is never selected or auto-promoted. | Pending |
-| E6 | multiple active plans are valid. | Pending |
-| E7 | Plan IDs are unique and EN/JA synchronized. | Pending |
-| E8 | Plan ID survives path/title/branch deletion. | Pending |
-| E9 | parent and depends_on are distinct and validated. | Pending |
-| E10 | missing/self/cyclic dependencies fail. | Pending |
-| E11 | default dependency requires completed work merged into base. | Pending |
-| E12 | stacked dependency is explicit. | Pending |
-| E13 | repoctl plans list/check/graph/ready are deterministic. | Pending |
-| E14 | runnable selection is deterministic; initial execution concurrency is one. | Pending |
-| E15 | paused is never used solely as a concurrency queue. | Pending |
-| E16 | workstream conflicts affect selection without changing lifecycle state. | Pending |
-| E17 | branch/commit/PR carry consistent Plan-ID provenance. | Pending |
-| E18 | applicable commits contain `ExecPlan:` trailer. | Pending |
-| E19 | latest-HEAD review is invalidated by later commits. | Pending |
-| E20 | free-form review prose is not merge authorization. | Pending |
-| E21 | CI/native/integration/review-thread state participates in merge gate. | Pending |
-| E22 | automatic plans merge only when all machine gates pass. | Pending |
-| E23 | guarded/manual plans cannot auto-merge. | Pending |
-| E24 | implementation-complete but unmerged remains active. | Pending |
-| E25 | completed means merged into base and archived. | Pending |
-| E26 | child merge triggers graph reevaluation. | Pending |
-| E27 | children do not auto-complete parent. | Pending |
-| E28 | parent requires parent-level finalization. | Pending |
-| E29 | human-validation plans never auto-run. | Pending |
-| E30 | human-validation preflight reports READY or concrete BLOCKED prerequisites. | Pending |
-| E31 | human scenarios have stable IDs, expected observation and PASS criteria. | Pending |
-| E32 | validation evidence has human-readable and structured forms. | Pending |
-| E33 | human FINDING returns to a tracked Plan, not ad-hoc fix. | Pending |
-| E34 | multi-host successfully dogfoods parent/child orchestration. | Pending |
-| E35 | multi-host successfully dogfoods first human-validation checkpoint. | Pending |
-| E36 | repository-correctness guardrails remain enforced. | Pending |
-| E37 | bilingual durable docs reflect final lifecycle/automation behavior. | Pending |
-| E38 | final repoctl/docs/translation/race/native checks pass. | Pending |
-| E39 | both language plans contain direct evidence and retrospective before archival. | Pending |
+| E1 | Existing plans have a documented migration path. | PASS: PLANS lifecycle migration policy and frozen legacy completed allowlist; new Plans require schema. |
+| E2 | Five lifecycle states have strict semantics. | PASS: strict five-state metadata parser with state-specific positive/negative fixtures. |
+| E3 | status/path mismatch fails validation. | PASS: TestPlanMetadataStrictValidation rejects directory/status mismatch. |
+| E4 | paused requires reason and resume condition. | PASS: paused metadata negatives require both pause_reason and resume_when. |
+| E5 | draft is never selected or auto-promoted. | PASS: draft criteria required; planReadiness never selects or changes draft state. |
+| E6 | multiple active plans are valid. | PASS: graph/readiness fixtures accept multiple active nodes and select at most one. |
+| E7 | Plan IDs are unique and EN/JA synchronized. | PASS: TestLoadPlanGraphPairsAndReferences rejects duplicate IDs and EN/JA metadata drift. |
+| E8 | Plan ID survives path/title/branch deletion. | PASS: identity history survives renaming and merge-source proof does not depend on retained branch refs; deletion regressions. |
+| E9 | parent and depends_on are distinct and validated. | PASS: separate parent and dependency graphs; hierarchy alone adds no execution dependency. |
+| E10 | missing/self/cyclic dependencies fail. | PASS: missing/self/cyclic-reference negative fixtures. |
+| E11 | default dependency requires completed work merged into base. | PASS: completed status plus base ancestry, identity and unique merge-source trailer required; arbitrary draft-containing commits rejected. |
+| E12 | stacked dependency is explicit. | PASS: explicit stacked enum; actual consumer-branch ancestry regression, declared base only before branch creation. |
+| E13 | repoctl plans list/check/graph/ready are deterministic. | PASS: sorted graph/JSON output and deterministic read-only list/check/graph/ready commands. |
+| E14 | runnable selection is deterministic; initial execution concurrency is one. | PASS: priority then ID ordering, one selection and Git-worktree execution-slot checks. |
+| E15 | paused is never used solely as a concurrency queue. | PASS: readiness reports concurrency without mutating states; paused policy requires real blocker. |
+| E16 | workstream conflicts affect selection without changing lifecycle state. | PASS: workstream/conflict reasons emitted by read-only readiness; lifecycle states retained. |
+| E17 | branch/commit/PR carry consistent Plan-ID provenance. | PASS: deterministic branches, unique commit trailer and visible standalone PR Plan-ID validation. |
+| E18 | applicable commits contain `ExecPlan:` trailer. | PASS: current delivery-range nonmerge commits require exactly one ExecPlan trailer; bootstrap commits carry EP-OPS-001. |
+| E19 | latest-HEAD review is invalidated by later commits. | PASS: later-HEAD and stale-check/base negative tests in TestPlanMergeGateFailsClosed. |
+| E20 | free-form review prose is not merge authorization. | PASS: gate consumes structured approvals only; prose is absent from authorization model. |
+| E21 | CI/native/integration/review-thread state participates in merge gate. | PASS: required CI/docs/native/integration coverage, pinned app identity and unresolved-thread/review negatives. |
+| E22 | automatic plans merge only when all machine gates pass. | MODEL PASS / LIVE GUARDED: complete trusted synthetic evidence can pass; live atomic protection and machine acceptance proof unavailable, so no automatic merge. |
+| E23 | guarded/manual plans cannot auto-merge. | PASS: guarded/manual never authorize automatic merging. |
+| E24 | implementation-complete but unmerged remains active. | PASS SO FAR: this unmerged implementation stays active; final completion is not claimed. |
+| E25 | completed means merged into base and archived. | PASS: schema requires archived directory/full merge SHA; plans check verifies base reachability and Plan-specific merge provenance. |
+| E26 | child merge triggers graph reevaluation. | PASS: replay invokes the real graph/readiness engine before and after verified child merge. |
+| E27 | children do not auto-complete parent. | PASS: replay leaves parent blocked after implementation child merge; no automatic parent completion. |
+| E28 | parent requires parent-level finalization. | PASS: hypothetical review merge only selects still-active parent reconciliation; parent acceptance remains separate. |
+| E29 | human-validation plans never auto-run. | PASS: human nodes never auto-selected; no-kick returns before reads/probes/writes. |
+| E30 | human-validation preflight reports READY or concrete BLOCKED prerequisites. | FRAMEWORK PASS: named executable/endpoint preflight produces READY or concrete BLOCKED; real environment pending. |
+| E31 | human scenarios have stable IDs, expected observation and PASS criteria. | PASS: EP-MHOST-001 contract validates eight unique scenarios with actions, observations and PASS criteria. |
+| E32 | validation evidence has human-readable and structured forms. | PASS: JSON and Markdown evidence, bounded same-snapshot digest, immutable bundle directories. |
+| E33 | human FINDING returns to a tracked Plan, not ad-hoc fix. | FRAMEWORK PASS / REAL FEEDBACK PENDING: FINDING requires a tracked draft/active review Plan and records its ID; actual Plan updates remain operator work. |
+| E34 | Completed multi-host history is reconstructed and validated under the new lifecycle/dependency model. | PASS: actual PR #12 Git/GitHub facts and real readiness-engine replay recorded below. |
+| E35 | A new multi-host Human Validation checkpoint runs after explicit human kick; M8 also records next new ExecPlan forward live dogfood. | PENDING: explicit human kick/scenarios and next new normal ExecPlan forward live dogfood. |
+| E36 | repository-correctness guardrails remain enforced. | PASS: full harness and original negative fixtures retained; fixture metadata migrated without relaxing assertions. |
+| E37 | bilingual durable docs reflect final lifecycle/automation behavior. | PASS: reviewed EN/JA policy, Plan metadata and command limits; docs-check/hash validation. |
+| E38 | final repoctl/docs/translation/race/native checks pass. | LOCAL PASS / NATIVE PENDING: full check, full race, final repoctl race and Windows/macOS cross-builds passed; native CI pending. |
+| E39 | both language plans contain direct evidence and retrospective before archival. | PENDING FINALIZATION: bilingual implementation evidence recorded; final retrospective/archive waits for human/forward acceptance and base merge. |
 
 ## Idempotence and Recovery
 
@@ -378,3 +394,66 @@ Baseline `repoctl check` passed unit tests and vet but failed docs-check because
 the supplied Japanese Plan omitted translation_of/source_sha256. Add that metadata
 after reviewing the pair, then rerun. The race baseline is running.
 The work branch is the explicit bootstrap exception to future Plan-ID naming.
+
+2026-09-09 / maintainer scope correction: M6 historical orchestration replay, M7 new Human Validation dogfood, M8 replay + Human Validation + next new ExecPlan forward live dogfood replace the stale multi-host re-split. Preserve original completed history. Baseline race passed; docs-check passed after supplied translation metadata repair.
+
+### Initial schema and migration decisions
+
+- This bootstrap Plan is `EP-OPS-001`, `merge_policy: guarded`, with the explicitly
+  requested branch retained. Future branch names derive from type and lowercase ID.
+- Dependencies use `plan_id` and `satisfaction: merged|stacked`; omitted satisfaction
+  means merged. Readiness uses per-consumer Git ancestry, not status text alone.
+- Priority is a required nonnegative integer, lower first; ties use Plan ID. Worktree
+  branch observations reserve the single execution slot. Human validation is never
+  selected without its separate explicit kick workflow.
+- Completed legacy Plans are an exact frozen filename allowlist; all new Plans
+  require structured metadata. Legacy language exceptions remain separate.
+- The gate is fail-closed and read-only unless trusted current-base policy and atomic
+  enforcement can be established. Existing GitHub prose comments are not approval.
+  No current automatic merge eligibility is claimed for this guarded bootstrap.
+
+### Implementation and review evidence (2026-09-09)
+
+M1-M4 are implemented by `plans_model.go`, `plans.go` and the existing docs/translation
+harness integration. New active/draft/paused/abandoned Plans and new completed
+Plans are strict YAML; historical completed records stay unchanged. Positive test
+fixtures now copy their full lifecycle metadata to Japanese; negative missing-section
+fixtures retain valid schema so they still isolate section detection.
+
+M5 delivers a pure current-HEAD merge decision model and a live read-only GitHub
+adapter. Tests permit only complete trusted evidence and reject stale approval,
+stale checks/base, self approval, blocking threads and unknown evidence. The live
+adapter intentionally returns BLOCKED until trusted base policy, atomic ruleset
+protection and machine acceptance proof are available. This is the documented
+guarded fallback, not a claim that live automatic merge has been demonstrated.
+
+M6 ran against actual PR #12: merge `084da57de177c0a09bc3cb61ae99faff8bd79a94`,
+source head `cc55382e29db86794f832cbb5c0e3e6d775e722e`, base
+`dc63308e53f68f8be99f7cbf59cafc78f7296b71`, branch `feat/multi-host-control-plane`,
+23 commits, merged at `2026-09-09T11:10:50Z`. `gh pr view 12` independently matched
+these Git facts. The replay uses the real graph/readiness engine for derived
+implementation/review/parent nodes. Verified implementation merge unblocks review;
+parent remains blocked. A hypothetical review merge selects parent reconciliation,
+never marks historical review approved or parent complete.
+
+M7 created paused `EP-MHOST-001` and eight stable scenarios. Human preflight and
+record commands require explicit kick before reads/probes/writes. Synthetic tests
+cover missing prerequisites, loopback READY, no inferred PASS, tracked FINDING,
+immutable evidence directories, oversized/trailing JSON and same-snapshot hashing.
+Actual human environment preparation, kick, scenario execution and tracked Plan
+feedback remain pending. M8 also requires the next genuinely new normal ExecPlan;
+no synthetic replay or this bootstrap is relabeled as that forward live evidence.
+
+Independent review of root integration caught (and regression tests now cover):
+stacked ancestry tested against a changed base rather than the consumer branch;
+quoted YAML IDs bypassing completed-section checks; deletion of all lifecycle
+pairs bypassing identity preservation. The root additionally tightened merge proof
+so an arbitrary reachable draft-containing commit cannot satisfy a dependency.
+Independent human-framework review caught a bounded-reader EOF hiding trailing JSON
+followed by an unbounded hash reread; validation now parses and hashes one bounded
+snapshot. Policy and Human Validation pairs passed independent English, standalone
+Japanese and parity reviews. No checks were weakened to resolve fixture failures.
+
+The full `repoctl check` and `go test -race ./...` passed after integration. Focused
+new provenance/merge tests passed again after the final proof hardening. Native CI
+runs the new `plans check` with full Git history; its remote results are pending.

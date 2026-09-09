@@ -27,7 +27,7 @@ func fixture(t *testing.T) string {
 	put(t, root, "ARCHITECTURE.md", "# Architecture\n")
 	put(t, root, "docs/design-docs/index.md", "[Design](design.md)\n")
 	put(t, root, "docs/design-docs/design.md", metadata+"# Design\n")
-	plan := metadata
+	plan := strings.Replace(metadata, "status: active", "status: active\nplan_id: EP-TEST-001\nplan_type: implementation\npriority: 1\nmerge_policy: guarded\nbase_branch: master", 1)
 	for _, section := range planSections {
 		plan += "\n## " + section + "\nEvidence goes here.\n"
 	}
@@ -61,7 +61,7 @@ func TestDocsBrokenFixtures(t *testing.T) {
 		{"missing-metadata", "docs/design-docs/design.md", "# Design", "DOC-006"},
 		{"bad-date", "docs/design-docs/design.md", strings.ReplaceAll(metadata, "2026-09-07", "2026-02-30"), "DOC-006"},
 		{"bad-status", "docs/design-docs/design.md", strings.ReplaceAll(metadata, "active", "anything"), "DOC-006"},
-		{"missing-plan-section", "docs/exec-plans/active/plan.md", metadata + "## Progress", "DOC-005"},
+		{"missing-plan-section", "docs/exec-plans/active/plan.md", string(modelPlanYAML("EP-TEST-001", "active", "")) + "## Progress", "DOC-005"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := fixture(t)

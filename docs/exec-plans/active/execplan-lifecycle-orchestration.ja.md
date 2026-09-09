@@ -1,9 +1,18 @@
 ---
 status: active
+plan_id: EP-OPS-001
+plan_type: implementation
+priority: 10
+merge_policy: guarded
+base_branch: master
+branch: feat/execplan-lifecycle-orchestration
+workstreams:
+  - repoctl
+  - documentation
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/exec-plans/active/execplan-lifecycle-orchestration.md
-source_sha256: aec33d37140e1b774cc9600f32791dc6c713c7b59dcf8f07ba166c160a8eaac0
+source_sha256: d22d366438cdb9f5f646427d5506844191f42a64d545007a96ca1b54ab83ad13
 ---
 
 # ExecPlan lifecycle orchestrationと自動delivery gateを追加する
@@ -43,28 +52,28 @@ COMPLETED
 
 implementation unitはExecPlan。Human Validation unitはcoherent product milestone。
 
-M1〜M5を先に完成させ、その後multi-hostを子Plan化してM6〜M8をdogfoodする。
+M1〜M5を通常実装し、M6で完了済みmulti-hostの履歴を再構成する。M7で完成済み製品に対する新規Human Validation Planを作り、M8で履歴再現・人間検証・次の新規ExecPlanの実運用を組み合わせる。
 
 ## 進捗
 
-- [ ] base/branch/baseline。
-- [ ] M1 lifecycle policy/directories/schema。
-- [ ] M1 draft/paused/abandoned bilingual validator。
-- [ ] M1 self-migrate `EP-OPS-001`。
-- [ ] M2 stable Plan ID / parent / dependency / cycle。
-- [ ] M2 merged-default / stacked-exception。
+- [x] 2026-09-09: base/branch/baseline。
+- [x] 2026-09-09: M1 lifecycle policy/directories/schema。
+- [x] 2026-09-09: M1 draft/paused/abandoned bilingual validator。
+- [x] 2026-09-09: M1 self-migrate `EP-OPS-001`。
+- [x] 2026-09-09: M2 stable Plan ID / parent / dependency / cycle。
+- [x] 2026-09-09: M2 merged-default / stacked-exception。
 - [ ] M3 repoctl plans list/check/graph/ready。
-- [ ] M4 deterministic selection / concurrency=1 / workstream。
-- [ ] M4 branch / `ExecPlan:` trailer / PR provenance。
-- [ ] M5 automatic/guarded/manual merge policy。
-- [ ] M5 latest-HEAD review gate / CI / thread / blocker gate。
-- [ ] M5 safe auto-merge / guarded fallback。
+- [x] 2026-09-09: M4 deterministic selection / concurrency=1 / workstream。
+- [x] 2026-09-09: M4 branch / `ExecPlan:` trailer / PR provenance。
+- [x] 2026-09-09: M5 automatic/guarded/manual merge policy。
+- [x] 2026-09-09: M5 latest-HEAD review gate / CI / thread / blocker gate。
+- [x] 2026-09-09: M5 safe auto-merge / guarded fallback。
 - [ ] M1-M5 acceptance。
-- [ ] multi-host子Plan分割。
-- [ ] M6 parent/child orchestration dogfood。
-- [ ] M7 human-validation schema/preflight/evidence/human-kick。
+- [x] 2026-09-09: 完了済みmulti-hostの履歴を新modelへ対応付ける。
+- [x] 2026-09-09: M6 historical orchestration replay。
+- [x] 2026-09-09: M7 human-validation schema/preflight/evidence/human-kick。
 - [ ] M7 multi-host Human Validation checkpoint。
-- [ ] M8 merge->complete->reevaluate->next loop。
+- [ ] M8 履歴再現＋Human Validation＋次の新規ExecPlanのforward live dogfood。
 - [ ] M8 FINDING/BLOCKED feedback。
 - [ ] bilingual docs/final checks/retrospective/archive。
 
@@ -108,7 +117,7 @@ M1-M5 checkpointでschema/ID/dependency/repoctl/provenance/merge gate/Codex limi
 - `tools/repoctl`
 - AGENTS/ARCHITECTURE/QUALITY/roadmap英日
 - GitHub Actionsとreview/check behavior
-- active multi-host-control-plane ExecPlan
+- 完了済みmulti-host-control-plane ExecPlanと実際のbranch・commit・PR・merge履歴
 
 現行のdedicated branch + active plan + acceptance evidence + retrospective原則を維持しながら一般化する。
 
@@ -136,17 +145,26 @@ automatic/guarded/manual。current HEAD review、CI/native/integration、blockin
 
 free-form LGTMは認証に使わない。Codex reviewed-SHAがmachine-readableでなければguarded/manual fallback。
 
-### Milestone 6 — parent/child
+### Milestone 6 — Historical orchestration replay
 
-multi-hostを子Plan化。child merge後graph reevaluate。childrenだけでparent auto-completeしない。
+完了済みmulti-hostのExecPlan、branch、commit、PR、merge履歴を入力に、新しいlifecycleと
+依存modelならどう進行したかを再構成・検証する。派生した親子ノードは再現用データであり、
+過去のPlanを分割し直さない。子のmerge後の再評価と親自身の受け入れ確認を検証し、
+子の完了だけでは親を完了しない。
 
-### Milestone 7 — Human Validation
+### Milestone 7 — Human Validation dogfood
 
-`plan_type: human-validation`、`execution_mode: human-kick`、stable scenario ID、PASS/FINDING/BLOCKED。人間が環境を揃えてkick後、AgentがREADY/BLOCKED preflight。purpose-built summary+structured evidenceを用意。
+完成済みmulti-hostに対する新規の`plan_type: human-validation` ExecPlanを作る。
+`execution_mode: human-kick`、固定scenario ID、前提、操作、期待観測、証拠、PASS条件を必須とする。
+人間が環境をそろえて明示的に開始した後だけ、preflightを行いREADY/BLOCKEDを報告する。
+人が読める証拠と構造化した証拠を用意し、PASS/FINDING/BLOCKEDを追跡可能なPlanへ戻す。
 
-### Milestone 8 — end-to-end
+### Milestone 8 — End-to-end acceptance
 
-select->branch->implement->review->merge->archive->reevaluate->next->HVを接続。daemon不要、CLI-driven可。
+履歴再現、実際のHuman Validation、次の新規の通常ExecPlanによるforward live dogfoodを組み合わせる。
+選択、branch・commit・PRの識別情報、最新HEADのreview、merge、merge後のarchive、依存再評価、
+次のPlan選択を確認する。明示的なCLI呼び出しでよくdaemonは不要。
+人間による開始や次のPlanでの証拠は、実際に観測するまで未完了として残す。
 
 ## 具体的な手順
 
@@ -164,12 +182,12 @@ select->branch->implement->review->merge->archive->reevaluate->next->HVを接続
 12. post-review commitでgate invalidation証明。
 13. safe auto-merge/fallback。
 14. M1-M5 acceptance。
-15. multi-host reconcile/split。
-16. M6 dogfood。
+15. 完了済みmulti-hostの履歴を変更せず再構成。
+16. M6で過去の親子の進行を検証。
 17. M7 Human Validation/evidence。
 18. first multi-host checkpoint。
 19. finding feedback。
-20. M8 dogfood。
+20. 履歴再現・Human Validation・次の新規ExecPlanの実運用を統合。
 21. durable docs/final checks。
 22. retrospective/archive。
 
@@ -208,8 +226,8 @@ select->branch->implement->review->merge->archive->reevaluate->next->HVを接続
 - E31 stable scenario/expected/PASS。
 - E32 human-readable + structured evidence。
 - E33 FINDING returns to tracked Plan。
-- E34 multi-host M6 dogfood。
-- E35 multi-host M7 checkpoint。
+- E34 完了済みmulti-host履歴を新lifecycle・依存modelで再構成・検証。
+- E35 新規multi-host Human Validationを明示開始後に実施し、M8では次の新規ExecPlanの実運用も記録。
 - E36 correctness-audit guardrails preserved。
 - E37 bilingual durable docs。
 - E38 final checks。
@@ -282,3 +300,99 @@ M1-M4はnew production dependency不要。M5もexisting GitHub/workflow capabili
 baselineのrepoctl checkは単体テストとvetに成功したが、提供された日本語Planに
 translation_of/source_sha256がないためdocs-checkが失敗した。内容を照合してmetadataを追加し、
 再検査する。race baselineは実行中。作業ブランチは将来のPlan-ID命名に対する明示的な初回例外とする。
+
+2026-09-09 / maintainerによる範囲の修正: M6は履歴再現、M7は新規Human Validation、M8は履歴再現＋人間検証＋次の新規ExecPlanの実運用とし、古いmulti-host再分割手順を置き換える。完了済み履歴を保持する。baseline raceは成功し、翻訳metadataの修正後のdocs-checkも成功した。
+
+### 初期schemaと移行の判断
+
+- 本Planは`EP-OPS-001`、`merge_policy: guarded`とし、指定された初回ブランチを維持する。
+  今後のブランチ名はtypeと小文字のIDから決める。
+- 依存は`plan_id`と`satisfaction: merged|stacked`で表し、省略時はmergedとする。
+  選択可能性は状態の文章だけでなく、利用側のbaseに対するGitの祖先関係で判断する。
+- priorityは必須の非負整数で、小さい順、同順位ならPlan ID順とする。
+  worktreeのブランチを観測して実行枠を1つに制限し、人間検証は別途明示開始するまで選択しない。
+- 過去の完了Planは固定したファイル名の許可リストで保持し、新規Planには構造化metadataを求める。
+  過去の翻訳例外はこれと区別する。
+- merge gateは現在のbaseに由来する信頼済み方針と原子的な保護を確認できなければ拒否し、読み取りだけにとどめる。
+  GitHub上の自由文の賛成コメントを承認とは扱わない。本Planはguardedで、自動merge可能とは主張しない。
+
+### 実装とレビューの証拠（2026-09-09）
+
+M1〜M4は`plans_model.go`、`plans.go`と既存の文書・翻訳harnessへの統合で実装した。
+新規の5状態のPlanには厳密なYAMLを求め、過去の完了記録は維持する。正常系テストの日本語版には
+lifecycle metadata全体を引き継ぎ、見出し不足の異常系はschemaを有効に保って、見出し検出を単独で試す。
+
+M5は最新HEADのmerge判定modelと、読み取り専用のGitHub adapterを用意した。テストでは完全な
+信頼済み証拠だけを許可し、古い承認・check・base、自己承認、blocking thread、不明な証拠を拒否する。
+実際のadapterはbase由来の信頼済み方針、原子的なruleset保護、機械可読の受け入れ証拠がそろうまで
+BLOCKEDを返す。文書化したguardedへの移行であり、実際の自動mergeを実証したとは扱わない。
+
+M6は実際のPR #12を使った。mergeは`084da57de177c0a09bc3cb61ae99faff8bd79a94`、
+元のheadは`cc55382e29db86794f832cbb5c0e3e6d775e722e`、baseは
+`dc63308e53f68f8be99f7cbf59cafc78f7296b71`、branchは`feat/multi-host-control-plane`、
+commitは23件、merge時刻は`2026-09-09T11:10:50Z`で、`gh pr view 12`とも一致した。
+replayは実際のgraph・選択engineで実装・review・親の派生ノードを検証する。実装のmergeで
+reviewは選択可能になるが親は待機する。仮のreview merge後も親の受け入れ確認を選択するだけで、
+過去のreview承認や親の完了を捏造しない。
+
+M7はpausedの`EP-MHOST-001`と固定IDの8scenarioを作った。人間検証のpreflightとrecordは
+読み取り・接続・書き込みの前に明示開始を要求する。模擬テストは前提不足、loopbackのREADY、
+PASSを推測しないこと、追跡付きFINDING、証拠ディレクトリの不変性、過大・後続JSON、同じsnapshotのhashを確認した。
+実際の環境準備、開始、scenarioの実施、追跡Planへの反映は未完了。M8は次の新しい通常ExecPlanも
+必要とし、模擬再現や今回の初回実装をその実運用の証拠とは数えない。
+
+独立レビューでは、stackedの確認先が利用branchでなく変更可能なbaseだったこと、引用符付きYAMLのIDで
+完了Planの見出し検査を回避できること、全ペア削除でID保持検査を回避できることを発見し、回帰テスト付きで修正した。
+全体担当はさらに、draftを含むだけの無関係なcommitが依存のmerge証拠にならないよう厳密化した。
+人間検証frameworkの独立レビューでは、上限付きreaderが後続JSONを隠し、その後の上限なし再読み込みで
+hashを計算していた問題を修正し、同じ上限付きsnapshotを解析・hash化するようにした。
+方針と人間検証Planは英語、日本語単独での理解、意味の一致の独立レビューを通過した。
+fixtureの失敗を直すために検査を弱めてはいない。
+
+統合後の全体`repoctl check`と`go test -race ./...`は成功した。最後のmerge証拠の厳密化後も
+provenance・mergeの関連テストは成功した。native CIは全Git履歴で新しい`plans check`を実行する。
+remoteでの結果は未確認である。
+
+### 受け入れ証拠の現在地（2026-09-09）
+
+| 項目 | 状態と証拠 |
+| --- | --- |
+| E1 | 成功。PLANSの移行方針と過去の完了Planの固定allowlist。新規Planにはschemaを必須化。 |
+| E2 | 成功。5状態の厳密なmetadata解析と、状態別の正常系・異常系fixture。 |
+| E3 | 成功。TestPlanMetadataStrictValidationでdirectory/statusの不一致を拒否。 |
+| E4 | 成功。pausedではpause_reasonとresume_whenの両方を必須とする異常系を検査。 |
+| E5 | 成功。draftの昇格条件を必須化し、readinessはdraftを選択・変更しない。 |
+| E6 | 成功。複数activeのgraphを受け入れ、選択は最大1件とするfixture。 |
+| E7 | 成功。TestLoadPlanGraphPairsAndReferencesでID重複と日英metadataの差を拒否。 |
+| E8 | 成功。改名しても履歴のIDを保持し、merge証拠はbranch参照の保存に依存しない。削除回帰を検査。 |
+| E9 | 成功。親子と実行依存は別graph。親子関係だけでは実行依存を追加しない。 |
+| E10 | 成功。欠落・自己参照・cycleの異常系fixture。 |
+| E11 | 成功。completed、baseの祖先関係、ID、一意のmerge元trailerを要求し、draftを含むだけのcommitを拒否。 |
+| E12 | 成功。明示stackedと実際の利用branchの祖先関係を検査。branch作成前だけ宣言baseを使う。 |
+| E13 | 成功。整列したgraph/JSONと、決定的で読み取り専用のlist/check/graph/ready。 |
+| E14 | 成功。priority、ID順で1件を選び、Git worktreeから実行枠を確認。 |
+| E15 | 成功。readinessは状態を変更せず同時実行制限を報告。pausedには実際のblockerを求める方針。 |
+| E16 | 成功。readinessがworkstream/競合理由を出力し、状態は維持。 |
+| E17 | 成功。ブランチ命名、一意のcommit trailer、PR本文の表示される単独Plan-IDを検査。 |
+| E18 | 成功。現在のdelivery範囲の非merge commitにExecPlan trailer各1件を要求。本PlanのcommitはEP-OPS-001付き。 |
+| E19 | 成功。TestPlanMergeGateFailsClosedで追加HEAD、古いcheck/baseを拒否。 |
+| E20 | 成功。構造化した承認だけを使い、自由文は承認modelに含めない。 |
+| E21 | 成功。必須CI/docs/native/integration、app識別、未解決thread/reviewの異常系を検査。 |
+| E22 | modelは成功。完全な模擬証拠は許可できるが、liveの原子的保護と機械的な受け入れ証拠は未確立なのでguardedとし、自動mergeしない。 |
+| E23 | 成功。guarded/manualは自動mergeを許可しない。 |
+| E24 | 現時点で順守。未mergeの本実装はactiveに保ち、完了とは宣言しない。 |
+| E25 | 成功。archive先と完全なmerge SHAをschemaで要求し、plans checkでbaseへの到達とPlan固有のmerge provenanceを検査。 |
+| E26 | 成功。replayが検証済み子mergeの前後で実際のgraph/readiness engineを使う。 |
+| E27 | 成功。実装の子がmergeされても親は待機し、自動完了しない。 |
+| E28 | 成功。仮のreview merge後もactiveの親の受け入れ確認を選択するだけで、親の受け入れは別途必要。 |
+| E29 | 成功。人間検証を自動選択せず、kickがなければ読み取り・接続・書き込み前に拒否。 |
+| E30 | frameworkは成功。名前付き実行ファイルとendpointからREADYまたは具体的なBLOCKEDを出力。実環境は未確認。 |
+| E31 | 成功。EP-MHOST-001の8scenarioについて一意のID、操作、観測、PASS条件を検査。 |
+| E32 | 成功。JSONとMarkdown、上限付きの同じsnapshotのdigest、証拠ディレクトリの不変性。 |
+| E33 | frameworkは成功。FINDINGには追跡中のdraft/active review Planを求めてIDを記録。実際のPlanへの反映は未完了で操作担当が行う。 |
+| E34 | 成功。PR #12のGit/GitHub事実と実際のreadiness engineによるreplayを記録。 |
+| E35 | 未完了。人間による明示開始・scenario実施と、次の新規通常ExecPlanによるforward live dogfoodが必要。 |
+| E36 | 成功。全体harnessと従来の異常系fixtureを保持。fixtureのmetadataを移行し、assertionは弱めていない。 |
+| E37 | 成功。日英の方針・Plan metadata・コマンド制限をレビューし、docs-check/hashを検査。 |
+| E38 | localは成功。全体check/race、最終repoctl race、Windows/macOS向けcross-buildに成功。native CIは未確認。 |
+| E39 | 最終化は未完了。日英の実装証拠を記録し、最終retrospective/archiveは人間検証・forward受け入れ・base merge後。 |

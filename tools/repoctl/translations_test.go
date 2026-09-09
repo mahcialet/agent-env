@@ -69,6 +69,12 @@ func pairFixtureDocument(t *testing.T, root, canonical string) {
 		}
 		front += key + ": " + value + "\n"
 	}
+	if strings.HasPrefix(canonical, "docs/exec-plans/") && strings.Contains(string(b), "\nplan_id:") {
+		// Positive lifecycle fixtures preserve all structured metadata in their pair.
+		parts := strings.SplitN(strings.ReplaceAll(string(b), "\r\n", "\n"), "\n---\n", 2)
+		front = parts[0] + "\n"
+		body = parts[1]
+	}
 	front += "translation_of: " + canonical + "\nsource_sha256: " + translationDigest(b) + "\n---\n"
 	// Fixtures preserve headings to test anchors, while all local document links
 	// use the same language. Actual repository translations are human-maintained.

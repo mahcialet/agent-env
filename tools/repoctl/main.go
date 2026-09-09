@@ -41,6 +41,9 @@ func run(args []string, out, errOut io.Writer) int {
 }
 
 func executeArgs(root string, args []string, out, errOut io.Writer) error {
+	if len(args) > 0 && args[0] == "plans" {
+		return executePlans(root, args[1:], out)
+	}
 	if args[0] == "release-verify" || args[0] == "release-preview-smoke" {
 		return executeReleaseVerify(root, args, out, errOut)
 	}
@@ -260,7 +263,8 @@ func docsCheck(root string) error {
 	if err != nil {
 		return err
 	}
-	return errors.Join(documentStructureCheck(root, paths), translationCheck(root, paths))
+	_, graphErr := loadPlanGraph(root)
+	return errors.Join(documentStructureCheck(root, paths), translationCheck(root, paths), graphErr)
 }
 
 func documentStructureCheck(root string, paths []string) error {
@@ -338,7 +342,7 @@ func documentStructureCheck(root string, paths []string) error {
 			}
 		}
 		indexed := strings.HasPrefix(rel, "docs/design-docs/") || strings.HasPrefix(rel, "docs/product-specs/") || strings.HasPrefix(rel, "docs/adr/")
-		plan := strings.HasPrefix(rel, "docs/exec-plans/active/") || strings.HasPrefix(rel, "docs/exec-plans/completed/")
+		plan := strings.HasPrefix(rel, "docs/exec-plans/")
 		indexName := "index.md"
 		if japanese {
 			indexName = "index.ja.md"
@@ -373,7 +377,8 @@ func documentStructureCheck(root string, paths []string) error {
 				}
 			}
 		}
-		if strings.HasPrefix(rel, "docs/exec-plans/active/") {
+		_, legacyPlan, planErr := parsePlanMetadata([]byte(data), rel)
+		if plan && (!strings.HasPrefix(rel, "docs/exec-plans/completed/") || (planErr == nil && !legacyPlan)) {
 			for _, section := range planSections {
 				found := false
 				for _, line := range strings.Split(documentProse(data), "\n") {
@@ -398,6 +403,15 @@ func documentStructureCheck(root string, paths []string) error {
 }
 
 func metadataCheck(path, data string) error {
+	if strings.HasPrefix(filepath.ToSlash(path), "docs/exec-plans/") {
+		_, legacy, err := parsePlanMetadata([]byte(data), path)
+		if err != nil {
+			return fmt.Errorf("AGENTENV-DOC-006: %w", err)
+		}
+		if !legacy {
+			return nil
+		}
+	}
 	lines := strings.Split(data, "\n")
 	fields := map[string]string{}
 	closed := false
@@ -416,7 +430,7 @@ func metadataCheck(path, data string) error {
 			}
 		}
 	}
-	validStatus := map[string]bool{"draft": true, "active": true, "accepted": true, "superseded": true, "completed": true}
+	validStatus := map[string]bool{"draft": true, "active": true, "accepted": true, "superseded": true, "completed": true, "paused": true, "abandoned": true}
 	_, dateErr := time.Parse("2006-01-02", fields["last_verified"])
 	if !closed || !validStatus[fields["status"]] || fields["owner"] == "" || dateErr != nil {
 		return fmt.Errorf("AGENTENV-DOC-006: %s needs front matter with valid status, nonempty owner, and last_verified: YYYY-MM-DD", path)
