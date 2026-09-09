@@ -597,3 +597,27 @@ remote worker and requires worker identity and worker-side ADB evidence. Missing
 worker Android tools are BLOCKED. The bilingual Human Validation Plan describes
 the same requirement. No actual Human Validation was kicked or claimed complete.
 Final full harness/race evidence is recorded in the review replies.
+
+### PR #14 CDP race root-cause repair (2026-09-10)
+
+Run 34414270774 at `462de72` failed before Docker integration: the CDP load-wait
+test read `evaluations` while the WebSocket mock handler incremented it. Client
+cancellation ends the wait, not the server callback. This is distinct from the
+previous lifecycle fixture's short readiness budget. Fixed the shared counter
+with atomic access and changed mock cleanup to join its hijacked WebSocket handler;
+HTTP server shutdown alone does not join upgraded connections. Cleanup is idempotent.
+
+A new regression holds the handler behind an explicit channel, cancels the client,
+checks that cleanup does not complete during a bounded observation interval, then
+releases and joins the handler. This exercises the cancellation overlap rather
+than relying on CI load. A temporary Go overlay restoring the old cleanup caused
+this test to fail with `cleanup returned while handler was blocked`; the corrected
+implementation passed. The regression uses a bounded negative wait, so it is not
+claimed to eliminate every scheduling dependency.
+
+The new regression and load-wait test passed race checks with `-count=50 -cpu=1,4`
+(37.431s). Full repoctl check passed. Independent review found no blocking issue;
+related cancellation fixtures were inspected for handler lifetime and shared state.
+Production timeouts, cancellation behavior and test assertions were not weakened.
+The preliminary edit had a syntax error from a broad string replacement; it was
+corrected before validation. Final `go test -race ./...` passed (CDP: 8.344s).

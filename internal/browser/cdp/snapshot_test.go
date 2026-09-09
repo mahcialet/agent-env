@@ -440,7 +440,7 @@ func TestLoadWaitRechecksDocumentAfterPredicate(t *testing.T) {
 	for _, keepChanging := range []bool{false, true} {
 		t.Run(fmt.Sprint(keepChanging), func(t *testing.T) {
 			generation := 0
-			evaluations := 0
+			var evaluations atomic.Int32
 			c, done := mockBrowser(t, func(q envelope) any {
 				switch q.Method {
 				case "Page.getFrameTree":
@@ -448,8 +448,7 @@ func TestLoadWaitRechecksDocumentAfterPredicate(t *testing.T) {
 				case "Accessibility.getFullAXTree":
 					return map[string]any{"nodes": []any{map[string]any{"backendDOMNodeId": generation + 1, "role": map[string]any{"value": "heading"}, "name": map[string]any{"value": fmt.Sprint(generation)}}}}
 				case "Runtime.evaluate":
-					evaluations++
-					if evaluations == 1 || keepChanging {
+					if evaluations.Add(1) == 1 || keepChanging {
 						generation++
 					}
 					return map[string]any{"result": map[string]any{"value": "complete"}}
@@ -465,7 +464,7 @@ func TestLoadWaitRechecksDocumentAfterPredicate(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), timeout)
 			defer cancel()
 			sn, err := wait(ctx, c, "s", domain.BrowserIdentity{}, domain.BrowserPage{ID: "main"}, domain.BrowserRequest{WaitFor: "load"})
-			if evaluations == 0 {
+			if evaluations.Load() == 0 {
 				t.Fatal("navigation injection not reached")
 			}
 			if keepChanging {
@@ -481,8 +480,8 @@ func TestLoadWaitRechecksDocumentAfterPredicate(t *testing.T) {
 			if e != nil {
 				t.Fatal(e)
 			}
-			if sn.Document != documentIdentity(current) || len(sn.Nodes) != 1 || sn.Nodes[0].Name != "1" || evaluations != 2 {
-				t.Fatalf("load returned wrong document: %+v evaluations=%d", sn, evaluations)
+			if sn.Document != documentIdentity(current) || len(sn.Nodes) != 1 || sn.Nodes[0].Name != "1" || evaluations.Load() != 2 {
+				t.Fatalf("load returned wrong document: %+v evaluations=%d", sn, evaluations.Load())
 			}
 		})
 	}

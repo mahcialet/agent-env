@@ -12,7 +12,7 @@ workstreams:
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/exec-plans/active/execplan-lifecycle-orchestration.md
-source_sha256: d131a7562558d5499b49b1136863ecad9848a8b53672c4f5f02c60dc122a32a0
+source_sha256: b354774f68fe6c5f822eb1e9b9cc9f357ca3134d0757094dae0f37542dceb84c
 ---
 
 # ExecPlan lifecycle orchestrationと自動delivery gateを追加する
@@ -518,3 +518,24 @@ multi-host契約からclientローカルADB要求を除いた。Androidシナリ
 証拠を要求する。workerのAndroidツール不足はBLOCKEDとする。英日Human Validation Planも
 同じ要件を説明する。実際のHuman Validationのkickや完了扱いは行っていない。
 最終全harness・race結果はレビュー返信に記録する。
+
+### PR #14 CDP raceの根本原因修正（2026-09-10）
+
+`462de72`のrun 34414270774はDocker integration前に失敗した。CDP load-waitテストが
+`evaluations`を読む間にWebSocket mock handlerが加算していた。clientのキャンセルは
+待機を終了するが、server callbackの終了は意味しない。前回のlifecycle fixtureの短い
+readiness期限とは別問題である。共有counterをatomicにし、mock cleanupがupgrade済み
+WebSocket handlerの終了を待つよう修正した。HTTP serverの終了だけではupgrade済み接続を
+joinしない。cleanupは複数回呼び出しても安全である。
+
+新しい回帰テストはchannelでhandlerを止めてclientをキャンセルし、限られた観察時間中に
+cleanupが完了しないことを確認してからhandlerを解放・joinする。CI負荷に頼らず、
+キャンセルとserver処理の重なりを作る。一時的なGo overlayで旧cleanupを戻すと
+`cleanup returned while handler was blocked`で失敗し、修正後は成功した。
+否定確認に時間制限付き待機を使うため、全てのscheduler依存をなくしたとは主張しない。
+
+新回帰テストとload-waitテストは`-count=50 -cpu=1,4`のrace検査に成功（37.431秒）。
+全repoctl checkも成功した。独立レビューに重大な指摘はなく、関連するキャンセルfixtureの
+handler寿命と共有状態も確認した。製品の期限・キャンセル動作やテストassertionは弱めていない。
+最初の編集では広い文字列置換による構文エラーが出たが、検証前に修正した。
+最終`go test -race ./...`も成功した（CDP: 8.344秒）。
