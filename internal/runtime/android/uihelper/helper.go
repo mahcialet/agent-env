@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 const Version = 1
@@ -54,6 +55,9 @@ func regular(path string, limit int64) ([]byte, error) {
 // Load confines companion reads to a verified explicit directory and refuses symlinks.
 func Load(dir string) (Metadata, error) {
 	var m Metadata
+	if strings.TrimSpace(dir) == "" {
+		return m, fmt.Errorf("explicit companion directory is required")
+	}
 	abs, err := filepath.Abs(dir)
 	if err != nil {
 		return m, err

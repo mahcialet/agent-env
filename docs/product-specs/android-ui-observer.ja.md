@@ -1,9 +1,9 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-08
+last_verified: 2026-09-09
 translation_of: docs/product-specs/android-ui-observer.md
-source_sha256: 20c7812ffb2c718ecab1d317a45ebd09f375025fd365306a8ed107f2c5829128
+source_sha256: 3aadd1d7f926be3ebaba9ec826343abfc3598a5aca889eb409fede17843f4589
 ---
 
 # Android UI observer
@@ -90,7 +90,14 @@ label や編集可能でない text にも秘密情報が含まれ得るため�
 入力値を将来のコマンド用の秘密値照合データとして保持することはありません。後の snapshot には、アプリが
 編集可能でない場所に表示した同じ値が含まれる場合があります。明示的に要求した logcat にも、アプリが log に
 書いた値が含まれ得ます。設定済み秘密値の redaction は引き続き適用します。
-アプリが表示する任意の text に機密情報がないことまでは保証できません。証拠ファイルには限定的なアクセス権を設定します。
+アプリが表示する任意の text に機密情報がないことまでは保証できません。編集可能な値や password 値の自動抑制では、それらの値を含まない fingerprint を保持します。
+設定済み秘密値が node や window の意味情報に含まれる場合、派生した window key と node fingerprint を
+削除するため、その snapshot は意味情報による入力を許可できません。
+操作に秘密値の照合データがある場合、操作後の tree が非公開で秘密値由来の識別情報を検証できないため、
+任意項目である操作後の fingerprint を省略します。
+各フィールドと応答全体の上限は、redaction 後にも JSON の escape と snapshot metadata を含めて適用します。
+フィールドや node 全体を省略した場合は切り詰めを明示し、metadata だけで上限を超える場合は上限内の invalid 結果を返します。
+証拠ファイルには限定的なアクセス権を設定します。
 
 screenshot は application を指定していても display 全体を取得します。PNG のピクセルに text redaction は適用できません。
 完全な PNG を decode し、寸法を検証して 16 MiB / 1600 万ピクセル以内であることを確認した後、
@@ -102,6 +109,9 @@ global log を消去せず、対象を絞れない収集へ暗黙に切り替え
 出力の秘密値を伏せ、256 KiB / 2000 行を上限とします。登録済み artifact に加え、text/JSON 出力内でも内容を返します。
 PID が再利用されると、以前の process の履歴行が含まれる場合があります。帰属を示すのは現在の数値 PID であり、
 その package の履歴であることまで証明するものではありません。
+`--since` は 1s〜1h の整数秒を受け付け、小数秒は実行前に拒否します。
+デバイスから末尾の記録を一件余分に取得して実際の省略を検出します。
+指定時間内の完全な行がちょうど 2000 行あるだけでは、切り詰めとは扱いません。
 
 ## companion と移植性
 
@@ -109,7 +119,11 @@ agent-env が所有する独立した instrumentation APK を使い、instrument
 安定した Android platform の `UiAutomation` を使用し、Android API 26 以降を必要とします。
 AndroidX や対象アプリへの依存はありません。source、protocol version、build input はこのリポジトリで管理します。
 明示的に実行する native Go build tool が APK と、その digest および source digest を含む metadata を生成します。
-通常の Go build と test に Android SDK や JDK は不要です。runtime は使用前に metadata と
+通常の Go build と test に Android SDK や JDK は不要です。
+通常の helper 利用では `AGENT_ENV_UI_HELPER` にディレクトリを明示します。
+未設定や空白だけの値からカレントディレクトリのファイルを選ぶことはありません。
+復旧には記録済みの検証済み helper 識別情報を使い、host の helper ファイルが消えたり置換されたりしていても、
+別 build を採用しません。runtime は使用前に metadata と
 インストール済み APK の同一性を検証します。競合する helper が既にインストールされている場合は置換せず、拒否します。
 使い捨て AVD の削除に伴って helper も削除されます。global ADB service や host tool の設定は変更しません。
 

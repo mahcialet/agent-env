@@ -10,6 +10,34 @@ last_verified: 2026-09-09
 
 Phase A, review only. Target `031869c8b9073b8e23bc17fbc55243666a52f557`; branch `audit/repository-correctness`. No product/test changes, commits, or remote actions. New tests run only through temporary Go overlays. Product contracts: [Android](../../product-specs/android-emulator.md), [Flutter](../../product-specs/flutter-android-runtime.md), [UI](../../product-specs/android-ui-observer.md). Baseline/native matrix belongs to the root audit and is not duplicated here.
 
+## Phase C resolution update
+
+The descriptions below preserve the frozen Phase A evidence and original coverage gaps.
+Phase B accepted all eight mobile findings. Their current disposition is **ACCEPT**;
+the earlier “untriaged” and “no repair” statements describe Phase A only.
+The candidate implements the following controls and permanent regressions:
+
+| Finding | Delivered control | Regression evidence |
+| --- | --- | --- |
+| AUDIT-BOUNDARY-001 | Request 2001 device records, filter the time window, keep the newest 2000 with explicit actual omission | `TestUILogExactTailUsesOverflowProof`: 1999/2000/2001 and an out-of-window probe |
+| AUDIT-REDACTION-001 | Recheck fields and actual escaped snapshot/result bytes after redaction; preserve node order and mark real omissions | `TestUIAuditUIRedactionBounds`, `TestUIFieldBoundaryAndSerializedObservationBoundary`: registered artifacts, retained identities, 4096 and 1 MiB minus/exact/plus boundaries |
+| AUDIT-UI-001 | Distinguish automatic editable suppression from secret matches | `TestUIAuditEditableSnapshotRemainsActionable`: snapshot-to-set-text, callback dispatch/readback and two completed durable runs; existing error-redaction test now requires its callback |
+| AUDIT-IDENTITY-001 | Assign exact verified helper backend; recover using recorded provenance independently of current host files | `TestUIAuditHelperBackendCarriesVerifiedDigest`: successful same-build input; `TestUIRecoveryUsesRecordedHelperWithAbsentOrReplacedHostFiles`: actual verified helper stop without installation |
+| AUDIT-REDACTION-003 | Clear nested node hashes for window secrets; omit opaque after-action hashes whenever secret matchers exist | `TestUIAuditWindowSecretClearsDerivedNodeHashes`, `TestUIOpaqueAfterFingerprintIsNotPublishedWithConfiguredSecrets`: returned and persisted after-action evidence |
+| AUDIT-PREREQUISITE-001 | Refuse absent/blank helper configuration before path normalization | `TestUIAuditUnsetHelperRefusesCurrentDirectory`: populated current directory cannot supply implicit opt-in |
+| AUDIT-BOUNDARY-002 | Reject fractional lookback before provider execution and durable run creation | `TestUIAuditFractionalLogLookback` |
+| AUDIT-LIFECYCLE-001 | Preserve certainty on typed preflight failure; retain uncertainty after actual dispatch failure | `TestUINativePreflightThroughAppDoesNotBlockCleanup`: failed durable run then successful release; `TestUINativeDispatchedFailureRemainsUnconfirmed`: Home/Back/tap/swipe |
+
+Local validation: `go test -race ./internal/app ./internal/runtime/android ./internal/runtime/android/uihelper -run 'TestUI|TestVerify|TestLoad' -count=1` passed twice after the boundary/recovery fixtures were corrected (6.122s/1.353s/1.012s and 5.675s/1.340s/1.010s).
+The first fixture revision incorrectly omitted the nine-byte JSON `log` property overhead;
+the recovery fixture omitted the SDK response. Both failed honestly and were repaired
+without relaxing production checks. An initially oversized envelope must omit at least
+one node even if changing truncation flags alone would save two bytes.
+An independent reviewer reproduced an additional opaque after-tree hash leak; the
+conservative omission control closed that reproduction. The aggregate ExecPlan owns
+native candidate and full harness evidence; these local results do not prove native
+Windows/macOS behavior or every historical mutation replay.
+
 ## Reviewed invariant matrix
 
 `No new finding` means the inspected source and scoped existing assertions agree; it is not exhaustive proof. All current findings remain untriaged until Phase B. Existing regression execution is recorded in the historical corpus.

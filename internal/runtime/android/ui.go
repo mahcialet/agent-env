@@ -35,42 +35,52 @@ func (a Adapter) ObserveUI(ctx context.Context, r domain.Runtime, q domain.UIReq
 	if q.Version != 1 || q.Package != "" && !applicationPackage.MatchString(q.Package) {
 		return o, fmt.Errorf("AGENTENV-UI-UNAVAILABLE: invalid UI request")
 	}
-	call := func(limit int, args ...string) (execx.Result, error) {
+	run := func(limit int, effect bool, args ...string) (execx.Result, error) {
 		v, e := a.applicationADBLimited(ctx, r, 30*time.Second, limit, args...)
+		var preflight *adbPreflightError
+		// Preflight errors prove the device command was never launched. Preserve
+		// prior certainty; only a possible effect or unconfirmed host process changes it.
+		if !errors.As(e, &preflight) && (effect || errors.Is(e, execx.ErrProcessTreeUnconfirmed) || errors.Is(e, execx.ErrOutputIncomplete)) {
+			o.Confirmed = false
+		}
 		if e != nil {
-			var preflight *adbPreflightError
-			if !errors.As(e, &preflight) && (errors.Is(e, execx.ErrProcessTreeUnconfirmed) || errors.Is(e, execx.ErrOutputIncomplete)) {
-				o.Confirmed = false
-			}
 			return v, uiSafeError(e)
 		}
 		return v, nil
 	}
+	call := func(limit int, args ...string) (execx.Result, error) { return run(limit, false, args...) }
+	effectCall := func(limit int, args ...string) (execx.Result, error) { return run(limit, true, args...) }
 	switch q.Operation {
 	case "snapshot", "tap", "set-text", "quiesce":
 		if len(q.Text) > 4096 || !utf8.ValidString(q.Text) {
 			return o, fmt.Errorf("AGENTENV-UI-UNAVAILABLE: text exceeds UTF-8 limit")
 		}
-		meta, e := uihelper.Load(os.Getenv("AGENT_ENV_UI_HELPER"))
-		if e != nil {
-			if q.Operation == "quiesce" {
-				const prefix = "uiautomation-v1:source="
-				if strings.HasPrefix(q.ExpectedBackend, prefix) {
-					parts := strings.Split(strings.TrimPrefix(q.ExpectedBackend, prefix), ":apk=")
-					if len(parts) == 2 && len(parts[0]) == 64 && len(parts[1]) == 64 {
-						meta = uihelper.Metadata{Version: 1, Package: uihelper.Package, SourceSHA256: parts[0], APKSHA256: parts[1]}
-						o.Backend = q.ExpectedBackend
-						e = nil
-					}
+		var meta uihelper.Metadata
+		var e error
+		if q.Operation == "quiesce" && q.ExpectedBackend != "" {
+			// Recovery authority is the recorded verified build, independent of mutable
+			// current helper files. Never substitute another configured build.
+			const prefix = "uiautomation-v1:source="
+			parts := strings.Split(strings.TrimPrefix(q.ExpectedBackend, prefix), ":apk=")
+			if !strings.HasPrefix(q.ExpectedBackend, prefix) || len(parts) != 2 {
+				return o, fmt.Errorf("AGENTENV-UI-UNAVAILABLE: invalid recorded helper identity")
+			}
+			for _, digest := range parts {
+				if len(digest) != 64 {
+					return o, fmt.Errorf("AGENTENV-UI-UNAVAILABLE: invalid recorded helper digest")
+				}
+				if _, e = hex.DecodeString(digest); e != nil {
+					return o, fmt.Errorf("AGENTENV-UI-UNAVAILABLE: invalid recorded helper digest")
 				}
 			}
+			meta = uihelper.Metadata{Version: uihelper.Version, Package: uihelper.Package, SourceSHA256: parts[0], APKSHA256: parts[1]}
+		} else {
+			meta, e = uihelper.Load(os.Getenv("AGENT_ENV_UI_HELPER"))
 		}
 		if e != nil {
 			return o, fmt.Errorf("%w: AGENTENV-UI-UNAVAILABLE: build and configure the verified UI helper: %v", app.ErrPrerequisite, e)
 		}
-		if o.Backend == "" {
-			o.Backend = fmt.Sprintf("uiautomation-v%d:source=%s:apk=%s", meta.Version, meta.SourceSHA256, meta.APKSHA256)
-		}
+		o.Backend = fmt.Sprintf("uiautomation-v%d:source=%s:apk=%s", meta.Version, meta.SourceSHA256, meta.APKSHA256)
 		if (q.Operation == "tap" || q.Operation == "set-text") && q.ExpectedBackend != o.Backend {
 			o.Status = "stale"
 			return o, nil
@@ -93,7 +103,6 @@ func (a Adapter) ObserveUI(ctx context.Context, r domain.Runtime, q domain.UIReq
 				o.Status = "ok"
 				return o, nil
 			}
-			o.Confirmed = false
 			// Install bytes that were verified by Load, rather than reopening the
 			// mutable configured path after verification.
 			apk, readErr := os.ReadFile(meta.APKPath)
@@ -118,7 +127,7 @@ func (a Adapter) ObserveUI(ctx context.Context, r domain.Runtime, q domain.UIReq
 			if tempErr != nil {
 				return o, fmt.Errorf("AGENTENV-UI-UNAVAILABLE: helper staging failed: %w", tempErr)
 			}
-			v, e = call(16384, "install", tmpPath)
+			v, e = effectCall(16384, "install", tmpPath)
 			if e != nil {
 				return o, e
 			}
@@ -145,8 +154,7 @@ func (a Adapter) ObserveUI(ctx context.Context, r domain.Runtime, q domain.UIReq
 			return o, fmt.Errorf("AGENTENV-UI-UNAVAILABLE: installed helper digest conflicts with configured build")
 		}
 		if q.Operation == "quiesce" {
-			o.Confirmed = false
-			v, e = call(4096, "shell", "am", "force-stop", uihelper.Package)
+			v, e = effectCall(4096, "shell", "am", "force-stop", uihelper.Package)
 			if e != nil {
 				return o, e
 			}
@@ -166,8 +174,7 @@ func (a Adapter) ObserveUI(ctx context.Context, r domain.Runtime, q domain.UIReq
 		if e != nil {
 			return o, fmt.Errorf("AGENTENV-UI-UNAVAILABLE: invalid request")
 		}
-		o.Confirmed = false
-		v, e = call(2*uiResponseLimit, "shell", "am", "instrument", "-w", "-r", "-e", "request", base64.StdEncoding.EncodeToString(data), uihelper.Runner)
+		v, e = effectCall(2*uiResponseLimit, "shell", "am", "instrument", "-w", "-r", "-e", "request", base64.StdEncoding.EncodeToString(data), uihelper.Runner)
 		if e != nil {
 			return o, e
 		}
@@ -207,8 +214,7 @@ func (a Adapter) ObserveUI(ctx context.Context, r domain.Runtime, q domain.UIReq
 				args = append(args, "swipe", strconv.Itoa(q.X), strconv.Itoa(q.Y), strconv.Itoa(q.ToX), strconv.Itoa(q.ToY), strconv.Itoa(q.DurationMS))
 			}
 		}
-		o.Confirmed = false
-		v, e := call(4096, args...)
+		v, e := effectCall(4096, args...)
 		if e != nil {
 			return o, e
 		}
@@ -240,7 +246,7 @@ func (a Adapter) ObserveUI(ctx context.Context, r domain.Runtime, q domain.UIReq
 		// Capture a bounded envelope larger than the final 256 KiB artifact limit.
 		// Logcat is reduced locally after the process has completed, so ordinary
 		// high-volume output does not become an unconfirmed running command.
-		v, e = call(16<<20, "shell", "logcat", "-d", "-v", "epoch", "--pid", strconv.Itoa(pid), "-t", "2000")
+		v, e = call(16<<20, "shell", "logcat", "-d", "-v", "epoch", "--pid", strconv.Itoa(pid), "-t", "2001")
 		if e != nil {
 			return o, e
 		}
@@ -332,29 +338,36 @@ func decodeUIResponse(output string) (domain.UIObservation, error) {
 }
 
 func boundedUILog(raw string, cutoff int64) ([]byte, bool) {
-	raw = evidence.RedactString(raw, evidence.InheritedSecrets())
-	var out strings.Builder
-	count := 0
-	truncated := false
+	// One extra device record proves omission. Filter the requested time window
+	// before counting so a complete exact-size tail is not falsely truncated.
+	var lines []string
 	for _, line := range strings.Split(raw, "\n") {
-		f := strings.Fields(line)
-		if len(f) == 0 {
+		fields := strings.Fields(line)
+		if len(fields) == 0 {
 			continue
 		}
-		sec, err := strconv.ParseFloat(f[0], 64)
-		if err != nil || math.IsNaN(sec) || math.IsInf(sec, 0) || sec < float64(cutoff) {
+		sec, e := strconv.ParseFloat(fields[0], 64)
+		if e != nil || math.IsNaN(sec) || math.IsInf(sec, 0) || sec < float64(cutoff) {
 			continue
 		}
-		if count == 2000 || out.Len()+len(line)+1 > 256<<10 {
+		lines = append(lines, line)
+	}
+	truncated := len(lines) > 2000
+	if truncated {
+		lines = lines[len(lines)-2000:]
+	}
+	var out strings.Builder
+	secrets := evidence.InheritedSecrets()
+	for _, line := range lines {
+		line = evidence.RedactString(line, secrets)
+		if out.Len()+len(line)+1 > 256<<10 {
 			truncated = true
 			break
 		}
 		out.WriteString(line)
 		out.WriteByte('\n')
-		count++
 	}
-	// The device tail itself is capped even if local filtering reduced line count.
-	return []byte(out.String()), truncated || len(strings.Split(strings.TrimSpace(raw), "\n")) >= 2000
+	return []byte(out.String()), truncated
 }
 
 // Never retain device output or request-bearing ExitError.Command here. Even

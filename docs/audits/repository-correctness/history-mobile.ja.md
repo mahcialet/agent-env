@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/audits/repository-correctness/history-mobile.md
-source_sha256: 5dbe7526c351d7dd7852741b6c32e25ba5c8d19dba2f025b2980cdfc2a058dc4
+source_sha256: cfb0f2cb40920576c6e2f936cfa35267465e5b6383c48e156563bf0502a06c3a
 ---
 
 # Mobile領域の過去correctnessレビュー資料
@@ -11,6 +11,31 @@ source_sha256: 5dbe7526c351d7dd7852741b6c32e25ba5c8d19dba2f025b2980cdfc2a058dc4
 [English](history-mobile.md) · [監査index](index.ja.md) · [実行基準](../../exec-plans/active/repository-correctness-audit.ja.md)
 
 固定対象: `031869c8b9073b8e23bc17fbc55243666a52f557`。Phase Aとして製品・test fileは変更しない。実装時レビューとnative fixtureの判定基準不備も含め、記録された重要な指摘を整理する。前提環境の不足、一時的なformat/hash検査、原因未確認のscheduling問題は製品不具合と数えず別記する。
+
+## Phase C の対応状況
+
+以下の記述は、Phase A の固定対象で得た証拠と当時の検証不足を保存したものです。
+Phase B では mobile の 8 件をすべて採用しました。現在の分類は **ACCEPT** であり、
+後述の「未分類」「未修正」は Phase A 当時を指します。候補実装には次の検査と恒久回帰 test を追加しました。
+
+| 指摘 | 実装した検査 | 回帰の証拠 |
+| --- | --- | --- |
+| AUDIT-BOUNDARY-001 | デバイスから 2001 件を要求し、時間範囲で絞って最新 2000 件を保持し、実際の省略を明示 | `TestUILogExactTailUsesOverflowProof`: 1999/2000/2001 件と時間範囲外の追加記録 |
+| AUDIT-REDACTION-001 | redaction 後にフィールドと escape 済み snapshot/result の実バイト数を再検査し、node 順序を保持して省略を明示 | `TestUIAuditUIRedactionBounds`、`TestUIFieldBoundaryAndSerializedObservationBoundary`: 登録 artifact、保持識別情報、4096 文字と 1 MiB の直前・一致・直後 |
+| AUDIT-UI-001 | 編集可能値の自動抑制と秘密値の一致を区別 | `TestUIAuditEditableSnapshotRemainsActionable`: snapshot から set-text、callback 実行と読み戻し、完了した永続 run 2 件。既存の error redaction test も callback 実行を必須化 |
+| AUDIT-IDENTITY-001 | 検証済み helper backend を正確に設定し、現在の host ファイルに依存せず記録済み provenance で復旧 | `TestUIAuditHelperBackendCarriesVerifiedDigest`: 同じ build で入力成功。`TestUIRecoveryUsesRecordedHelperWithAbsentOrReplacedHostFiles`: install せず検証済み helper を実際に停止 |
+| AUDIT-REDACTION-003 | window 秘密値から派生する node hash を消去し、秘密値照合データがある場合は非公開の操作後 hash を省略 | `TestUIAuditWindowSecretClearsDerivedNodeHashes`、`TestUIOpaqueAfterFingerprintIsNotPublishedWithConfiguredSecrets`: 操作後の返却値と保存済み証拠 |
+| AUDIT-PREREQUISITE-001 | path 正規化前に未設定・空白だけの helper 指定を拒否 | `TestUIAuditUnsetHelperRefusesCurrentDirectory`: ファイルがある cwd も暗黙の利用許可にしない |
+| AUDIT-BOUNDARY-002 | provider 実行と永続 run 作成前に小数秒を拒否 | `TestUIAuditFractionalLogLookback` |
+| AUDIT-LIFECYCLE-001 | 型付き preflight 失敗では完了確認状態を維持し、実際の dispatch 後の失敗では不確実性を保持 | `TestUINativePreflightThroughAppDoesNotBlockCleanup`: 失敗 run を記録後に解放成功。`TestUINativeDispatchedFailureRemainsUnconfirmed`: Home/Back/tap/swipe |
+
+ローカル検証では `go test -race ./internal/app ./internal/runtime/android ./internal/runtime/android/uihelper -run 'TestUI|TestVerify|TestLoad' -count=1` が境界・復旧 fixture 修正後に 2 回成功しました（6.122s/1.353s/1.012s と 5.675s/1.340s/1.010s）。
+初版 fixture は JSON の `log` プロパティに必要な 9 bytes と、復旧時の SDK 応答を欠いていました。
+どちらも失敗を確認して修正し、製品側の検査は緩めていません。初期サイズが上限を超える場合は、
+切り詰め flag の変更だけで 2 bytes 減る場合でも、少なくとも一つの node を省略します。
+独立レビュアーが操作後の非公開 tree hash による追加の漏えいを再現し、保守的な省略で解消を確認しました。
+候補の native 検証と全 harness の証拠は集約 ExecPlan が管理します。これらのローカル結果で
+Windows/macOS の native 挙動や過去のすべての不具合の再導入検証まで証明したとは扱いません。
 
 ## 出典と読み方
 
