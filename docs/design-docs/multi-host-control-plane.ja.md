@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/design-docs/multi-host-control-plane.md
-source_sha256: 902491f22aa21bd9b0846b2540fe6caddaa25cfd5627b46a16adc0d805e8968b
+source_sha256: 17affb219152255a4afb3e5e36d5c6762fdaf2dec21a8c18bc0dc94a929d8d53
 ---
 
 # 一つの管理主体による複数 host の調整
@@ -69,6 +69,7 @@ workerは自身と同じOSのprocessだけを管理します。Windowsでは、�
 ディレクトリ・DB作成前に拒否します。filesystem/mountの検査は、解決したaliasや独自mount先も
 扱います。これは保守的な対応範囲であり、破損を観測したという主張ではありません。
 検査対象はCLIのstate rootであり、内部の任意のDB open関数や読み取り専用source配置ではありません。
+Windows側もWSL UNC上のstate/実行先を拒否し、直接の拡張UNC名と解決後のaliasを検査します。
 
 Windows以外ではPE実行ファイルの直接起動を拒否し、Windowsでは`wsl.exe`の起動を拒否します。
 process起動とdetached出力作成の前に検査し、Git bundleコマンドにも同じ検査を適用します。

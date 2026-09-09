@@ -75,7 +75,8 @@ state homes on DrvFS or 9p mounts are rejected before directory/database creatio
 filesystem/mount checks include canonical aliases and custom locations. This is
 a conservative support boundary, not a claim of observed corruption. The guard
 applies to CLI state roots, not arbitrary internal database openers or read-only
-source locations.
+source locations. Windows likewise rejects WSL UNC state/execution locations,
+including direct extended-UNC names and resolved aliases.
 
 Direct PE executables are refused on non-Windows hosts, and Windows refuses the
 `wsl.exe` entry point. Checks precede process start and detached output creation;

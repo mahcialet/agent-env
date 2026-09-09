@@ -51,6 +51,9 @@ state home; never share a home with Windows. WSL state on DrvFS/9p mounts,
 including custom mounts and aliases, is rejected before creation. This is a
 conservative durability support rule, not a claim of observed corruption.
 Read-only source locations are not subject to the state-home rule.
+Windows also rejects the known WSL UNC namespaces (`\\wsl$` and
+`\\wsl.localhost`, including extended UNC spelling and resolved aliases) for
+state homes and execution directories.
 
 Direct Windows PE tools are rejected on Linux/macOS, including renamed tools and
 symlink aliases. Windows rejects direct `wsl.exe` invocation. A Linux file named

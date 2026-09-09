@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/exec-plans/active/multi-host-control-plane.md
-source_sha256: d789c888ad6d1683ea6f47f6907809692169996d2aa1408ae570909a3bd11555
+source_sha256: eab17a47c7c3f5f2357934967e550dc4eacf21ed941b90d853641410c572964d
 ---
 
 # Single-authority multi-host control planeを追加する
@@ -511,6 +511,10 @@ client env secretを自動forwardしない。
 
 ## 判断の記録
 
+- 2026-09-09、ユーザー合意による対応範囲: Windowsの長いパスの挙動を確認した後、ユーザーはWSL2も含めて安全な互換性範囲に収めることを求めた。Windowsの解決後の実行ディレクトリを240 UTF-16単位以内とし、算出したsource/worktree/runtime/test/probeのパスを作用開始前に検査する。従来のWindowsの深いパスで無条件に成功する期待を、明示的な事前拒否と作用がない証拠の検査へ置き換え、Linux/macOSの深いパスの成功回帰は維持する。恒久alias、8.3名の必須化、OSのglobal設定変更は導入しない。WSLのDrvFS/9p上のstateを作成前に拒否し、Windows以外でのPE直接実行とWindowsでのwsl.exe直接実行を拒否する。信頼するwrapperをsandbox化するものではない。この決定で以前の方針の確認事項は解決し、合意した挙動のnative検証を引き続き行う。
+- 2026-09-09、過去の判断時点（上記で解決済み）: native診断で外部のCreateProcess cwd制限を確認した。その時点では対応範囲の変更に合意がなかったため、成功を求める回帰テストを残して実装を一時停止した。その後ユーザーが合意した互換性範囲により、この一時停止は解消した。
+- 2026-09-09、実装判断: createのjournalによる作用開始の記録をappの予約境界に置く。読み取り専用の事前確認で失敗した場合は作用未開始の証拠を保持でき、予約を試行した後の失敗は不確実な状態として扱える。独立レビューでlease/runtimeの確保がcallbackより後に始まることを確認した。
+
 - 2026-09-09、実装担当: workerのoperation dispatchは初期仕様では直列とし、同じleaseの2つ目のactive operationを拒否する。長時間稼働するlease自体は同時に動く。remote destroyによるactive remote testのcancelは専用protocolの将来課題とし、assignment fenceを競合させない。
 - 2026-09-09、検証担当: 別物理host/VMの環境は利用できない。実TLS fixtureは同一host上の独立したnative controller/client/2-worker processを使う。Windows/macOSのnative証拠はcross-buildではなくCIで取得する。
 
@@ -703,6 +707,13 @@ source/artifact transferはdigestでretry。
 host OFFLINEはcleanup eventではない。
 
 ## 成果物と注記
+
+`cf5a0e7`のVerify 34319889785が成功した。Windows/macOS/LinuxのharnessをGo 1.26と1.27の
+両方で実行し、5件すべてのcross-build、race、実Docker integrationも成功した。
+上記のnative role/Browser検証と合わせて、非対応の深いcwdからの起動を要求せず、合意した
+Windowsパスの範囲を検証できた。逆方向のWindowsからWSL UNCへの事前拒否が追加の残件である。
+
+互換性のチェックポイント`cf5a0e7`: ローカルの全`repoctl check`と`go test -race ./...`が成功した。拡張native/remote Browser/Docker/Podman fixtureは53.127s、6ターゲットの実release-candidate検証は23.914sで成功した。multi-host native 34319889789とBrowser native 34319889829は3 OSすべて成功した。Windowsの全harnessで対応範囲をVerify 34319889785により検証している。実行パス/interopとWSL/source事前検証の独立レビューでは障害がなく、古くなったcloneコメントを1件修正した。実WSL2の実行は未検証である。
 
 最終実装のチェックポイント`e46f807`で、ローカルの`repoctl check`と`go test -race ./...`が成功した。実release-candidate fixtureは20.385sで成功し、6種類すべてのarchiveを生成・検証してnative smokeと改変拒否の検査を行った。更新後のremote Browser/Docker/Podman E2Eは33.142sで成功した。native multi-host 34317327009とBrowser 34317326997はWindows、macOS、Linuxすべてで成功した。Verify 34317326990のWindows以外の全jobは成功したが、Windowsは両Go versionとも深いパスのsource lifecycleで失敗した。452bf4dの診断で下記の実行ディレクトリの障害を確認したため、archiveは保留する。
 

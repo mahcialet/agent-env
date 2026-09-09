@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/PORTABILITY.md
-source_sha256: d4652321d9938547b7194e2cfff74f60f6c10de1bbcfd3166516b216872b3e2e
+source_sha256: 2fb805afd1f8551eba031cf45b4f7f177bda354d15c3d6b2d4daab707e696378
 ---
 
 [英語版（翻訳元）](PORTABILITY.md)
@@ -50,6 +50,8 @@ WSLは独立したLinux hostとして扱います。native LinuxツールとLinu
 Windowsとhomeを共有しません。DrvFS/9p mount上のWSL stateは、独自mountやaliasも含めて
 作成前に拒否します。これは耐久性についての保守的な対応規則であり、破損を観測したという
 主張ではありません。読み取り専用source配置にはstate homeの規則を適用しません。
+Windows側でも、既知のWSL UNC namespace（`\\wsl$`、`\\wsl.localhost`、拡張UNC表記と
+解決後のaliasを含む）をstate homeや実行ディレクトリに使うことを拒否します。
 
 Linux/macOSではWindows PEツールの直接起動を拒否し、改名したツールやsymlink aliasも検査します。
 Windowsでは`wsl.exe`の直接起動を拒否します。Linuxファイルを`.exe`という拡張子だけで拒否しません。
