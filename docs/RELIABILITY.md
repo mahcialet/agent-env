@@ -10,11 +10,32 @@ last_verified: 2026-09-09
 
 ## Allocation and cleanup
 
-Allocation is a saga across SQLite, Git, and selected runtime tools. The registry reserves the lease, immutable source identities, unique worktree paths, and runtime projects before materialization. Events precede external actions. A validated, ownership-labeled normalized Compose snapshot, generated dynamic loopback endpoint bindings, and digest are saved before startup, so even an unsuccessful `up` command has a recorded cleanup identity.
+Allocation records intent before creating resources. SQLite, Git and the selected
+runtime tools are separate authorities, so the workflow uses a saga: record each
+step and compensate completed effects in reverse order if a later step fails.
+
+Before materialization, the registry reserves the lease, immutable source
+identities, unique worktree paths and runtime projects. Events precede external
+actions. Before Compose startup, app saves the validated normalized snapshot with
+ownership labels, generated dynamic loopback endpoint bindings and its digest.
+Even an unsuccessful `up` therefore leaves a recorded cleanup identity.
+
+### Failure and retained evidence
 
 A failure triggers bounded reverse compensation using a cleanup context that survives ordinary request cancellation. A completely cleaned failed allocation remains recorded as released with failure events and artifacts. Uncertain ownership or incomplete cleanup leaves a quarantined reservation visible for recovery. Cleanup never erases evidence to make a retry appear successful.
 
-Before deleting resources, cleanup inspects pinned source identity and tracked changes. Final runtime logs are saved before down; clean worktrees are removed only after runtime cleanup. Explicit force requires tracked-diff evidence and still refuses identity mismatches. Untracked files in a managed review worktree are disposable. Repeated cleanup is idempotent when the recorded resources are already absent.
+### Conditions for deletion
+
+Cleanup must satisfy all of these conditions:
+
+- Inspect pinned source identity and tracked changes before deleting resources.
+- Save final runtime logs before down. Remove clean worktrees only after runtime
+  cleanup.
+- Retain tracked-diff evidence for explicit force. Force still refuses identity
+  mismatches.
+
+Untracked files in a managed review worktree are disposable. Repeated cleanup is
+idempotent when the recorded resources are already absent.
 
 Compose cleanup uses the provider and engine stored in the runtime snapshot.
 Before Podman down, app persists `Runtime.cleanup_evidence`, including native
@@ -26,9 +47,23 @@ Provider down succeeding is not proof of absence; actual resources are reinspect
 
 ## Registry and concurrent operations
 
-SQLite uses embedded numbered migrations, verified WAL, foreign keys, and a busy timeout on connections. Immediate transactions enforce capacity and unique runtime project reservations. Normalized rows and the corresponding lease snapshot update together. A versioned `leases/<id>/environment.json` descriptor provides secondary diagnostic evidence and is refreshed during persisted lifecycle changes; SQLite remains authoritative if descriptor writing fails. The registry remains local to one host; do not place it on an unsupported network filesystem or treat it as multi-host coordination.
+SQLite is the local registry for one host. Do not place it on an unsupported
+network filesystem or use it as multi-host coordination.
+
+Embedded numbered migrations, verified WAL, foreign keys and a connection busy
+timeout support persistence. Immediate transactions enforce capacity and unique
+runtime project reservations. Normalized rows and their lease snapshot update
+together.
+
+The versioned `leases/<id>/environment.json` descriptor is secondary diagnostic
+evidence, refreshed during persisted lifecycle changes. If writing it fails,
+SQLite remains the authority for state.
+
+### Operation ownership
 
 Lifecycle changes, named tests, renewal, reconciliation, and applied GC hold a durable lease operation lock. Its token expires after a crashed process stops renewing it. Operation contexts carry lock ownership to both external commands and registry mutations; renewal failure cancels work, and transactional fencing rejects stale writers. A lost lock must not become permission for the old process to continue compensation against a successor's resources.
+
+### Cancellation and completion barriers
 
 Portable cancellation terminates managed command descendants through Unix process groups or Windows Job Objects. This bounds named tests and probes; it does not reverse arbitrary side effects already performed by repository code. A command canceled after an external allocation still requires observed recovery.
 
@@ -68,6 +103,8 @@ Plans and leases record the selected absolute, symlink-resolved `manifest_path`,
 SQLite reserves private AVD identities and even/odd console/ADB port pairs before startup. An ownership marker records launch intent and native process birth identity outside disposable AVD state. Cleanup verifies AVD identity and sends kill on the same authenticated console connection, then requires process-tree and port absence before deleting private writable state. Logs and markers remain evidence. A missing launch identity, recycled resource, or uncertain descendant observation quarantines the lease and retains reservations; force cannot override it.
 
 Reconciliation of an individual Android-only lease does not require Docker. Global Compose orphan inventory examines the union of installed provider executables and recorded provider/engine identities, even when only Android lease rows remain. An installed but unavailable engine produces a visible partial error, not an empty successful inventory; resource IDs are provider-scoped. Android inspection is scoped to recorded identities. Reconcile observes manual termination but never adopts or restarts an Emulator.
+
+### Shared ADB lifetime
 
 The shared local ADB server has a separate lifetime from each lease. Creation
 establishes protocol compatibility at `127.0.0.1:5037` with a direct read-only
@@ -136,6 +173,8 @@ upload an existing result; it never blindly repeats an uncertain mutation. Local
 results precede artifact uploads, and global RELEASED requires worker cleanup
 proof. Loss of a heartbeat or controller connection makes observations stale or
 UNKNOWN and never authorizes reassignment, cleanup or a change of host instance.
+
+### Concurrency and unavailable recovery operations
 
 Workers initially dispatch operations serially; already-created leases continue
 running concurrently. The controller rejects a second active operation on one

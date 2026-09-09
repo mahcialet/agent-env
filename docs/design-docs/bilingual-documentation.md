@@ -1,7 +1,7 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-08
+last_verified: 2026-09-09
 ---
 
 # Bilingual documentation
@@ -26,6 +26,43 @@ full meaning, limitations and evidence; preserve commands, identifiers, diagnost
 codes and paths. English indexes expose both language versions. Japanese indexes
 link to Japanese siblings; links to exempt historical/generated documents remain
 English. Each Japanese document visibly links back to its canonical source.
+
+## Write for each language's readers
+
+Finish and fact-check the English source before translating it. Give each document
+one clear purpose and organize it around the reader's question. Separate current
+requirements, rationale, enforcement, evidence and known limitations. Label
+implemented, active, deferred, unsupported and undecided behavior where status
+matters. Preserve normative force when simplifying prose.
+
+Translate meaning, not structure. Japanese may reorder sections, paragraphs and
+sentences, split or combine sentences, and use a list or table where that reads
+more naturally. It must preserve every requirement, condition, exception,
+limitation, status and piece of evidence. Commands, identifiers and protocol names
+remain precise. Repair links when headings change; do not require sentence or
+paragraph alignment between languages.
+
+Japanese may omit subjects when the meaning is unambiguous. Prefer established
+Japanese technical terms over unnecessary English or katakana mixing when they
+are clearer.
+
+For both languages, use explicit subjects where needed, explain one idea at a
+time, and replace dense noun chains with direct sentences. Entry points should
+summarize and link to the detailed authority instead of repeating its full
+implementation history. A short summary may be repeated for orientation, but
+must not become a competing specification.
+
+Substantial documentation restructuring requires three separate review passes,
+independent of the editor:
+
+1. Review English for purpose, navigation, clear prose and explicit status.
+2. Review Japanese as Japanese: evaluate natural order, terminology and clarity
+   without using English sentence alignment as the standard.
+3. After both language reviews, compare semantic parity: check all requirements,
+   conditions, exceptions, limitations, status, evidence, commands and links.
+
+Record findings and their resolution in the active ExecPlan. These are editorial
+reviews; the freshness hash and structural checker cannot perform them.
 
 ## Translation metadata and review
 

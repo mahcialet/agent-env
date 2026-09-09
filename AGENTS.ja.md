@@ -1,9 +1,9 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-08
+last_verified: 2026-09-09
 translation_of: AGENTS.md
-source_sha256: 5387c65aee40a132b2d02a09b376324d6b2bbba714909ae4acd3e2bb40c1515c
+source_sha256: 2a0aa7d47009e09d413275b1be1c309b097fa24f577550f8e1055cef93fb69f1
 ---
 
 # エージェントの入口
@@ -14,7 +14,7 @@ source_sha256: 5387c65aee40a132b2d02a09b376324d6b2bbba714909ae4acd3e2bb40c1515c
 
 1. [アーキテクチャ](ARCHITECTURE.ja.md)：責務と依存の方向。
 2. [ドキュメント索引](docs/index.ja.md)：リポジトリの正式な知識。
-3. [MVP仕様](docs/product-specs/agent-env-mvp.ja.md)：必要な動作。
+3. [MVP仕様](docs/product-specs/agent-env-mvp.ja.md)：当初の要件。現在の機能は[製品仕様](docs/product-specs/index.ja.md)に従います。
 4. [計画の規則](docs/PLANS.ja.md)：active ExecPlanの要件と必須構成。
 5. [完了済みMVP ExecPlan](docs/exec-plans/completed/agent-env-mvp.md)：提供済みの範囲と検証の記録。
 
@@ -101,6 +101,8 @@ active planをcompletedへ移す前に、すべての受け入れ要件を完了
 内容が食い違う場合は英語の`*.md`を優先し、日本語訳は対応する`*.ja.md`に置く。
 永続文書を追加・変更する際は、同じ一貫した変更単位で両言語を更新する。
 source hashを更新する前に翻訳の意味を確認する。hashの一致だけでは正確さを証明できない。
+意味を省かず、各言語の読者に合わせて書く。文や節の順序を英語にそろえる必要はない。
+文書の構成を実質的に変える場合は、言語の方針に従って独立レビューを行う。
 生成文書と歴史的アーカイブには明示的な例外を設ける。
 文書検査は翻訳の欠落と更新漏れを検出しなければならない。完了前にdocs-checkを実行する。
 適用範囲、メタデータ、索引、例外登録は[言語の方針](docs/design-docs/bilingual-documentation.ja.md)を参照。

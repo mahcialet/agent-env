@@ -3,12 +3,16 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/QUALITY.md
-source_sha256: 687bac3576c2d0013301a2e156e7e82514e9336fdf7d848ad89827833a2e3c62
+source_sha256: 46ddedd69d1ba7712435d979814e91b4582e7f8860f878e18da4b3f5c5e865ff
 ---
 
 # 品質と検証
 
 [英語版（翻訳元）](QUALITY.md)
+
+通常の検査にはリポジトリハーネスを使い、変更する動作に応じて実runtimeのfixtureも実行します。
+以下のコマンドは検証方法です。実行記録が証明するのは、テストしたrevisionと環境での結果に限ります。
+前提条件の不足やクロスビルド成功を、ネイティブ実行の受け入れ完了として扱いません。
 
 ## 正式な検査
 
@@ -18,7 +22,11 @@ go run ./tools/repoctl check
 go run ./tools/repoctl test-integration
 ```
 
-`doctor`はGo、gofmt、Gitの場所を確認する。Dockerが必要なのは明示的な統合コマンドだけである。`check`は、整形確認、`go test ./...`、`go vet ./...`、文書検証、生成物のずれ検出、アーキテクチャ検査を、実行内容が分かる形で組み合わせる。Bash、Make、PowerShellは不要である。内部の各コマンドも直接実行できる。
+`doctor`はGo、gofmt、Gitの場所を確認します。Dockerが必要なのは明示的な統合コマンドだけです。
+内部の各コマンドも直接実行できます。ハーネスにBash、Make、PowerShellは不要です。
+
+`check`は実行内容を示しながら、整形確認、`go test ./...`、`go vet ./...`、文書検証、
+生成物のずれ検出、アーキテクチャ検査を実行します。
 
 | ハーネスのコマンド | 範囲 |
 | --- | --- |
@@ -47,6 +55,8 @@ SQLiteテストは実際の一時DBを使い、Unicodeパス、再オープン�
 
 名前付きテストが伏字化されたstdout／stderr／artifactと非ゼロ終了状態を保存すること、readiness失敗が実リソースをrollbackすること、変更済みの追跡対象worktreeはdiff証拠を伴う明示的なforceまでGCで削除されないことも検証する。
 
+### Dockerの実行記録
+
 最後のローカルLinux CLI統合テストは109.95秒で成功し、生成endpoint、診断descriptor、component単位の実行中／アーカイブログを確認した。これはそのリビジョンでの実Docker動作の証拠であり、後続の変更や全ネイティブプラットフォームの完了を示すものではない。fixtureの全リソースは固有の追跡可能な識別子とlease単位の清掃を使い、一般的なDocker pruneは実行しない。
 
 ## 実Podmanのfixture
@@ -67,6 +77,8 @@ go test -tags=integration ./internal/cli -run TestPodmanIntegration -count=1 -v
 検査する。engineへの変更はlease単位で行い、所有を確認したcleanupを使う。
 global pruneは実行しない。
 
+### Podmanの実行記録と未検証の範囲
+
 2026-09-08に、両opt-inを有効にした`TestPodmanIntegrationConcurrentLeasesAndEvidence`が
 110.13秒で成功した。Linux rootless Podman 5.4.2、podman-compose 1.6.0とDockerを併用した。
 両Podman leaseが選択したservice閉包でreadyとなり、HTTP endpointに到達できた。
@@ -85,11 +97,17 @@ Linuxのrace／Docker integration jobが成功し、全12 jobが成功した。
 
 CIはGo 1.26.xと1.27.xを使い、Windows、macOS、LinuxでハーネスとCLIビルドをネイティブ実行する。Linuxでは`go test -race ./...`と明示的なDocker統合テストも実行する。別のクロスビルドjobで`CGO_ENABLED=0`の5対象を確認する。
 
+### MVPの過去の検証記録
+
 [完了済み実装計画](exec-plans/completed/agent-env-mvp.md)には33件すべての受け入れ条件と、解決した独立レビューの指摘を記録している。c641286のCI 34124194139では、OS／Goのネイティブ検査6件、CGOを無効にしたビルド5件、全raceテストと実Docker統合テストを行うLinux jobの計12件が成功した。ローカルのGo 1.26.8／1.27.1での検査と実Docker統合テストも成功した。hosted macOS／WindowsでのDocker統合テストは実施済みとはしていない。
 
 ## 翻訳の検証
 
 永続文書は英語と日本語の`.ja.md`を対にし、内容が食い違う場合は英語を優先する。[言語の方針](design-docs/bilingual-documentation.ja.md)でメタデータと正確なパス単位の例外を定義する。`docs-check`は、英語ファイル全体のCRLFをLFへ正規化したSHA-256と、翻訳のsource hashを比較する。そのためWindowsのcheckoutでもLinux／macOSと一致する。検査は読み取り専用であり、翻訳メタデータを自動更新しない。hashの一致は、どの原文リビジョンを確認したかを示すだけで、翻訳の正確さは証明しない。hashを更新する前に実際の日本語文を見直す。
+
+文書の構成を実質的に変更する場合は、言語の方針に従い、英語と日本語をそれぞれ独立にレビューした後、
+意味の一致を照合します。指摘はactive ExecPlanに記録します。機械的な検査に通るだけでは、
+読みやすさや意味の維持を確認したことにはなりません。
 
 ## リリースの検証
 
@@ -112,9 +130,13 @@ Go 実行ファイルのビルド情報を静的に検査します。`release-sm
 Windows/macOS/Linux のネイティブ smoke 結果と arm64 の検証範囲は、
 [リリース計画](exec-plans/completed/standalone-release-finalization.ja.md)に明記します。
 
+### 公開の条件
+
 tag workflow は、リポジトリ検査、成果物の静的検証、繰り返しビルドの比較、ネイティブ smoke job の
 成功を公開条件にします。公開 job は再ビルドせず、検証済みの候補バイト列をアップロードします。
 workflow が存在するだけでは、リリースやネイティブ検証が成功した証拠にはなりません。
+
+### 繰り返しビルドと専用preview
 
 `release-repeat` は tag に対応する候補を検証し、同じコミット・ツールチェーンで再ビルドして、
 出力 8 ファイルすべてのバイト列を比較します。tag のないブランチや PR の検証には
@@ -161,6 +183,8 @@ config単体・race testはローカルで成功しました。baselineの`go te
 初回harnessはunit/vet成功後、提示された日本語planに翻訳metadataがなくdocs-checkで失敗しました。
 この失敗と修正を英日planに記録します。
 
+### Browserの実行記録
+
 実際のheadless Chrome for Testing 152.0.7977.82 / CDP 1.3をGo 1.27で動かし、
 `391288c`の3 OSすべてで成功しました（Browser native 34247636411）。fixtureではAX/DOM、
 screenshot、Unicode入力と消去、古い参照の拒否、iframe/shadow観測、上限付き診断、
@@ -168,7 +192,7 @@ lease所有backend、永続的な入力redaction、安全なprofile cleanupを�
 Planにはnativeの証拠とCI修正履歴を、mock testやcross-buildと分けて記録しています。
 
 既存の local Browser/CDP matrix は、`440082b` の Windows・macOS・Linux で再び成功しました
-（[run 34316121411](https://github.com/mahcialet/agent-env/actions/runs/34316121411)）。
+（[run 34320519250](https://github.com/mahcialet/agent-env/actions/runs/34320519250)）。
 この回帰検証の証拠は、remote Browser 操作の受け入れ検証とは区別します。
 
 ## 複数 host の native 検証
@@ -186,6 +210,8 @@ native process の識別情報を保持した worker 再起動、相対実行フ
 独立した cleanup を検証します。
 cleanup を確認できなければ調査用に fixture 状態を保持します。
 
+### Roleの実行記録と未検証の範囲
+
 Linux/amd64 では 21.406s で成功しました。初回実行では、通信時の JSON object 順序の正規化によって
 実際に plan digest が不一致になる問題を検出し、manifest の意味に基づく正規化と恒久的な source 往復回帰 test で修正しました。
 拡張した fixture は、`440082b` の Windows・macOS・Linux の全 job で成功しました
@@ -193,6 +219,8 @@ Linux/amd64 では 21.406s で成功しました。初回実行では、通信�
 各 runner は同じ host 上の二つの worker root を使っています。これを物理マシン・VM の複数 host 動作の証明とは扱わず、
 cross-build も native role 実行の証明にはしません。文書化した範囲で最終受け入れは完了し、
 正確な結果は [ExecPlan](exec-plans/completed/multi-host-control-plane.ja.md) に記録します。
+
+### Remote runtimeのfixture
 
 追加の remote runtime fixture も、同じ build tag を指定して明示的に実行します。
 
@@ -207,6 +235,8 @@ Compose fixture には、動作する Docker Compose と Podman/podman-compose �
 登録済みの証拠を保持して、lease 単位で cleanup します。通常の単体 test はこれらの外部 runtime を起動しません。
 この実行方法の記載は、全 OS で remote の native 受け入れが成功したという主張ではありません。
 検証した範囲と結果は 完了Plan を参照してください。
+
+### パスとWSLの検証範囲
 
 Windowsの実行パステストでは240 UTF-16単位の境界、補助文字、解決済みパス、派生する
 worktree/runtimeディレクトリと、予約・展開・出力作成前の拒否を検査します。

@@ -8,6 +8,11 @@ last_verified: 2026-09-09
 
 [日本語](QUALITY.ja.md)
 
+Use the repository harness for routine checks, then select the real-runtime
+fixture for the behavior being changed. Commands below define how to verify;
+recorded runs establish evidence only for their tested revision and environment.
+Missing prerequisites and cross-build success do not count as native acceptance.
+
 ## Canonical checks
 
 ```text
@@ -16,7 +21,12 @@ go run ./tools/repoctl check
 go run ./tools/repoctl test-integration
 ```
 
-`doctor` locates Go, gofmt, and Git. Docker is required only for the explicit integration command. `check` visibly composes formatting verification, `go test ./...`, `go vet ./...`, documentation validation, generated-file drift detection, and architecture checks. It requires no Bash, Make, or PowerShell. Underlying commands remain directly runnable.
+`doctor` locates Go, gofmt and Git. Docker is required only for the explicit
+integration command. Underlying commands remain directly runnable; the harness
+requires no Bash, Make or PowerShell.
+
+`check` visibly runs formatting verification, `go test ./...`, `go vet ./...`,
+documentation validation, generated-file drift detection and architecture checks.
 
 | Harness command | Scope |
 | --- | --- |
@@ -39,7 +49,21 @@ SQLite tests use real temporary databases, including Unicode paths, reopened/mul
 
 The [integration suite](../internal/cli/integration_test.go) creates isolated temporary Git repositories and state homes and uses [the small Compose fixture](../testdata/compose/compose.yaml). Tests require both the `integration` build tag and explicit opt-in; the harness sets these automatically. Ordinary unit tests never start Docker containers.
 
-The suite verifies simultaneous API/Dashboard leases, selected closure, manifest-generated dynamic loopback HTTP without source port declarations, versioned environment descriptors, component-scoped live/retained logs, distinct project/worktree identities, and preservation of a sibling's container/network/volume IDs. It also verifies an unselected foreign volume survives cleanup, manually removed projects become degraded, multiple repositories respect source ref overrides, named tests retain redacted stdout/stderr/artifacts and nonzero exit status, readiness failure rolls back real resources, and dirty tracked worktrees survive GC until explicit force with diff evidence.
+The suite verifies these independent behaviors:
+
+- Concurrent API/Dashboard leases use the selected closure, distinct projects and
+  worktrees. Destroy preserves a sibling's container/network/volume IDs and an
+  unselected foreign volume.
+- Manifests generate dynamic loopback HTTP without source port declarations.
+  Versioned environment descriptors and component-scoped live/retained logs
+  remain available.
+- Manually removed projects become degraded; multiple repositories respect
+  source ref overrides.
+- Named tests retain redacted stdout/stderr/artifacts and nonzero exit status.
+  Readiness failure rolls back real resources.
+- Dirty tracked worktrees survive GC until explicit force with diff evidence.
+
+### Recorded Docker evidence
 
 The final local Linux CLI integration run passed in 109.95 seconds, including generated endpoints, diagnostic descriptors, and component-scoped live and archived logs. This establishes real Docker behavior for that tested revision, not completion of later edits or every native platform. All fixture resources have unique tracked identities and lease-specific cleanup; the suite never runs a general Docker prune.
 
@@ -60,6 +84,8 @@ or unsupported prerequisites fails rather than skips. Ordinary tests start neith
 engine. The fixture checks concurrent leases, HTTP endpoints, redacted named-test
 evidence, logs, sibling/foreign-resource survival and residual cleanup. It makes
 lease-scoped engine changes and uses owned cleanup, never global prune.
+
+### Recorded Podman evidence and limits
 
 On 2026-09-08, `TestPodmanIntegrationConcurrentLeasesAndEvidence` passed in
 110.13 seconds with both opt-ins enabled, using Linux rootless Podman 5.4.2 and
@@ -83,6 +109,8 @@ also passed.
 
 CI runs the harness and CLI build natively on Windows, macOS, and Linux for Go 1.26.x and 1.27.x. Linux runs `go test -race ./...` and explicit Docker integration. Separate cross-build jobs cover five targets with `CGO_ENABLED=0`.
 
+### Historical MVP evidence
+
 The [completed implementation plan](exec-plans/completed/agent-env-mvp.md) records all 33 acceptance criteria and resolved independent review findings. CI 34124194139 on c641286 passed all 12 jobs: six native OS/Go checks, five CGO-disabled builds, and a Linux job running full race plus actual Docker integration. Local Go 1.26.8/1.27.1 checks and real Docker integration also passed. Docker integration on hosted macOS/Windows is not claimed.
 
 ## Translation verification
@@ -95,6 +123,11 @@ checkout therefore agrees with Linux/macOS. Checks are read-only and never
 refresh translation metadata automatically. A matching hash detects which
 source revision was acknowledged; it cannot prove that the translation is
 accurate. Review the actual Japanese text before updating the hash.
+
+For substantial restructuring, the language policy also requires independent
+English and Japanese reader reviews, followed by semantic parity review. Record
+the findings in the active ExecPlan; passing mechanical checks alone does not
+establish readability or preserve meaning.
 
 ## Release verification
 
@@ -118,10 +151,14 @@ byte comparison. CI pins the release builder to Go 1.27.1. Native Windows/macOS/
 smoke results and arm64 coverage must be recorded explicitly in the
 [release plan](exec-plans/completed/standalone-release-finalization.md).
 
+### Publication gates
+
 The tag workflow must gate publication on repository checks, static artifact
 validation, repeat-build comparison and native smoke jobs. The publishing job
 uploads the already checked candidate bytes without rebuilding. Workflow presence
 alone is not evidence that a release or native test has succeeded.
+
+### Repeat builds and private previews
 
 `release-repeat` validates the tag-specific candidate, rebuilds from the same
 commit/toolchain and compares all eight output files byte for byte. For untagged
@@ -173,6 +210,8 @@ the initial harness reached docs-check after unit/vet success and failed because
 the supplied Japanese plan lacked translation metadata. That failure is recorded
 and corrected in the bilingual plan.
 
+### Recorded browser evidence
+
 Real headless Chrome for Testing 152.0.7977.82 / CDP 1.3 passed on all three
 OSes with Go 1.27 at `391288c` (Browser native 34247636411). The fixture exercised
 AX/DOM, screenshots, Unicode input and clearing, stale rejection, iframe/shadow
@@ -181,7 +220,7 @@ and safe profile cleanup. The plan records native evidence and CI repair history
 separately from mock tests and cross-builds.
 
 The existing local Browser/CDP matrix passed again on Windows, macOS and Linux at
-`440082b` ([run 34316121411](https://github.com/mahcialet/agent-env/actions/runs/34316121411)).
+`440082b` ([run 34320519250](https://github.com/mahcialet/agent-env/actions/runs/34320519250)).
 This regression evidence is separate from remote Browser operation acceptance.
 
 ## Multi-host native verification
@@ -201,6 +240,8 @@ registered artifact downloads with digest verification, renewal, client/worker
 environment isolation, and independent cleanup. Unconfirmed cleanup retains fixture
 state for investigation.
 
+### Recorded role evidence and limits
+
 Linux/amd64 passed in 21.406s. The initial run exposed a real plan-digest mismatch
 when transport canonicalized JSON object order; semantic manifest canonicalization
 and a permanent source roundtrip regression fixed it. The expanded fixture passed
@@ -210,6 +251,8 @@ Each runner used two worker roots on one host. This does not prove physical-mach
 multi-host behavior, and cross-builds do not prove native role execution.
 Final acceptance is complete within the documented scope; exact results belong to the completed
 [ExecPlan](exec-plans/completed/multi-host-control-plane.md).
+
+### Remote runtime fixtures
 
 Additional remote runtime fixtures use the same explicit build tag:
 
@@ -225,6 +268,8 @@ prerequisites fails. They launch real controller/worker/runtime processes, retai
 registered evidence, and perform lease-scoped cleanup; ordinary unit tests do not
 start these external runtimes. These commands are not a claim of remote native
 acceptance on every OS; consult the completed plan for the tested scope and results.
+
+### Path and WSL verification limits
 
 The Windows execution-path tests cover the 240 UTF-16 boundary, supplementary
 characters, canonical paths, derived worktree/runtime directories and refusal

@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/PORTABILITY.md
-source_sha256: 31343c78675a43fe233c5ee8f991e740176cfca4f03045e70dd1f5886d461751
+source_sha256: d67e9537e186c6a91efa54c615e6c3422904258eeeced1d50a9dad3ae7b53142
 ---
 
 [英語版（翻訳元）](PORTABILITY.md)
@@ -11,6 +11,10 @@ source_sha256: 31343c78675a43fe233c5ee8f991e740176cfca4f03045e70dd1f5886d461751
 # 移植性
 
 このmoduleはGo 1.26.xと1.27.x、ネイティブWindows・macOS・Linuxを対象とし、CGOを必要としません。Gitと選択したCompose providerのツールは外部runtimeの前提条件です。cross-compilationが証明するのはビルド互換性であり、ネイティブのプロセス、パス、SQLite、Dockerの振る舞いではありません。
+
+まず状態の保存先・パスとネイティブツールの規則を確認し、次に利用するruntimeの前提条件を
+確認してください。検証の節では、対応範囲の規則と実際のホストで得た証拠を区別します。
+検査を再実行するコマンドは[品質](QUALITY.ja.md)を参照してください。
 
 ## 状態とパス
 
@@ -39,13 +43,23 @@ Linux/macOSはnativeのパス動作を維持します。OSの長いパス設定�
 
 コマンドは実行ファイルとargv、明示的な作業ディレクトリ、deadline、stream出力を使います。Git検査には機械可読出力を使い、Compose engine検査には構造化出力と記録したprovider/engine識別情報を使います。改行処理はCRLFを許容します。Go製のリポジトリharnessは標準ツールを直接呼び出し、shell script言語を必要としません。
 
-Unixでは管理対象コマンドのprocess groupで子孫を取り消します。Windowsではコマンドの子プロセスを実行前にJob Objectへ割り当て、取消やtimeout時にはJobを終了します。これは時間を制限した名前付きテストとprobeを支えます。汎用の常駐process runtimeには後述の独立したmanaged detached interfaceを使います。OSの隔離機構から意図的に逃れるバックグラウンドプログラムは、信頼済みリポジトリモデルの範囲外です。終了を検証できない場合は、型で識別できるプロセスツリー未確認の結果として通知します。appはレジストリ記録をrunningに保ち、レビューした復旧により完了が確定するまでcleanupを拒否しなければなりません。
+時間を制限した名前付きテストとprobeには、OSのプロセス管理機構を使います。
+Unixでは管理対象コマンドのprocess groupを通じて子孫を終了します。Windowsでは子プロセスを
+実行前にJob Objectへ割り当て、取消やtimeout時にJobを終了します。
+汎用の常駐process runtimeには、後述の独立したmanaged detached interfaceを使います。
+
+終了を検証できない場合は、型で識別できるプロセスツリー未確認の結果を返します。
+appはレジストリ記録をrunningに保ち、レビューを経た復旧で完了が確定するまでcleanupを
+拒否しなければなりません。OSの管理範囲から意図的に逃れるバックグラウンドプログラムは、
+信頼済みリポジトリモデルの対象外です。
 
 Windowsの`.cmd`と`.bat`の実行処理はWindowsアダプターに隔離します。wrapper引数はプラットフォーム固有の経路でquoteし、安全に表現できないtokenはargvを黙って変えるのではなく拒否します。ネイティブ実行ファイルのargvテストには、空白、引用符、末尾の区切り文字、Unicodeを含めます。shellに影響されるwrapperの振る舞いは別個にテストする境界です。
 
 ## Docker context
 
 WindowsとmacOSは通常Docker Desktopを使います。LinuxはComposeが動くDocker Engineまたはrootless Dockerを使えます。選択したDocker contextを割り当て前に取得し、その後ユーザーのactive contextが変わっても、観測、ログ、cleanupで使います。contextに接続できるだけでは、daemonがローカルworktreeのbindパスへアクセスできるとは限りません。リモートdaemonからのパス可用性はホストの前提条件です。
+
+## WSLとOSをまたぐ実行
 
 WSLは独立したLinux hostとして扱います。native LinuxツールとLinux側の専用state homeを使い、
 Windowsとhomeを共有しません。DrvFS/9p mount上のWSL stateは、独自mountやaliasも含めて
@@ -61,6 +75,8 @@ Docker Desktop連携はnative Linux CLI経由で利用できます。信頼す�
 Windows/WSL間の自動パス変換、混在leaseの所有権、WSLからWindows hostのAndroid Emulatorを
 制御するworkflowは対応外です。
 
+### 未検証のWSL環境
+
 実WSL2でのmount/interop受け入れは未実施です。検出条件を注入するテストによる拒否の検証を、
 実WSLの実行証拠として扱いません。
 
@@ -71,7 +87,9 @@ Pythonはproviderのホスト側導入に属し、agent-env coreの依存関係�
 現在の実行ファイルがnativeの子process bridgeとなり、生成shell scriptは不要です。
 local Linuxではlocal engineを固定し、remote/Machine呼出しでは可変の接続名ではなく
 解決済みendpointを保持します。remoteのbind pathはそのengineからアクセスできる必要が
-あります。remote loopback endpointを報告するにはhost側の到達性確認が必要です。
+あります。remoteのTCP loopback endpointを報告するにはhost側の到達性確認が必要です。
+
+### Podmanの実行記録
 
 Podman 5.4.2とpodman-compose 1.6.0で、Docker共存、動的endpoint、匿名volume cleanupを
 含む実Linux rootless integrationが成功しました。Windows/macOS/Linuxのnative provider CIは4a5de3d（run 34216579481）で成功です。
@@ -82,15 +100,35 @@ Podman 5.4.2とpodman-compose 1.6.0で、Docker共存、動的endpoint、匿名v
 
 CIは、対応する両Go minorバージョンについてWindows・macOS・Linuxのネイティブ単体/harness jobを定義します。release-build matrixは、windows/amd64、darwin/amd64、darwin/arm64、linux/amd64、linux/arm64で`CGO_ENABLED=0`を設定します。Linuxではrace testと明示的な実Docker統合も実行します。
 
+### MVPの過去の記録と未検証の範囲
+
 c641286に対するCI 34124194139では、6件すべてのネイティブOS/Go jobと5件すべてのCGO無効buildが成功しました。同じrunでLinux raceと実Compose統合も成功しました。ローカル実fixtureも、並行プロジェクト、Unicode worktree、複数リポジトリの固定、名前付き証拠、rollback、変更済みソースのcleanupを含め成功しました。[完了済み実装計画](exec-plans/completed/agent-env-mvp.md)に、すべての証拠とネイティブ回帰修正を記録しています。Windows/macOSでの実Docker統合は未実行であり、適切なrunnerが必要です。
 
 ## Androidの永続プロセス
 
-Androidは、ネイティブのファイル出力を持つ独立したdetached-process APIを使います。呼び出したCLIとその要求contextが終了してもプロセスは存続します。Linux/macOSはprocess-group識別情報を保持し、root終了後に残る子孫を系譜不確定として扱い、cleanupを禁止します。Windowsは中断状態のプロセスを名前付きJobに割り当ててから再開します。専用helperがJobが空になるまでhandleを保持し、その証拠を記録します。helperの証拠が欠けている、またはlogon sessionが異なる場合はcleanupを禁止します。生成時識別情報により再利用されたプロセスを拒否し、観測が不確定なら書き込み可能状態を削除しません。永続起動にはネイティブ実行ファイルを使い、batch wrapperやshellには依存しません。
+Androidは独立したdetached-process APIを使い、出力をネイティブのファイルへ保存します。
+呼び出したCLIやその要求contextが終了してもプロセスは存続します。
+永続起動にはネイティブ実行ファイルを使い、batch wrapperやshellには依存しません。
+
+cleanupの可否は、各OSで所有権を証明できるかどうかで判断します。
+
+| プラットフォーム | 識別情報とcleanupの条件 |
+| --- | --- |
+| Linux/macOS | process groupの識別情報を保持します。起点プロセスの終了後に子孫が残っている場合は系譜が不確定となり、cleanupを禁止します。 |
+| Windows | 中断状態のプロセスを名前付きJobに割り当ててから再開します。専用helperがJobが空になるまでhandleを保持し、その証拠を記録します。helperの証拠がない場合やlogon sessionが異なる場合はcleanupを禁止します。 |
+
+どのOSでも、生成時の識別情報を使って再利用されたプロセスを拒否します。
+観測が不確定なら、書き込み可能な状態を削除しません。
+
+### SDKとAVDの探索
 
 SDK探索は`ANDROID_HOME`、次に`ANDROID_SDK_ROOT`、最後にプラットフォーム既定値を使います。両方の変数が設定され、その値が競合する場合は失敗します。テンプレートは`ANDROID_AVD_HOME`、`ANDROID_USER_HOME/avd`、またはユーザーの`.android/avd`を使います。Emulatorのarchitectureと利用可能なホストアクセラレーションは前提条件です。
 
+### 共有ADBの前提条件
+
 `127.0.0.1:5037`の互換ローカルADBサーバーは共有前提条件です。アダプターは起動またはboot検査の前に、直接の読み取り専用`host:version`応答をSDKクライアントのプロトコルバージョンと比較します。互換性がない、または不正な応答のサーバーは拒否します。サーバーがなければ、Emulatorより先にSDKの`adb -L tcp:localhost:5037 start-server`を別個のdetached起動で実行し、起動診断を保持します。時間制限付きboot検査は`-H 127.0.0.1 -P 5037 -s <reserved-serial>`を使い、継承したserver-routing変数を解除します。このboot検査では、欠けたサーバーを起動しません。互換性probeは、通常のSDKクライアントのversion不一致による置換経路を防ぎます。共有ADBはリースcleanupの対象外です。
+
+### 未検証のAndroid環境
 
 ネイティブ単体CIと実Emulator統合は別です。実SDK統合はLinuxで実施しています。Windows/macOSでの実SDK起動、アクセラレーション、共有サーバーの寿命は未検証です。Android ExecPlanにテストしたrevisionと残るプラットフォーム上の不足を記録しています。
 
@@ -104,6 +142,8 @@ Windows は ZIP、macOS/Linux は tar.gz を使い、全対象を `CGO_ENABLED=0
 時刻を使います。ZIP は精度の粗い DOS フィールドに加え、UTC の拡張 timestamp を保持します。
 状態の保存先は引き続き OS 標準の state root または絶対パスの `AGENT_ENV_HOME` であり、
 空白や非 ASCII 文字を含むパスも扱います。
+
+### リリースのネイティブ実行証拠
 
 6 対象のクロスビルド成功は、6 通りすべてのネイティブ動作を証明しません。
 arm64 を含め、実際に smoke test を実行したネイティブ runner を個別に記録します。
@@ -119,6 +159,8 @@ arm64 を含め、実際に smoke test を実行したネイティブ runner を
 PATH toolにはsource/hostの由来と読み取れる実行ファイルのdigestを記録しますが、host toolの
 再現性は主張しません。coreに暗黙のshell、batch wrapper、service manager、新たな言語runtime、
 daemonは不要です。
+
+### ネイティブ停止処理の限界
 
 Unixは各signal直前に生成識別情報とprocess groupへの所属を確認します。観測とgroupへの
 signal送信はatomicではなく、最後のnative syscallとの競合を減らせても解消はできません。
@@ -141,11 +183,15 @@ browser自動操作には、process runtimeから直接起動できる互換nati
 argvには`--enable-automation`と専用`${runtime_dir}/profile`などを必須とし、接続ごとにCDPから
 実際のcommand lineとPIDを検証します。Go WebSocket transportを使い、coreコマンドに
 Node、Python、browser driver、CGO、shellの要件を追加しません。Chromeは同梱しません。
+### 選定したBrowserの検証環境
+
 選定したnative matrixはChrome for Testing 152.0.7977.82、Go 1.27、Windows/macOS/Linuxです。
 実測browser/protocol versionとnative成功・失敗の証拠は
 [完了browser plan](exec-plans/completed/browser-cdp-automation.ja.md)に記録しています。
 `391288c`の3 native jobがすべて成功し（Browser native 34247636411）、CDP 1.3を報告しました。
 この実行結果はcross-buildの証拠と分けて扱います。
+
+### Browserのsandbox設定
 
 Linuxでは、導入したbrowserのsandboxを利用できる必要があります。UbuntuのAppArmorは、
 package profileの対象外へ展開したChrome for Testingのuser namespace利用を拒否する
@@ -158,6 +204,8 @@ Windowsでは、downloadしたCfTのインストール先に、ChromiumのLPAC s
 read/execute ACLがない場合があります。native CIではChromium公式testの設定に従い、
 制限付きapplication-package SID（S-1-15-2-2）へbrowserインストール先の権限だけを
 付与します。lease profileや無関係なdirectoryには権限を付与せず、sandboxも無効化しません。
+
+### Windowsの削除再試行の上限
 
 native process treeの不在を証明した後、汎用process state cleanupはWindows共有違反を
 呼出し側context内・最大2秒で再試行し、毎回所有権とpathを再検査します。持続するfile lockを
@@ -174,6 +222,8 @@ worker には選択した runtime が必要とする外部ツールを用意し�
 事前に用意した PEM 証明書と、別々の絶対 path の `AGENT_ENV_HOME` 状態 root が必要です。
 client の絶対 source path の代わりに commit 済み bundle を転送し、worker-local の path と loopback endpoint は
 worker の OS 上の意味を保持します。
+
+### Roleの実行記録と未検証の範囲
 
 実 TLS の native fixture は、各 runner の二つの worker root を使い、`440082b` の Windows・macOS・Linux で
 成功しました（run 34320519252）。空白・Unicode を含む commit 済み path、controller/worker 再起動、
