@@ -1,9 +1,9 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-08
+last_verified: 2026-09-09
 translation_of: docs/design-docs/lease-control-plane.md
-source_sha256: 78bc38310cf020dc4fb068a857939111f793a5da312252a49f069a3087068b5a
+source_sha256: 4aeda5c6d64f5106aa1d983aa1ef277b13119c77f4f5f1aeb49fe7d9310e47a4
 ---
 
 [English（翻訳元）](lease-control-plane.md)
@@ -216,3 +216,5 @@ desired state は active、stopped、released です。observed state は alloca
 正規化した repositories、leases、lease_sources、lease_components、resources、events、command_runs、artifacts を永続化し、外部キーと owner/state/expiration/repository/resource 検索用 index を持たせます。一意なリソース名はトランザクションで予約します。YAML/domain/database のモデルは分けます。foreign_keys、少なくとも 5000 ミリ秒の busy_timeout、検証済み WAL を有効にします。秘密情報を含む任意の環境 map を serialize してはいけません。
 
 alias/リポジトリ識別情報/解決済み commit をソートした組が source-set digest を決めます。各 source の正確な要求 ref、解決済み commit、checkout mode、書き込み policy、timestamp を materialize 前に保存します。review worktree は detached で、生成出力を書き込み可能です。ファイルシステム権限を review policy とみなすのではなく、削除前に staged/unstaged の追跡対象変更を検出します。
+
+command readiness は実行前に running の command 行を永続化する。プロセス群の終了確認と証拠の永続化が完了した場合だけ terminal 行に進める。終了または出力が未確認なら再試行せず、作成を隔離し running 行を残して、後続の destroy/GC でも source を保持する。終了確認済みの通常 probe 失敗は再試行できる。永続化された中断要求では次の試行を開始せず readiness を停止する。

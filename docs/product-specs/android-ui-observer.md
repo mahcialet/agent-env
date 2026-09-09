@@ -1,7 +1,7 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-08
+last_verified: 2026-09-09
 ---
 
 # Android UI observer
@@ -89,6 +89,15 @@ secrets and receive configured secret redaction. The entered value is not retain
 snapshots can contain noneditable application echoes, and explicitly requested
 logcat can contain values the application logged; configured secret redaction still
 applies. Snapshots cannot guarantee that arbitrary application text is nonsensitive.
+Automatic editable/password suppression preserves fingerprints that exclude those values.
+If configured secrets occur in semantic node or window metadata, all node
+fingerprints are removed; the snapshot cannot authorize semantic input.
+Secret-bearing window metadata also causes all derived window keys to be removed.
+When the operation has secret matchers, its optional after-action fingerprint is
+omitted because the undisclosed after-tree cannot be checked for secret-derived identity.
+The field and serialized response limits apply again after redaction, including
+JSON escaping and snapshot metadata. Omitted fields or whole nodes are explicitly
+marked truncated; oversized metadata produces a bounded invalid result.
 Evidence uses private file permissions.
 
 Screenshots cover the entire display even when an application is selected. PNG
@@ -101,7 +110,9 @@ process restarts or subprocesses, never clears global logs, and never silently
 falls back to unscoped capture. Output is redacted and capped at 256 KiB / 2000 lines, available inline in text/JSON
 as well as a registered artifact. PID reuse can include historical lines from a
 previous process; attribution is to the current numeric PID, not proven package
-history.
+history. `--since` accepts whole seconds from 1s through 1h; fractional seconds
+are rejected before execution. The device tail requests one extra record to detect
+actual omission: exactly 2000 complete in-window lines alone do not mean truncation.
 
 ## Companion and portability
 
@@ -110,6 +121,10 @@ platform `UiAutomation`; Android API 26 or later is required. It has no AndroidX
 target-app dependency. Its source, protocol version and build inputs belong to this
 repository. An explicit native Go build tool produces an APK and metadata containing
 its digest and source digest. Ordinary Go builds/tests require no Android SDK/JDK.
+Set `AGENT_ENV_UI_HELPER` to an explicit helper directory before normal helper use;
+an unset or whitespace-only value never selects files from the current directory.
+Recovery instead uses the recorded verified helper identity even when host helper
+files have disappeared or been replaced.
 The runtime verifies this metadata and installed APK identity before using it;
 a conflicting preinstalled helper is refused, not replaced. Removing the disposable
 AVD removes the helper. No global ADB service or host tool configuration is changed.

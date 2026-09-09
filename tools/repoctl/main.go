@@ -318,7 +318,7 @@ func documentStructureCheck(root string, paths []string) error {
 				}
 				found := false
 				counts := map[string]int{}
-				for _, line := range strings.Split(string(content), "\n") {
+				for _, line := range strings.Split(documentBlockProse(string(content)), "\n") {
 					if !strings.HasPrefix(line, "#") {
 						continue
 					}

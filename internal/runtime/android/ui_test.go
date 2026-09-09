@@ -93,7 +93,7 @@ func TestUILogPIDAttributionAndBounds(t *testing.T) {
 	a, r, _, runner, _ := applicationFixture(t)
 	runner.output["shell pidof com.example.app"] = execx.Result{Stdout: "1234\n"}
 	runner.output["shell date +%s"] = execx.Result{Stdout: "1000\n"}
-	runner.output["shell logcat -d -v epoch --pid 1234 -t 2000"] = execx.Result{Stdout: "900.000 1234 1234 I Tag: old\n999.000 1234 1234 I Tag: current\n"}
+	runner.output["shell logcat -d -v epoch --pid 1234 -t 2001"] = execx.Result{Stdout: "900.000 1234 1234 I Tag: old\n999.000 1234 1234 I Tag: current\n"}
 	o, err := a.ObserveUI(context.Background(), r, domain.UIRequest{Version: 1, Operation: "logcat", Package: "com.example.app", SinceSeconds: 30})
 	if err != nil || o.PID != 1234 || o.Since != "970.000" || strings.Contains(string(o.Binary), "old") || !strings.Contains(string(o.Binary), "current") {
 		t.Fatalf("bad attribution: %+v %v", o, err)

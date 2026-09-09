@@ -1,7 +1,7 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-08
+last_verified: 2026-09-09
 ---
 
 # Lease control plane
@@ -210,3 +210,5 @@ Ownership is advisory metadata, not authorization. Explicit --owner overrides AG
 Persist normalized repositories, leases, lease_sources, lease_components, resources, events, command_runs and artifacts, with foreign keys and indexes for owner/state/expiration/repository/resource lookup. Reserve unique resource names transactionally. Keep YAML/domain/database models separate. Enable foreign_keys, busy_timeout at least 5000 milliseconds and verified WAL. Never serialize arbitrary secret-bearing environment maps.
 
 A sorted alias/repository identity/resolved-commit tuple determines source-set digest. Store exact requested refs, resolved commits, checkout mode, writable policy and timestamps for every source before materialization. Review worktrees are detached and writable for generated output; detect staged and unstaged tracked edits before cleanup instead of treating filesystem permissions as review policy.
+
+Command readiness attempts persist a running command record before execution. Only complete process-tree termination and evidence persistence allow a terminal record. Unconfirmed termination or output halts retries, quarantines creation, and leaves the record running so later destroy/GC also retains the source. Ordinary completed probe failures may retry. Durable cancellation requests stop readiness without starting another attempt.

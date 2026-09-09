@@ -322,14 +322,45 @@ func inspectReleaseBinary(b []byte, version, commit string, t releaseTarget) (re
 	return releaseIdentity{version, commit, "false", info.GoVersion, t.GOOS, t.GOARCH}, nil
 }
 func regularRead(path string, limit int64) ([]byte, error) {
-	st, e := os.Lstat(path)
-	if e != nil {
-		return nil, e
+	st, err := os.Lstat(path)
+	if err != nil {
+		return nil, err
 	}
-	if !st.Mode().IsRegular() || st.Size() > limit {
+	if !st.Mode().IsRegular() {
 		return nil, fmt.Errorf("invalid release file %s", path)
 	}
-	return os.ReadFile(path)
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	return readOpenedReleaseFile(f, limit)
+}
+
+type releaseFileReader interface {
+	io.Reader
+	Stat() (os.FileInfo, error)
+}
+
+func readOpenedReleaseFile(f releaseFileReader, limit int64) ([]byte, error) {
+	st, err := f.Stat()
+	if err != nil {
+		return nil, err
+	}
+	if limit < 0 || !st.Mode().IsRegular() || st.Size() > limit {
+		return nil, fmt.Errorf("invalid release file size or type")
+	}
+	data, err := io.ReadAll(io.LimitReader(f, limit))
+	if err != nil {
+		return nil, err
+	}
+	var extra [1]byte
+	if n, err := io.ReadFull(f, extra[:]); n != 0 {
+		return nil, fmt.Errorf("release file exceeds read limit")
+	} else if err != io.EOF {
+		return nil, err
+	}
+	return data, nil
 }
 func checkRelease(root, dir, version, tag, commit string, mt time.Time) (releaseManifest, error) {
 	var m releaseManifest
@@ -444,7 +475,7 @@ func releaseBinaryContainsPath(binary []byte, path string) bool {
 }
 
 func releaseBinaryContainsPathWithModules(binary []byte, path string, modules []string) bool {
-	if len(path) <= 3 {
+	if path == "" || filepath.Clean(path) == filepath.VolumeName(path)+string(filepath.Separator) {
 		return false
 	}
 	for _, prefix := range []string{path + string(filepath.Separator), filepath.ToSlash(path) + "/"} {

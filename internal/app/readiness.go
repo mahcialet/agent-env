@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -89,10 +90,9 @@ func (s *Service) runProbe(ctx context.Context, l domain.Lease, component string
 			if err != nil {
 				return err
 			}
-			result, err := s.Runner.Run(ctx, execx.Command{Name: p.Command[0], Args: p.Command[1:], Dir: directory, Timeout: timeout})
-			last = err
-			if e := s.saveTextArtifact(context.WithoutCancel(ctx), l, "readiness", fmt.Sprintf("%s-%d-probe.log", component, index), evidence.RedactString(result.Stdout+"\n"+result.Stderr, probeSecrets)); e != nil {
-				return e
+			last = s.readinessCommand(ctx, l, component, index, p, directory, timeout, probeSecrets)
+			if errors.Is(last, execx.ErrProcessTreeUnconfirmed) || errors.Is(last, execx.ErrOutputIncomplete) || errors.Is(last, context.Canceled) || operationLost(ctx) {
+				return last
 			}
 		default:
 			return fmt.Errorf("unsupported probe %q", p.Type)
@@ -106,6 +106,59 @@ func (s *Service) runProbe(ctx context.Context, l domain.Lease, component string
 		case <-time.After(interval):
 		}
 	}
+}
+
+// Each command attempt has the same durable completion barrier as a named test.
+// A retry must never conceal a prior attempt whose descendants or evidence are
+// incomplete, and a later destroy must still see that attempt after Create ends.
+func (s *Service) readinessCommand(ctx context.Context, l domain.Lease, component string, index int, p config.Probe, directory string, timeout time.Duration, secrets []string) error {
+	run := domain.CommandRun{ID: newID(), LeaseID: l.ID, Name: fmt.Sprintf("readiness:%s:%d", component, index), Source: p.Source, Directory: directory, StartedAt: time.Now().UTC(), ExitCode: -1, Status: "running"}
+	for _, arg := range p.Command {
+		run.Argv = append(run.Argv, evidence.RedactString(arg, secrets))
+	}
+	if err := s.Store.SaveRun(ctx, run); err != nil {
+		return err
+	}
+	result, commandErr := s.runWithCancellation(ctx, run.ID, execx.Command{Name: p.Command[0], Args: p.Command[1:], Dir: directory, Timeout: timeout})
+	// Retain only known classification sentinels, never the runner's potentially
+	// credential-bearing original error in the public error chain.
+	var safetyErr error
+	for _, sentinel := range []error{execx.ErrProcessTreeUnconfirmed, execx.ErrOutputIncomplete} {
+		if errors.Is(commandErr, sentinel) {
+			safetyErr = errors.Join(safetyErr, sentinel)
+		}
+	}
+	var diagnostic error
+	if commandErr != nil {
+		diagnostic = errors.New(evidence.RedactString(commandErr.Error(), secrets))
+		if errors.Is(commandErr, context.Canceled) {
+			diagnostic = errors.Join(context.Canceled, diagnostic)
+		}
+	}
+	finishCtx := context.WithoutCancel(ctx)
+	artifactErr := s.saveTextArtifact(finishCtx, l, "readiness", fmt.Sprintf("%s-%d-%s-probe.log", component, index, run.ID), evidence.RedactString(result.Stdout+"\n"+result.Stderr, secrets))
+	if artifactErr != nil {
+		safetyErr = errors.Join(safetyErr, execx.ErrOutputIncomplete, errors.New(evidence.RedactString(artifactErr.Error(), secrets)))
+	}
+	if safetyErr != nil {
+		return errors.Join(safetyErr, diagnostic)
+	}
+	if operationLost(ctx) {
+		return errors.Join(domain.ErrLockLost, diagnostic)
+	}
+	run.FinishedAt = time.Now().UTC()
+	run.ExitCode = result.ExitCode
+	run.Status = "passed"
+	if commandErr != nil || result.ExitCode != 0 {
+		run.Status = "failed"
+		if diagnostic == nil {
+			diagnostic = fmt.Errorf("readiness command exited with status %d", result.ExitCode)
+		}
+	}
+	if err := s.Store.SaveRun(finishCtx, run); err != nil {
+		return errors.Join(execx.ErrOutputIncomplete, diagnostic, errors.New(evidence.RedactString(err.Error(), secrets)))
+	}
+	return diagnostic
 }
 
 func (s *Service) Endpoints(ctx context.Context, l domain.Lease) (map[string]string, error) {

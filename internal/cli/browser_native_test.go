@@ -509,6 +509,30 @@ stacks:
 	if _, err := invoke("browser", "click", leases[1].ID, "--browser", "web", "--snapshot", s.ID, "--node", find(s, "button", "Send request").Ref); err == nil {
 		t.Fatal("cross-lease snapshot accepted")
 	}
+
+	t.Run("page mutation table identifies affected page", func(t *testing.T) {
+		createdText := run(repo, cliPath, "browser", "page-create", leases[0].ID, "--browser", "web")
+		listed := call("pages").Observation.Pages
+		var affected string
+		for _, candidate := range listed {
+			if candidate.ID != page {
+				affected = candidate.ID
+			}
+		}
+		if affected == "" {
+			t.Fatal("creation did not create a page")
+		}
+		if !strings.Contains(createdText, "Page created "+affected+" ") {
+			t.Errorf("created page ID absent from mutation table: %s", createdText)
+		}
+		closedText := run(repo, cliPath, "browser", "page-close", leases[0].ID, "--browser", "web", "--page", affected)
+		if !strings.Contains(closedText, "Page closed "+affected+" ") || strings.Contains(closedText, "Page "+affected+" ") {
+			t.Errorf("closed page displayed as inventory instead of mutation: %s", closedText)
+		}
+		if pages := call("pages").Observation.Pages; len(pages) != 1 || pages[0].ID != page {
+			t.Fatalf("mutation affected sibling page: %+v", pages)
+		}
+	})
 	created := call("page-create")
 	newPage := created.Observation.Page.ID
 	if newPage == "" {

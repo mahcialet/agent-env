@@ -78,8 +78,8 @@ func validateUIOptions(o *UIOptions) error {
 	if o.Since == 0 {
 		o.Since = 30 * time.Second
 	}
-	if o.Since < time.Second || o.Since > time.Hour {
-		return errors.New("logcat since must be 1s–1h")
+	if o.Since < time.Second || o.Since > time.Hour || o.Since%time.Second != 0 {
+		return errors.New("logcat since must be whole seconds from 1s–1h")
 	}
 	if o.X < 0 || o.Y < 0 || o.ToX < 0 || o.ToY < 0 || o.X > 32767 || o.Y > 32767 || o.ToX > 32767 || o.ToY > 32767 {
 		return errors.New("coordinates must be 0–32767")
@@ -297,7 +297,7 @@ func (s *Service) UI(ctx context.Context, id string, o UIOptions) (result UIResu
 			effectErr = errors.Join(effectErr, checkErr)
 		} else {
 			recoveryCtx, recoveryCancel := context.WithTimeout(ctx, 10*time.Second)
-			quiesced, recoveryErr := s.AndroidUI.ObserveUI(recoveryCtx, r, domain.UIRequest{Version: 1, Operation: "quiesce"})
+			quiesced, recoveryErr := s.AndroidUI.ObserveUI(recoveryCtx, r, domain.UIRequest{Version: 1, Operation: "quiesce", ExpectedBackend: result.Observation.Backend})
 			recoveryCancel()
 			if recoveryErr == nil && quiesced.Confirmed && quiesced.Status == "ok" {
 				result.Observation.Confirmed = true
@@ -343,19 +343,20 @@ func (s *Service) UI(ctx context.Context, id string, o UIOptions) (result UIResu
 		return nil
 	}
 	var persistErr error
+	if (o.Operation == "snapshot" || o.Operation == "wait") && result.Observation.Status == "ok" {
+		result.Snapshot = &domain.UISnapshot{Version: 1, ID: result.Run.ID, LeaseID: id, Runtime: r.Name, Serial: r.Android.Serial, Package: req.Package, Backend: result.Observation.Backend, CapturedAt: time.Now().UTC(), Tree: result.Observation.Snapshot}
+	}
+	if e := boundUIEvidence(&result.Observation, result.Snapshot); e != nil {
+		effectErr = errors.Join(effectErr, e)
+		result.Snapshot = nil
+		rejectUIEvidence(&result.Observation)
+	}
 	if len(result.Observation.Raw) > 0 {
 		persistErr = save("ui-raw", "raw.json", result.Observation.Raw)
 	}
-	if (o.Operation == "snapshot" || o.Operation == "wait") && result.Observation.Status == "ok" {
-		result.Snapshot = &domain.UISnapshot{Version: 1, ID: result.Run.ID, LeaseID: id, Runtime: r.Name, Serial: r.Android.Serial, Package: req.Package, Backend: result.Observation.Backend, CapturedAt: time.Now().UTC(), Tree: result.Observation.Snapshot}
+	if result.Snapshot != nil {
 		data, e := json.Marshal(result.Snapshot)
-		if e == nil && len(data) > 2<<20 {
-			effectErr = errors.Join(effectErr, errors.New("normalized snapshot exceeds limit"))
-			result.Snapshot = nil
-			result.Observation.Snapshot = domain.UITree{}
-			result.Observation.Detail = "Normalized snapshot rejected: exceeds size limit."
-			result.Observation.Status = "invalid"
-		} else if e == nil {
+		if e == nil {
 			e = save("ui-snapshot", "snapshot.json", data)
 		}
 		persistErr = errors.Join(persistErr, e)
@@ -390,6 +391,10 @@ func (s *Service) UI(ctx context.Context, id string, o UIOptions) (result UIResu
 			code = "AGENTENV-UI-REFUSED"
 		}
 		effectErr = fmt.Errorf("%s: UI operation refused: %s", code, result.Observation.Status)
+	}
+	if e := boundUIEvidence(&result.Observation, nil); e != nil {
+		effectErr = errors.Join(effectErr, e)
+		rejectUIEvidence(&result.Observation)
 	}
 	data, e := json.Marshal(result.Observation)
 	if e == nil {
@@ -432,6 +437,11 @@ func uiContains(tree domain.UITree, want string) bool {
 	return false
 }
 func sanitizeUIObservation(o *domain.UIObservation, secrets []string) {
+	// The post-action hash comes from an undisclosed after hierarchy. With any
+	// configured secret, its provenance cannot be attested from the before tree.
+	if len(secrets) > 0 {
+		o.AfterFingerprint = ""
+	}
 	windowSecret := false
 	for i := range o.Snapshot.Windows {
 		w := &o.Snapshot.Windows[i]
@@ -449,21 +459,30 @@ func sanitizeUIObservation(o *domain.UIObservation, secrets []string) {
 	nodeSecret := false
 	for i := range o.Snapshot.Nodes {
 		n := &o.Snapshot.Nodes[i]
-		before := n.Text + "\x00" + n.Description + "\x00" + n.Hint
+		// The producer deliberately excludes editable fields from semantic hashes.
+		// Suppression itself therefore cannot mean that a hash contains a secret.
 		if n.Editable || n.Password {
 			n.Text = "[REDACTED]"
 			n.Description = "[REDACTED]"
 			n.Hint = "[REDACTED]"
+		} else {
+			for _, field := range []*string{&n.Text, &n.Description, &n.Hint} {
+				before := *field
+				*field = evidence.RedactString(*field, secrets)
+				nodeSecret = nodeSecret || before != *field
+			}
 		}
-		n.Text = evidence.RedactString(n.Text, secrets)
-		n.Description = evidence.RedactString(n.Description, secrets)
-		n.Hint = evidence.RedactString(n.Hint, secrets)
-		nodeSecret = nodeSecret || before != n.Text+"\x00"+n.Description+"\x00"+n.Hint
+		for _, field := range []*string{&n.Package, &n.Class, &n.ResourceID} {
+			before := *field
+			*field = evidence.RedactString(*field, secrets)
+			nodeSecret = nodeSecret || before != *field
+		}
 	}
-	if nodeSecret {
+	if nodeSecret || windowSecret {
 		for i := range o.Snapshot.Nodes {
 			o.Snapshot.Nodes[i].Fingerprint = ""
 		}
+		o.AfterFingerprint = ""
 	}
 	o.Detail = evidence.RedactString(o.Detail, secrets)
 	o.Log = evidence.RedactString(o.Log, secrets)
@@ -479,8 +498,9 @@ func sanitizeUIObservation(o *domain.UIObservation, secrets []string) {
 		} else {
 			raw.Raw = nil
 			sanitizeUIObservation(&raw, secrets)
+			boundErr := boundUIEvidence(&raw, nil)
 			normalized, marshalErr := json.Marshal(raw)
-			if marshalErr != nil || len(normalized) > 1<<20 {
+			if boundErr != nil || marshalErr != nil || len(normalized) > 1<<20 {
 				o.Raw = []byte(`{"detail":"raw evidence rejected after redaction: size bound"}`)
 			} else {
 				o.Raw = normalized
@@ -548,8 +568,8 @@ func (s *Service) loadUISnapshot(ctx context.Context, l domain.Lease, id string)
 		return nil, err
 	}
 	defer f.Close()
-	data, err := io.ReadAll(io.LimitReader(f, (2<<20)+1))
-	if err != nil || len(data) > 2<<20 {
+	data, err := io.ReadAll(io.LimitReader(f, (1<<20)+1))
+	if err != nil || len(data) > 1<<20 {
 		return nil, errors.New("snapshot exceeds size bound")
 	}
 	sum := sha256.Sum256(data)

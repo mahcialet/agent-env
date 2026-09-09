@@ -173,14 +173,16 @@ func TestUIEvidenceRedactsEnteredAndEditableText(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	called := false
 	p.observe = func(_ context.Context, q domain.UIRequest) (domain.UIObservation, error) {
+		called = true
 		if q.Text != secret {
 			t.Fatal("text payload altered")
 		}
 		return domain.UIObservation{Confirmed: true, Status: "refused", Detail: secret}, errors.New(secret)
 	}
 	result, err := s.UI(context.Background(), l.ID, UIOptions{Operation: "set-text", Snapshot: snap.Snapshot.ID, Node: "n1", Text: secret})
-	if err == nil || strings.Contains(err.Error(), secret) {
+	if !called || err == nil || strings.Contains(err.Error(), secret) {
 		t.Fatalf("error leaked %v", err)
 	}
 	encoded, _ := json.Marshal(result)

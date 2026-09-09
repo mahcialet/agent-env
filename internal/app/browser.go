@@ -386,6 +386,11 @@ func (s *Service) Browser(ctx context.Context, id string, o BrowserOptions) (res
 			dom, e = redactBrowserJSON(v, secrets, fingerprints)
 		}
 		if e == nil {
+			var truncated bool
+			dom, truncated, e = boundBrowserDOM(dom)
+			result.Observation.Truncated = result.Observation.Truncated || truncated
+		}
+		if e == nil {
 			e = save("browser-dom", "dom-snapshot.json", dom)
 		}
 		persistErr = errors.Join(persistErr, e)
@@ -568,4 +573,56 @@ func (s *Service) loadBrowserSnapshot(ctx context.Context, l domain.Lease, id st
 		return nil, errors.New("browser snapshot identity mismatch")
 	}
 	return &snap, nil
+}
+
+// Redaction may expand structural DOM names. Bound the final encoded artifact,
+// preserving whole nodes and every retained identity field rather than slicing
+// JSON bytes. Only an actual omitted node sets the truncation flag.
+func boundBrowserDOM(data []byte) ([]byte, bool, error) {
+	const limit = 1 << 20
+	if len(data) <= limit {
+		return data, false, nil
+	}
+	var doc map[string]json.RawMessage
+	if err := json.Unmarshal(data, &doc); err != nil {
+		return nil, false, err
+	}
+	var nodes []json.RawMessage
+	if err := json.Unmarshal(doc["nodes"], &nodes); err != nil {
+		return nil, false, err
+	}
+	if len(nodes) == 0 {
+		return nil, false, errors.New("DOM snapshot metadata exceeds 1 MiB")
+	}
+	doc["truncated"] = json.RawMessage("true")
+	encode := func(count int) ([]byte, error) {
+		encoded, err := json.Marshal(nodes[:count])
+		if err != nil {
+			return nil, err
+		}
+		doc["nodes"] = encoded
+		return json.Marshal(doc)
+	}
+	empty, err := encode(0)
+	if err != nil {
+		return nil, false, err
+	}
+	if len(empty) > limit {
+		return nil, false, errors.New("DOM snapshot metadata exceeds 1 MiB")
+	}
+	low, high := 0, len(nodes)-1
+	for low < high {
+		mid := low + (high-low+1)/2
+		encoded, err := encode(mid)
+		if err != nil {
+			return nil, false, err
+		}
+		if len(encoded) <= limit {
+			low = mid
+		} else {
+			high = mid - 1
+		}
+	}
+	encoded, err := encode(low)
+	return encoded, low < len(nodes), err
 }

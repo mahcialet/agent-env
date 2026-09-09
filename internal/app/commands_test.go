@@ -183,7 +183,8 @@ func TestNamedCommandFailuresRetainEvidence(t *testing.T) {
 			if _, e := os.Stat(filepath.Join(filepath.Dir(run.StdoutPath), "run.json")); e != nil {
 				t.Fatal(e)
 			}
-			release, e := db.Acquire(context.Background(), lease.ID, newID(), time.Second)
+			// This probes lock release, not renewal timing; allow native DB/scheduler latency.
+			release, e := db.Acquire(context.Background(), lease.ID, newID(), time.Minute)
 			if e != nil {
 				t.Fatalf("lock not released: %v", e)
 			}
