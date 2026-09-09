@@ -1,7 +1,7 @@
 ---
-translation_of: docs/exec-plans/active/multi-host-review-round-two.md
-source_sha256: 55b74a2acc94ab09ccbcc14817a89f8c55fffd7e03e64d433351ba894d0ffc1a
-status: active
+translation_of: docs/exec-plans/completed/multi-host-review-round-two.md
+source_sha256: bfa14fa306b66fee129044027a066d1f6dd8f37e3692c9242c03900dc49d2be8
+status: completed
 owner: maintainers
 last_verified: 2026-09-09
 ---
@@ -20,22 +20,22 @@ manifestの二重送信をなくし、応答済みCAS公開の永続性を確保
 
 ## 進捗
 
-- [x] 追加4件のThreadを読み、完了済み修正との関係を確認した。
-- [x] CLI controllerの起動を共通の期限処理へ接続する。
-- [x] blob streamの期限をmetadata要求の上限から分離する。
-- [x] manifestを1回だけ送信し、workerの検証を維持する。
-- [x] 移植性を維持してCAS directory公開を永続化する。
-- [x] remote force cleanupで上限付きsource diffを保存する。
-- [x] 検証済みpackageを再展開前に再利用する。
-- [x] 明示reconcileで解放済みleaseを確認する。
-- [x] 稼働中のworker root複製によるincarnationの奪取を防ぐ。
-- [x] 読み取り専用logs/artifactsの不確実な結果でlease状態を変えない。
-- [x] remote結果の構築前にComposeログのcapture量を制限する。
-- [x] Android表示ログを読み込み前に制限する（追加の重複指摘）。
-- [x] 再試行も含め、作用前に保持packageを永続的に公開する。
-- [x] 不確実な結果にUI復旧中のrunを保持する。
-- [x] 成功した操作の結果とartifact公開失敗を分ける。
-- [ ] 検証・push・追加Threadすべてへの返信とResolveを終え、このPlanをarchiveする。
+- [x] 2026-09-09: 追加4件のThreadを読み、完了済み修正との関係を確認した。
+- [x] 2026-09-09: CLI controllerの起動を共通の期限処理へ接続する。
+- [x] 2026-09-09: blob streamの期限をmetadata要求の上限から分離する。
+- [x] 2026-09-09: manifestを1回だけ送信し、workerの検証を維持する。
+- [x] 2026-09-09: 移植性を維持してCAS directory公開を永続化する。
+- [x] 2026-09-09: remote force cleanupで上限付きsource diffを保存する。
+- [x] 2026-09-09: 検証済みpackageを再展開前に再利用する。
+- [x] 2026-09-09: 明示reconcileで解放済みleaseを確認する。
+- [x] 2026-09-09: 稼働中のworker root複製によるincarnationの奪取を防ぐ。
+- [x] 2026-09-09: 読み取り専用logs/artifactsの不確実な結果でlease状態を変えない。
+- [x] 2026-09-09: remote結果の構築前にComposeログのcapture量を制限する。
+- [x] 2026-09-09: Android表示ログを読み込み前に制限する（追加の重複指摘）。
+- [x] 2026-09-09: 再試行も含め、作用前に保持packageを永続的に公開する。
+- [x] 2026-09-09: 不確実な結果にUI復旧中のrunを保持する。
+- [x] 2026-09-09: 成功した操作の結果とartifact公開失敗を分ける。
+- [x] 2026-09-09: 検証・push・追加Threadすべてへの返信とResolveを終え、このPlanをarchiveする。
 
 ## 想定外の発見
 
@@ -68,7 +68,19 @@ CLIの起動経路、stream認可、CAS lockと公開を独立レビューした
 
 ## 成果と振り返り
 
-実装・検証中。
+本Planが担当する追加14件を修正し、返信とResolveを完了した。前の追補と合わせて、PR #12の
+全21件がResolve済みである。cleanup・復旧の管理経路を修復し、transportと表示データを
+確保前に制限し、操作結果を保持し、保持入力を永続的に公開するようにした。実際の起動経路と
+失敗順序を固定したテストにより、wrapperのみの検証や成功経路の検証では見えなかった欠落を
+発見できた。独立レビューでもadapter転送不足と旧形式の重複保存の同期不足を検出した。
+
+実装commit `3dba741`、`9707fed`、`90ea6c3`、`c056a76`を履歴の書き換えなしでpushした。
+最終コードcommit `c056a76`のPR検査40件はすべて成功した。
+Verify34337028533/34337035407、Multi-host native34337028511/34337035381、
+Browser native34337028471/34337035387、Release preview34337035402である。
+Windows/macOS/Linuxのnative検証、Go1.26/1.27、Docker統合、release smokeを含む。
+物理的な電源断実験と、識別不能なjournal・credentialの悪意ある複製は検証済みとは主張しない。
+最後のarchive変更は文書のみであり、repoctl docs-checkで別途検証する。
 
 ## 背景と構成
 

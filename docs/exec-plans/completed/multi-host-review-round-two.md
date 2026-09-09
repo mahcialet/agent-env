@@ -1,5 +1,5 @@
 ---
-status: active
+status: completed
 owner: maintainers
 last_verified: 2026-09-09
 ---
@@ -16,22 +16,22 @@ avoid duplicate manifest envelopes, and make acknowledged CAS publication durabl
 
 ## Progress
 
-- [x] Read the four new threads and reconcile the prior completed fixes.
-- [x] Route actual CLI controller serving through the shared expiry lifecycle.
-- [x] Separate streaming blob deadlines from bounded metadata requests.
-- [x] Serialize the canonical manifest once and retain worker verification.
-- [x] Persist CAS directory publication with portable platform support.
-- [x] Capture bounded source diffs for forced remote cleanup.
-- [x] Reuse validated materialized packages before extraction.
-- [x] Confirm released leases after explicit reconcile.
-- [x] Fence incarnation replacement against active copied worker roots.
-- [x] Preserve lease state after uncertain read-only logs/artifacts.
-- [x] Bound Compose log capture before buffering remote results.
-- [x] Bound Android display-log reads before allocation (new overlapping thread).
-- [x] Make retained package publication durable before effects, including retries.
-- [x] Preserve the running UI recovery barrier in uncertain results.
-- [x] Separate successful action outcome from failed artifact publication.
-- [ ] Validate, push, reply to and resolve all additional threads; archive this plan.
+- [x] 2026-09-09: Read the four new threads and reconcile the prior completed fixes.
+- [x] 2026-09-09: Route actual CLI controller serving through the shared expiry lifecycle.
+- [x] 2026-09-09: Separate streaming blob deadlines from bounded metadata requests.
+- [x] 2026-09-09: Serialize the canonical manifest once and retain worker verification.
+- [x] 2026-09-09: Persist CAS directory publication with portable platform support.
+- [x] 2026-09-09: Capture bounded source diffs for forced remote cleanup.
+- [x] 2026-09-09: Reuse validated materialized packages before extraction.
+- [x] 2026-09-09: Confirm released leases after explicit reconcile.
+- [x] 2026-09-09: Fence incarnation replacement against active copied worker roots.
+- [x] 2026-09-09: Preserve lease state after uncertain read-only logs/artifacts.
+- [x] 2026-09-09: Bound Compose log capture before buffering remote results.
+- [x] 2026-09-09: Bound Android display-log reads before allocation (new overlapping thread).
+- [x] 2026-09-09: Make retained package publication durable before effects, including retries.
+- [x] 2026-09-09: Preserve the running UI recovery barrier in uncertain results.
+- [x] 2026-09-09: Separate successful action outcome from failed artifact publication.
+- [x] 2026-09-09: Validate, push, reply to and resolve all additional threads; archive this plan.
 
 ## Surprises & Discoveries
 
@@ -68,7 +68,22 @@ publication; final native Windows behavior remains for CI.
 
 ## Outcomes & Retrospective
 
-Implementation and validation are in progress.
+All 14 additional review threads owned by this plan were addressed, replied to
+and resolved; together with the earlier follow-up, all 21 PR #12 threads are
+resolved. Delivered changes restore cleanup/recovery authority, bound transport
+and display data before allocation, preserve action outcomes, and durably publish
+retained inputs. Production-entry-point and deterministic failure-order tests
+caught gaps that wrapper-only and happy-path tests missed. Independent review
+also exposed missing adapter forwarding and a legacy duplicate durability gap.
+
+Implementation commits `3dba741`, `9707fed`, `90ea6c3` and `c056a76` are published
+without history rewriting. Final code commit `c056a76` passed all 40 PR checks:
+Verify34337028533/34337035407, Multi-host native34337028511/34337035381,
+Browser native34337028471/34337035387 and Release preview34337035402. This includes
+native Windows/macOS/Linux, Go1.26/1.27, Docker integration and release smoke.
+Physical power-loss experiments and malicious indistinguishable journal/credential
+copies remain outside these claims. The final archival change is documentation
+only and is checked separately with repoctl docs-check.
 
 ## Context and Orientation
 
