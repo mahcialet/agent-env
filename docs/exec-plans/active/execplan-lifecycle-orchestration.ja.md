@@ -12,7 +12,7 @@ workstreams:
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/exec-plans/active/execplan-lifecycle-orchestration.md
-source_sha256: d22d366438cdb9f5f646427d5506844191f42a64d545007a96ca1b54ab83ad13
+source_sha256: 6a29dca2ce05af422be065848ec382a7f6bef1f69ab1a0e1951f0bb48c69768f
 ---
 
 # ExecPlan lifecycle orchestrationと自動delivery gateを追加する
@@ -396,3 +396,13 @@ remoteでの結果は未確認である。
 | E37 | 成功。日英の方針・Plan metadata・コマンド制限をレビューし、docs-check/hashを検査。 |
 | E38 | localは成功。全体check/race、最終repoctl race、Windows/macOS向けcross-buildに成功。native CIは未確認。 |
 | E39 | 最終化は未完了。日英の実装証拠を記録し、最終retrospective/archiveは人間検証・forward受け入れ・base merge後。 |
+
+### deliveryの確認点
+
+Draft PR #14には`ExecPlan: EP-OPS-001`があり、`b1f8c8e`、`c95268a`、`c79d709`のcommitも
+同じtrailerを保持する。`plans provenance --plan EP-OPS-001 --pr-body`は成功した。
+実際の`plans gate --plan EP-OPS-001 --pr 14 --repo mahcialet/agent-env`は観測したHEAD/baseと
+base側の信頼済み方針不足という理由を添えてBLOCKEDを返し、mergeは行っていない。
+最終のmodel確認では、呼び出し元が古い証拠を渡してもabandonedのstacked依存を拒否する。
+実Gitの回帰テストでmerge済みの模擬branchを削除してもPlan固有のmerge証拠を確認できた。
+両方の関連テストが成功した。

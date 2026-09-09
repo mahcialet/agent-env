@@ -402,7 +402,7 @@ func planReadiness(g *planGraph, ctx planReadinessContext) []planReadyResult {
 		for _, d := range p.DependsOn {
 			dep, ok := g.ByID[d.PlanID]
 			key := p.PlanID + "/" + d.PlanID
-			if !ok || (d.Satisfaction != "stacked" && (dep.Status != "completed" || !ctx.Merged[key])) || (d.Satisfaction == "stacked" && !ctx.Stacked[key]) {
+			if !ok || (d.Satisfaction != "stacked" && (dep.Status != "completed" || !ctx.Merged[key])) || (d.Satisfaction == "stacked" && ((dep.Status != "active" && dep.Status != "completed") || !ctx.Stacked[key])) {
 				r.Reasons = append(r.Reasons, "unsatisfied dependency: "+d.PlanID)
 			}
 		}

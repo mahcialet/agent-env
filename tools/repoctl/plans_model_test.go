@@ -190,3 +190,15 @@ func TestPlanReadinessSelectsOneAndRequiresHumanKick(t *testing.T) {
 		t.Fatal("explicit stacked evidence rejected")
 	}
 }
+
+func TestStackedProofCannotReviveAbandonedDependency(t *testing.T) {
+	dep := planMetadata{PlanID: "EP-TEST-001", Status: "abandoned", PlanType: "implementation"}
+	p := planMetadata{PlanID: "EP-TEST-002", Status: "active", PlanType: "implementation", DependsOn: []planDependency{{PlanID: dep.PlanID, Satisfaction: "stacked"}}}
+	g := modelGraph(dep, p)
+	result := planReadiness(g, planReadinessContext{Stacked: map[string]bool{p.PlanID + "/" + dep.PlanID: true}})
+	for _, r := range result {
+		if r.Runnable || r.Selected {
+			t.Fatal("abandoned dependency advanced stacked consumer")
+		}
+	}
+}

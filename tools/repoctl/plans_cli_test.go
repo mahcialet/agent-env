@@ -158,6 +158,7 @@ func TestPlanMergeProofRejectsUnrelatedContainingCommit(t *testing.T) {
 	planTestGit(t, root, "switch", "master")
 	planTestGit(t, root, "merge", "--no-ff", expectedPlanBranch(p), "-m", "merge")
 	p.MergeCommit = planTestGit(t, root, "rev-parse", "HEAD")
+	planTestGit(t, root, "branch", "-d", expectedPlanBranch(p))
 	if err := planMergeProof(root, p, p.MergeCommit); err != nil {
 		t.Fatal(err)
 	}

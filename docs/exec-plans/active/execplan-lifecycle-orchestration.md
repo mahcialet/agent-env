@@ -457,3 +457,14 @@ Japanese and parity reviews. No checks were weakened to resolve fixture failures
 The full `repoctl check` and `go test -race ./...` passed after integration. Focused
 new provenance/merge tests passed again after the final proof hardening. Native CI
 runs the new `plans check` with full Git history; its remote results are pending.
+
+### Delivery checkpoint
+
+Draft PR #14 carries `ExecPlan: EP-OPS-001`; commits `b1f8c8e`, `c95268a` and
+`c79d709` retain the same trailer. `plans provenance --plan EP-OPS-001 --pr-body`
+passed. Live `plans gate --plan EP-OPS-001 --pr 14 --repo mahcialet/agent-env`
+returned BLOCKED with observed HEAD/base and the concrete missing trusted-base
+policy reason; no merge was attempted. The final model check also rejects a
+stacked dependency that is abandoned even if a caller supplies stale proof.
+A real-Git regression deletes the merged fixture branch and still verifies its
+Plan-specific merge evidence. Both focused tests passed.
