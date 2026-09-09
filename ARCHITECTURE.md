@@ -122,4 +122,6 @@ import boundaries with positive and negative fixtures.
 The assignment epoch stays fixed for a lease's placement. Operation IDs fence
 individual commands. Worker-local management metadata is immutable; controller
 transport state never replaces local cleanup evidence. Implementation and native
-acceptance remain tracked in the active multi-host control-plane ExecPlan.
+acceptance evidence are recorded in the [completed multi-host control-plane
+ExecPlan](docs/exec-plans/completed/multi-host-control-plane.md), including the
+documented support boundaries and unverified environments.

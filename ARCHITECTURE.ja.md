@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: ARCHITECTURE.md
-source_sha256: 8f0fa148adc90c5d1e261da28203f86a9a7fe7490e84b23c1e14f6c61b12c496
+source_sha256: 1294838d8aa28d02169aa98708f95f783738a841baaac46f7776714d81a154b7
 ---
 
 [英語版（翻訳元）](ARCHITECTURE.md)
@@ -115,5 +115,6 @@ storage部品です。repoctlは正常例と違反例のfixtureでこれらのim
 
 assignment epochはleaseの配置ごとに固定し、個々のcommandをoperation IDで識別します。
 worker-localの管理metadataは変更できません。controllerの通信状態をlocal cleanupの
-証拠として扱いません。実装とnative環境の受け入れはactiveのmulti-host control-plane
-ExecPlanで追跡します。
+証拠として扱いません。実装とnative環境の受け入れの証拠は、
+[完了したmulti-host control-plane ExecPlan](docs/exec-plans/completed/multi-host-control-plane.ja.md)
+に記録し、文書化した対応範囲と未検証の環境も明示しています。
