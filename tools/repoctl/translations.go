@@ -323,6 +323,14 @@ var referenceDefinitions = regexp.MustCompile(`(?m)^\s*\[([^\]]+)\]:\s*(<[^>]+>|
 // A provenance field, image, example or unused reference definition is not a
 // navigable source link. Keep extraction consistent with the local link checker.
 func documentProse(data string) string {
+	data = stripMarkdownCodeSpans(documentBlockProse(data))
+	data = escapedMarkdownPunctuation.ReplaceAllString(data, " ")
+	return markdownImages.ReplaceAllString(data, "")
+}
+
+// Preserve inline code text for rendered heading anchors. Links and provenance
+// require the additional inline-example filtering applied by documentProse.
+func documentBlockProse(data string) string {
 	data = strings.ReplaceAll(data, "\r\n", "\n")
 	if strings.HasPrefix(data, "---\n") {
 		_, body, ok := strings.Cut(data[4:], "\n---\n")
@@ -360,9 +368,7 @@ func documentProse(data string) string {
 		}
 		prose.WriteString(withoutCommentLine(line, &inComment, &inlineWidth) + "\n")
 	}
-	data = stripMarkdownCodeSpans(prose.String())
-	data = escapedMarkdownPunctuation.ReplaceAllString(data, " ")
-	return markdownImages.ReplaceAllString(data, "")
+	return prose.String()
 }
 
 func visibleDocumentLinks(data string) []string {
