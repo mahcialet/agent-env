@@ -656,6 +656,8 @@ A future secret-provider design may add explicit secret delivery.
 
 ## Surprises & Discoveries
 
+- 2026-09-09: Native multi-host and Browser CI passed all three OSes on `53fe81a` (34316121492 / 34316121411). Verify 34316121380 still failed the Windows >300-character source lifecycle: `core.longpaths=true` alone did not prevent Git index-pack from rejecting an absolute `$GIT_DIR`. Clone now uses paths relative to its validated private extraction directory, preserving the deep-path test. Local full harness and focused source/worker race tests passed; native revalidation follows.
+
 - 2026-09-09: The first real TLS create failed because JSON object key reordering changed the package digest. Source hashes now canonicalize the typed manifest while independently proving the committed control-file transformation; reordered-JSON regression and native Linux E2E passed. Controller global-state mapping also had to use actual lowercase domain states, including `released`, rather than assumed uppercase wire values.
 - 2026-09-09: Independent review reproduced preflight diagnostic secret leakage in four fail-before cases. Preflight errors now use inherited-secret redaction and bounded remote metadata. A readable operation ID was accepted by the controller but rejected by the executor; the executor now applies the same operation identity contract while retaining ULID lease identities.
 - 2026-09-09: A pre-effect create failure could retain capacity permanently because no local lease existed for destroy. The journal now atomically records its pre-effect boundary. A validated non-dry-run destroy may use exact-assignment journal proof, never a missing local row or an error payload. Restart, dry-run, invalid request, missing evidence and effect-started regressions passed.
@@ -954,14 +956,13 @@ Additional acceptance evidence: real remote Browser/Docker/Podman fixture passed
 
 2026-09-09 milestone evidence: `go test -race ./internal/worker` passed (1.073s), including receipt replay, failed upload/ack retry, lost-result uncertainty and pre-effect heartbeat fencing. `go test -race ./internal/instance` passed (1.035s), including two native processes and crash-release. Managed app/local-store/domain race tests passed (50.167s/16.235s/1.030s); an overlay using the pre-fix Store.Save reproduced six management overwrite failures. Source/CAS repeated focused race tests passed (5.380s/1.011s). Architecture boundary fixtures passed (0.028s). Native Windows/macOS and actual two-worker TLS acceptance remain pending.
 
-Suggested controller state:
+Implemented controller state (the controller ID is in SQLite):
 
 ```text
 <AGENT_ENV_HOME>/control-plane/
   controller.db
-  controller-id
-  blobs/sha256/
-  logs/
+  controller.lock
+  blobs/<sha256>/data
 ```
 
 Worker keeps existing state plus host-instance/controller-binding/remote-journal
@@ -994,29 +995,31 @@ requirements show the simpler protocol is insufficient.
 Multi-host mode introduces long-running controller/worker processes; local mode
 still has no daemon requirement.
 
-## Unresolved Issues to Settle During Milestone 1
+## Initial Issue Resolutions
 
-1. CLI naming: `control-plane` vs `controller`; global `--controller` vs remote/fleet subcommand.
-2. Exact protocol/product version compatibility policy.
-3. Worker/client certificate enrollment UX and rotation follow-up.
-4. Client versus worker certificate authorization mapping.
-5. Long-poll protocol details.
-6. Cross-platform controller single-instance lock.
-7. Git bundle format/shallow repository behavior.
-8. Git LFS/submodule policy.
-9. Source/artifact max sizes and resumable upload policy.
-10. CAS retention/GC policy.
-11. Final capability names/version constraints.
-12. Capacity model beyond max leases/Android slots.
-13. Scheduler tie-break/operator-label UX.
-14. Client versus worker final authority for normalized plan digest.
-15. Controller-managed local lease metadata storage shape.
-16. One generic operation envelope versus typed protocol messages.
-17. DEGRADED read-only Android/Browser remote policy.
-18. Exact global stale/unknown state presentation.
-19. Break-glass local recovery after permanent controller loss.
-20. Controller DB/CAS backup/restore guidance.
-21. Whether physical two-host evidence is mandatory for completion.
-22. Future endpoint tunnel topology.
-23. Whether split-host leases need a new global resource graph rather than extending assignment.
-24. How PR #11 escaped-defect guardrails are systematically applied to protocol/state boundary tests.
+The initial design questions are resolved as follows (2026-09-09, implementation team).
+
+1. **CLI:** Use `control-plane serve/enroll`, `worker serve`, and explicit global `--controller` with TLS file flags.
+2. **Compatibility:** Require protocol 1 and exact product version. Keep incompatible inventory visible but refuse scheduling/poll and local effects.
+3. **Certificates:** Use pre-provisioned certificates and local leaf-fingerprint enrollment; issuance and rotation are deferred.
+4. **Roles:** Enroll clients separately from host-bound workers; authenticate role before endpoint access.
+5. **Polling:** Workers initiate bounded long-poll (up to 30 seconds) and independent heartbeats; dispatch is serial.
+6. **Process lock:** Use a separate native SQLite exclusive lock held for the service lifetime, released by the OS after process exit.
+7. **Git bundles:** Transport full local bundles pinned to exact commits; reject shallow repositories.
+8. **LFS/submodules:** Reject Git LFS pointers and submodules rather than fetching external content.
+9. **Transfer bounds:** Limit source blobs to 1 GiB and artifacts to 64 MiB. Retry whole immutable blobs by digest; partial resume is deferred.
+10. **CAS retention:** Retain immutable CAS objects; automatic CAS GC is deferred. Protect and back up DB and CAS together.
+11. **Capabilities:** Use git, compose.docker, compose.podman, android-emulator, flutter-android, persistent-process and browser-cdp; worker preflight remains mandatory.
+12. **Capacity:** Reserve maximum lease count and Android slots atomically; no CPU/memory scheduler is advertised.
+13. **Selection:** Choose the first eligible host in stable host-ID order; explicit selection obeys the same checks. Labels and load balancing are deferred.
+14. **Plan authority:** Verify canonical package/manifest/source-set digests plus the allowed transformation from committed control-file bytes on the worker.
+15. **Local metadata:** Persist immutable remote_management in the local lease JSON before materialization; SQLite Save rejects adoption or tuple changes.
+16. **Operations:** Use a versioned identity envelope and enumerated typed payloads, with caller-reusable operation IDs and no raw-shell endpoint.
+17. **Degraded access:** Reuse existing app UI/Browser readiness, stale/device/process/page/focus and recovery policies without weaker remote bypasses.
+18. **Offline views:** Display UNKNOWN with last-known state while offline; do not infer absence or free reservations.
+19. **Permanent loss:** No break-glass local takeover is implemented. Restore original controller authority; ordinary force/GC cannot adopt remote leases.
+20. **Backup:** Use a consistent stopped-service DB/CAS backup and retain original identities; copied roots do not create a second valid authority.
+21. **Machine evidence:** Separate physical/VM evidence is optional and unavailable here; distinguish same-host native roles explicitly.
+22. **Tunnels:** Endpoint tunnels and their future topology are deferred; current endpoint scope is worker-local.
+23. **Split-host leases:** A future distributed resource graph requires a separate design; this implementation keeps one lease on one worker.
+24. **Regression guardrails:** Use fail-before regressions, independent review, real TLS/binary tests, fault-boundary tests and native OS CI; retain failed attempts and evidence.

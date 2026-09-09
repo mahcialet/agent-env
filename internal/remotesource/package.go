@@ -606,7 +606,15 @@ func cloneBundle(ctx context.Context, digest, commit, temp, name, repo string, c
 	if err != nil {
 		return err
 	}
-	if _, err = git(ctx, "", "clone", "--bare", bundle, repo); err != nil {
+	// Git for Windows forwards the clone destination to index-pack as
+	// GIT_DIR, whose parser still has a legacy path limit even with longpaths
+	// enabled. Use paths relative to the already-private extraction directory;
+	// the underlying repository may remain beyond that limit on disk.
+	relativeRepo, err := filepath.Rel(temp, repo)
+	if err != nil || !safeRelative(filepath.ToSlash(relativeRepo)) {
+		return errors.New("bundle repository is outside extraction directory")
+	}
+	if _, err = git(ctx, temp, "clone", "--bare", filepath.Base(bundle), relativeRepo); err != nil {
 		return err
 	}
 	if err = supported(ctx, repo, commit); err != nil {

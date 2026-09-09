@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/exec-plans/active/multi-host-control-plane.md
-source_sha256: 79282cac76aa4c66d8f48d612d4fab46945dec91700e3acf695b1fe92c832f62
+source_sha256: f3c4d60dedb8415f54ad6afe5732c8a20f0504ca4d01ffaa29ffed707134a817
 ---
 
 # Single-authority multi-host control planeを追加する
@@ -482,6 +482,8 @@ client env secretを自動forwardしない。
 
 ## 想定外の発見
 
+- 2026-09-09: `53fe81a` の multi-host と Browser の native CI は3 OSすべてで成功した（34316121492 / 34316121411）。Verify 34316121380 では、Windows の300文字超のソースライフサイクル検査がまだ失敗した。`core.longpaths=true` だけでは、Git index-pack が絶対パスの `$GIT_DIR` を拒否する問題を解消できなかった。検証済みの専用展開ディレクトリからの相対パスで clone するよう修正し、深いパスのテストは維持した。ローカルの全 harness と source/worker の race テストは成功し、native の再検証を行う。
+
 - 2026-09-09: 最初の実TLS createはJSON objectのkey順序変更によるpackage digest不一致で失敗した。型付きmanifestをcanonical化してhashを計算し、commit済みcontrol fileからの変換証明は独立して維持する。順序変更回帰テストとLinux native E2Eが成功。controllerのglobal stateも、想定した大文字値ではなく`released`を含む実際のdomainの小文字stateに対応させた。
 - 2026-09-09: 独立レビューでpreflight診断の秘密情報漏出を修正前の4ケースで再現。継承secretのredactionとmetadata上限を適用した。controllerが受け付ける可読operation IDをexecutorが拒否する不整合も修正し、lease IDのULID要件は維持した。
 - 2026-09-09: 外部作用前のcreate失敗ではlocal leaseがないためdestroyも失敗し、予約を解放できなかった。journalに作用開始前の境界を原子的に記録し、入力検証済みのnon-dry-run destroyだけが同じassignmentの証明を使えるようにした。local row不在やerror payloadを証明にはしない。再起動、dry-run、不正入力、証拠欠落、作用開始済みの回帰検証が成功。
@@ -674,14 +676,13 @@ host OFFLINEはcleanup eventではない。
 
 2026-09-09の検証証拠: `go test -race ./internal/worker`成功（1.073s）。receipt再送、upload/ack失敗、結果喪失時の不確実状態、作用直前のheartbeat検査を含む。`go test -race ./internal/instance`成功（1.035s）。nativeの別process排他とcrash後の解放を含む。管理境界のapp/local-store/domain raceは50.167s/16.235s/1.030sで成功。修正前のStore.Saveをoverlayで使用し、6件の不正上書きを再現した。source/CASの反復raceは5.380s/1.011sで成功。architecture境界fixtureは0.028sで成功。native Windows/macOSと実TLSの2-worker受け入れは未完了。
 
-controller候補:
+実装したcontroller state（controller IDはSQLiteに保存）:
 
 ```text
 <AGENT_ENV_HOME>/control-plane/
   controller.db
-  controller-id
-  blobs/sha256/
-  logs/
+  controller.lock
+  blobs/<sha256>/data
 ```
 
 workerはexisting state + host-instance/controller binding/journal。
@@ -711,29 +712,31 @@ worker wiringがexisting app/runtimeを再利用。
 
 multi-host modeはlong-running controller/worker processを導入するが、local modeはdaemon不要。
 
-## 未解決事項
+## 初期論点の決定
 
-1. CLI naming (`control-plane`/`controller`, global `--controller`/remote subcommand)
-2. protocol/product compatibility rule
-3. cert enrollment/rotation UX
-4. client/worker role authorization
-5. long-poll details
-6. controller single-instance lock
-7. shallow Git bundle
-8. LFS/submodule policy
-9. blob size/resume
-10. CAS GC
-11. capability names/version
-12. capacity model
-13. scheduler tie-break/labels
-14. plan digest final authority
-15. controller-managed metadata persistence shape
-16. remote operation envelope
-17. DEGRADED read-only UI/Browser policy
-18. stale global state presentation
-19. permanent controller loss break-glass
-20. controller backup/restore
-21. physical two-host acceptance mandatoryか
-22. future endpoint tunnel topology
-23. later split-host global resource graph
-24. PR #11 escaped-defect guardrailをprotocol/state boundary testへどう適用するか
+初期の設計論点は以下のとおり決定した（2026-09-09、実装担当）。
+
+1. **CLI:** `control-plane serve/enroll`、`worker serve`、明示的なglobal `--controller`とTLS file flagを採用。
+2. **Compatibility:** protocol 1とproduct version完全一致を要求。非互換inventoryを表示し、配置/pollとlocal作用を拒否。
+3. **Certificates:** 外部で用意した証明書のleaf fingerprintをlocalで登録。発行とrotationは将来課題。
+4. **Roles:** clientとhostに対応するworkerを別登録し、endpointアクセス前にroleを認証。
+5. **Polling:** workerが最大30秒のlong-pollと独立heartbeatを開始。dispatchは直列。
+6. **Process lock:** service稼働中は別SQLiteのnative exclusive lockを保持し、終了時はOSが解放。
+7. **Git bundles:** exact commitに固定した完全なlocal bundleを転送し、shallow repositoryを拒否。
+8. **LFS/submodules:** 外部contentをfetchせず、Git LFS pointerとsubmoduleを拒否。
+9. **Transfer bounds:** source blobは1 GiB、artifactは64 MiBを上限とする。digest単位で全体を再送し、部分resumeは将来課題。
+10. **CAS retention:** immutable CAS objectを保持し、自動CAS GCは将来課題。DBとCASを一体で保護・backupする。
+11. **Capabilities:** git、compose.docker、compose.podman、android-emulator、flutter-android、persistent-process、browser-cdpを使用し、worker preflightも必須。
+12. **Capacity:** 最大lease数とAndroid slotを原子的に予約。CPU/memory schedulerは提供しない。
+13. **Selection:** 安定したhost-ID順で最初の適格hostを選ぶ。明示選択でも同じ検査を行い、labelと負荷分散は将来課題。
+14. **Plan authority:** workerがcanonical package/manifest/source-set digestと、commit済みcontrol fileから許される変換を検証。
+15. **Local metadata:** materialization前にlocal lease JSONへ不変のremote_managementを保存し、SQLite Saveで後付け・tuple変更を拒否。
+16. **Operations:** version付きidentity envelopeと列挙された型付きpayload、再利用可能なoperation IDを使用し、raw-shell endpointを追加しない。
+17. **Degraded access:** 既存app UI/Browserのreadiness、stale/device/process/page/focus、復旧policyを再利用し、remoteで検査を迂回しない。
+18. **Offline views:** offlineではUNKNOWNとlast-known stateを表示し、不在を推定したり予約を解放したりしない。
+19. **Permanent loss:** localの緊急引き継ぎは未実装。元のcontroller authorityを復旧し、通常force/GCではremote leaseを引き継げない。
+20. **Backup:** service停止中の整合したDB/CAS backupを使い、元のidentityを維持する。rootのcopyを第2の有効authorityにしない。
+21. **Machine evidence:** 別物理host/VM証拠は任意で、この環境では取得不能。同一host上のnative role検証と明確に区別。
+22. **Tunnels:** endpoint tunnelと将来のtopologyは対象外。現在のendpoint範囲はworker-local。
+23. **Split-host leases:** 分散resource graphは別設計が必要。今回の実装は1 leaseを1 workerに保持。
+24. **Regression guardrails:** 修正前の失敗再現、独立レビュー、実TLS/binary検証、障害境界テスト、native OS CIを使い、失敗した試行と証拠を保持。
