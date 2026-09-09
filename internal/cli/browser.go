@@ -43,8 +43,17 @@ func browserCommand(output *string, emit func(any) error, out, errOut io.Writer)
 			if result.Snapshot != nil {
 				fmt.Fprint(out, app.BrowserSnapshotText(*result.Snapshot))
 			}
-			for _, page := range result.Observation.Pages {
-				fmt.Fprintf(out, "Page %s %q %q\n", page.ID, page.Title, page.URL)
+			if (op == "page-create" || op == "page-close") && opErr == nil {
+				action := "created"
+				if op == "page-close" {
+					action = "closed"
+				}
+				page := result.Observation.Page
+				fmt.Fprintf(out, "Page %s %s %q %q\n", action, page.ID, page.Title, page.URL)
+			} else {
+				for _, page := range result.Observation.Pages {
+					fmt.Fprintf(out, "Page %s %q %q\n", page.ID, page.Title, page.URL)
+				}
 			}
 			for _, artifact := range result.Artifacts {
 				fmt.Fprintf(out, "Artifact %s %s\n", artifact.Kind, artifact.Path)
