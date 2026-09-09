@@ -641,11 +641,11 @@ A future secret-provider design may add explicit secret delivery.
 - [x] 2026-09-09: Add worker-outage/surviving-process regression.
 - [x] 2026-09-09: Add two-worker real-socket scheduling/isolation integration.
 - [x] 2026-09-09: Add remote process-runtime E2E.
-- [ ] Add remote Browser/CDP E2E.
-- [ ] Add remote Docker/Podman integration where available.
+- [x] 2026-09-09: Add remote Browser/CDP E2E.
+- [x] 2026-09-09: Add remote Docker/Podman integration where available.
 - [x] 2026-09-09: Add Android-capability scheduling fixture.
-- [ ] Run native Windows controller/worker/client integration.
-- [ ] Run native macOS controller/worker/client integration.
+- [x] 2026-09-09: Run native Windows controller/worker/client integration.
+- [x] 2026-09-09: Run native macOS controller/worker/client integration.
 - [x] 2026-09-09: Run native Linux controller/worker/client integration.
 - [x] 2026-09-09: Record physical/VM multi-host evidence separately if available.
 - [x] 2026-09-09: Update bilingual architecture/portability/security/reliability/quality/roadmap.
@@ -656,17 +656,23 @@ A future secret-provider design may add explicit secret delivery.
 
 ## Surprises & Discoveries
 
+- 2026-09-09: Windows Git now selects its working directory with `-C`, avoiding CreateProcess long-cwd rejection without changing source layout or the regression. Browser CI exposed asynchronous `Target.closeTarget` inventory: the test now waits up to five seconds for exactly the original sibling page, rejecting sibling loss or unexpected targets immediately. Three real Linux Chrome runs passed (28.929s). Full local harness/race and updated worker UI tests passed; remote Browser/Docker/Podman E2E passed again (33.142s). Native CI revalidation is required.
+
+- 2026-09-09: Relative clone paths alone still failed Verify 34316762287 on Windows: CreateProcess rejected the >260-character working directory before Git ran. Native multi-host 34316762301 still passed all three OSes. Browser native 34316762319 failed the macOS page-close inventory assertion; its asynchronous target visibility is being investigated separately from the source change. Both failures remain open until verified fixes.
+
+- 2026-09-09: Three fail-before regressions (invalid mode, excessive TTL, unavailable process provider) exposed create failures before local Reserve that still crossed the worker effect marker. Added an app callback immediately before Reserve and journal fencing at that boundary, preserving durable no-effect proof for pre-reservation failure. An injected ambiguous Reserve failure still cannot prove absence, and a failed fence prevents Reserve. Full app/worker race tests passed (47.217s / 4.243s).
+
 - 2026-09-09: Native multi-host and Browser CI passed all three OSes on `53fe81a` (34316121492 / 34316121411). Verify 34316121380 still failed the Windows >300-character source lifecycle: `core.longpaths=true` alone did not prevent Git index-pack from rejecting an absolute `$GIT_DIR`. Clone now uses paths relative to its validated private extraction directory, preserving the deep-path test. Local full harness and focused source/worker race tests passed; native revalidation follows.
 
 - 2026-09-09: The first real TLS create failed because JSON object key reordering changed the package digest. Source hashes now canonicalize the typed manifest while independently proving the committed control-file transformation; reordered-JSON regression and native Linux E2E passed. Controller global-state mapping also had to use actual lowercase domain states, including `released`, rather than assumed uppercase wire values.
 - 2026-09-09: Independent review reproduced preflight diagnostic secret leakage in four fail-before cases. Preflight errors now use inherited-secret redaction and bounded remote metadata. A readable operation ID was accepted by the controller but rejected by the executor; the executor now applies the same operation identity contract while retaining ULID lease identities.
 - 2026-09-09: A pre-effect create failure could retain capacity permanently because no local lease existed for destroy. The journal now atomically records its pre-effect boundary. A validated non-dry-run destroy may use exact-assignment journal proof, never a missing local row or an error payload. Restart, dry-run, invalid request, missing evidence and effect-started regressions passed.
-- 2026-09-09: First native macOS CI on `0f05d09` failed because the provider compared `/var` and `/private/var` spellings of the same temporary ancestor as distinct repository identities. Linux success did not expose this OS path alias; repair and new native validation are pending. Runs: Verify 34314568570, Multi-host native 34314568601.
+- 2026-09-09: First native macOS CI on `0f05d09` failed because the provider compared `/var` and `/private/var` spellings of the same temporary ancestor as distinct repository identities. Linux success did not expose this OS path alias; the trusted root was subsequently canonicalized and native validation passed in 34314956327. Runs: Verify 34314568570, Multi-host native 34314568601.
 
 - 2026-09-09: Independent runner review found that heartbeat loss during Prepare could still begin effects. Added a check immediately before the durable effect-started transition; a focused regression confirms no effect before reconnect.
 - 2026-09-09: Initial remote action tests assumed flags were shared by all UI/Browser actions; the existing CLI registers them per action. Corrected the mapping and tests without changing local flags. The first full harness attempt failed those new tests; focused corrected tests passed. A subsequent harness attempt hit formatting while the controller implementation was being edited; the complete harness must be rerun on a stable milestone.
 
-- 2026-09-09: Baseline unit/vet and race tests passed; `repoctl test-integration` exited 0 with real Docker. Baseline `repoctl check` failed docs-check because the supplied Japanese plan lacked mandatory section headings. Added the missing sections in both languages; remaining native runtime baselines are pending.
+- 2026-09-09: Baseline unit/vet and race tests passed; `repoctl test-integration` exited 0 with real Docker. Baseline `repoctl check` failed docs-check because the supplied Japanese plan lacked mandatory section headings. Added the missing sections in both languages; native runtime baselines were pending at that checkpoint and subsequently passed.
 
 Record at minimum:
 
@@ -688,6 +694,8 @@ Record at minimum:
 Preserve failed approaches that affect authority/recovery design.
 
 ## Decision Log
+
+- 2026-09-09, implementation: Put create journal effect fencing at the app reservation boundary. Read-only preflight failures can then retain journal-proven no-effect evidence, while every reservation attempt remains conservatively uncertain on failure. Independent review confirmed that lease/runtime allocation starts only after this callback.
 
 - 2026-09-09, implementation: Initially serialize worker operation dispatch and reject a second active operation on the same lease. Long-lived leases still run concurrently. Remote destroy does not cancel an active remote test; a separate cancellation protocol is deferred rather than racing an assignment fence.
 - 2026-09-09, validation: Physical/VM multi-machine evidence is unavailable. The real TLS fixture uses independent native controller/client/two-worker processes on one host. Record this limit explicitly; native Windows/macOS evidence comes from CI, not cross-builds.
@@ -911,7 +919,7 @@ Use the supported Go toolchain on PATH. Run `go run ./tools/repoctl check`, `go 
 | M25 | Ordinary local mutation/GC cannot alter controller-managed leases. | Managed mutation/GC/UI/Browser/cancel fencing and immutable SQLite Save regressions passed. |
 | M26 | Global RELEASED requires worker-local cleanup/absence proof. | Controller release-proof negatives and journal pre-effect destroy proof (restart/dry-run/invalid input) passed. |
 | M27 | Worker-local endpoints are not mislabeled as client-local. | Worker responses mark endpoint_scope=worker-local; native tests inspect worker-owned endpoint metadata. |
-| M28 | Test/log/artifact remote operations work without raw shell. | Extended native TLS named-test, idempotency, run/live logs, artifact digest download and no-overwrite passed on Linux/macOS; Windows relative lookup repair under validation. |
+| M28 | Test/log/artifact remote operations work without raw shell. | Extended native TLS named-test, idempotency, run/live logs, artifact digest download and no-overwrite passed on all three OSes in 34316121492. |
 | M29 | Android UI remote actions preserve existing local stale/device/fence checks. | Typed remote UI option tests invoke existing app UI boundary; managed stale/device/fence regressions and real local Android UI integration passed. |
 | M30 | Browser remote actions preserve existing process/page/snapshot/focus/stale checks. | Real remote Chrome/CDP snapshot/pages and artifact download passed; existing Browser stale/focus/process tests and native integration passed. |
 | M31 | Two workers can run isolated concurrent leases; destroying one preserves the other. | Real two-worker fixture proves distinct worktrees/ports and that destroying one lease leaves the other responding. |
@@ -920,8 +928,8 @@ Use the supported Go toolchain on PATH. Run `go run ./tools/repoctl check`, `go 
 | M34 | CAS is atomic, content-addressed, digest-verified and duplicate-upload safe. | CAS concurrent duplicate writers, digest/size validation, atomic directory publication and corruption negatives passed. |
 | M35 | Caller paths never become CAS filesystem authority. | CAS digest-only path validation and registered-artifact ownership/path/symlink tests passed. |
 | M36 | Client secrets are not implicitly forwarded; remote env resolves on worker. | Native TLS fixture verifies client-only token absence and worker env resolution; negative helper controls passed (18.394s Linux). |
-| M37 | Native controller/worker/client integration passes on Windows. | Initial two-worker lifecycle passed in CI 34314956327; expanded named-test and long-path Windows checks remain pending fixes. |
-| M38 | Native controller/worker/client integration passes on macOS. | Native multi-host CI 34314956327 and expanded fixture on 34315479224 passed macOS. |
+| M37 | Native controller/worker/client integration passes on Windows. | Expanded native role fixture passed on Windows in 34316121492; the separate deep Git path harness regression is under final validation. |
+| M38 | Native controller/worker/client integration passes on macOS. | Expanded native role fixture passed on macOS in 34316121492. |
 | M39 | Native controller/worker/client integration passes on Linux. | Native multi-host Linux CI passed; extended local TLS fixture and real remote runtime tests passed. |
 | M40 | Real-socket two-worker integration proves scheduling/outage/reconnect/recovery/cleanup. | Native real TLS controller/client/two-worker fixture covers placement, outage, restart, recovery and cleanup. |
 | M41 | Physical/VM evidence is distinguished honestly from same-host worker tests. | All multi-role fixtures use one physical host; no separate-machine/VM evidence available or claimed. |
@@ -952,9 +960,9 @@ cleanup event.
 
 Additional acceptance evidence: real remote Browser/Docker/Podman fixture passed in 35.659s; expanded two-worker named-test/log/artifact/renew fixture passed in 18.907s, and client/worker environment isolation in 18.394s. `AGENT_ENV_RELEASE_CANDIDATE=build go test ./tools/repoctl -run '^TestReleaseCandidate$' -count=1 -v -timeout=20m` passed on `b1a7df6`: six real target archives, verification, native smoke and negative tamper tests used an isolated private source/tag fixture; no public tag or release was created. Native multi-host CI 34314956327 passed all three OSes on `d993965`. The expanded fixture passed Linux/macOS on 34315479224; Windows revealed relative executable lookup before child cwd. Full Windows harness additionally exposed a >300-character Git path case. Both failures remain recorded until their targeted native checks pass.
 
-2026-09-09 integrated milestone: commits `6d9dd7a` (managed local authority) and `0f05d09` (controller/worker/source/CLI) pushed to `origin/feat/multi-host-control-plane`. Full `repoctl check` and `go test -race ./...` passed locally. `TestMultiHostNativeCLI` passed in 21.406s with real TLS and built binaries, including placement, role denial, drain, isolation, outage, controller/worker restart and cleanup. Existing Browser native/secret tests, Podman coexistence integration (107.695s), real Android Emulator integration, real Flutter/Android UI integration and Docker `repoctl test-integration` all passed. The first Android invocation failed for missing explicit template configuration; rerunning with the installed stopped template passed. No host-specific prerequisite paths are stored here. Native CI is running; macOS revealed the path alias defect above. Additional remote runtime E2E evidence is still being collected.
+2026-09-09 integrated milestone: commits `6d9dd7a` (managed local authority) and `0f05d09` (controller/worker/source/CLI) pushed to `origin/feat/multi-host-control-plane`. Full `repoctl check` and `go test -race ./...` passed locally. `TestMultiHostNativeCLI` passed in 21.406s with real TLS and built binaries, including placement, role denial, drain, isolation, outage, controller/worker restart and cleanup. Existing Browser native/secret tests, Podman coexistence integration (107.695s), real Android Emulator integration, real Flutter/Android UI integration and Docker `repoctl test-integration` all passed. The first Android invocation failed for missing explicit template configuration; rerunning with the installed stopped template passed. No host-specific prerequisite paths are stored here. At that checkpoint native CI was running and macOS revealed the path alias defect above; the later native and remote runtime results are recorded above.
 
-2026-09-09 milestone evidence: `go test -race ./internal/worker` passed (1.073s), including receipt replay, failed upload/ack retry, lost-result uncertainty and pre-effect heartbeat fencing. `go test -race ./internal/instance` passed (1.035s), including two native processes and crash-release. Managed app/local-store/domain race tests passed (50.167s/16.235s/1.030s); an overlay using the pre-fix Store.Save reproduced six management overwrite failures. Source/CAS repeated focused race tests passed (5.380s/1.011s). Architecture boundary fixtures passed (0.028s). Native Windows/macOS and actual two-worker TLS acceptance remain pending.
+2026-09-09 milestone evidence: `go test -race ./internal/worker` passed (1.073s), including receipt replay, failed upload/ack retry, lost-result uncertainty and pre-effect heartbeat fencing. `go test -race ./internal/instance` passed (1.035s), including two native processes and crash-release. Managed app/local-store/domain race tests passed (50.167s/16.235s/1.030s); an overlay using the pre-fix Store.Save reproduced six management overwrite failures. Source/CAS repeated focused race tests passed (5.380s/1.011s). Architecture boundary fixtures passed (0.028s). Native Windows/macOS and actual two-worker TLS acceptance were pending at that checkpoint; later successful runs are recorded above.
 
 Implemented controller state (the controller ID is in SQLite):
 

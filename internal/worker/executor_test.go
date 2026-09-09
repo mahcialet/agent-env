@@ -6,6 +6,8 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"github.com/mahcialet/agent-env/internal/app"
 	"github.com/mahcialet/agent-env/internal/blobstore"
 	"github.com/mahcialet/agent-env/internal/controlplane/protocol"
@@ -295,5 +297,145 @@ func TestExecutorResultBoundRetainsUncertainty(t *testing.T) {
 		if state == "uncertain" && r.State != "uncertain" {
 			t.Fatal("lost uncertainty")
 		}
+	}
+}
+
+func TestCreateValidationFailureRetainsDurableNoEffectProof(t *testing.T) {
+	for _, failure := range []string{"mode", "ttl", "provider"} {
+		t.Run(failure, func(t *testing.T) {
+			ctx := context.Background()
+			e, op, process, db := executorFixture(t)
+			j, err := OpenJournal(e.Home, op.HostID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer j.Close()
+			if err = j.Bind(ctx, op.ControllerID); err != nil {
+				t.Fatal(err)
+			}
+			op.HostInstanceID = j.Identity.HostInstanceID
+			var envelope protocol.CreateRequest
+			if err = json.Unmarshal(op.Payload, &envelope); err != nil {
+				t.Fatal(err)
+			}
+			var request Request
+			if err = json.Unmarshal(envelope.Options, &request); err != nil {
+				t.Fatal(err)
+			}
+			switch failure {
+			case "mode":
+				request.Mode = "unsupported"
+			case "ttl":
+				request.TTL = 100000 * time.Hour
+			case "provider":
+				e.Factory = func(m *domain.Management) *app.Service { return &app.Service{Store: db, Management: m} }
+			}
+			envelope.Options, _ = json.Marshal(request)
+			op.Payload, _ = json.Marshal(envelope)
+			receipt, err := j.Receive(ctx, op)
+			if err != nil {
+				t.Fatal(err)
+			}
+			runner := Runner{Journal: j, Executor: e, Transport: &fakeTransport{}}
+			if err = runner.handle(ctx, receipt); err != nil {
+				t.Fatal(err)
+			}
+			stored, err := j.Get(ctx, op.ID)
+			if err != nil || stored.Result == nil || stored.Result.State != "failed" {
+				t.Fatalf("validation result: %+v %v", stored, err)
+			}
+			if process.starts != 0 {
+				t.Fatal("validation started runtime")
+			}
+			if _, err = db.Get(ctx, op.LeaseID); err == nil {
+				t.Fatal("validation reserved lease")
+			}
+			destroy := op
+			destroy.ID = "cleanup-validation"
+			destroy.Kind = "destroy"
+			destroy.Payload = json.RawMessage(`{}`)
+			proof, err := j.ProvesNoEffects(ctx, destroy)
+			if err != nil || !proof {
+				t.Fatalf("pre-Reserve validation lacks durable proof: %v %v", proof, err)
+			}
+			receipt, err = j.Receive(ctx, destroy)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err = runner.handle(ctx, receipt); err != nil {
+				t.Fatal(err)
+			}
+			stored, err = j.Get(ctx, destroy.ID)
+			if err != nil || stored.Result == nil || !stored.Result.CleanupConfirmed || stored.Result.LocalState != "released" {
+				t.Fatalf("proof cleanup: %+v %v", stored, err)
+			}
+		})
+	}
+}
+
+type reserveBoundaryStore struct {
+	app.Store
+	reserve func(context.Context, domain.Lease, int) error
+}
+
+func (s reserveBoundaryStore) Reserve(ctx context.Context, l domain.Lease, max int) error {
+	return s.reserve(ctx, l, max)
+}
+func TestCreateEffectBoundaryPrecedesReserveAndKeepsAmbiguousFailure(t *testing.T) {
+	for _, blocked := range []bool{false, true} {
+		t.Run(fmt.Sprintf("fence-blocked-%v", blocked), func(t *testing.T) {
+			ctx := context.Background()
+			e, op, process, db := executorFixture(t)
+			j, err := OpenJournal(e.Home, op.HostID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer j.Close()
+			if err = j.Bind(ctx, op.ControllerID); err != nil {
+				t.Fatal(err)
+			}
+			op.HostInstanceID = j.Identity.HostInstanceID
+			reserves := 0
+			e.Factory = func(m *domain.Management) *app.Service {
+				return &app.Service{Store: reserveBoundaryStore{Store: db, reserve: func(ctx context.Context, l domain.Lease, max int) error {
+					reserves++
+					receipt, err := j.Get(ctx, op.ID)
+					if err != nil || receipt.State != "effect_started" {
+						t.Fatalf("Reserve before durable boundary: %+v %v", receipt, err)
+					}
+					return errors.New("ambiguous reserve failure")
+				}}, Process: process, Management: m}
+			}
+			receipt, err := j.Receive(ctx, op)
+			if err != nil {
+				t.Fatal(err)
+			}
+			runner := Runner{Journal: j, Executor: e, Transport: &fakeTransport{}}
+			fences := 0
+			err = runner.handleWithFence(ctx, receipt, func() error {
+				fences++
+				if blocked && fences == 2 {
+					return errors.New("fenced immediately before reservation")
+				}
+				return nil
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if process.starts != 0 {
+				t.Fatal("failed boundary started process")
+			}
+			if (blocked && reserves != 0) || (!blocked && reserves != 1) {
+				t.Fatalf("reserve count %d blocked=%v", reserves, blocked)
+			}
+			destroy := op
+			destroy.ID = "destroy-after-boundary"
+			destroy.Kind = "destroy"
+			destroy.Payload = json.RawMessage(`{}`)
+			proof, err := j.ProvesNoEffects(ctx, destroy)
+			if err != nil || proof != blocked {
+				t.Fatalf("durable boundary proof=%v blocked=%v err=%v", proof, blocked, err)
+			}
+		})
 	}
 }

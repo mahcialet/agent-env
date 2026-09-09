@@ -529,8 +529,33 @@ stacks:
 		if !strings.Contains(closedText, "Page closed "+affected+" ") || strings.Contains(closedText, "Page "+affected+" ") {
 			t.Errorf("closed page displayed as inventory instead of mutation: %s", closedText)
 		}
-		if pages := call("pages").Observation.Pages; len(pages) != 1 || pages[0].ID != page {
-			t.Fatalf("mutation affected sibling page: %+v", pages)
+		// Target.closeTarget acknowledges the close request before Chromium must
+		// remove the target from getTargets. Wait for that observed transition;
+		// throughout it, the original sibling must remain and no extra page may
+		// appear. The final inventory assertion remains exact.
+		deadline := time.Now().Add(5 * time.Second)
+		for {
+			pages := call("pages").Observation.Pages
+			siblingPresent := false
+			for _, candidate := range pages {
+				switch candidate.ID {
+				case page:
+					siblingPresent = true
+				case affected:
+				default:
+					t.Fatalf("page mutation created unexpected target: %+v", pages)
+				}
+			}
+			if !siblingPresent {
+				t.Fatalf("mutation affected sibling page: %+v", pages)
+			}
+			if len(pages) == 1 && pages[0].ID == page {
+				break
+			}
+			if time.Now().After(deadline) {
+				t.Fatalf("closed page remained in inventory: %+v", pages)
+			}
+			time.Sleep(50 * time.Millisecond)
 		}
 	})
 	created := call("page-create")

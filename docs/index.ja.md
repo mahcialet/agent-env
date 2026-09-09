@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/index.md
-source_sha256: 1f2ec361c882d8489634379c29618def27b930da198271eaa315e0a060373362
+source_sha256: d2c1b45b06b5ccefe2d6c43ce2508f7099724c73d66c34f6f657f7ef5c1f6821
 ---
 
 # リポジトリの知識
@@ -39,4 +39,5 @@ Browser/CDP: [製品契約](product-specs/browser-cdp-automation.ja.md)、[設�
 [設計](design-docs/multi-host-control-plane.ja.md)、[ADR 0006](adr/0006-single-authority-multi-host.ja.md)、
 [ExecPlan](exec-plans/active/multi-host-control-plane.ja.md) を参照してください。
 [README の使用方法](../README.ja.md#明示的な-remote-モード) に登録と各 role の起動方法を記載しています。
-[品質](QUALITY.ja.md#複数-host-の-native-検証) では、Linux socket 検証の結果と、未検証の native・物理 host の証拠を区別します。
+[品質](QUALITY.ja.md#複数-host-の-native-検証) では、Windows・macOS・Linux の native TLS 実行の成功を記録し、
+未完了の物理 host 検証や最終的な受け入れ検証と区別します。

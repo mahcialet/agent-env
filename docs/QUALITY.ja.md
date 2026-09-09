@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/QUALITY.md
-source_sha256: 210c13ee45c423f25d39b29b8645cc53d15168bfd7aeb7cc9085e743f115f260
+source_sha256: 61cb7850b905459226011b3f6f1bd1f0ea8fe6697c03ac8dfe42e135ab27b518
 ---
 
 # 品質と検証
@@ -167,6 +167,10 @@ screenshot、Unicode入力と消去、古い参照の拒否、iframe/shadow観�
 lease所有backend、永続的な入力redaction、安全なprofile cleanupを検証しました。
 Planにはnativeの証拠とCI修正履歴を、mock testやcross-buildと分けて記録しています。
 
+既存の local Browser/CDP matrix は、`53fe81a` の Windows・macOS・Linux で再び成功しました
+（[run 34316121411](https://github.com/mahcialet/agent-env/actions/runs/34316121411)）。
+この回帰検証の証拠は、remote Browser 操作の受け入れ検証とは区別します。
+
 ## 複数 host の native 検証
 
 ```text
@@ -177,12 +181,29 @@ go test -tags=multihostintegration ./internal/cli -run '^TestMultiHostNativeCLI$
 Go で短期間の test 証明書を作って、別々の状態 root を持つ controller/client/二 worker の実 process を TLS で接続します。
 shell script、Docker、SDK、browser は不要です。role/enrollment の拒否、lease 全体の配置、drain、
 同時に稼働する二つの lease、port/worktree の分離、local force 拒否、controller 停止・再起動、
-native process の識別情報を保持した worker 再起動、独立した cleanup を検証します。
+native process の識別情報を保持した worker 再起動、相対実行ファイル path で起動する名前付き test、
+保持した log、digest を検証する登録済み artifact の download、期限更新、client/worker の環境変数の分離、
+独立した cleanup を検証します。
 cleanup を確認できなければ調査用に fixture 状態を保持します。
 
 Linux/amd64 では 21.406s で成功しました。初回実行では、通信時の JSON object 順序の正規化によって
 実際に plan digest が不一致になる問題を検出し、manifest の意味に基づく正規化と恒久的な source 往復回帰 test で修正しました。
-[native workflow](../.github/workflows/multi-host.yml) は Windows/macOS/Linux の job を定義していますが、
-Windows/macOS の成功の証拠はまだありません。同じ物理 host の二 worker で、物理マシン・VM の複数 host 動作を
-証明したとは扱わず、cross-build も native role 実行の証明にはしません。
+拡張した fixture は、`53fe81a` の Windows・macOS・Linux の全 job で成功しました
+（[native workflow run 34316121492](https://github.com/mahcialet/agent-env/actions/runs/34316121492)）。
+各 runner は同じ host 上の二つの worker root を使っています。これを物理マシン・VM の複数 host 動作の証明とは扱わず、
+cross-build も native role 実行の証明にはしません。最終的な受け入れ検証は継続中であり、
 最新の正確な結果は [ExecPlan](exec-plans/active/multi-host-control-plane.ja.md) に記録します。
+
+追加の remote runtime fixture も、同じ build tag を指定して明示的に実行します。
+
+```text
+go test -tags=multihostintegration ./internal/cli -run '^TestMultiHostRemoteBrowser$' -count=1 -v -timeout=12m
+go test -tags=multihostintegration ./internal/cli -run '^TestMultiHostRemoteCompose$' -count=1 -v -timeout=12m
+```
+
+Browser fixture には、PATH 上で直接実行できる互換 `google-chrome` と、利用可能な browser sandbox が必要です。
+Compose fixture には、動作する Docker Compose と Podman/podman-compose の両環境が必要です。
+前提条件がない状態でこれらの test を選ぶと失敗します。実際の controller/worker/runtime process を起動し、
+登録済みの証拠を保持して、lease 単位で cleanup します。通常の単体 test はこれらの外部 runtime を起動しません。
+この実行方法の記載は、全 OS で remote の native 受け入れが成功したという主張ではありません。
+検証した範囲と結果は active Plan を参照してください。

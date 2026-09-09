@@ -37,5 +37,6 @@ Multi-host coordination is under active acceptance: [product contract](product-s
 [design](design-docs/multi-host-control-plane.md), [ADR 0006](adr/0006-single-authority-multi-host.md),
 and [ExecPlan](exec-plans/active/multi-host-control-plane.md).
 [README usage](../README.md#explicit-remote-mode) describes enrollment and role startup;
-[quality](QUALITY.md#multi-host-native-verification) distinguishes the Linux socket
-result from pending native and physical-host evidence.
+[quality](QUALITY.md#multi-host-native-verification) records successful native
+Windows/macOS/Linux TLS execution and distinguishes it from pending physical-host
+coverage and final acceptance.

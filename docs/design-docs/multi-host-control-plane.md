@@ -69,6 +69,12 @@ placements, and removal refuses hosts with unreleased assignments.
 
 ## Journal and delivery ordering
 
+For create, the worker records `effect_started` immediately before the app reserves
+the lease. Read-only validation and provider diagnostics before that boundary can
+fail with durable no-effect evidence. A later destroy can release that assignment
+only when the journal proves all prior operations never crossed the boundary.
+After any reservation attempt, even an error without a local row is uncertain.
+
 Persist operation receipt and payload identity before dispatch/effects. The worker
 records preparation, possible effect start, local result and delivery state.
 Duplicate identical delivery consults that journal; conflicting payloads with the

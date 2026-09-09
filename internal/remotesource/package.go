@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 
@@ -202,6 +203,16 @@ func equalStrings(a, b []string) bool {
 // git runs only local operations, disabling ambient Git transport/config overrides.
 func git(ctx context.Context, dir string, args ...string) (string, error) {
 	base := []string{"-c", "protocol.allow=never", "-c", "protocol.file.allow=always", "-c", "core.hooksPath=" + os.DevNull, "-c", "core.longpaths=true"}
+	if runtime.GOOS == "windows" && dir != "" {
+		// CreateProcess rejects long explicit working directories before Git
+		// starts. Let Git's longpaths-aware chdir select the repository instead.
+		absoluteDir, err := filepath.Abs(dir)
+		if err != nil {
+			return "", err
+		}
+		base = append(base, "-C", absoluteDir)
+		dir = ""
+	}
 	cmd := exec.CommandContext(ctx, "git", append(base, args...)...)
 	cmd.Dir = dir
 	for _, e := range os.Environ() {

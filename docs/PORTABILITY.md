@@ -157,10 +157,12 @@ runtime. Pre-provisioned PEM certificates and separate absolute `AGENT_ENV_HOME`
 state roots are required. Committed bundles replace client absolute source paths;
 worker-local paths and loopback endpoints retain worker OS semantics.
 
-The actual-TLS native fixture passed on Linux/amd64 in 21.406s with two worker
-roots on one physical host, including a committed path containing spaces/Unicode
-and controller/worker restart. The [multi-host workflow](../.github/workflows/multi-host.yml)
-defines Windows/macOS/Linux execution; native Windows/macOS results and physical
-multi-machine/VM evidence are still pending. No cross-build or same-host worker
-process count closes those gaps. See [quality](QUALITY.md#multi-host-native-verification)
+The actual-TLS native fixture passed on Windows, macOS and Linux at `53fe81a`
+(run 34316121492), with two worker roots on each runner. It covers committed paths
+containing spaces/Unicode, controller/worker restart, named tests, logs, registered
+artifact downloads, renewal and environment isolation. The existing local Browser/CDP
+native matrix also passed on all three OSes at that revision (run 34316121411).
+Physical multi-machine/VM coverage remains unverified, and final acceptance is
+still in progress. Neither cross-builds nor same-host worker processes establish
+physical-host coverage. See [quality](QUALITY.md#multi-host-native-verification)
 and the [active plan](exec-plans/active/multi-host-control-plane.md).

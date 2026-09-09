@@ -63,9 +63,10 @@ Native Docker integration on Windows and macOS may need self-hosted Docker-capab
 The [single-controller contract](product-specs/multi-host-control-plane.md) is
 implemented for explicit remote placement, committed source transfer and typed
 worker operations; its [ExecPlan](exec-plans/active/multi-host-control-plane.md)
-remains active for acceptance. Real-TLS Linux evidence passed in 21.406s with two
-worker roots on the same physical machine. Windows/macOS native and physical
-multi-host/VM evidence remain pending.
+remains active for final acceptance. Real-TLS native evidence passed on Windows,
+macOS and Linux at `53fe81a` (run 34316121492), with two worker roots on each runner,
+including named tests, logs, artifact downloads, renewal and environment isolation.
+Physical multi-host/VM evidence remains pending.
 
 Initial worker dispatch is serial, with concurrent live leases. A second active
 operation on the same lease is rejected, including destroy during a remote test.

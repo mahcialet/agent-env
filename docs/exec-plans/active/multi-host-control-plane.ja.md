@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/exec-plans/active/multi-host-control-plane.md
-source_sha256: f3c4d60dedb8415f54ad6afe5732c8a20f0504ca4d01ffaa29ffed707134a817
+source_sha256: 06042047d16d2a49c8d84d866842ae10ddbd38e133064ea2829760096aae7561
 ---
 
 # Single-authority multi-host control planeを追加する
@@ -472,9 +472,9 @@ client env secretを自動forwardしない。
 - [x] 2026-09-09: duplicate delivery / effect-result loss regression
 - [x] 2026-09-09: outage with live resource
 - [x] 2026-09-09: two-worker real-socket integration
-- [ ] remote process/browser E2E
-- [ ] Docker/Podman remote integration where possible
-- [ ] Windows/macOS/Linux native protocol integration
+- [x] 2026-09-09: remote process/browser E2E
+- [x] 2026-09-09: Docker/Podman remote integration where possible
+- [x] 2026-09-09: Windows/macOS/Linux native protocol integration
 - [x] 2026-09-09: separate machine/VM evidence where available
 - [x] 2026-09-09: bilingual durable docs
 - [ ] final harness/race/native/integration/release
@@ -482,17 +482,23 @@ client env secretを自動forwardしない。
 
 ## 想定外の発見
 
+- 2026-09-09: WindowsのGitは`-C`で作業ディレクトリを選び、source配置と回帰テストを維持したままCreateProcessの長いcwd制限を回避する。Browser CIでは`Target.closeTarget`後の一覧反映が非同期だったため、元のページだけになるまで最大5秒待つ検査に変更した。元のページの消失や未知のtargetは即失敗とする。Linuxの実Chromeを3回実行して成功（28.929s）。ローカル全harness/raceとworker UIテストが成功し、remote Browser/Docker/Podman E2Eも再成功した（33.142s）。native CIで再検証する。
+
+- 2026-09-09: 相対cloneパスだけではVerify 34316762287のWindows検査は通らず、Git起動前にCreateProcessが260文字超の作業ディレクトリを拒否した。native multi-host 34316762301は引き続き3 OSすべて成功した。Browser native 34316762319ではmacOSのpage-close後の一覧検査が失敗し、source変更とは別に非同期のtarget反映を調査している。いずれも修正の検証が終わるまでは未解決として扱う。
+
+- 2026-09-09: mode不正、TTL上限超過、process provider不在の3ケースで、local Reserve前のcreate失敗なのにworkerの作用開始を記録する問題を修正前に再現した。Reserve直前のapp callbackでjournalを更新するようにし、予約前の失敗では作用未開始の永続証拠を保持する。Reserveの曖昧な失敗は不在証明にせず、fence失敗はReserveを防ぐ回帰テストも追加した。app/worker全raceテスト成功（47.217s / 4.243s）。
+
 - 2026-09-09: `53fe81a` の multi-host と Browser の native CI は3 OSすべてで成功した（34316121492 / 34316121411）。Verify 34316121380 では、Windows の300文字超のソースライフサイクル検査がまだ失敗した。`core.longpaths=true` だけでは、Git index-pack が絶対パスの `$GIT_DIR` を拒否する問題を解消できなかった。検証済みの専用展開ディレクトリからの相対パスで clone するよう修正し、深いパスのテストは維持した。ローカルの全 harness と source/worker の race テストは成功し、native の再検証を行う。
 
 - 2026-09-09: 最初の実TLS createはJSON objectのkey順序変更によるpackage digest不一致で失敗した。型付きmanifestをcanonical化してhashを計算し、commit済みcontrol fileからの変換証明は独立して維持する。順序変更回帰テストとLinux native E2Eが成功。controllerのglobal stateも、想定した大文字値ではなく`released`を含む実際のdomainの小文字stateに対応させた。
 - 2026-09-09: 独立レビューでpreflight診断の秘密情報漏出を修正前の4ケースで再現。継承secretのredactionとmetadata上限を適用した。controllerが受け付ける可読operation IDをexecutorが拒否する不整合も修正し、lease IDのULID要件は維持した。
 - 2026-09-09: 外部作用前のcreate失敗ではlocal leaseがないためdestroyも失敗し、予約を解放できなかった。journalに作用開始前の境界を原子的に記録し、入力検証済みのnon-dry-run destroyだけが同じassignmentの証明を使えるようにした。local row不在やerror payloadを証明にはしない。再起動、dry-run、不正入力、証拠欠落、作用開始済みの回帰検証が成功。
-- 2026-09-09: `0f05d09`の初回native macOS CIは、同一の一時directory祖先を示す`/var`と`/private/var`を異なるrepository identityとして比較し失敗。Linuxでは見えなかったOSのpath aliasであり、修正とnative再検証を進める。Verify 34314568570、Multi-host native 34314568601。
+- 2026-09-09: `0f05d09`の初回native macOS CIは、同一の一時directory祖先を示す`/var`と`/private/var`を異なるrepository identityとして比較し失敗。Linuxでは見えなかったOSのpath aliasであり、その後、信頼するrootの正規化で修正し、34314956327のnative検証が成功した。Verify 34314568570、Multi-host native 34314568601。
 
 - 2026-09-09: 独立レビューでPrepare中のheartbeat切断後も外部作用を開始できる経路を発見。永続的なeffect-started遷移の直前に検査を追加し、再接続まで作用を開始しない回帰テストが成功。
 - 2026-09-09: remote actionの初期テストはUI/Browserのflagが全action共通と誤って想定していた。実際のactionごとのflag定義に対応させ、local flagを変更せず修正した。初回全harnessは新規テストで失敗し、修正後の個別テストは成功。再実行はcontrollerの編集中に整形検査で失敗したため、安定した変更単位で全検査を再実行する。
 
-- 2026-09-09: baselineのunit/vet、raceテストが成功。実Dockerを使用した`repoctl test-integration`も終了コード0。`repoctl check`は、提供された日本語Planに必須の見出しがなかったためdocs-checkで失敗。両言語に不足する節を追加した。残るnative runtime baselineは未実施。
+- 2026-09-09: baselineのunit/vet、raceテストが成功。実Dockerを使用した`repoctl test-integration`も終了コード0。`repoctl check`は、提供された日本語Planに必須の見出しがなかったためdocs-checkで失敗。両言語に不足する節を追加した。この時点では残るnative runtime baselineは未実施で、その後成功した。
 
 ## 判断の記録
 
@@ -674,7 +680,7 @@ host OFFLINEはcleanup eventではない。
 
 2026-09-09の統合milestone: `6d9dd7a`（local管理境界）と`0f05d09`（controller/worker/source/CLI）を`origin/feat/multi-host-control-plane`へpush。localの全`repoctl check`と`go test -race ./...`が成功。`TestMultiHostNativeCLI`は実TLSとbuild済みbinaryで21.406sで成功し、配置、role拒否、drain、隔離、outage、controller/worker再起動、cleanupを検証した。既存Browser native/secret、Podman共存（107.695s）、実Android Emulator、実Flutter/Android UI、Docker `repoctl test-integration`も成功。Androidの初回はtemplate指定不足で失敗し、導入済みの停止中templateを明示して再実行した。host固有の前提pathは記録しない。native CIは進行中で、macOSでは上記path alias不具合を検出した。追加remote runtime E2Eの証拠を収集中。
 
-2026-09-09の検証証拠: `go test -race ./internal/worker`成功（1.073s）。receipt再送、upload/ack失敗、結果喪失時の不確実状態、作用直前のheartbeat検査を含む。`go test -race ./internal/instance`成功（1.035s）。nativeの別process排他とcrash後の解放を含む。管理境界のapp/local-store/domain raceは50.167s/16.235s/1.030sで成功。修正前のStore.Saveをoverlayで使用し、6件の不正上書きを再現した。source/CASの反復raceは5.380s/1.011sで成功。architecture境界fixtureは0.028sで成功。native Windows/macOSと実TLSの2-worker受け入れは未完了。
+2026-09-09の検証証拠: `go test -race ./internal/worker`成功（1.073s）。receipt再送、upload/ack失敗、結果喪失時の不確実状態、作用直前のheartbeat検査を含む。`go test -race ./internal/instance`成功（1.035s）。nativeの別process排他とcrash後の解放を含む。管理境界のapp/local-store/domain raceは50.167s/16.235s/1.030sで成功。修正前のStore.Saveをoverlayで使用し、6件の不正上書きを再現した。source/CASの反復raceは5.380s/1.011sで成功。architecture境界fixtureは0.028sで成功。この時点ではnative Windows/macOSと実TLSの2-worker受け入れは未完了で、その後の成功を上に記録した。
 
 実装したcontroller state（controller IDはSQLiteに保存）:
 

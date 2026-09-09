@@ -96,6 +96,10 @@ type Service struct {
 	ReadinessInterval   time.Duration
 }
 type CreateOptions struct {
+	// BeforeReserve is an optional durable effect fence. Validation and provider
+	// diagnostics before it must not allocate lease resources. Create stops if it
+	// fails, and never calls Reserve until it succeeds. Local callers may omit it.
+	BeforeReserve        func(context.Context) error
 	LeaseID              string
 	Management           *domain.Management
 	Owner, Purpose, Mode string
@@ -253,6 +257,11 @@ func (s *Service) Create(ctx context.Context, o PlanOptions, options CreateOptio
 	}
 	if err = validateAndroidInputPaths(lease); err != nil {
 		return domain.Lease{}, err
+	}
+	if options.BeforeReserve != nil {
+		if err = options.BeforeReserve(ctx); err != nil {
+			return lease, err
+		}
 	}
 	if err = s.Store.Reserve(ctx, lease, p.MaxActive); err != nil {
 		return lease, err

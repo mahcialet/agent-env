@@ -189,8 +189,9 @@ to the worker, without a client tunnel.
 Workers dispatch operations serially while already-created leases run concurrently.
 A second active operation on one lease is rejected, including destroy during a
 remote test; remote cancel-active is not implemented. Local force/GC cannot bypass
-controller management. Linux real-TLS acceptance passed in 21.406s with two worker
-roots on one physical machine. The native Windows/macOS workflow is defined but
-has not yet supplied pass evidence; physical multi-host/VM coverage also remains
-unverified. See [quality](docs/QUALITY.md) and the
+controller management. Real-TLS acceptance passed on Windows, macOS and Linux at
+`53fe81a` (run 34316121492), with two worker roots on each runner. The fixture covers
+named tests, logs, artifact downloads, renewal and environment isolation as well
+as placement and restart. Physical multi-host/VM coverage remains unverified;
+final acceptance is still in progress. See [quality](docs/QUALITY.md) and the
 [active plan](docs/exec-plans/active/multi-host-control-plane.md).

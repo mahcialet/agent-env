@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/design-docs/multi-host-control-plane.md
-source_sha256: 3a58ee92b6e78ffa7d29fc2e0e7f79c5b2cf99eb32c5c28e6dca0963c44f1e44
+source_sha256: d394bf42c05e632f7c6ebb349d916f63b05770b385b2fc1f6aa91851e07eab26
 ---
 
 # 一つの管理主体による複数 host の調整
@@ -63,6 +63,11 @@ controller 再起動では元の管理主体と journal を再読込します。
 host の削除は拒否します。
 
 ## Journal と配送順序
+
+create では、app が lease を予約する直前に worker が `effect_started` を記録します。
+その前の読み取り専用の検証や provider 診断が失敗した場合は、作用を開始していない証拠を永続化できます。
+その後の destroy は、過去の全操作がこの境界を越えていないことを journal で証明できる場合だけ、
+assignment を解放できます。予約を一度でも試行した後は、local 行がないエラーでも不確実な状態として扱います。
 
 operation の受領と payload の識別情報を dispatch/作用の前に永続化します。
 worker は準備、作用開始の可能性、local 結果、配送状態を記録します。

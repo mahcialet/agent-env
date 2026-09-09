@@ -216,6 +216,18 @@ func (e *AppExecutor) Prepare(ctx context.Context, op protocol.Operation) error 
 	return nil
 }
 func (e *AppExecutor) Execute(ctx context.Context, op protocol.Operation) protocol.Result {
+	return e.execute(ctx, op, nil)
+}
+
+// ExecuteWithEffectBoundary preserves durable absence proof until Create reaches
+// its first lease reservation. All earlier checks remain read-only diagnostics.
+func (e *AppExecutor) ExecuteWithEffectBoundary(ctx context.Context, op protocol.Operation, beforeEffects func(context.Context) error) protocol.Result {
+	if op.Kind != "create" || beforeEffects == nil {
+		return responseResult("failed", Response{}, errors.New("create effect boundary required"))
+	}
+	return e.execute(ctx, op, beforeEffects)
+}
+func (e *AppExecutor) execute(ctx context.Context, op protocol.Operation, beforeEffects func(context.Context) error) protocol.Result {
 	e.mu.Lock()
 	p, ok := e.prepared[op.ID]
 	delete(e.prepared, op.ID)
@@ -241,7 +253,7 @@ func (e *AppExecutor) Execute(ctx context.Context, op protocol.Operation) protoc
 	var artifacts []protocol.Blob
 	switch op.Kind {
 	case "create":
-		lease, err = s.Create(ctx, p.options, app.CreateOptions{LeaseID: op.LeaseID, Management: management(op), Owner: p.request.Owner, Purpose: p.request.Purpose, Mode: p.request.Mode, TTL: p.request.TTL})
+		lease, err = s.Create(ctx, p.options, app.CreateOptions{BeforeReserve: beforeEffects, LeaseID: op.LeaseID, Management: management(op), Owner: p.request.Owner, Purpose: p.request.Purpose, Mode: p.request.Mode, TTL: p.request.TTL})
 		out.Lease = &lease
 	case "show":
 		lease, err = s.Show(ctx, op.LeaseID)

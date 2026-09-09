@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/roadmap.md
-source_sha256: 0ee49731313e9e1707b513c166a5ec1adaf7f6b610f5fea6b7bf3307d95391af
+source_sha256: d6355c8b597f3452bb9c831e051264cc86e6d21c2a479185d20bba34a899cd63
 ---
 
 [英語版（翻訳元）](roadmap.md)
@@ -63,8 +63,9 @@ Windows/macOSのネイティブDocker統合には、Dockerが使えるself-hoste
 [単一 controller の仕様](product-specs/multi-host-control-plane.ja.md) に沿って、明示的な remote 配置、
 commit 済み source 転送、型付き worker 操作を実装しています。
 [ExecPlan](exec-plans/active/multi-host-control-plane.ja.md) は受け入れ検証のため active のままです。
-同じ物理マシンの二つの worker root を使う実 TLS の Linux 証拠は 21.406s で成功しました。
-Windows/macOS の native と、物理的な複数 host・VM の証拠はまだありません。
+実 TLS の native 検証は、各 runner の二つの worker root を使い、`53fe81a` の Windows・macOS・Linux で
+成功しました（run 34316121492）。名前付き test、log、artifact download、期限更新、環境変数の分離も含みます。
+物理的な複数 host・VM の証拠はまだありません。
 
 初期の worker は操作を直列に実行し、作成済み lease は並行して稼働できます。
 同じ lease の二つ目の active 操作は、remote test 中の destroy も含めて拒否します。

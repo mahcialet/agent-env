@@ -25,6 +25,12 @@ type Executor interface {
 	Execute(context.Context, protocol.Operation) protocol.Result
 	Recover(context.Context, protocol.Operation) protocol.Result
 }
+
+// CreateBoundaryExecutor must invoke the durable callback before any lease
+// reservation or runtime effect; a failed callback prohibits all such effects.
+type CreateBoundaryExecutor interface {
+	ExecuteWithEffectBoundary(context.Context, protocol.Operation, func(context.Context) error) protocol.Result
+}
 type Runner struct {
 	Journal           *Journal
 	Transport         Transport
@@ -213,10 +219,19 @@ func (r *Runner) handleWithFence(ctx context.Context, receipt Receipt, fence fun
 			if err = fence(); err != nil {
 				return err
 			}
-			if err = r.Journal.Advance(ctx, op.ID, "prepared", "effect_started"); err != nil {
-				return err
+			if boundary, ok := r.Executor.(CreateBoundaryExecutor); ok && op.Kind == "create" {
+				result = boundary.ExecuteWithEffectBoundary(ctx, op, func(effectCtx context.Context) error {
+					if err := fence(); err != nil {
+						return err
+					}
+					return r.Journal.Advance(effectCtx, op.ID, "prepared", "effect_started")
+				})
+			} else {
+				if err = r.Journal.Advance(ctx, op.ID, "prepared", "effect_started"); err != nil {
+					return err
+				}
+				result = r.Executor.Execute(ctx, op)
 			}
-			result = r.Executor.Execute(ctx, op)
 		}
 	} else {
 		return errors.New("journal state has no recoverable result")

@@ -180,6 +180,10 @@ observation, bounded diagnostics, a lease-hosted backend, durable input redactio
 and safe profile cleanup. The plan records native evidence and CI repair history
 separately from mock tests and cross-builds.
 
+The existing local Browser/CDP matrix passed again on Windows, macOS and Linux at
+`53fe81a` ([run 34316121411](https://github.com/mahcialet/agent-env/actions/runs/34316121411)).
+This regression evidence is separate from remote Browser operation acceptance.
+
 ## Multi-host native verification
 
 ```text
@@ -192,14 +196,32 @@ controller/client/two-worker processes over TLS with separate state roots. It us
 no shell script, Docker, SDK or browser. It verifies role/enrollment rejection,
 whole-lease placement, drain, two simultaneous leases, distinct ports/worktrees,
 local force refusal, controller outage/restart, worker restart retaining native
-process identity, and independent cleanup. Unconfirmed cleanup retains fixture
+process identity, named tests invoked by relative executable path, retained logs,
+registered artifact downloads with digest verification, renewal, client/worker
+environment isolation, and independent cleanup. Unconfirmed cleanup retains fixture
 state for investigation.
 
 Linux/amd64 passed in 21.406s. The initial run exposed a real plan-digest mismatch
 when transport canonicalized JSON object order; semantic manifest canonicalization
-and a permanent source roundtrip regression fixed it. The
-[native workflow](../.github/workflows/multi-host.yml) defines Windows/macOS/Linux
-jobs; Windows/macOS pass evidence is still pending. Two workers on one physical
-host do not prove physical-machine/VM multi-host behavior, and cross-builds do not
-prove native role execution. Exact evolving results belong to the
+and a permanent source roundtrip regression fixed it. The expanded fixture passed
+all Windows/macOS/Linux jobs at `53fe81a` in the
+[native workflow run 34316121492](https://github.com/mahcialet/agent-env/actions/runs/34316121492).
+Each runner used two worker roots on one host. This does not prove physical-machine/VM
+multi-host behavior, and cross-builds do not prove native role execution.
+Final acceptance remains in progress; exact evolving results belong to the
 [ExecPlan](exec-plans/active/multi-host-control-plane.md).
+
+Additional remote runtime fixtures use the same explicit build tag:
+
+```text
+go test -tags=multihostintegration ./internal/cli -run '^TestMultiHostRemoteBrowser$' -count=1 -v -timeout=12m
+go test -tags=multihostintegration ./internal/cli -run '^TestMultiHostRemoteCompose$' -count=1 -v -timeout=12m
+```
+
+The Browser fixture requires a directly executable compatible `google-chrome` on
+PATH and a usable browser sandbox. The Compose fixture requires both working Docker
+Compose and Podman/podman-compose environments. Selecting either test with missing
+prerequisites fails. They launch real controller/worker/runtime processes, retain
+registered evidence, and perform lease-scoped cleanup; ordinary unit tests do not
+start these external runtimes. These commands are not a claim of remote native
+acceptance on every OS; consult the active plan for the tested scope and results.

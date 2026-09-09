@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/PORTABILITY.md
-source_sha256: b1e0292913f567b92d7ab1b81e48d3b79cc6349bf532b255e224606b5431d0e3
+source_sha256: fdc0249f777d93de3ff835f381ac7c044656fd15eed0a8e11a479102f1e169c7
 ---
 
 [英語版（翻訳元）](PORTABILITY.md)
@@ -149,10 +149,11 @@ worker には選択した runtime が必要とする外部ツールを用意し�
 client の絶対 source path の代わりに commit 済み bundle を転送し、worker-local の path と loopback endpoint は
 worker の OS 上の意味を保持します。
 
-実 TLS の native fixture は、同じ物理 host の二つの worker root を使った Linux/amd64 で 21.406s で成功しました。
-空白・Unicode を含む commit 済み path と、controller/worker 再起動も含みます。
-[multi-host workflow](../.github/workflows/multi-host.yml) は Windows/macOS/Linux の実行を定義していますが、
-native Windows/macOS の結果と、物理的な複数マシン・VM の証拠はまだありません。
-cross-build や同じ host の worker process 数でこの不足を解消したとは扱いません。
+実 TLS の native fixture は、各 runner の二つの worker root を使い、`53fe81a` の Windows・macOS・Linux で
+成功しました（run 34316121492）。空白・Unicode を含む commit 済み path、controller/worker 再起動、
+名前付き test、log、登録済み artifact の download、期限更新、環境変数の分離を検証しています。
+既存の local Browser/CDP native matrix も、同じ revision の 3 OS で成功しました（run 34316121411）。
+物理的な複数マシン・VM の検証は未実施であり、最終的な受け入れ検証は継続中です。
+cross-build や同じ host の worker process で、物理 host の検証を済ませたとは扱いません。
 [品質](QUALITY.ja.md#複数-host-の-native-検証) と
 [active Plan](exec-plans/active/multi-host-control-plane.ja.md) を参照してください。
