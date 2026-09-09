@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/audits/repository-correctness/current-process-browser.md
-source_sha256: 1f77e6e8cbbe6f8ce18c58da7f6834a01e765eef20e6e6e5cc064e308e0033cc
+source_sha256: 6c390521c7b9c660a3366cce3263ffebbd260fe071f26a10e593bd205f7853f7
 ---
 
 # 現在のprocess・browser・executorの正しさレビュー
@@ -11,8 +11,8 @@ source_sha256: 1f77e6e8cbbe6f8ce18c58da7f6834a01e765eef20e6e6e5cc064e308e0033cc
 [English](current-process-browser.md) · [監査Plan](../../exec-plans/active/repository-correctness-audit.ja.md) · [過去レビュー資料](history-process-browser.ja.md)
 
 固定対象: `031869c8b9073b8e23bc17fbc55243666a52f557`。
-Phase Aのみで製品・test sourceは変更していない。再現にはrepository外のGo overlayを用いた。
-指摘は統合担当の処置判断まで未分類。本書はprocess runtime・Browser/CDP・execxの
+Phase A再現にはrepository外のGo overlayを用いた。統合担当はPhase B checkpoint
+（`56b9c2c`）で両指摘を採用し、Phase Cの修正・回帰を以下に記録する。本書はprocess runtime・Browser/CDP・execxの
 限定したsource・再現確認を完了するが、全体監査表・native baseline・最終独立reviewを代替しない。
 
 ## 確認した不変条件の表
@@ -34,7 +34,7 @@ Phase Aのみで製品・test sourceは変更していない。再現にはrepos
 ## AUDIT-REDACTION-002 — DOM証拠がadapterの最終size制限を越える
 
 - 重要度: Medium（証拠上限の不整合。仕様上の留保は後述）。
-- 処置: 未分類。
+- 処置: ACCEPT。
 - 不変条件: 証拠変換後も意図した最終artifact予算を維持するか超過を明示・拒否する。
 - 場所: `internal/app/browser.go`のDOM分岐、`redactBrowserJSON`後、
   `save("browser-dom", ...)`前。`internal/browser/cdp/snapshot.go:domSnapshot`と
@@ -56,8 +56,11 @@ Phase Aのみで製品・test sourceは変更していない。再現にはrepos
   snapshot、set-text `qz`後、上記2048 nodeの確認済DOMを注入しdom-snapshotを呼ぶ。
   登録artifactの存在とencodingが1 MiB以下であることをassertする。
   実際は上記sizeでFAIL、0.079s。製品fileは無変更。
-- 回帰: 公開app経由の保存artifact回帰を提案。処置判断待ち。
-- 修正: Phase Aではなし。
+- 回帰: `TestBrowserDOMBoundsAfterRedaction`と`TestBrowserDOMEncodedBoundary`で
+  保存出力と正確な境界を検査するようにした。
+- 修正: Phase Cではredaction後DOMを全node単位のprefixへ絞り1 MiB以下にする。
+  残るidentity fieldとmetadataを維持し、実省略がある場合のみartifactと観測の
+  truncatedを付けread-only runを完了する。metadataだけで上限超過する場合は拒否する。
 - 検証: 決定的なapp全体再現、保存artifact実読取、passed runとtruncation確認。
   app変換の証明にnative Chrome再現は不要。合法custom名を使い未知DOM fieldに依存しない。
 - 関連: 過去HB16/HB20（上限適用後の変換という同型）。
@@ -65,7 +68,7 @@ Phase Aのみで製品・test sourceは変更していない。再現にはrepos
   COMPOSITION_GAP + BOUNDARY_GAP。過去修正はsemantic/capture最終出力を測ったが
   全browser artifact種別を列挙しなかった。不足oracleは最終DOM byte長。
   予防策はartifactごとの最終encoding上限表でS4検出を期待。
-  実装・証拠は処置待ち、既存guardはsemantic/captureのみ。
+  最終DOM guardと公開保存artifact回帰は成功済。広い表の統合は統合担当が管理する。
 
 留保: product文書が1 MiB以下と明示するのは**semantic JSON**で、
 DOMはboundedと説明するが最終DOMの独立数値はない。adapterはDOM JSONが1 MiBを
@@ -76,7 +79,7 @@ semantic限定の文章を明示DOM仕様として引用しない。
 ## AUDIT-STALE-001 — Load waitが別documentの証拠を返せる
 
 - 重要度: Medium。
-- 処置: 未分類。
+- 処置: ACCEPT。
 - 不変条件: wait成功の証拠は成功predicateを確立したdocumentを記述する。
 - 場所: `internal/browser/cdp/client.go:wait`の`case "load"`。
 - 条件: snapshot自身の取得前後証明が完了した後、
@@ -93,8 +96,10 @@ semantic限定の文章を明示DOM仕様として引用しない。
   `old`を返し、Runtime.evaluateで`new`へ変え`complete`を返す。
   mutation到達をassertし戻りsnapshot tokenと再取得frameDocumentを比較する。
   FAIL、0.004s。戻り値`main:old:<同じURL digest>`に対し現状態は`main:new:<同じURL digest>`。
-- 回帰: componentのnavigation境界fixtureを提案。処置判断待ち。
-- 修正: Phase Aではなし。
+- 回帰: `TestLoadWaitRechecksDocumentAfterPredicate`でpredicate境界の
+  単発・連続navigationを検査するようにした。
+- 修正: Phase Cではload完了predicate後にroot document identityを再検査し、
+  URL wait同様に不一致時は既存期限内でretryする。連続navigationのtimeoutではsnapshotを返さない。
 - 検証: 決定的protocol component再現。native timing再現は未実行。
   mock独自fieldではなく説明されたloader変化と通常readyStateを用いている。
 - 関連: 過去HB10/HB17（複数call観測前後のidentity検査）。
@@ -102,7 +107,7 @@ semantic限定の文章を明示DOM仕様として引用しない。
   snapshot自身の証明が後続predicate callも保護すると考えた。
   既存mutation testは追加段階前で止まる。全複数call wait predicateを列挙し
   観測・判定間にnavigationを注入すればS3検出が期待できる。
-  guardrail実装・証拠は処置判断待ち。
+  新しいnavigation境界回帰は製品修正後に成功した。
 
 ## AUDIT-CLEANUP-001を裏付けるexecutor証拠
 
@@ -142,4 +147,21 @@ named commandにある型付きrunning barrierと異なる。
 選択した過去回帰のrace実行は成功し詳細を過去資料に記録した。
 続くprocess・execx・CDP全体race呼出はGo cacheからPASSを返したため、新規実行とは数えない。
 2つのoverlay再現は期待通り失敗しrepository製品・test fileを変更していない。
-ここでは修正・commit・push・thread操作を行っていない。
+Phase Aでは修正せず、Phase Cの変更は以下に記す。本担当はcommit・push・thread操作を行っていない。
+
+## Phase Cの回帰証拠
+
+恒久回帰を製品無修正の状態で実行し、2048-node DOMは1,099,648 byteを保存、
+load waitは単発・連続document変更の両方でstale成功を返して失敗した。
+
+- `TestBrowserDOMBoundsAfterRedaction`は公開app入口、実保存artifact、durable run照会を使う。
+  1000-node正常例は完全のまま、2048 nodeは真実に即したtruncationを要求する。
+  secretが残らず保持index/backend IDが変わらないこともassertする。
+- `TestBrowserDOMEncodedBoundary`は最終JSONが1 MiB-1、1 MiB、1 MiB+1の場合を検査。
+  超過時は実nodeを省略し、`false`を1 byte短い`true`へ変えるだけで
+  完全なdataを部分扱いにしないことを確認する。
+- `TestLoadWaitRechecksDocumentAfterPredicate`はnavigation注入到達をassert。
+  単発変更は2回目のpredicate評価後に新document証拠だけを返し、
+  連続変更はerrorとnil snapshotを返す。
+- CDP対象回帰のrace検査3回はPASS、1.962s。appのDOM対象回帰もrace検査3回PASS、7.938s。
+  先行試行は他担当の同時変更中fileのcompile errorで失敗しており、成功として数えない。

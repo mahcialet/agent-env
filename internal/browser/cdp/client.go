@@ -337,7 +337,15 @@ func wait(ctx context.Context, c *connection, s string, id domain.BrowserIdentit
 		case "load":
 			var x struct{ Result struct{ Value string } }
 			e = c.call(ctx, s, "Runtime.evaluate", map[string]any{"expression": "document.readyState", "returnByValue": true}, &x)
-			matched = e == nil && x.Result.Value == "complete"
+			if e == nil && x.Result.Value == "complete" {
+				// Navigation can occur after snapshot's own consistency check.
+				// Bind the later load predicate to that same document.
+				current, err := frameDocument(ctx, c, s)
+				if err != nil {
+					return nil, err
+				}
+				matched = documentIdentity(current) == sn.Document
+			}
 		default:
 			return nil, errors.New("unsupported wait condition")
 		}

@@ -1,9 +1,9 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-08
+last_verified: 2026-09-09
 translation_of: docs/product-specs/browser-cdp-automation.md
-source_sha256: 726dcd27e22145c5ca32f9c6c609249881d06a4829c7467309fecef3d4d45291
+source_sha256: 07d9f30729f727c9baa314505767f559c0663b6b7c3423c7053dbc4e39e9f8cc
 ---
 
 # Browser/CDP自動操作
@@ -147,7 +147,7 @@ BrowserとAndroid UIは別の契約を維持します。
 ### protocolと証拠の上限
 
 Discoveryは64 KiB、WebSocket messageは8 MiB、個別CDP callは操作期限内で5秒までです。
-pageは128、frameは32、AX/DOM nodeは2048までです。semantic JSONは1 MiB、AX文字列が4096 byteを超える場合は全体を`[TRUNCATED]`へ置き換え、
+pageは128、frameは32、AX/DOM nodeは2048までです。semanticとDOMのJSONは秘匿処理後もそれぞれ1 MiB、AX文字列が4096 byteを超える場合は全体を`[TRUNCATED]`へ置き換え、
 snapshotをtruncatedと表示します。truncated snapshotで入力は許可しません。
 console/networkはそれぞれ256 record、文字列合計64 KiB、各文字列4096 byteまでです。超過した文字列は全体を`[TRUNCATED]`へ置き換えます。
 512 eventのtransport bufferがあふれると切断してcaptureを失敗させます。

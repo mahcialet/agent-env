@@ -3,6 +3,7 @@ package cdp
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -430,6 +431,58 @@ func TestSnapshotNodeLimitMarksOnlyOmittedNodes(t *testing.T) {
 			}
 			if len(sn.Nodes) != total || sn.Truncated != tc.truncated {
 				t.Fatalf("nodes=%d truncated=%v, want %d/%v", len(sn.Nodes), sn.Truncated, total, tc.truncated)
+			}
+		})
+	}
+}
+
+func TestLoadWaitRechecksDocumentAfterPredicate(t *testing.T) {
+	for _, keepChanging := range []bool{false, true} {
+		t.Run(fmt.Sprint(keepChanging), func(t *testing.T) {
+			generation := 0
+			evaluations := 0
+			c, done := mockBrowser(t, func(q envelope) any {
+				switch q.Method {
+				case "Page.getFrameTree":
+					return map[string]any{"frameTree": map[string]any{"frame": map[string]any{"id": "main", "loaderId": fmt.Sprint(generation), "url": "https://site.test/", "securityOrigin": "https://site.test"}}}
+				case "Accessibility.getFullAXTree":
+					return map[string]any{"nodes": []any{map[string]any{"backendDOMNodeId": generation + 1, "role": map[string]any{"value": "heading"}, "name": map[string]any{"value": fmt.Sprint(generation)}}}}
+				case "Runtime.evaluate":
+					evaluations++
+					if evaluations == 1 || keepChanging {
+						generation++
+					}
+					return map[string]any{"result": map[string]any{"value": "complete"}}
+				default:
+					return map[string]any{}
+				}
+			})
+			defer done()
+			timeout := 2 * time.Second
+			if keepChanging {
+				timeout = 250 * time.Millisecond
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), timeout)
+			defer cancel()
+			sn, err := wait(ctx, c, "s", domain.BrowserIdentity{}, domain.BrowserPage{ID: "main"}, domain.BrowserRequest{WaitFor: "load"})
+			if evaluations == 0 {
+				t.Fatal("navigation injection not reached")
+			}
+			if keepChanging {
+				if err == nil || sn != nil {
+					t.Fatal("continuously changing document produced load evidence")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			current, e := frameDocument(ctx, c, "s")
+			if e != nil {
+				t.Fatal(e)
+			}
+			if sn.Document != documentIdentity(current) || len(sn.Nodes) != 1 || sn.Nodes[0].Name != "1" || evaluations != 2 {
+				t.Fatalf("load returned wrong document: %+v evaluations=%d", sn, evaluations)
 			}
 		})
 	}

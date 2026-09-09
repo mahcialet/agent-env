@@ -1,7 +1,7 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-08
+last_verified: 2026-09-09
 ---
 
 # Browser/CDP automation
@@ -162,7 +162,7 @@ scope. Browser and Android UI remain separate contracts.
 
 Discovery is limited to 64 KiB, a WebSocket message to 8 MiB and an individual CDP
 call to five seconds within the operation deadline. Lists allow 128 pages,
-32 frames and 2048 AX/DOM nodes. Semantic JSON is at most 1 MiB; AX strings longer than
+32 frames and 2048 AX/DOM nodes. Semantic and DOM JSON are each at most 1 MiB after redaction; AX strings longer than
 4096 bytes are replaced wholly with `[TRUNCATED]`, marking the snapshot truncated. Truncated snapshots
 cannot authorize input. Console and network each retain at most 256 records,
 64 KiB of strings and 4096 bytes per string (oversized strings are wholly replaced

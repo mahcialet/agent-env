@@ -9,9 +9,9 @@ last_verified: 2026-09-09
 [日本語](current-process-browser.ja.md) · [Audit authority](../../exec-plans/active/repository-correctness-audit.md) · [Historical corpus](history-process-browser.md)
 
 Frozen target: `031869c8b9073b8e23bc17fbc55243666a52f557`.
-Phase A only: product/test sources are unchanged. Reproductions use Go overlays
-outside the repository. Findings remain untriaged until the coordinator's
-disposition checkpoint. This report completes the bounded source/reproducer pass
+Phase A reproductions used Go overlays outside the repository. The coordinator
+accepted both findings at the Phase B checkpoint (`56b9c2c`); Phase C repairs and
+regressions are recorded below. This report completes the bounded source/reproducer pass
 for process runtime, Browser/CDP and execx; it does not replace the global audit
 matrix, native baseline or independent final review.
 
@@ -34,7 +34,7 @@ matrix, native baseline or independent final review.
 ## AUDIT-REDACTION-002 — DOM evidence escapes the adapter's final-size limit
 
 - Severity: Medium (bounded-evidence inconsistency; specification qualification below).
-- Disposition: untriaged.
+- Disposition: ACCEPT.
 - Invariant: evidence transformation must preserve the intended final artifact
   budget or explicitly disclose/reject its overflow.
 - Location: `internal/app/browser.go`, DOM branch after `redactBrowserJSON`
@@ -60,8 +60,12 @@ matrix, native baseline or independent final review.
   described above, call dom-snapshot, require a registered DOM artifact and assert
   its encoded length is at most 1 MiB. Actual result: FAIL, 0.079s, with the exact
   input/output lengths above. Product files remain untouched.
-- Regression: proposed full app persisted-artifact regression, pending disposition.
-- Resolution: none during Phase A.
+- Regression: `TestBrowserDOMBoundsAfterRedaction` and
+  `TestBrowserDOMEncodedBoundary` now exercise persisted output and exact limits.
+- Resolution: Phase C now bounds redacted DOM encoding to 1 MiB by retaining a
+  whole-node prefix. It preserves retained identity fields and metadata, marks
+  both artifact and observation truncated only after actual omission, and
+  completes the read-only run. Metadata alone above the cap is rejected.
 - Verification: deterministic full app reproduction, actual artifact read and
   returned passed run/truncation checks. No native Chrome reproduction was required
   to demonstrate the app transformation; the legal custom-name shape avoids
@@ -72,7 +76,8 @@ matrix, native baseline or independent final review.
   previous repairs measured final semantic/capture output but did not enumerate
   every persisted browser artifact kind. Missing oracle is final DOM byte length.
   Preventive control: a per-artifact final-encoding budget matrix, expected S4.
-  Implementation/evidence: pending; existing guards cover semantic/capture only.
+  Implementation/evidence: final DOM guard and public persisted-artifact regression
+  now pass; the broader matrix remains coordinator-owned.
 
 Qualification: the product text explicitly promises **semantic JSON** at most
 1 MiB; it describes DOM as bounded but does not separately state a final DOM
@@ -84,7 +89,7 @@ Do not misquote the semantic-only sentence as an explicit DOM specification.
 ## AUDIT-STALE-001 — Load wait can return evidence from a different document
 
 - Severity: Medium.
-- Disposition: untriaged.
+- Disposition: ACCEPT.
 - Invariant: a successful wait's evidence must describe the document on which its
   successful predicate was established.
 - Location: `internal/browser/cdp/client.go:wait`, `case "load"`.
@@ -106,8 +111,11 @@ Do not misquote the semantic-only sentence as an explicit DOM specification.
   and returns `complete`. It asserts the mutation was reached, then compares
   the returned snapshot token with a fresh frameDocument token. FAIL, 0.004s:
   returned `main:old:<same-URL-digest>`, current `main:new:<same-URL-digest>`.
-- Regression: proposed component navigation-boundary fixture, pending disposition.
-- Resolution: none during Phase A.
+- Regression: `TestLoadWaitRechecksDocumentAfterPredicate` now exercises single
+  and repeated navigation at the predicate boundary.
+- Resolution: Phase C rechecks the root document identity after a complete load
+  predicate and retries mismatches within the existing deadline, matching the URL
+  wait strategy. Continuous navigation returns no snapshot on timeout.
 - Verification: deterministic protocol-component reproduction. Native timing
   reproduction not run; unlike a wrong-protocol mock, the test uses documented
   loader changes and ordinary readyState results, not invented CDP fields.
@@ -116,7 +124,7 @@ Do not misquote the semantic-only sentence as an explicit DOM specification.
   snapshot's own proof was assumed to cover the later predicate call.
   Existing snapshot mutation tests stop before that extra step. Preventive control:
   enumerate every multi-call wait predicate and inject navigation between observation
-  and predicate; expect S3. Guardrail implementation/evidence pending disposition.
+  and predicate; expect S3. The new navigation-boundary regression passes with the product repair.
 
 ## Related executor evidence for AUDIT-CLEANUP-001
 
@@ -167,4 +175,26 @@ Selected historical race replay passed with current execution results recorded i
 the historical annex. A subsequent full race invocation for process, execx and
 CDP returned PASS from Go's cache; it is a cache reuse, not a new execution.
 The two overlay reproductions failed as expected and changed no repository
-product/test file. No remediation, commit, push or thread operation occurred here.
+product/test file. No remediation occurred during Phase A; Phase C changes are recorded below.
+No commit, push or thread operation was performed by this reviewer.
+
+## Phase C regression evidence
+
+Permanent regressions were first run against the unchanged product code and
+failed: the 2048-node DOM case persisted 1,099,648 bytes, while load wait returned
+stale success for both single and continuously changing documents.
+
+- `TestBrowserDOMBoundsAfterRedaction` uses the public app entry point, actual
+  persisted artifacts and durable run lookup. A 1000-node positive case stays
+  complete; 2048 nodes require truthful truncation. It asserts no secret remains
+  and every retained index/backend ID stays intact.
+- `TestBrowserDOMEncodedBoundary` checks final JSON at 1 MiB minus one, exactly
+  1 MiB, and 1 MiB plus one. The oversized case must omit a node, not merely turn
+  `false` into the one-byte-shorter `true` and falsely label complete data partial.
+- `TestLoadWaitRechecksDocumentAfterPredicate` asserts navigation injection was
+  reached. One change requires a second predicate evaluation and returns only the
+  new document's evidence; continuous change must return an error and nil snapshot.
+- Focused CDP regression with race detection, three repetitions: PASS 1.962s.
+  Focused app DOM regressions with race detection, three repetitions: PASS 7.938s.
+  Earlier attempts encountered concurrent compile errors in other assigned files;
+  those attempts are not counted as passes.
