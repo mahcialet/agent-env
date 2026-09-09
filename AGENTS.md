@@ -6,7 +6,7 @@
 
 1. [Architecture](ARCHITECTURE.md): responsibilities and dependency directions.
 2. [Documentation index](docs/index.md): authoritative repository knowledge.
-3. [MVP specification](docs/product-specs/agent-env-mvp.md): required behavior.
+3. [MVP specification](docs/product-specs/agent-env-mvp.md): original requirements; [product contracts](docs/product-specs/index.md) define current capabilities.
 4. [Plan policy](docs/PLANS.md): active ExecPlan requirements and mandatory structure.
 5. [Completed MVP ExecPlan](docs/exec-plans/completed/agent-env-mvp.md): historical delivered scope and evidence.
 
@@ -96,6 +96,9 @@ English `*.md` files are canonical; Japanese translations use corresponding
 `*.ja.md` paths. Update both languages in the same coherent change whenever
 adding or changing a durable document. Review translation meaning before
 refreshing its source hash; a matching hash alone does not prove accuracy.
+Translate full meaning for each language’s readers; sentence and section order
+need not match. Follow the language policy’s independent review workflow for
+substantial documentation restructuring.
 Generated documentation and historical archives have explicit exceptions.
 Documentation checks must detect missing or stale translations; run docs-check
 before completion. See the [language policy](docs/design-docs/bilingual-documentation.md)

@@ -1,12 +1,16 @@
 ---
 status: accepted
 owner: maintainers
-last_verified: 2026-09-08
+last_verified: 2026-09-09
 ---
 
 # Separate Flutter applications from Android resources
 
 [日本語](0005-separate-flutter-applications.ja.md)
+
+This decision keeps Flutter application work above independently owned Android
+resources. The [lifecycle design](../design-docs/flutter-android-runtime.md)
+explains effect ordering and recovery in detail.
 
 ## Context
 

@@ -3,25 +3,27 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/product-specs/browser-cdp-automation.md
-source_sha256: 07d9f30729f727c9baa314505767f559c0663b6b7c3423c7053dbc4e39e9f8cc
+source_sha256: 5e5ed5bdbe662710a111fa24e9332b7f492278b3789ff316e5b6d38114affd76
 ---
 
 # Browser/CDP自動操作
 
 [英語版（翻訳元）](browser-cdp-automation.md)
 
-browserコマンドは、persistent process leaseが所有する明示的なChromium系ブラウザーを
-観測・操作します。別のブラウザーの起動、外部ブラウザーへの接続、個人用profileの再利用は
-行いません。実装とnative環境での受け入れ状況は[完了ExecPlan](../exec-plans/completed/browser-cdp-automation.ja.md)に記録します。
+ブラウザーコマンドは、常駐プロセスリースが所有する明示的なChromium系ブラウザーを
+観測・操作します。別のブラウザーの起動、外部ブラウザーへの接続、個人用プロファイルの再利用は
+行いません。本仕様は、実装済みの設定、ページ選択、安全な入力、証拠保持を定めます。
+プロセスの寿命は[常駐プロセス仕様](persistent-process-runtime.ja.md)を参照してください。
+実装と各 OS での受け入れ状況は[完了ExecPlan](../exec-plans/completed/browser-cdp-automation.ja.md)に記録します。
 
 ## manifestと前提条件
 
-必要なCDPメソッドを提供し、直接起動できるnativeのheadless Chromium系ブラウザーを
+必要なCDPメソッドを提供し、直接起動できるネイティブのヘッドレス Chromium系ブラウザーを
 使います。検証にはChrome for Testingを推奨しますが、製品には同梱しません。
-別のbrowser rootをforkするlauncherは非対応です。CDPが報告するPIDは、leaseが
-所有するprocess rootと一致する必要があります。無関係なcoreコマンドにbrowser、
+別のブラウザールートを別プロセスとして起動するランチャーは非対応です。CDPが報告するPIDは、リースが
+所有するプロセスルートと一致する必要があります。無関係な基本機能コマンドにブラウザー、
 Node、Python、Playwright、Selenium、ChromeDriverは不要です。
-既存のprocess実行ファイル・source相対パスの規則も適用します。
+既存のプロセス実行ファイル・ソース相対パスの規則も適用します。
 
 ```yaml
 version: 1
@@ -53,16 +55,18 @@ stacks:
   browser: {roots: [browser]}
 ```
 
-`browsers`は省略できます。宣言する場合は空でないmappingとし、各bindingから既存の
-`process` runtimeと、そのruntimeの名前付きTCP portを参照します。
-1つのruntimeにbindingは1つだけです。名前にはOS間で使えるものを指定し、
-大文字・小文字を無視した衝突を認めません。`cdp`というport名だけでbrowser機能は有効になりません。
+### ブラウザーの宣言と必須スイッチ
 
-上の5つのswitchはすべて必須で、対象リポジトリがargv要素としてそれぞれ1回だけ、
-記載どおりに宣言します。browser層は追加しません。保護対象switchの別表記・重複、
-`--`終端、debugging pipe、profile選択の上書きを拒否します。
-`--user-data-dir`は`${runtime_dir}/profile`に固定し、任意の専用subpathも認めません。
-portと専用stateの管理はgeneric process runtimeが担当します。
+`browsers`は省略できます。宣言する場合は空でない対応付けとし、各関連付けから既存の
+`process` ランタイムと、そのランタイムの名前付きTCP ポートを参照します。
+1つのランタイムに関連付けは1つだけです。名前にはOS間で使えるものを指定し、
+大文字・小文字を無視した衝突を認めません。`cdp`というポート名だけでブラウザー機能は有効になりません。
+
+上の5つのスイッチはすべて必須で、対象リポジトリが引数配列要素としてそれぞれ1回だけ、
+記載どおりに宣言します。ブラウザー層は追加しません。保護対象スイッチの別表記・重複、
+`--`終端、debugging pipe、プロファイル選択の上書きを拒否します。
+`--user-data-dir`は`${runtime_dir}/profile`に固定し、任意の専用サブパスも認めません。
+ポートと専用状態の管理は汎用プロセスランタイムが担当します。
 
 ## コマンドと選択
 
@@ -86,85 +90,103 @@ agent-env browser page-close <lease> --browser web --page <page>
 agent-env destroy <lease>
 ```
 
-`--browser`を省略できるのは、割り当て済みbindingが1つだけの場合です。
-page一覧の順序は決定的です。対象pageが複数ある場合、pageを操作するコマンドでは
-明示的に選びます。閉じる操作には常に正確なpage IDが必要です。
-page作成時の既定URLは`about:blank`です。移動先はユーザー認証情報を含まない
-HTTP(S) URLまたは`about:blank`に限り、移動すると以前のdocument handleは無効になります。
-capabilitiesは移動・入力をせず、product/version/protocolを報告します。
+### ブラウザーとページの選択
 
-すべてのbrowser操作でlease操作fenceを保持します。変更操作にはactive、期限内、readyの
-leaseが必要です。read-only診断はnative所有権を証明できればdegradedでも使えます。
-quarantined、所有権不明、未完了command runがあるleaseでは拒否します。
-操作のたびにnative process、予約済みport、browser WebSocket identity、CDPが報告する
-root PID、専用profileのcommand lineを再検証します。古いportの新しいlistenerは操作権限の根拠になりません。
+`--browser`を省略できるのは、割り当て済み関連付けが1つだけの場合です。
+ページ一覧の順序は決定的です。対象ページが複数ある場合、ページを操作するコマンドでは
+明示的に選びます。閉じる操作には常に正確なページ IDが必要です。
+ページ作成時の既定URLは`about:blank`です。移動先はユーザー認証情報を含まない
+HTTP(S) URLまたは`about:blank`に限り、移動すると以前の文書の参照は無効になります。
+`capabilities` は移動・入力をせず、製品名・バージョン・プロトコルを報告します。
+
+### リースの状態と所有確認
+
+すべてのブラウザー操作でリース操作を排他制御する fenceを保持します。変更操作にはactive、期限内、readyの
+リースが必要です。読み取り専用診断はOS の識別情報に基づく所有権を証明できればdegradedでも使えます。
+quarantined、所有権不明、未完了コマンド runがあるリースでは拒否します。
+操作のたびにネイティブプロセス、予約済みポート、ブラウザー WebSocket 識別情報、CDPが報告する
+ルート PID、専用プロファイルのコマンドラインを再検証します。古いポートの新しい待ち受けプロセスは操作権限の根拠になりません。
 
 ## snapshot・入力・制限
 
-version 1 snapshotは構造化JSONと簡潔なsemantic textを提供します。
-`n4`などのhandleは、登録済みsnapshot、lease、browser、page、documentに限定されます。
-Accessibility treeからrole・name・stateを取得し、上限付きDOM/layout snapshotを補助証拠にします。
-same-origin iframeとshadow DOMの観測に対応します。cross-origin/OOPIF観測と、すべてのiframe semantic入力は今回明示的に非対応です。
-曖昧なframe identityは安全側に倒して拒否します。
+### スナップショットの識別と対応フレーム
 
-semantic入力には毎回`--snapshot`と`--node`が必要です。入力前に現在のbrowser/page、
-document loader、frame、backend DOM fingerprintとの一致を確認します。
-切り詰められたsnapshot、backend identityの欠落、nodeの変化、別lease・pageの参照を拒否し、
-保存座標へのfallbackは行いません。Unicode textはCDP入力後に読み返して一致を確認します。
-内部の固定JavaScriptは対象nodeの状態確認に使えますが、任意JavaScriptやraw CDPの公開コマンドはありません。
-keyはEnter、Tab、Escape、Backspace、Delete、矢印、Home、End、PageUp、PageDownに対応します。
+バージョン 1 スナップショットは構造化JSONと簡潔な意味情報をまとめたテキストを提供します。
+`n4`などの参照は、登録済みスナップショット、リース、ブラウザー、ページ、文書に限定されます。
+アクセシビリティツリーから役割・名前・状態を取得し、上限付きDOM/layout スナップショットを補助証拠にします。
+同一オリジンの iframe と shadow DOMの観測に対応します。別オリジンの iframe と OOPIF の観測と、すべてのiframe 意味情報による入力は今回明示的に非対応です。
+曖昧なフレーム識別情報は安全側に倒して拒否します。
 
-keyboard/text入力は対象pageを前面にしてから対象nodeへfocusします。
-documentと対象nodeのfocusをdispatch前とselect-all後に確認します。
-pageの前面化やfocusにも副作用があり、その後に入力結果を確認できず失敗した場合は不確定状態を保ちます。
+### 入力前の検証とフォーカス
 
-操作timeoutは既定30秒、最大60秒です。console/network captureは既定1秒、1 msから10秒までです。
-置換textはNULを含まないUTF-8で4096 byte以内、scrollは各軸±10000以内です。
-waitはload、URL、accessible text/role、消失を対象とし、timeout後はpollしません。
-応答・node・artifactの上限に達したら切り詰めまたは失敗を明示し、部分的な証拠を完全とは扱いません。
+意味情報による入力には毎回`--snapshot`と`--node`が必要です。入力前に現在のブラウザーとページ、
+文書の loader、フレーム、backend DOM フィンガープリントとの一致を確認します。
+切り詰められたスナップショット、バックエンドの識別情報の欠落、ノードの変化、別リース・ページの参照を拒否し、
+保存座標への切り替えは行いません。Unicode テキストはCDP入力後に読み返して一致を確認します。
+内部の固定JavaScriptは対象ノードの状態確認に使えますが、任意JavaScriptや未加工の CDPの公開コマンドはありません。
+キーはEnter、Tab、Escape、Backspace、Delete、矢印、Home、End、PageUp、PageDownに対応します。
+
+キーとテキストの入力は対象ページを前面にしてから対象ノードへフォーカスします。
+文書と対象ノードのフォーカスを、入力の送信前と全選択後に確認します。
+ページの前面化やフォーカスにも副作用があり、その後に入力結果を確認できず失敗した場合は不確定状態を保ちます。
+
+明示的なページ移動はURL の hash や履歴の変化でも以前のブラウザースナップショットを無効にします。文書の識別トークンは
+元の URLのダイジェスト（クエリー文字列そのものは保存しない）、ノードフィンガープリントは許可した非テキスト AX 状態を含みます。
+set-textは明示的な`--text`が必須で、明示した空文字列はフィールドを消去します。CLIは操作の必須引数を検証し、
+期間を明示的にゼロとした指定は、保存先を開く前に拒否します。
+
+### 操作の上限と待機条件
+
+操作タイムアウトは既定30秒、最大60秒です。console/network 取得は既定1秒、1 msから10秒までです。
+置換テキストはNULを含まないUTF-8で4096 byte以内、scrollは各軸±10000以内です。
+waitはload、URL、accessible text/role、消失を対象とし、タイムアウト後はポーリングしません。
+応答・ノード・成果物の上限に達したら切り詰めまたは失敗を明示し、部分的な証拠を完全とは扱いません。
+
+URL待機には空でない`--contains`が必要です。`--role`はテキストやノード消失の条件でのみ使えます。
+不完全なスナップショットからノードの消失を断定しません。入力runの証拠には操作前にページ・参照元
+スナップショット・ノードを記録し、ブラウザーの応答が失われても残します。入力テキストは引き続き伏せ字にします。
 
 ## 証拠・privacy・復旧
 
-artifactは`leases/<lease>/artifacts/<run>/`に保存します。`run.json`、snapshotのJSON/text、
-必要に応じてDOM JSONとPNGを含み、結果には上限付きconsole/network collectionを記録します。
-登録digestとlease identityでsnapshotの再利用を検証します。
-screenshotは有効なPNGであることを確認し、観測したpageと結び付く寸法・digestを保持します。
-秘密が写る可能性があり、pixelの自動redactionは行いません。
+### 登録する成果物
 
-editable/password valueはsemantic・DOM text証拠から除きます。入力textを平文の操作metadataには残しません。
-認識した継承secretと入力値は構造化結果からredactし、URL認証情報・query値もredactします。
-networkはrequest identity、redact済みURL、method、status、type、timestamp、failureを記録し、
-headerとresponse bodyは保存しません。consoleは接続期間内に限定し、接続前の永続履歴は保証しません。
-page text・URL・consoleには未認識の秘密が残り得るため、browser artifactはすべてprivateに扱います。
+成果物は`leases/<lease>/artifacts/<run>/`に保存します。`run.json`、スナップショットのJSON/text、
+必要に応じてDOM JSONとPNGを含み、結果には上限付きコンソールとネットワークの収集結果を記録します。
+登録ダイジェストとリース識別情報でスナップショットの再利用を検証します。
+スクリーンショットは有効なPNGであることを確認し、観測したページと結び付く寸法・ダイジェストを保持します。
+秘密が写る可能性があり、画素の自動伏せ字処理は行いません。
 
-入力中の切断は結果不明であり、未実行の証明ではありません。完了を確認できないrunはcleanup barrierとして
+### 秘密情報を伏せる範囲
+
+編集可能フィールドとパスワードフィールドの値は意味情報と DOM のテキスト証拠から除きます。入力テキストを平文の操作メタデータには残しません。
+認識した継承秘密情報と入力値は構造化結果から伏せ字にし、URL認証情報・query値も伏せ字にします。
+ネットワークはrequest 識別情報、伏せ字処理済みURL、method、status、type、timestamp、failureを記録し、
+headerとresponse bodyは保存しません。コンソールは接続期間内に限定し、接続前の永続履歴は保証しません。
+ページテキスト・URL・コンソールには未認識の秘密が残り得るため、ブラウザー成果物はすべて非公開に扱います。
+
+set-text前に長さと全体と接頭辞の SHA フィンガープリントだけを成果物登録します。後続観測がこの証拠を読み込み、
+ページやコンソールへ表示された入力も伏せ字にします。証拠欠落・破損は安全側に倒して失敗し、検証CPUにも上限があります。
+フィンガープリントは非公開な復旧証拠であり、暗号化ではありません。
+
+### 結果が不確実な操作と削除
+
+入力中の切断は結果不明であり、未実行の証明ではありません。完了を確認できないrunはクリーンアップを阻止する記録として
 残します。自動再実行や、destroyを通すためのrun破棄は行いません。証拠を保持し、実際の結果を確認して
-reviewを伴う復旧を判断します。destroy/GCは既存のprocess tree所有権規則に従い、
-不在を証明してからprofileを削除します。browserの自動再起動、browser側でのPID cleanup、
-native終了の代わりの`Browser.close`はありません。downloadと再利用するlogin profileはscope外です。
+レビューを経た復旧を判断します。destroy/GCは既存のプロセスツリーの所有確認規則に従い、
+不在を証明してからプロファイルを削除します。ブラウザーの自動再起動、ブラウザー側でのPID クリーンアップ、
+ネイティブ終了の代わりの`Browser.close`はありません。downloadと再利用するログインプロファイルは対象範囲外です。
 BrowserとAndroid UIは別の契約を維持します。
 
 ### protocolと証拠の上限
 
-Discoveryは64 KiB、WebSocket messageは8 MiB、個別CDP callは操作期限内で5秒までです。
-pageは128、frameは32、AX/DOM nodeは2048までです。semanticとDOMのJSONは秘匿処理後もそれぞれ1 MiB、AX文字列が4096 byteを超える場合は全体を`[TRUNCATED]`へ置き換え、
-snapshotをtruncatedと表示します。truncated snapshotで入力は許可しません。
+接続先の探索は64 KiB、WebSocket メッセージは8 MiB、個々の CDP 呼び出しは操作期限内で5秒までです。
+ページは128、フレームは32、AX/DOM ノードは2048までです。意味情報と DOM の JSONは秘匿処理後もそれぞれ1 MiB、AX文字列が4096 byteを超える場合は全体を`[TRUNCATED]`へ置き換え、
+スナップショットをtruncatedと表示します。truncated スナップショットで入力は許可しません。
 console/networkはそれぞれ256 record、文字列合計64 KiB、各文字列4096 byteまでです。超過した文字列は全体を`[TRUNCATED]`へ置き換えます。
-512 eventのtransport bufferがあふれると切断してcaptureを失敗させます。
-DOM証拠はstructure/layoutのみで、text・attribute・input valueは保存しません。
+512 件のイベントを格納する転送バッファーがあふれると切断して取得を失敗させます。
+DOM証拠は構造と配置のみで、テキスト・属性・入力値は保存しません。
 
-保存証拠の上限はredaction後にも適用します。capture時間は購読とdomain enableの前から計測し、
-期限までにenableが完了しなければcaptureを失敗させます。省略したconsole引数はtruncatedと明示します。
+保存証拠の上限は伏せ字処理後にも適用します。取得時間は購読とドメインの有効化の前から計測し、
+期限までに有効化が完了しなければ取得を失敗させます。省略したコンソール引数はtruncatedと明示します。
 
-set-text前に長さと全体/接頭辞SHA fingerprintだけをartifact登録します。後続観測がこの証拠を読み込み、
-pageやconsoleへechoされた入力もredactします。証拠欠落・破損は安全側に倒して失敗し、検証CPUにも上限があります。
-fingerprintはprivateな復旧証拠であり、暗号化ではありません。
-
-明示navigationはhash/history変化でも以前のbrowser snapshotを無効にします。document tokenは
-raw URLのdigest（query文字列そのものは保存しない）、node fingerprintは許可した非text AX stateを含みます。
-set-textは明示的な`--text`が必須で、明示した空文字列はfieldを消去します。CLIは操作の必須引数を検証し、
-明示zero durationはstoreを開く前に拒否します。
-
-URL待機には空でない`--contains`が必要です。`--role`はtextやnode消失の条件でのみ使えます。
-不完全なsnapshotからnodeの消失を断定しません。入力runの証拠には操作前にpage・参照元
-snapshot・nodeを記録し、browserの応答が失われても残します。入力textは引き続きredactします。
+詳細な責務分担は[設計](../design-docs/browser-cdp-automation.ja.md)、今後の機能は[ロードマップ](../roadmap.ja.md)を参照してください。

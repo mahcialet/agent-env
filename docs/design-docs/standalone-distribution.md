@@ -1,7 +1,7 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-08
+last_verified: 2026-09-09
 ---
 
 # Standalone distribution design
@@ -21,6 +21,23 @@ reuse verified existing content without Android-specific code in the asset core.
 
 ## Packaging and inspection
 
+### Immutable build inputs
+
+Build input is a private checkout of the resolved commit, rather than the caller's
+worktree. This excludes ignored Go sources and edits hidden by assume-unchanged or
+skip-worktree flags.
+
+Source guards
+reject assume-unchanged/skip-worktree index entries before porcelain status; the
+private build checkout additionally protects compiler inputs and does not prove
+the caller working tree is clean by itself.
+
+Release Git commands disable global/system Git configuration and external
+attributes in their child-process environment. The private clone uses an empty
+Git template. This prevents ambient smudge/process filters from changing compiler
+inputs while clean filters conceal those changes. User Git configuration is never
+modified; no release command relies on a globally configured checkout filter.
+
 Release construction validates immutable Git identity before build effects,
 uses `CGO_ENABLED=0` and trimmed paths, and stages all six targets in private
 temporary storage outside the source worktree. After final source validation,
@@ -32,6 +49,8 @@ and schema-1 manifest derived from actual archive/executable bytes. Git is the
 only version authority; build tooling records the actual Go runtime version.
 Release CI pins Go 1.27.1. Determinism is qualified to the same source and toolchain.
 
+### Deterministic archive bytes
+
 Go tar/zip/gzip writers normalize member order, relative paths, modes, ownership
 and timestamps to the tagged commit. Gzip metadata contains no host identity.
 ZIP's UTC extended timestamp retains seconds that its DOS field cannot represent.
@@ -40,6 +59,8 @@ Supported commit timestamps run from 1980-01-01 UTC through 2106-02-07
 The deterministic bilingual README.txt comes from the harness, not the host or
 wall clock. No runtime companion is currently embedded; generic asset metadata
 is consequently empty, while the external UI helper keeps its existing boundary.
+
+### Static inspection and native smoke
 
 Static inspection uses Go `debug/buildinfo` to inspect all target executables,
 checks VCS identity, CGO and platform settings, and verifies a linker-supplied
@@ -53,21 +74,19 @@ operation on the extracted host tuple with restricted PATH, an external working
 directory and isolated state. Workflow orchestration passes the same candidate
 bytes through validation and smoke gates to publication without rebuilding.
 
-Build input is a private checkout of the resolved commit, rather than the caller's
-worktree. This excludes ignored Go sources and edits hidden by assume-unchanged or
-skip-worktree flags. Publication uses private sibling staging only after source checks and refuses
+Release path checks distinguish known checkout/temporary prefixes from exact
+module paths identified in embedded Go build metadata. This remains
+a bounded metadata/path check, not a universal binary path scanner.
+
+### Publishing the validated set
+
+Publication uses private sibling staging only after source checks and refuses
 existing destinations. Published non-ignored output counts as ordinary untracked
 content in subsequent release commands; ignored or external output keeps the
 source tree clean for those commands. The checksum list is ordered by archive filename. Preview verification
 uses a private `v0.1.0` tag without modifying caller or public refs; production
 repeat verification retains the requested real tag identity. CI passes release
 tags through `AGENT_ENV_RELEASE_TAG` and `--tag-env`, not shell interpolation.
-
-Release Git commands disable global/system Git configuration and external
-attributes in their child-process environment. The private clone uses an empty
-Git template. This prevents ambient smudge/process filters from changing compiler
-inputs while clean filters conceal those changes. User Git configuration is never
-modified; no release command relies on a globally configured checkout filter.
 
 ## Inventory and future embedded consumers
 
@@ -77,6 +96,13 @@ embedded only in test binaries. Release native smoke requires the CLI inventory
 to match the current empty manifest inventory. Adding a real companion must update
 both inventories and their validation in the same change; the release checker
 currently rejects nonempty manifests rather than claiming unverified provenance.
+
+Browser/CDP adds a Go WebSocket transport to the executable, not a browser asset
+or helper runtime. Browser binaries remain external manifest-declared tools;
+release packaging and the empty bundled-asset inventory are unchanged. See the
+[browser design](browser-cdp-automation.md).
+
+### Future companion integration
 
 A future helper integrates by embedding trusted build-time bytes with `go:embed`,
 using `assets.Describe(name, version, bytes)` to compute exact metadata, and calling
@@ -89,12 +115,29 @@ part of this contract. The existing external UI helper path is unchanged until a
 separate feature explicitly replaces it. Tests exercise embedded bytes with no
 Android SDK, Flutter, target application or runtime initialization.
 
+### Concurrent publication and bounded reuse
+
 Materializers can race to create directories: an EEXIST winner is re-inspected
 and accepted only as a nonsymlink directory. Each writer publishes identical
 verified bytes from a unique temporary file in the destination directory; another
 writer's completed regular file may be reused only after content verification.
 Existing corruption is rejected, not silently repaired. The trusted state root
 must not have hostile concurrent filesystem mutation; this is not a sandbox.
+
+On Windows, publication uses MoveFileEx without replacement. A losing writer
+verifies and reuses the winner; it never replaces a file another reader may have
+open. Unix uses atomic rename of identical content. Embedded fixture bytes are
+marked -text in Git attributes to prevent checkout newline conversion.
+
+Windows verification uses Go file reads (preserving long-path support) and retries
+only sharing/lock violations every 10 ms for at most two seconds. Other open errors and byte
+mismatches fail immediately. The limit avoids treating permanent interference as
+success and does not promise progress against a hostile state-directory writer.
+
+Asset names apply Windows device-name, forbidden-character and trailing dot/space
+restrictions on every OS. Cached file sizes are compared with trusted metadata
+before reading; reads are bounded even if a file changes afterwards. Both normal
+reuse and concurrent publication verify exact bytes within that bound.
 
 ## Persistent path audit
 
@@ -120,30 +163,3 @@ are external-tool state governed by their existing contracts. Target-defined
 commands run in owned worktrees and can have other trusted-code side effects.
 Developer release/helper builders use explicit output paths, outside the runtime
 state contract. The audit does not claim containment of arbitrary external tools.
-
-On Windows, publication uses MoveFileEx without replacement. A losing writer
-verifies and reuses the winner; it never replaces a file another reader may have
-open. Unix uses atomic rename of identical content. Embedded fixture bytes are
-marked -text in Git attributes to prevent checkout newline conversion.
-
-Windows verification uses Go file reads (preserving long-path support) and retries
-only sharing/lock violations every 10 ms for at most two seconds. Other open errors and byte
-mismatches fail immediately. The limit avoids treating permanent interference as
-success and does not promise progress against a hostile state-directory writer.
-
-Asset names apply Windows device-name, forbidden-character and trailing dot/space
-restrictions on every OS. Cached file sizes are compared with trusted metadata
-before reading; reads are bounded even if a file changes afterwards. Both normal
-reuse and concurrent publication verify exact bytes within that bound.
-
-Release path checks distinguish known checkout/temporary prefixes from exact
-module paths identified in embedded Go build metadata. This remains
-a bounded metadata/path check, not a universal binary path scanner. Source guards
-reject assume-unchanged/skip-worktree index entries before porcelain status; the
-private build checkout additionally protects compiler inputs and does not prove
-the caller working tree is clean by itself.
-
-Browser/CDP adds a Go WebSocket transport to the executable, not a browser asset
-or helper runtime. Browser binaries remain external manifest-declared tools;
-release packaging and the empty bundled-asset inventory are unchanged. See the
-[browser design](browser-cdp-automation.md).

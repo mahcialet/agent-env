@@ -14,34 +14,60 @@ Environment leases isolate names, worktrees, and lifecycle ownership. They are *
 
 Planning and creation read the control checkout's `.agent-env.yaml` by default. `--manifest` explicitly selects a trusted manifest path; the canonical snapshot and digest are saved with the lease. Source refs choose pinned runtime/test source content, not a silently substituted manifest from the target revision. Review changes to both the manifest and the code it executes. Trusted base/PR overlay merging and automatic remote credential provisioning are deferred.
 
+### Local access is host authority
+
 Owner labels and `--mine` are advisory filters. Anyone with access to the local state directory and selected container engine has the corresponding host authority. Local mode provides neither remote authentication nor hostile multi-user isolation. Authentication for explicit remote mode is described below.
 
 ## Built-in host policy
 
 The current CLI uses built-in defaults: TTL 4 hours, maximum TTL 24 hours, and 8 active reservations. Quarantined and incompletely cleaned leases retain reservations. A configurable host policy file and a separate maximum-parallel-create setting are not implemented.
 
-Before startup, normalized Compose configuration is checked for privileged containers, host networking, fixed container names, fixed published host ports, Docker socket access, device passthrough, and unsafe mounts. Bind paths must stay within allocated source roots, including after symlink resolution. External networks/volumes, globally shared names on selected resources, and unsafe/custom volume drivers or driver options are rejected. These checks reduce accidental host access and collisions; they do not make Docker builds or repository commands trustworthy.
+### Compose checks
+
+Before startup, the normalized Compose configuration is checked for privileged
+containers, host networking, fixed container names, fixed published host ports,
+Docker socket access, device passthrough and unsafe mounts.
+
+The policy also enforces resource boundaries:
+
+- Bind paths must remain within allocated source roots after symlink resolution.
+- External networks/volumes and globally shared names on selected resources are
+  rejected.
+- Unsafe/custom volume drivers and driver options are rejected.
+
+These checks reduce accidental host access and collisions. They do not make
+Docker builds or repository commands trustworthy.
 
 Only selected services and their reachable resource definitions enter the immutable execution snapshot. Ownership labels, a unique project, recorded provider and engine identity, and a configuration digest are retained. Execution and cleanup verify the saved configuration and observed resource identities. Unselected named resources cannot become collateral cleanup targets.
 
-Podman applies the same policy to normalized YAML converted to canonical JSON.
-Pod creation and `x-podman*` extensions at any nesting depth are rejected.
-The supported mount types are `bind`, `volume` and `tmpfs`; Podman-specific `glob`
-and other unmodeled types fail explicitly. Supported `network_mode` values are
-omitted/empty, `bridge` and `none`; `host` is denied by common policy, while `ns:`,
-`pasta`, `slirp4netns` and other unmodeled modes fail rather than widen host access. Project
-`.env` files must not set reserved `PODMAN_*`, `CONTAINER_*`, `AGENT_ENV_PODMAN_*`
-or `COMPOSE_*` keys. Inherited routing controls are scrubbed, and the native bridge
-pins child calls to the recorded engine. Docker-compatible labels alone do not
-prove Podman ownership: native project labels and exact resource identities remain
-required. An engine topology fingerprint cannot detect an in-place reset that
-recreates identical topology; resource ownership checks are still necessary.
+### Podman restrictions
+
+Podman applies the same policy after converting normalized YAML to canonical
+JSON. Additional restrictions are explicit:
+
+| Setting | Accepted scope or refusal |
+| --- | --- |
+| Pods and `x-podman*` extensions | Rejected at every nesting depth |
+| Mount types | Only `bind`, `volume` and `tmpfs`; `glob` and other unmodeled types fail |
+| `network_mode` | Omitted/empty, `bridge` or `none`; common policy rejects `host`, and unmodeled modes such as `ns:`, `pasta` and `slirp4netns` fail |
+| Project `.env` | Must not set reserved `PODMAN_*`, `CONTAINER_*`, `AGENT_ENV_PODMAN_*` or `COMPOSE_*` keys |
+
+Inherited routing controls are scrubbed. The native bridge pins child calls to
+the recorded engine. Docker-compatible labels alone do not prove Podman
+ownership: native project labels and exact resource identities are required.
+
+An engine topology fingerprint cannot detect an in-place reset that recreates
+identical topology. Resource ownership checks remain necessary.
 
 ## Credentials and evidence
 
 The process environment is not dumped into SQLite or evidence. Named tests may explicitly reference host values through `${env:NAME}`. Credential-like test environment keys must use an exact host-variable reference rather than a literal value in the manifest. Recognized inherited credential values appearing literally elsewhere in the canonical manifest are also rejected before reservation. The expanded environment remains execution input; recorded argv, streamed logs, and copied artifacts use configured and recognized inherited secret values for redaction.
 
+### Redaction limits
+
 This is value-based redaction of known credentials, not a universal secret detector. Credentials produced inside a tool, encoded or transformed values, and unrelated sensitive data may not be recognized. Review artifacts before sharing them. The known Hugging Face boolean control flag `HF_HUB_DISABLE_IMPLICIT_TOKEN` is not treated as a credential value.
+
+### Compose secret inputs
 
 Resolved credential-bearing Compose environment entries and recognized inherited credential values are rejected before saving the execution snapshot; execution configuration is never silently redacted into different behavior. Prefer container secret files, including absolute container-path `*_FILE` references. Do not place literal credentials in argv, URLs, labels, Dockerfiles, or arbitrary manifest fields: those are not a supported secret transport. Protect the local state directory and the target repository's own outputs.
 
@@ -65,6 +91,8 @@ ownership: compensation, destroy and GC never stop or replace the global server.
 Inherited ADB routing and serial variables are cleared, and boot queries name the
 reserved serial explicitly. These guards do not lock out concurrent host changes
 or make a hostile local server trustworthy.
+
+### Concurrent host changes
 
 The ADB protocol check is an observation of the current shared server, not a host-wide lock. Direct external server replacement or SDK version changes between that observation and an SDK command can still race with the SDK's own version handling. Keep a compatible shared server stable while leases are active; cross-tool server replacement is outside agent-env coordination.
 
@@ -145,6 +173,8 @@ a remote self-service endpoint. Production traffic uses HTTPS mutual TLS with
 without enrollment and a worker certificate used as a client are refused. Workers
 connect outbound; no inbound worker listener or general remote shell is exposed.
 
+### Sensitive remote data
+
 Certificate private keys remain protected filesystem inputs, not SQLite records.
 Committed source bundles, operation payloads and artifacts remain sensitive
 administrative data: control-plane storage is private but encryption at rest is
@@ -153,6 +183,8 @@ to 1 GiB and artifacts to 64 MiB. Worker source verification rejects uncommitted
 unsupported source forms before runtime effects. Client environment secrets are
 not forwarded implicitly; `${env:NAME}` resolves on the worker. Existing repository
 trust, redaction, runtime identity and host policy apply on the worker.
+
+### Assignment ownership
 
 Management tuple checks reject local mutation/force/GC and foreign assignment
 operations; ordinary registry Save cannot remove or replace management metadata.

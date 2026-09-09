@@ -3,7 +3,7 @@ status: accepted
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/adr/0007-native-execution-boundaries.md
-source_sha256: 05dd7ecd80718af8c7bee8c9b0e6e40fa40e007acd28754017249f37e9e8a8fb
+source_sha256: 523b9f5d729639a55446f7745143cd1682044a2b528ed9ae08c816b2a24a3b88
 ---
 
 # Native実行パスとWindows/WSL interopの範囲を定める
@@ -29,10 +29,14 @@ Windowsの解決後の実行ディレクトリを240 UTF-16単位以内とし、
 再検査する。非対応のパスは対処方法を示すエラーで拒否する。native Linux/macOSの深いパスの
 動作は維持する。Windowsのglobal設定、8.3名、junctionを必須にしない。
 
+### Windows と WSL の所有権を分ける
+
 WindowsとWSLには別々のnative workerとstate rootを使う。kernel/filesystem/mountの観測と
 既存の祖先パスの解決により、DrvFS/9p上のWSL stateをディレクトリ・DB作成前に拒否する。
 Windowsは既知のWSL UNC上のstateと実行パスを拒否し、拡張表記や解決後のaliasも検査する。
 この規則により、任意のUNC共有や読み取り専用source mountを新たに拒否するものではない。
+
+### 別 OS の直接実行を拒否する
 
 Windows以外では直接起動するPEバイナリを、Windowsでは`wsl.exe`の起動を、process起動と
 detached出力作成前に拒否する。`.exe`という拡張子ではなく形式を検査する。

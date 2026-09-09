@@ -3,72 +3,124 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/roadmap.md
-source_sha256: e0bec12d5087ef6e8bf18e11951c6d85f5789ea4c73007c3c5aa19723b653553
+source_sha256: fc4fdba3d7a6e94d9c2f9103fc5de67c651f2f59b165acdabc76005dcb582fb8
 ---
 
-[英語版（翻訳元）](roadmap.md)
+# Roadmapと未決定事項
 
-# ロードマップと未解決の決定事項
+[English](roadmap.md)
 
-実装済みの範囲は、固定したローカルGitソース、detached review worktree、隔離したComposeとAndroid Emulatorのruntime、Flutter Androidアプリのビルド・インストール・起動とバックエンドへのreverse設定、所有 Android UI の accessibility 観測・操作、名前付きargvテスト、証拠、移植可能なリポジトリharnessです。このロードマップは、延期した機能を利用可能なコマンドとして紹介するものではありません。
+このroadmapでは、提供済みの機能と、新たな作業・判断が必要な事項を区別します。現在の挙動は
+[製品仕様](product-specs/index.ja.md)を参照してください。進行中の実装はactive ExecPlanに従います。
+開始・再開の手順は[Planの方針](PLANS.ja.md)にあります。ここに延期事項として載せた機能は、
+利用可能なコマンドでも、承認済みの実装設計でもありません。
 
-## 確定したMVPの選択
+## MVPで確定した選択
 
-moduleは`github.com/mahcialet/agent-env`で、既存のMITライセンスを保持します。AGENTSは150行を上限とし、パッケージ境界には構造的な検査を設け、データベース文書は連番migrationから生成します。組み込みポリシーは固定公開ポートと、選択対象の外部・共有Composeリソースを拒否します。SQLite transactionと、更新可能でfencingを備える操作lockによりローカルプロセスを調整します。実行スナップショットには選択したサービス・リソースの依存閉包のみを含めます。native process treeの取消は時間制限付きrunnerが担い、常駐processの寿命には独立したmanaged detached interfaceを使います。
+module名は`github.com/mahcialet/agent-env`で、既存のMIT licenseを維持します。
+固定したローカルGit commit、detached review worktree、選択componentの依存閉包、名前付きargvテスト、
+証拠の保持、移植可能なrepository harnessが実装済みの基盤です。
 
-## 信頼とホストポリシー
+AGENTSの上限は150行です。package境界は構造検査で強制し、番号付きmigrationからDB文書を生成します。
+SQLite transactionと更新可能なfence付きoperation lockがlocal process間を調整します。
+実行snapshotには選択したサービスと必要なresourceの依存閉包だけを保存します。組み込みpolicyは
+固定公開portと、指定された外部・共有Compose resourceを拒否します。
 
-設定可能なホストポリシーファイル、猶予・保持期間の設定、並列割り当ての制御は今後の作業です。信頼するbaseマニフェストと対象overlayのマージ、`--manifest-ref`、信頼できないforkの明示的な実行には、別途信頼設計が必要です。助言的なownerラベルは認証を提供しません。安全でないリポジトリを受け入れるためだけに組み込みポリシーを弱めないでください。
+時間を制限したコマンドのprocess treeキャンセルと、常駐processの管理には、別のnative interfaceを使います。
+以下の機能群もこの基盤に従い、localの所有権検査やcleanup条件を置き換えません。
 
-## ソースと書き込みworkflow
+## 信頼境界とホストポリシー
 
-リモートmirror/cache管理、HTTPS/SSH認証、provider固有のPR省略記法、自動fetchは延期しています。書き込み可能な修正リースには、branch所有権、ソースごとの書き込み選択、復旧ルールが必要です。fork/checkpoint/reproduceと、稼働中stackの拡大・縮小には、明示的な識別情報と成果物のモデルが必要です。
+**実装済み:** 信頼できる、または管理下のリポジトリに組み込みhost policyを適用します。
+owner labelは補助情報であり、ユーザー認証ではありません。安全でないリポジトリを受け入れるために
+policyを緩めてはいけません。[セキュリティ](SECURITY.ja.md)を参照してください。
 
-## runtimeの拡張
+**未決定:** host policy file、猶予・保持期間、並列割当数の設定は今後の作業です。
+信頼したbase manifestと対象overlayのmerge、`--manifest-ref`、未信頼forkの明示実行には、
+別途信頼設計が必要です。
 
-iOSは引き続き延期しています。単一controllerによる複数hostの受け入れ状況は後述します。Android Emulatorリースは専用AVD状態とローカルSDKプロセスを所有し、追加の実機CIにはアクセラレーションを利用できるrunnerが必要です。Browser/CDP観測・操作は汎用process所有の上に独立した[契約](product-specs/browser-cdp-automation.ja.md)を定義し、実装と3 OSでのnative受け入れを完了しました。証拠は[完了browser plan](exec-plans/completed/browser-cdp-automation.ja.md)に記録しています。外部browser接続、headful、download、Firefox/BiDi、Safari/WebKit、Android/Browser共通UI抽象化は今回の対象外です。
+## ソースと変更を残す作業
 
-[常駐process runtime](product-specs/persistent-process-runtime.ja.md)は、argv直接実行、
-専用可変状態、名前付きloopback TCP port、保守的なnative tree cleanupを実装しています。
-最終native integration受け入れは3 OSで成功し、証拠を[完了process plan](exec-plans/completed/persistent-process-runtime.ja.md)
-に記録しました。自己daemon化、自動再起動、対話terminal、remote processへの直接接続、service導入は
-このruntime契約の対象外です。
+**実装済み:** ソースはcommitを固定したローカルGitです。remote modeはcommit済みGit bundleを転送しますが、
+一般的なremote Git認証やfetchは提供しません。
 
-[Android UI observer](product-specs/android-ui-observer.ja.md) は、既存の所有 Emulator に対し、
-上限付きの意味情報 snapshot、PNG、Unicode 置換、navigation、現在の PID の log を提供します。
-独立した任意の platform companion を使い、対象アプリへの instrumentation 追加は不要です。
-OCR、visual regression、より豊富な gesture、物理デバイス、管理外のremote Emulatorへの接続は引き続き延期しています。
-observer の最終受け入れ確認と platform 別の証拠は[完了した計画](exec-plans/completed/android-ui-observer.ja.md)で管理します。
+**延期:** mirror/cache管理、HTTPS/SSH認証、provider固有PR短縮指定、自動fetch。
+変更を残すfix leaseには、branch所有権、sourceごとの書き込み選択、復旧規則が必要です。
+fork/checkpoint/reproduceや稼働中stackの拡大・縮小には、identityとartifactのモデルを定める必要があります。
 
-Compose provider選択とPodman adapterは
-実装済みであり、証拠は[provider plan](exec-plans/completed/compose-provider-podman.ja.md)に
-記録しています。
-既定はDockerのままで、自動fallbackはありません。Podman 5.4.2 / podman-compose
-1.6.0で、Docker共存を含む実Linux rootless受け入れが成功しました。Windows/macOS/Linuxのnative provider CIは
-4a5de3d（run 34216579481）で成功であり、実機のMachine環境はありません。`podman compose` wrapper、
-Quadlet/Kubernetes、pod作成、任意のprovider実行ファイルは今回の対象外です。
+## Runtimeの拡張
 
-## 成果物とリリース
+### Compose provider
 
-ローカルOCI registry、image promotion、image保持参照、厳密な成果物のreplayは延期しています。runtime検査は実際のコンテナーimageの識別情報を記録しますが、再現可能なimage promotionではありません。成果物の自動期限切れ、event圧縮、migration rollbackツール、生成CLI/JSON Schemaリファレンス、長期的なhandoff archive方針は未決です。
+**実装済み:** [DockerとPodmanの選択](product-specs/compose-providers.ja.md)をleaseごとに固定します。
+既定はDockerで、自動fallbackはありません。
 
-初回の配布は[スタンドアロン仕様](product-specs/standalone-distribution.ja.md)に従う GitHub Release アーカイブです。リリース実装と直接のネイティブ検証の証拠は[リリース計画](exec-plans/completed/standalone-release-finalization.ja.md)で管理します。署名、notarization、package manager 向け定義、自己更新、SBOM、attestation は後続作業です。リリースはテストしたrevisionのネイティブ検証と統合検証の証拠を引用する必要があります。対応build targetはその証拠の代わりにはなりません。
+**証拠の範囲:** [完了済みprovider Plan](exec-plans/completed/compose-provider-podman.ja.md)に、
+Linux rootless受け入れとDocker併存、Windows/macOS/Linuxのnative provider CIの記録があります。
+実Podman Machine環境は利用できませんでした。検証したversion、revision、run IDはそのPlanを参照してください。
+
+**延期:** `podman compose` wrapper、Quadlet/Kubernetes、pod作成、任意のprovider実行ファイルは対象外です。
+
+### 常駐processとブラウザ
+
+**実装済み:** [process runtime](product-specs/persistent-process-runtime.ja.md)は、引数配列による直接実行、
+専用の可変状態、名前付きloopback TCP port、所有権を確認したうえでのプロセスツリー削除を提供します。
+[Browser/CDP](product-specs/browser-cdp-automation.ja.md)は、processの所有権管理の上に独立した
+interfaceで観測・操作を加えます。両方ともWindows、macOS、Linuxのnative受け入れを完了しています。
+証拠は[process](exec-plans/completed/persistent-process-runtime.ja.md)と
+[browser](exec-plans/completed/browser-cdp-automation.ja.md)の完了Planにあります。
+
+**延期:** processの自己daemon化、自動再起動、対話terminal、remote processへの直接attach、service登録。
+browserの外部attach、headful mode、download、Firefox/BiDi、Safari/WebKit、Androidとbrowserに共通の
+UI抽象化も現在の対象外です。
+
+### AndroidとFlutter
+
+**実装済み:** [Android lease](product-specs/android-emulator.ja.md)は専用AVD状態とlocal SDK processを
+所有します。[Flutterアプリ](product-specs/flutter-android-runtime.ja.md)は、そのEmulator上でbuild、
+install、launch、backend reverse mappingを行います。[UI observer](product-specs/android-ui-observer.ja.md)は
+上限付きsemantic snapshot、PNG、Unicode置換、navigation、現在のアプリプロセスに限定したログを提供します。
+任意のplatform companionに対象アプリへのinstrumentationは不要です。
+
+**証拠の範囲:** observerの受け入れは[完了Plan](exec-plans/completed/android-ui-observer.ja.md)にあります。
+追加のnative Emulator検証には仮想化支援を利用できるrunnerが必要です。Android統合テストにも適切なhardware accelerationが必要です。
+
+**延期:** iOS、OCR、visual regression、より豊富なgesture、物理device、管理外remote Emulatorへのattach。
+
+## Multi-hostの受け入れと延期した拡張
+
+**実装済み:** [単一controller仕様](product-specs/multi-host-control-plane.ja.md)は、lease全体の明示配置、
+commit済みソース転送、型付きworker操作を提供します。操作は順次dispatchしますが、作成済みleaseは並行稼働できます。
+同じleaseで操作が実行中の場合は、テスト中のdestroyも含めて別の操作を拒否します。
+
+**証拠の範囲:** [完了Plan](exec-plans/completed/multi-host-control-plane.ja.md)には、Windows・macOS・Linuxの
+実TLS native受け入れ記録と、検証したrevision・run IDがあります。
+各runnerで2つのworker rootを使い、名前付きテスト、log、artifact取得、renew、環境分離を検証しました。
+物理multi-host/VMの証拠は未取得です。受け入れ完了はこの範囲に限り、すべての配置構成を保証するものではありません。
+
+**延期:** remote cancel-active、並行operation dispatch、controller HA/consensus、live migration、
+hostをまたぐlease、透過的endpoint tunnel、secret配布、緊急時のhost引き継ぎには別の設計が必要です。
+
+## Artifactとrelease
+
+**実装済み:** 初期配布は[standalone仕様](product-specs/standalone-distribution.ja.md)に従うGitHub Release
+archiveです。[release Plan](exec-plans/completed/standalone-release-finalization.ja.md)にrelease工程と
+直接native検証の証拠があります。runtime検査で実container imageのidentityを記録しますが、
+再現可能なimage promotionを提供するわけではありません。
+
+**延期:** local OCI registry、image promotion、image保持参照、同一artifactの再実行、署名、notarization、
+package manager recipe、self-update、SBOM、attestation。
+
+**未決定:** artifactの自動期限切れ、event圧縮、migration rollbackツール、生成CLI/JSON Schema参照、
+長期handoff archive方針。releaseは検証したrevisionのnative・統合証拠を示す必要があります。
+対応build targetの一覧で証拠を代用することはできません。
 
 ## CIの拡張
 
-Windows/macOSのネイティブDocker統合には、Dockerが使えるself-hosted runnerが必要になる場合があります。Android統合には適切なhardware accelerationが必要です。`last_verified`からの文書の経過日数は、現在CIが強制する鮮度の期限ではありません。metadataの妥当性と文書を見つけられることは検査で強制します。
+WindowsとmacOSのnative Docker統合には、Dockerを使えるself-hosted runnerが必要になる場合があります。
+このインフラ条件はcross-build対応とは別です。現在の検証範囲は[品質](QUALITY.ja.md)と
+[移植性](PORTABILITY.ja.md)を参照してください。
 
-## 複数 host の受け入れと後続拡張
-
-[単一 controller の仕様](product-specs/multi-host-control-plane.ja.md) に沿って、明示的な remote 配置、
-commit 済み source 転送、型付き worker 操作を実装しています。
-[ExecPlan](exec-plans/completed/multi-host-control-plane.ja.md) は文書化した対応範囲で完了しました。
-実 TLS の native 検証は、各 runner の二つの worker root を使い、`440082b` の Windows・macOS・Linux で
-成功しました（run 34320519252）。名前付き test、log、artifact download、期限更新、環境変数の分離も含みます。
-物理的な複数 host・VM の証拠はまだありません。
-
-初期の worker は操作を直列に実行し、作成済み lease は並行して稼働できます。
-同じ lease の二つ目の active 操作は、remote test 中の destroy も含めて拒否します。
-remote の実行中操作の cancellation、操作の並行 dispatch、controller HA/合意形成、live migration、
-host をまたぐ lease 分割、透過的 endpoint tunnel、秘密値の準備、緊急 host 引継ぎは別の設計が必要です。
-remote Git bundle によって、一般的な HTTPS/SSH source 認証や自動 fetch を追加したとは扱いません。
+文書のmetadataと到達可能性は検査しますが、`last_verified`からの経過日数をCIの失効条件にはしていません。
+意味の確認と翻訳検査には[言語方針](design-docs/bilingual-documentation.ja.md)を使い、有効なmetadataだけで
+内容が最新だと判断しないでください。

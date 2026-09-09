@@ -1,18 +1,34 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-08
+last_verified: 2026-09-09
 ---
 
 # ExecPlan policy
 
 [日本語](PLANS.ja.md)
 
-Each substantial change uses a dedicated branch and a version-controlled active ExecPlan under `docs/exec-plans/active/`. The active ExecPlan is the authority for the expected branch and current work; state both explicitly in the plan. Keep it self-contained and update it at every meaningful checkpoint. Include exact paths, commands, results, remaining work, decisions, and safe recovery steps. Evidence distinguishes tests run locally, cross-builds, and actual native CI. The [completed MVP plan](exec-plans/completed/agent-env-mvp.md) preserves historical scope and evidence.
+Use an active ExecPlan to make substantial work executable, reviewable and
+recoverable. The plan records current instructions and acceptance evidence;
+completed plans retain the history of delivered work.
 
-Mandatory sections are: Purpose / Big Picture; Progress; Surprises & Discoveries; Decision Log; Outcomes & Retrospective; Context and Orientation; Plan of Work; Concrete Steps; Validation and Acceptance; Idempotence and Recovery; Artifacts and Notes; Interfaces and Dependencies.
+## Start substantial work
 
-Japanese active plans require the same sections, using the Japanese equivalents below or their English headings. Use level-two Markdown headings; arbitrary labels do not satisfy the structure check.
+Each substantial change requires a dedicated branch and a version-controlled
+ExecPlan under `docs/exec-plans/active/`. The active plan is the authority for the
+expected branch and current work. State both explicitly.
+
+Keep the plan self-contained. An implementer must be able to find the exact paths,
+commands, results, remaining work, decisions and safe recovery steps without
+reconstructing a conversation. The [completed MVP plan](exec-plans/completed/agent-env-mvp.md)
+is a historical example of scope and evidence.
+
+## Required structure
+
+Every active plan must contain the sections below as level-two Markdown headings.
+English plans use the English names. Japanese plans may use either the Japanese
+equivalents or the English names. Arbitrary labels do not satisfy the structure
+check.
 
 | English heading | Japanese heading |
 | --- | --- |
@@ -29,13 +45,33 @@ Japanese active plans require the same sections, using the Japanese equivalents 
 | Artifacts and Notes | 成果物と注記 |
 | Interfaces and Dependencies | インターフェースと依存 |
 
-Durable plan metadata contains status, owner, and last_verified. Progress uses dated checked/unchecked items. A checkbox means observed completion, never intention. Preserve failed verification results and unresolved platform gaps. Record decisions with date, author role, and rationale; promote durable decisions into ADRs.
+## Maintain evidence during execution
 
-Move a plan from active to completed only after every acceptance requirement has direct evidence and outcomes/retrospective is filled. Update all links when moving it. Completed plans preserve history; do not delete them. Historical reference archives are inputs, not operational authority.
+Durable plan metadata must contain `status`, `owner` and `last_verified`.
+Update the plan at every meaningful checkpoint:
+
+- Use dated checked/unchecked items in Progress. A checkbox records observed
+  completion, never intention.
+- Record exact commands and results. Distinguish local tests, cross-builds and
+  actual native CI; preserve failed checks and unresolved platform gaps.
+- Record decisions with date, author role and rationale. Promote durable
+  decisions into ADRs.
+- Keep remaining work and safe recovery steps current.
+
+## Complete and archive
+
+Move a plan from active to completed only after every acceptance requirement has
+direct evidence and Outcomes & Retrospective is filled. Update all links when
+moving it. Preserve completed plans; do not delete them. Historical reference
+archives are inputs, not operational authority.
 
 Any substantial change that adds or modifies durable human-facing documentation
 must include the corresponding Japanese translation before the ExecPlan can be
 completed. This includes the living ExecPlan itself. Keep both plan files in the
 same active/completed directory and update both sets of links when moving them.
-Only explicitly registered pre-migration historical plans are exempt. Follow the
-[language policy](design-docs/bilingual-documentation.md) and verify `repoctl docs-check`.
+Only explicitly registered pre-migration historical plans are exempt.
+
+Follow the [language policy](design-docs/bilingual-documentation.md), including its
+separate English, Japanese and semantic parity reviews for substantial
+restructuring. Run `repoctl docs-check` before completion. A passing freshness
+hash does not replace review of the translated meaning.

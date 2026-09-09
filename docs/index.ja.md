@@ -3,41 +3,64 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/index.md
-source_sha256: 6f3686a6b77234e5abb61c47eb9129952133f52e839af3409e24c7a4423120ab
+source_sha256: 67b823fcb2177e31b25536d8d24be793f70a1b702d9365907361b8ce6c0f7fbc
 ---
 
-# リポジトリの知識
+# 目的から文書を探す
 
-[英語版（翻訳元）](index.md)
+[English](index.md)
 
-[アーキテクチャ](../ARCHITECTURE.ja.md)、[MVP仕様](product-specs/agent-env-mvp.ja.md)、[完了済みExecPlan](exec-plans/completed/agent-env-mvp.md)から読む。
+知りたいことに合わせて、次の文書を選んでください。[README](../README.ja.md)では製品の役割と
+最初のlease操作を説明します。現在の挙動は製品仕様、特定revisionでの検証結果は完了済みPlanや
+監査記録で確認できます。
 
-提供済みの拡張：[Android Emulatorの契約](product-specs/android-emulator.ja.md)と、その[完了済みExecPlan](exec-plans/completed/android-emulator-lease.md)。
+## 機能を使う
 
-提供済みの拡張：[Flutter Androidの契約](product-specs/flutter-android-runtime.ja.md)と、その[完了済みExecPlan](exec-plans/completed/flutter-android-runtime.ja.md) / [English](exec-plans/completed/flutter-android-runtime.md)。
+現行の契約は[製品仕様index](product-specs/index.ja.md)にまとめています。リポジトリの設定には
+[manifest仕様](product-specs/manifest-v1.ja.md)、操作には[CLI仕様](product-specs/cli-contract.ja.md)を使います。
 
-- [製品仕様](product-specs/index.ja.md)：ユーザーに見える契約。
-- [設計文書](design-docs/index.ja.md)：仕組みと責務境界。
-- [ADR](adr/index.ja.md)：採用した代案と結果。
-- [計画の規則](PLANS.ja.md)：更新を続ける作業記録と完了の証拠。
-- [品質](QUALITY.ja.md)：コマンドと検証範囲。
-- [信頼性](RELIABILITY.ja.md)：失敗と慎重な復旧。
-- [セキュリティ](SECURITY.ja.md)：信頼とホスト方針。
-- [移植性](PORTABILITY.ja.md)：ネイティブプラットフォームの要件。
-- [ロードマップ](roadmap.ja.md)：延期した機能と未解決の判断。
-- [参考資料](references/index.ja.md)：歴史的な出所。
+| 知りたいこと | 次に読む文書 |
+| --- | --- |
+| container engineを選びたい | [Compose provider](product-specs/compose-providers.ja.md) |
+| native serverを継続稼働させたい | [常駐process lease](product-specs/persistent-process-runtime.ja.md) |
+| EmulatorやFlutterアプリを動かしたい | [Android Emulator](product-specs/android-emulator.ja.md)、続いて[Flutterアプリ](product-specs/flutter-android-runtime.ja.md) |
+| UIを観測・操作したい | [Android UI](product-specs/android-ui-observer.ja.md)または[Browser/CDP](product-specs/browser-cdp-automation.ja.md) |
+| 実行ファイルを導入したい／releaseを作りたい | [standalone配布](product-specs/standalone-distribution.ja.md) |
+| hostを登録し、remoteで実行したい | [multi-hostの準備と操作](product-specs/multi-host-control-plane.ja.md) |
+| 当初のMVPの範囲を知りたい | [MVP仕様](product-specs/agent-env-mvp.ja.md) |
 
-設計・製品・ADR・計画文書にはstatus、owner、last_verifiedメタデータを付ける。永続文書はローカル索引から見つけられるようにする。アーカイブ資料は参考資料索引に従い、生成文書は、生成処理の実装後にmigrationから作る。鮮度の日付は文書を見直した日であり、計画した機能の実装を証明するものではない。
+## リポジトリを変更する
 
-- [生成されたデータベースschema](generated/db-schema.md)：埋め込まれたmigrationから機械的に導出する。
+まず[AGENTS.md](../AGENTS.ja.md)で作業手順を、[Architecture](../ARCHITECTURE.ja.md)で依存境界を
+確認してください。[Planの方針](PLANS.ja.md)は、大きな変更をactive ExecPlanで進める方法と、
+完了してarchiveできる条件を定めます。
 
-- [言語の方針](design-docs/bilingual-documentation.ja.md)：英語版を内容の基準にする方針、日本語訳の保守、明示的な例外。
+| 判断したいこと | 方針・仕組みの説明 |
+| --- | --- |
+| どの検証で受け入れを判断するか | [品質](QUALITY.ja.md) |
+| 失敗やcleanup中断からどう復旧するか | [信頼性](RELIABILITY.ja.md) |
+| どのリポジトリと作用を信頼するか | [セキュリティ](SECURITY.ja.md) |
+| 対応OSの前提条件は何か | [移植性](PORTABILITY.ja.md) |
+| 日英の文書をどう維持するか | [言語方針](design-docs/bilingual-documentation.ja.md) |
+| なぜその設計にしたか | [設計index](design-docs/index.ja.md)と[採用済みADR](adr/index.ja.md) |
+| DB構造はどこで定義するか | migrationから作る[生成schema](generated/db-schema.md) |
 
-Browser/CDP: [製品契約](product-specs/browser-cdp-automation.ja.md)、[設計](design-docs/browser-cdp-automation.ja.md)、[完了の検証記録](exec-plans/completed/browser-cdp-automation.ja.md)。
+[roadmap](roadmap.ja.md)は、実装済みの機能、現在の作業、延期した判断を区別します。
+提案中の機能が利用可能なコマンドであるとは扱いません。
 
-複数 host の調整は、文書化した範囲で受け入れ検証が完了しています。[製品仕様](product-specs/multi-host-control-plane.ja.md)、
-[設計](design-docs/multi-host-control-plane.ja.md)、[ADR 0006](adr/0006-single-authority-multi-host.ja.md)、
-[ExecPlan](exec-plans/completed/multi-host-control-plane.ja.md) を参照してください。
-[README の使用方法](../README.ja.md#明示的な-remote-モード) に登録と各 role の起動方法を記載しています。
-[品質](QUALITY.ja.md#複数-host-の-native-検証) では、Windows・macOS・Linux の native TLS 実行の成功を記録し、
-未実施の物理 host 検証と区別します。
+## 履歴と現在の規則を区別して証拠を探す
+
+検証コマンド、検証範囲、native受け入れ証拠の入口は[品質方針](QUALITY.ja.md)です。
+各機能の仕様と設計から、対応する完了済みPlanへ進めます。たとえば、次の記録があります。
+
+- [MVP](exec-plans/completed/agent-env-mvp.md)、[Android](exec-plans/completed/android-emulator-lease.md)、
+  [Flutter](exec-plans/completed/flutter-android-runtime.ja.md)のPlanは、local環境の基盤を実装した記録です。
+- [Browser](exec-plans/completed/browser-cdp-automation.ja.md)と
+  [multi-host](exec-plans/completed/multi-host-control-plane.ja.md)のPlanは、追加機能の受け入れを記録します。
+  [multi-hostの品質証拠](QUALITY.ja.md)では、同一runner上のTLS検証と未検証の物理host環境を区別します。
+- [正しさ監査のindex](audits/repository-correctness/index.ja.md)は、固定したbaseline、修正候補、指摘を
+  分けて案内します。[履歴資料](references/index.ja.md)では、古い資料の位置付けとarchive例外を説明します。
+
+設計、仕様、ADR、Planには`status`、`owner`、`last_verified`を付け、各indexから辿れるようにします。
+検証日があるだけで、計画中の機能を実装済みと判断してはいけません。生成文書と過去の参考archiveは、
+言語方針と履歴資料indexに明記した例外に従います。

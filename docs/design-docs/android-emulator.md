@@ -1,17 +1,21 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-08
+last_verified: 2026-09-09
 ---
 
 # Android Emulator resource design
 
 [日本語](android-emulator.ja.md)
 
-The [product contract](../product-specs/android-emulator.md) adds a separate
-`app.AndroidProvider`, implemented by `runtime/android`. App owns saga ordering,
-locks, readiness and persistence. Domain holds pure identities, SQLite holds
-exclusive reservations, and `execx` owns native detached process operations.
+This design explains how a lease owns an Emulator without taking ownership of
+shared SDK services. The [product contract](../product-specs/android-emulator.md)
+defines the supported configuration and behavior.
+
+The separate `app.AndroidProvider` is implemented by `runtime/android`. App
+coordinates saga ordering, locks, readiness and persistence. Domain holds pure
+identities; SQLite records exclusive reservations. `execx` handles native
+detached process operations.
 Android never imports Compose or Flutter. Bounded command trees retain their
 existing cancellation behavior; persistent Emulator processes use a distinct API.
 
@@ -80,18 +84,6 @@ which detaches its console but does not escape inherited Job membership.
 would otherwise put an auto-started server inside a bounded command's terminating
 Job, or leave it counted as a surviving member of an Emulator's Job.
 
-## Portability and evidence
-
-Native argv, explicit paths/environments and no shell/CGO are required. SDK and
-image architecture compatibility remain host prerequisites; WSL is a Linux host.
-Tests cover discovery, unsafe templates, console ownership, detached lifetime,
-PID reuse, concurrent reservations, compensation, sibling isolation and quarantine.
-Native CI and cross-builds are distinct from actual accelerated Emulator tests.
-Actual SDK integration has been exercised on Linux; real Windows/macOS SDK,
-acceleration and shared-server startup behavior remain unverified.
-The [ExecPlan](../exec-plans/completed/android-emulator-lease.md) records evidence,
-implementation decisions, unresolved prerequisites and platform gaps.
-
 ## Private netsim discovery and helper lifetime
 
 The Emulator and its netsimd helper must discover the same lease-private daemon.
@@ -112,3 +104,15 @@ private `netsim.ini`, gRPC listener, HCI port 0 configuration and libslirp enabl
 the probe daemon was stopped. This focused probe is not evidence that the full
 two-Emulator lifecycle passed. The Flutter execution plan records that separate
 validation and the shared-helper cleanup failure that motivated this isolation.
+
+## Portability and evidence
+
+Native argv, explicit paths/environments and no shell/CGO are required. SDK and
+image architecture compatibility remain host prerequisites; WSL is a Linux host.
+Tests cover discovery, unsafe templates, console ownership, detached lifetime,
+PID reuse, concurrent reservations, compensation, sibling isolation and quarantine.
+Native CI and cross-builds are distinct from actual accelerated Emulator tests.
+Actual SDK integration has been exercised on Linux; real Windows/macOS SDK,
+acceleration and shared-server startup behavior remain unverified.
+The [ExecPlan](../exec-plans/completed/android-emulator-lease.md) records evidence,
+implementation decisions, unresolved prerequisites and platform gaps.

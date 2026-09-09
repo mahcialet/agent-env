@@ -1,7 +1,7 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-08
+last_verified: 2026-09-09
 ---
 
 # Compose provider design
@@ -53,6 +53,8 @@ non-ASCII characters.
 
 ## Common configuration and observed truth
 
+### Canonical snapshots and provider re-parsing
+
 Docker's normalized JSON and podman-compose's normalized YAML enter the same
 host-policy model. Policy runs before effects, then the selected reachable
 service/resource closure is recorded with a digest as canonical JSON. Before
@@ -61,10 +63,9 @@ private copy so frozen values are not interpolated again. The same private copy
 omits `published` when the recorded port is zero while preserving `host_ip`;
 Podman then assigns a dynamic port with the intended loopback restriction. The
 canonical configuration and digest remain unchanged. The accepted host range
-is Podman 5.x with podman-compose >=1.6.0,<2.0.0. Real Linux rootless acceptance
-passed with 5.4.2 / 1.6.0 and Docker coexistence; the earlier 1.3 provider was
-rejected by that gate. Native Windows/macOS/Linux provider CI passed on 4a5de3d (run 34216579481), and real Machine
-infrastructure is unavailable.
+is Podman 5.x with podman-compose >=1.6.0,<2.0.0.
+
+### Confined files and explicit environment
 
 The first Compose file's parent must match `project_directory`, avoiding Podman's
 different base-directory semantics. `env_file` and config/secret file references
@@ -74,6 +75,8 @@ normalized values must be explicit rather than supplied from mutable ambient sta
 Project `.env` files reject reserved `PODMAN_*`, `CONTAINER_*`,
 `AGENT_ENV_PODMAN_*` and `COMPOSE_*` routing/behavior keys.
 
+### Supported Podman modes
+
 Pod creation is disabled. Reject `x-podman*` recursively, including resource-level
 and deeply nested extensions. Only `bind`, `volume` and `tmpfs` mount types are
 modeled; reject Podman's host-expanding `glob` and other types. `network_mode`
@@ -81,6 +84,8 @@ accepts omitted/empty, `bridge` and `none`; `host` passes to common policy for
 rejection, while namespace paths, `pasta`, `slirp4netns` and other modes fail here.
 Provider detached startup does not make provider
 `--wait` the readiness authority: app performs bounded readiness from observations.
+
+### Resource identity and endpoints
 
 Use direct structured Podman inspection for live containers, networks, volumes,
 health and published ports. Podman-native project/service identities, including
@@ -97,6 +102,8 @@ TCP connection check; failed TCP mappings are removed and readiness becomes fals
 UDP retains the engine-observed mapping and existing service/readiness checks,
 without claiming an application response. Fake inspection data cannot establish
 real Machine forwarding behavior.
+
+### Inventory traversal
 
 The shared inventory traversal separates native labelled-resource enumeration
 from Docker Compose project listing. Docker keeps both stages; Podman enters the
@@ -120,6 +127,8 @@ named volumes; image-declared native anonymous volumes require this separate pro
 Ambiguous ownership, identity mismatch or incomplete observations preserve
 quarantine and evidence. Never compensate through global prune.
 
+## Validation and platform evidence
+
 Tests must prove two Podman leases survive independent lifecycles, Docker and
 Podman coexist, and changing a default connection cannot redirect cleanup.
 The same named/E2E fixture must run against both providers. Native platform tests
@@ -128,3 +137,8 @@ integration proves endpoints, sibling survival and cleanup. Real Machine testing
 is separate and conditional on infrastructure. All tested versions and remaining
 gaps belong in the ExecPlan; versions outside Podman 5.x and podman-compose
 >=1.6.0,<2.0.0 are not accepted as the release acceptance environment.
+
+Real Linux rootless acceptance
+passed with 5.4.2 / 1.6.0 and Docker coexistence; the earlier 1.3 provider was
+rejected by that gate. Native Windows/macOS/Linux provider CI passed on 4a5de3d (run 34216579481), and real Machine
+infrastructure is unavailable.

@@ -9,7 +9,9 @@ last_verified: 2026-09-09
 [日本語](multi-host-control-plane.ja.md)
 
 The [product contract](../product-specs/multi-host-control-plane.md) defines
-required behavior. The [ExecPlan](../exec-plans/completed/multi-host-control-plane.md)
+required behavior. This design explains how global placement coordinates with
+worker-local ownership, durable operation journals and verified byte transfers.
+The [ExecPlan](../exec-plans/completed/multi-host-control-plane.md)
 records completed implementation and acceptance within the documented scope. This design does not
 claim unexecuted protocol, integration or native checks have passed.
 
@@ -26,7 +28,8 @@ retain their existing independent responsibilities.
 One same-state-root process lock protects the active controller. This is not
 consensus: separately copied controller databases must not run concurrently.
 Stable host ID is an operator label; persistent host-instance ID and enrolled
-certificate bind the actual worker. A process incarnation identifies a connection
+certificate bind the actual worker. An incarnation distinguishes a running worker's connection generation.
+A process incarnation identifies a connection
 session without replacing the host instance or its assignments.
 
 ## Transport and request authority
@@ -51,6 +54,13 @@ again under the existing operation fence. Destroy checks before cancellation of
 running commands as well as before cleanup. Ordinary GC excludes managed leases,
 including expired ones. Reads may expose cached metadata without reconciliation.
 
+### Sensitive input before persistence
+
+The shared protocol guard examines UI/browser JSON tokens before persistence,
+including duplicate and case-variant text fields. It rejects transient text and
+`set-text`; it never redacts a payload and then executes altered input. Existing
+journals are not rewritten. A non-persistent input protocol is future work.
+
 ## Scheduling and uncertainty
 
 Registration reports truthful semantic capabilities (`git`, `compose.docker`,
@@ -67,6 +77,15 @@ host name. Reconnect and worker restart reconcile the same local resources;
 controller restart reloads its original authority and journal. Drain blocks new
 placements, and removal refuses hosts with unreleased assignments.
 
+### Worker incarnation handoff
+
+Dispatch ownership is persisted separately from the current worker registration.
+An online prior incarnation yields a retryable registration refusal. Offline
+handoff does not transfer old dispatched mutations through polling; durable local
+receipts may still finish recovery. Legacy dispatches whose incarnation was never
+recorded get an unverified owner, retain capacity and are not redelivered. They are
+not assigned to whichever incarnation happens to be registered during migration.
+
 ## Native execution and WSL boundaries
 
 A worker owns processes in its native OS only. Windows computed execution
@@ -82,7 +101,7 @@ Direct PE executables are refused on non-Windows hosts, and Windows refuses the
 `wsl.exe` entry point. Checks precede process start and detached output creation;
 Git bundle commands use the same check. These guards prevent accidental direct
 interop, not transitive execution by trusted scripts. Run separate native workers
-for Windows and WSL; never share their state roots. See PORTABILITY for evidence
+for Windows and WSL; never share their state roots. See [PORTABILITY](../PORTABILITY.md) for evidence
 limits and path requirements.
 
 ## Journal and delivery ordering
@@ -105,6 +124,20 @@ by durable identity; never rerun an action to reconstruct an artifact. Global
 RELEASED requires affirmative worker cleanup/absence proof, not HTTP success or
 expired controller TTL. Controller outage leaves workloads and journals intact.
 
+### Failed create and retained cleanup authority
+
+After the create effect boundary, failures remain uncertain even if reservation
+returned no lease. A compensated create may include a released local lease in its
+result payload, but does not assert the destroy-only cleanup confirmation field.
+An explicit destroy establishes authoritative release, including after recovery.
+
+Retained remote packages are cleanup authority and must be durably published
+before the journal crosses the effect boundary. The package file is synchronized,
+then staged/published directory barriers are applied using the native platform
+mechanism. Existing identical packages re-establish durability before success;
+corrupt or conflicting records are refused. Worker serialization owns this local
+retention root. Native API barrier tests are not physical power-loss experiments.
+
 ### Initial operation dispatch policy
 
 Workers dispatch one operation at a time; already-created leases continue running
@@ -125,50 +158,17 @@ Uncommitted files are excluded; unsupported shallow/LFS/submodule inputs fail
 explicitly without implicit network fetch. Worker environment placeholders are
 resolved locally; client secrets are not implicitly forwarded.
 
-CAS keys are `sha256/<digest>`. Stream to private temporary files with size and
+The content-addressed store (CAS) selects stored bytes by their content digest.
+A CAS key is the lowercase SHA-256 digest. `internal/blobstore` stores the bytes
+at `<cas-root>/<digest>/data`; caller paths do not select that location. Stream to private temporary files with size and
 hash checks, then publish atomically. Concurrent identical uploads are safe and
 existing objects are reused only after verification. Keep durable references and
 never collect referenced objects. Bound each source object to 1 GiB and artifact
 to 64 MiB. Transfer retry is separate from mutation replay. Encryption at rest is
 not claimed; source and evidence retain the trusted administrative data boundary.
 
-## Evidence and limits
+### Transfer deadlines and durable publication
 
-Typed remote test/UI/browser paths retain worker-local lease fences, process and
-device ownership, stale references, secret redaction and evidence bounds.
-Returned loopback endpoints refer to the worker; there is no implicit client tunnel.
-HA, migration, split-host resource graphs, remote shells, secret distribution and
-break-glass adoption remain separate designs.
-
-Acceptance must distinguish deterministic state-machine tests, actual TLS socket
-integration with two worker state roots, native Windows/macOS/Linux role execution,
-and physical-machine/VM multi-host evidence. A same-host test or cross-build cannot
-substitute for those last two categories. The ExecPlan records exact results and
-remaining evidence limits; implementation acceptance is complete within that scope.
-
-## Durable lifetime and sensitive-input boundaries
-
-The additive `lease_lifetimes` table stores controller deadlines and the automatic
-cleanup operation ID. Existing leases are backfilled from durable create and
-completed renew timestamps. Startup, the one-second server sweep and worker polls
-queue expiry cleanup transactionally. Queued/dispatched work defers cleanup;
-failed or uncertain automatic cleanup is not blindly retried as a new mutation.
-Only successful renew resets the deadline and cleanup marker. Sweep database
-errors stop the server visibly instead of silently disabling expiry enforcement.
-
-The shared protocol guard examines UI/browser JSON tokens before persistence,
-including duplicate and case-variant text fields. It rejects transient text and
-`set-text`; it never redacts a payload and then executes altered input. Existing
-journals are not rewritten. A non-persistent input protocol is future work.
-
-After the create effect boundary, failures remain uncertain even if reservation
-returned no lease. A compensated create may include a released local lease in its
-result payload, but does not assert the destroy-only cleanup confirmation field.
-An explicit destroy establishes authoritative release, including after recovery.
-
-The CLI controller calls the same Server.Run lifecycle as server tests, including
-periodic expiry and shutdown joining. An actual CLI entry-point regression expires
-an offline lease through an independent database connection without polling.
 Authorized blob handlers clear the HTTP server's absolute read/write deadlines;
 metadata and unauthorized requests retain their bounded transport handling.
 
@@ -182,12 +182,29 @@ identity. Tests inject publication failures and exercise retries; they do not
 claim to simulate physical power loss or filesystem/hardware guarantees beyond
 the native APIs.
 
-Dispatch ownership is persisted separately from the current worker registration.
-An online prior incarnation yields a retryable registration refusal. Offline
-handoff does not transfer old dispatched mutations through polling; durable local
-receipts may still finish recovery. Legacy dispatches whose incarnation was never
-recorded get an unverified owner, retain capacity and are not redelivered. They are
-not assigned to whichever incarnation happens to be registered during migration.
+## Durable lifetime and sensitive-input boundaries
+
+The additive `lease_lifetimes` table stores controller deadlines and the automatic
+cleanup operation ID. Existing leases are backfilled from durable create and
+completed renew timestamps. Startup, the one-second server sweep and worker polls
+queue expiry cleanup transactionally. Queued/dispatched work defers cleanup;
+failed or uncertain automatic cleanup is not blindly retried as a new mutation.
+Only successful renew resets the deadline and cleanup marker. Sweep database
+errors stop the server visibly instead of silently disabling expiry enforcement.
+
+The CLI controller calls the same Server.Run lifecycle as server tests, including
+periodic expiry and shutdown joining. An actual CLI entry-point regression expires
+an offline lease through an independent database connection without polling.
+
+## Evidence and limits
+
+Typed remote test/UI/browser paths retain worker-local lease fences, process and
+device ownership, stale references, secret redaction and evidence bounds.
+Returned loopback endpoints refer to the worker; there is no implicit client tunnel.
+HA, migration, split-host resource graphs, remote shells, secret distribution and
+break-glass adoption remain separate designs.
+
+### Bounded diagnostics
 
 Interactive log collection uses the bounded display interface for Compose/Podman
 and bounded Android file reads before aggregation. The existing full durable
@@ -195,9 +212,10 @@ cleanup-log capture remains separate; a display limit does not authorize droppin
 required cleanup evidence. Remote-source diff capture uses a non-embedded bounded
 buffer so io.Copy cannot bypass Write via bytes.Buffer.ReadFrom.
 
-Retained remote packages are cleanup authority and must be durably published
-before the journal crosses the effect boundary. The package file is synchronized,
-then staged/published directory barriers are applied using the native platform
-mechanism. Existing identical packages re-establish durability before success;
-corrupt or conflicting records are refused. Worker serialization owns this local
-retention root. Native API barrier tests are not physical power-loss experiments.
+### Acceptance evidence
+
+Acceptance must distinguish deterministic state-machine tests, actual TLS socket
+integration with two worker state roots, native Windows/macOS/Linux role execution,
+and physical-machine/VM multi-host evidence. A same-host test or cross-build cannot
+substitute for those last two categories. The ExecPlan records exact results and
+remaining evidence limits; implementation acceptance is complete within that scope.

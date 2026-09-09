@@ -1,73 +1,112 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-08
+last_verified: 2026-09-09
 translation_of: docs/design-docs/persistent-process-runtime.md
-source_sha256: 7273d5b7529778f649ab25a55253dc70af7d2c5c2be01ad561e6dcd7dcdc9d80
+source_sha256: b0b1657a8331aafa079292ae5d12863c13dac2f9fb0c74aec972ab8f4a4cca54
 ---
 
 # 常駐プロセスのlifecycle設計
 
 [English（翻訳元）](persistent-process-runtime.md)
 
-manifest構文は[機能契約](../product-specs/persistent-process-runtime.ja.md)で定める。
-実装と検証は[完了ExecPlan](../exec-plans/completed/persistent-process-runtime.ja.md)で追跡する。
-この仕組みはprocess管理をCompose、Android Emulator、Flutter、将来のbrowser機能から分離する。
+この文書では、常駐プロセスの起動、所有権の記録、停止確認を説明します。
+manifest 構文は[機能契約](../product-specs/persistent-process-runtime.ja.md)、
+実装と検証の証拠は[完了 ExecPlan](../exec-plans/completed/persistent-process-runtime.ja.md)
+を参照してください。プロセス管理は Compose、Android Emulator、Flutter、Browser/CDP の
+機能から独立しています。[browser アダプター](browser-cdp-automation.ja.md)は app の
+インターフェースを通じてこのライフサイクルを利用し、process アダプターには browser の
+動作を持ち込みません。
 
 ## 責務と永続化
 
-configはruntimeとendpointのvariantを厳密に検証する。domainは追加field
-`Runtime.process`のsnapshotを持ち、未展開のcommand/環境変数参照、固定source commit、
-解決した実行ファイルの証拠、path、名前付きport、native PID/開始識別情報を記録する。
-process fieldを省略した既存JSON snapshotは変わらない。appはsource、状態、予約、起動意図、
-readiness、証拠、操作fence、heartbeat、補償、解放を調整する。process adapterは`execx`を
-通してnative作用を担当し、ほかのruntime adapterをimportしない。
+config は runtime と endpoint の種類ごとに設定を厳密に検証します。
+Domain は追加した `Runtime.process` snapshot に、未展開のコマンドと環境変数参照、
+固定コミット、解決した実行ファイルの証拠、パス、名前付きポート、OS 上の PID と
+開始時の識別情報を記録します。process field のない既存 JSON snapshot は変わりません。
 
-作用の前にappはimmutable sourceを展開し、runtime directory、予約port、stdout/stderr
-pathを確定する。detached processの起動前に起動意図を保存し、readinessの前に返された
-native識別情報を保存する。errorとともに返された0以外の識別情報もcleanup証拠として扱う。
-起動結果が不確かな場合、何も起きなかったとして起動を再試行しない。展開したhost認証情報は
-一時入力とし、desired stateのmetadataへ保存しない。
+App はソース、状態、予約、起動意図を管理し、readiness、証拠、操作 fence、heartbeat、
+補償、解放を調整します。process アダプターは `execx` を通して OS を操作し、
+ほかの runtime アダプターは import しません。
 
-runtime rootは`leases/<id>/process-runtimes/<runtime>/`で、`state/`、`stdout.log`、
-`stderr.log`、`owner.json`、`redaction.json`、`launch.json`を置く。`${runtime_dir}`として公開する
-のは`state/`のみ。source相対のcwdと実行ファイルpathはnative pathで解決し、symlink解決後の
-閉じ込めを確認する。PATH toolにはhost由来、絶対path、読み取れるfileのSHA-256を記録する。
-この証拠はhost softwareの不変性を保証せず、差し替えの競合も解消しない。
+App は操作前に不変のソースを展開し、runtime のディレクトリ、予約ポート、stdout/stderr
+のパスを確定します。切り離したプロセスを起動する前に起動意図を保存し、返された
+OS 上の識別情報を readiness 確認の前に保存します。エラーとともに返されたゼロでない
+識別情報も、削除判断の証拠として保持します。
+
+起動結果が不確かな場合、何も起きなかったとして再試行してはいけません。
+展開した host の認証情報は一時的な入力として扱い、desired state の metadata へ保存しません。
+
+runtime の保存先は `leases/<id>/process-runtimes/<runtime>/` です。
+ここに `state/`、`stdout.log`、`stderr.log`、`owner.json`、`redaction.json`、`launch.json`
+を置きます。`${runtime_dir}` として公開するのは `state/` だけです。
+
+ソースを基準とする cwd と実行ファイルの相対パスは、OS ネイティブのパスとして解決します。
+symlink の解決後にも所定の範囲内にあることを確認します。PATH から選んだツールには、
+host 由来であること、絶対パス、読み取れるファイルの SHA-256 を記録します。
+この証拠は host のソフトウェアが不変であることを保証せず、差し替えとの競合も解消しません。
+
+### 起動記録と非公開ログの秘匿処理
+
+専用の `launch.json` は所有情報と OS 上の識別情報を保持します。
+それとは独立した `redaction.json` を OS 上での Start の前に保存します。
+後者には所有情報、形式の version、secret の長さ・全文 digest・先頭 digest からなる
+fingerprint を記録し、平文の secret は永続化しません。
+
+この記録により、host の secret 変数を変更・削除した後や、起動後の記録保存に失敗した
+場合も、処理量に上限を設けた秘匿処理ができます。起動後に必要な秘匿処理の証拠が
+欠落している、または不正な場合は、ログの export を止めます。
+
+fingerprint は暗号化ではありません。未加工の stdout/stderr は、引き続き非公開の保存先で
+保護する必要があります。削除時の artifact として保持するログも、同じ上限付きの
+秘匿処理を通します。
 
 ## 観測と停止
 
-detached primitiveはPIDだけに頼らずnative treeの同一性を証明する。後続の独立したCLIは
-その識別情報を検査する。保存済みready行だけでは現在の正常性を示さない。foregroundの
-起点processをlifecycleの基準とする。予期しない終了はleaseをdegradedにし、自動再起動は
-予約しない。所有tree全体の不在を証明するまで、processがworktreeを使い続ける可能性がある。
+切り離したプロセスを扱う基盤 API は、PID だけに頼らず、OS 上のプロセスツリーの同一性を
+確認します。後から独立して起動した CLI も、その識別情報を検査します。
+保存済みの ready 行だけでは、現在も正常であるとは判断できません。
 
-停止ではsignal送信前と強制停止への移行前に正確な識別情報を再検証する。Unix groupは
-起点終了や子processの残存で所有が不確実になることがある。不在を証明できなければ、
-再利用されたgroupをkillせずquarantineにする。Unixの生成/group検査はsignal直前に行うが、native groupへのsignalと観測をatomicには
-できない。Windowsのnative Job/guardian状態は数値PID以上のtree所有情報を持つ。停止時は
-正確なJob handleを保持してJobを強制終了し、console signalによる穏当な終了は約束しない。取消し、永続化失敗、停止未完了では復旧証拠と予約を保持する。
-tree全体の不在を証明した場合のみ可変状態とportを解放し、通常のtracked変更保護付きsource
-cleanupへ進む。
+foreground の起点プロセスをライフサイクルの基準とします。予期せず終了した場合は
+lease を degraded とし、自動再起動は予約しません。所有するツリー全体の不在を
+証明するまでは、プロセスが worktree を使い続けている可能性があります。
+
+停止時には、signal を送る前と強制停止へ移る前に、正確な識別情報を再検証します。
+Unix の group は、起点の終了や子プロセスの残存により所有権が不確かになることがあります。
+不在を証明できない場合は、再利用された group を kill せず quarantine にします。
+プロセス生成時の識別情報と group は signal の直前に確認しますが、OS 上の group の
+観測と signal 送信を不可分の操作にはできません。
+
+Windows の Job/guardian の状態は、数値 PID よりも詳しいツリーの所有情報を持ちます。
+停止時は対象の Job handle を保持して Job を強制終了します。
+console signal による穏当な終了は保証しません。
+
+キャンセル、永続化の失敗、停止の未完了があれば、復旧の証拠と予約を保持します。
+ツリー全体の不在を証明した場合だけ可変状態とポートを解放し、通常のソース削除へ
+進みます。その際も tracked ファイルの変更を保護します。
 
 ## Port、endpoint、将来の利用側
 
-SQLite予約はagent-env間の名前付きloopback TCP割り当てを直列化する。nativeの空き確認は
-外部占有を検出するが、対象がbindするまでの競合は解消できない。socket activationと継承する
-listen socketは対象外。processは渡されたloopback address/portへbindする必要がある。
-appは`runtime_port`を共通の解決済みendpoint表現へ対応付けるため、HTTP readinessやFlutter
-reverseの利用側は解決後にprocess固有構文を必要としない。
+Browser/CDP は実装済みの利用側です。今後の機能もこの境界を通じて所有するプロセスを
+利用でき、汎用のプロセス管理を変更する必要はありません。
 
-可変状態はruntimeごとに分離し、quarantine中は保持する。証拠storageには意図した診断だけを
-保持し、browser profileやlocal databaseを自動で昇格しない。将来のbrowser観測はこの
-process寿命、状態directory、logs、CDP状endpointを利用でき、process adapterへbrowser機能を
-追加する必要はない。native Windows/macOS/Linux integration、crash復旧、兄弟leaseの存続、
-起点の所有が不確かな場合の回帰検証が必要となる。cross-buildは追加証拠にとどまる。
+SQLite の予約は、agent-env 同士の名前付き loopback TCP ポートの割り当てを直列化します。
+OS 上での空き確認は外部による占有を検出しますが、対象プロセスが bind するまでの
+競合は解消できません。socket activation と listen socket の継承は対象外です。
+プロセスは渡された loopback のアドレスとポートへ bind する必要があります。
 
-専用の`launch.json`は所有情報とnative識別情報を保持する。独立した`redaction.json`は
-native Start前に保存し、所有情報、形式version、secretの長さ/全文digest/先頭digestの
-fingerprintを持つ。平文secretを永続化せず、host secret変数の変更・削除後や、起動後の
-receipt保存失敗時も上限付きredactionを可能にする。
-起動後のredaction証拠が不正・欠落ならlog exportを止める。未加工stdout/stderrには
-引き続き専用storageでの保護が必要であり、fingerprintは暗号化ではない。
-cleanup artifactとして保持するlogも同じ上限付きredaction経路を通る。
+App は `runtime_port` を共通の解決済み endpoint 表現へ変換します。
+そのため、HTTP readiness や Flutter reverse の利用側は、解決後に process 固有の構文を
+扱う必要がありません。
+
+可変状態は runtime ごとに分離し、quarantine 中は保持します。証拠の保存先には、
+診断のために意図して採取したものだけを残します。browser profile やローカル DB を
+自動的に証拠として取り込むことはありません。Browser/CDP の観測はこの
+プロセスの寿命、状態ディレクトリ、ログ、endpoint を利用します。browser 固有の動作は
+別のアダプターが担当します。
+
+## 検証
+
+Windows・macOS・Linux でのネイティブ統合、クラッシュからの復旧、兄弟 lease の存続、
+起点プロセスの所有権が不確かな場合の回帰検証が必要です。
+cross-build は追加の証拠にとどまり、ネイティブ実行の代わりにはなりません。

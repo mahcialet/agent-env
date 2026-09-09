@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/RELIABILITY.md
-source_sha256: 56d714ec6f6fab0ce57e5fb8ba20d0623c5a695711eb2d95a94c9f2ff5a17f35
+source_sha256: a38f93add1bb06c6fb356414ca20274e03ac89d115e2c7f3b1f301b7025e4cf0
 ---
 
 [英語版（翻訳元）](RELIABILITY.md)
@@ -12,11 +12,29 @@ source_sha256: 56d714ec6f6fab0ce57e5fb8ba20d0623c5a695711eb2d95a94c9f2ff5a17f35
 
 ## 割り当てとcleanup
 
-割り当てはSQLite、Git、選択したruntimeのツールにまたがるsagaです。実体化する前に、レジストリがリース、不変のソース識別情報、一意なworktreeパス、runtimeプロジェクトを予約します。外部操作に先立ってイベントを記録します。検証済みで所有権ラベルを付けた正規化Composeスナップショット、生成した動的loopback endpoint binding、digestを起動前に保存するため、`up`が失敗してもcleanup対象の識別情報が残ります。
+割り当てでは、リソースを作る前に実行する内容を記録します。SQLite、Git、選択したruntimeの
+ツールはそれぞれ独立しているため、処理全体を一つのトランザクションにはできません。
+そこで各段階を記録し、後続の失敗時には完了した作用を逆順に取り消すsaga方式を使います。
+
+実体化の前に、レジストリがリース、不変のソース識別情報、一意なworktreeパス、runtimeの
+プロジェクトを予約します。イベントも外部操作より先に記録します。Composeの起動前には、
+検証・正規化したスナップショットを、所有権ラベル、生成した動的loopback endpointの割り当て、
+digestとともに保存します。このため、`up`が失敗してもcleanup対象の識別情報が残ります。
+
+### 失敗時に残す記録
 
 失敗時には、通常の要求取消後も有効なcleanup contextを使い、時間制限付きの逆順補償を実行します。完全に片付いた割り当て失敗は、失敗イベントと成果物を伴うreleasedとして記録に残ります。所有権が不確定、またはcleanupが不完全な場合は、復旧できるようにquarantinedの予約が見える状態を保ちます。再試行が成功したように見せるために証拠を消すことはありません。
 
-リソースを削除する前に、固定したソースの識別情報と追跡対象の変更を検査します。downの前に最終runtimeログを保存し、変更のないworktreeはruntimeのcleanup後にのみ削除します。明示的なforceでも追跡対象の差分証拠が必要であり、識別情報の不一致は拒否します。管理されたreview worktree内の追跡対象外ファイルは破棄可能です。記録されたリソースが既に存在しない場合、cleanupを繰り返しても結果は変わりません。
+### 削除の条件
+
+cleanupでは、次の条件をすべて守ります。
+
+- リソースを削除する前に、固定したソースの識別情報と追跡対象の変更を検査します。
+- downの前に最終runtimeログを保存します。変更のないworktreeも、runtimeのcleanup後にのみ削除します。
+- 明示的なforceでも追跡対象の差分証拠を保持します。識別情報が一致しなければ拒否します。
+
+管理対象のreview worktree内にある追跡対象外ファイルは破棄可能です。
+記録したリソースが既に存在しない場合、cleanupを繰り返しても結果は変わりません。
 
 Compose cleanupはruntime snapshotに保存したproviderとengineを使います。
 Podman down前に、appはnativeの匿名volume識別情報と接続証拠を含む
@@ -27,9 +45,21 @@ Podman down前に、appはnativeの匿名volume識別情報と接続証拠を含
 
 ## レジストリと並行操作
 
-SQLiteは埋め込みの連番migration、検証済みWAL、外部キー、接続のbusy timeoutを使います。immediate transactionにより容量とruntimeプロジェクト予約の一意性を強制します。正規化した行と対応するリーススナップショットは同時に更新します。バージョン付きの`leases/<id>/environment.json`記述子は補助的な診断証拠を提供し、永続化するライフサイクル変更時に更新します。記述子の書き込みが失敗しても、状態の判断にはSQLiteの記録を使います。レジストリは単一ホスト内のローカル状態です。未対応のネットワークファイルシステムに置いたり、複数ホストの調整機構として扱ったりしないでください。
+SQLiteのレジストリは単一ホスト内のローカル状態です。未対応のネットワークファイルシステムに
+置いたり、複数ホストの調整機構として使ったりしないでください。
+
+永続化には、埋め込まれた連番migration、検証済みWAL、外部キー、接続のbusy timeoutを使います。
+immediate transactionで容量とruntimeプロジェクト予約の一意性を守り、正規化した行と対応する
+リーススナップショットを同時に更新します。
+
+バージョン付きの`leases/<id>/environment.json`は補助的な診断情報です。ライフサイクルの変更を
+永続化するときに更新しますが、書き込みに失敗しても状態の判断にはSQLiteの記録を使います。
+
+### 操作の所有権
 
 ライフサイクル変更、名前付きテスト、期限更新、reconcile、適用するGCは、永続的なリース操作lockを保持します。プロセスがクラッシュして更新が止まると、そのtokenは期限切れになります。操作contextは外部コマンドとレジストリ変更の両方へlockの所有権を引き継ぎます。更新失敗は作業を取り消し、transactional fencingが古い所有者の書き込みを拒否します。lockを失ったことを、以前のプロセスが後継所有者のリソースに対して補償を続ける許可にしてはいけません。
+
+### 取消と完了の判定
 
 移植可能な取消処理は、Unix process groupまたはWindows Job Objectを通じて管理対象コマンドの子孫を終了します。名前付きテストとprobeの実行を制限する仕組みであり、リポジトリコードが既に行った任意の副作用を元に戻すものではありません。外部割り当て後に取り消されたコマンドにも、観測に基づく復旧が必要です。
 
@@ -72,42 +102,62 @@ SQLiteは起動前に専用AVDの識別情報と、偶数・奇数のconsole/ADB
 
 個別のAndroidのみのリースのreconcileにはDockerは不要です。グローバルなCompose孤立resourceのinventoryは、Androidリースだけが登録されている場合も、導入済みprovider実行ファイルと記録済みprovider/engine識別情報の和集合を探索します。導入済みでもengineが利用不能なら、空の成功結果ではなく部分的なエラーを明示します。resource IDはprovider単位に区別します。Androidの検査は記録された識別情報に限定します。reconcileは手動終了を観測しますが、Emulatorを取り込んだり再起動したりしません。
 
+### 共有ADBの寿命
+
 共有ローカルADBサーバーの寿命は各リースとは別です。作成時にはEmulatorを起動する前に、`127.0.0.1:5037`へ直接送る読み取り専用の`host:version` probeでプロトコル互換性を確立します。サーバーがなければdetached-process APIを通じて別途起動します。既存サーバーのバージョン不一致、不正な応答、観測不能は、置き換えを行わず前提条件の失敗とします。bootの観測ではSDKクライアントを実行する前に互換性確認を繰り返します。共有前提条件が欠けていれば、起動や置き換えをせず報告します。
 
 起動診断と識別情報は、runtimeの証拠と同じ場所の`adb-server.stdout.log`、`adb-server.stderr.log`、`adb-server-start.json`に残ります。その後に割り当てが失敗しても、このホストサービスを停止する許可にはなりません。destroyとGCは所有するEmulatorリソースのみを削除し、グローバルADBサーバーのcleanupは決して行いません。復旧では、このプロセスをリース所有のEmulatorとして扱ったり、起動失敗の証拠を捨てたりせず、共有前提条件を復元する必要があります。
 
 ## 常駐processの復旧
 
-processのcreateはsource commit、runtime path、名前付きTCP予約を確定し、起動意図を
-永続化してから起動します。返されたnative識別情報はreadiness前に保存します。
-errorとともに返された0以外の識別情報もcleanup証拠です。後続のregistry保存に失敗した場合は
-`launch.json`で起動を復旧できます。不確実なStartを無作用だったとして繰り返しません。
-後続の独立CLIはnative識別情報と上限付きHTTP healthを観測します。起点終了はleaseを
- degradedにし、自動再起動はしません。
+processの作成では、ソースのcommit、runtimeのパス、名前付きTCP予約を確定し、起動意図を
+永続化してから起動します。返されたネイティブ識別情報はreadinessの確認前に保存します。
+エラーとともに返された識別情報も、0でなければcleanupの証拠です。後続のレジストリ保存に
+失敗した場合は、`launch.json`から起動の情報を復旧できます。
 
-destroyはsignal前と強制停止への移行前にnative所有を再検証します。Unixで子孫が残る場合は
-foregroundの起点が必要です。group系譜が曖昧なら数値groupへのkillを許可せずquarantineに
-します。Windowsは正確な所有Jobを使います。tree全体の不在を確認してから専用状態、portを
-解放し、通常のtracked変更保護付きworktree cleanupへ進みます。不確実な起動・停止、出力証拠の
-失敗、fence喪失では復旧状態と予約を保持します。destroy/GCの再実行でも証明要件を上書きしません。
+作用の有無が不明なStartを、何も起きなかったものとして繰り返してはいけません。
+後から別のCLIを実行すると、ネイティブ識別情報と時間制限付きHTTP検査で稼働状態を観測します。
+起点プロセスが終了したリースはdegradedになり、自動再起動はしません。
 
-runtime fileは`leases/<id>/process-runtimes/<runtime>/`配下に置きます。可変の`state/`は
-cleanup確認後に削除し、logs/起動識別情報は診断証拠として残します。独立した`redaction.json`は
-version付き所有情報とsecret fingerprintをnative Start前に保存するため、`launch.json`の保存に
-失敗しても補償logをredactionできます。後続CLIは現在のhost secret環境に依存しません。
-型付きの`ErrProcessNotStarted`と0のPIDがそろう場合はpreparedへ戻せます。型による証明のない
-識別情報0の失敗は不確実なまま扱います。
-[process lifecycle設計](design-docs/persistent-process-runtime.ja.md)を参照してください。
+### 停止と削除の条件
+
+destroyはsignalの送信前と強制停止へ移る前に、ネイティブプロセスの所有権を再検証します。
+Unixでは子孫が残っている場合、foregroundの起点プロセスも必要です。グループの系譜が曖昧なら、
+数値のグループIDへのkillを許可せずquarantineにします。Windowsでは所有するJobを厳密に指定します。
+
+ツリー全体の不在を確認してから専用状態とポートを解放し、通常どおり追跡対象の変更を保護した
+worktreeのcleanupへ進みます。起動・停止が不確実な場合、出力証拠の保存に失敗した場合、または
+fenceを失った場合は、復旧用の状態と予約を保持します。destroyやGCを再実行しても、この証明要件は変わりません。
+
+### 復旧に使うファイル
+
+runtimeのファイルは`leases/<id>/process-runtimes/<runtime>/`配下に置きます。
+書き換え可能な`state/`はcleanup確認後に削除し、ログと起動識別情報は診断証拠として残します。
+
+独立した`redaction.json`は、バージョン付き所有情報と秘密値のfingerprintをネイティブStart前に
+保存します。このため`launch.json`の保存に失敗しても、補償時のログを伏字化できます。
+後続のCLIは、現在のホスト環境に秘密値が残っていることに依存しません。
+
+型で識別できる`ErrProcessNotStarted`とPID 0がそろう場合はpreparedへ戻せます。
+その型による証明のない識別情報0の失敗は、引き続き不確実なものとして扱います。
+[processのライフサイクル設計](design-docs/persistent-process-runtime.ja.md)を参照してください。
 
 ## browser操作の復旧
 
-すべてのbrowser操作でCDP処理と証拠確定までlease fenceを保持します。
-active・期限内・readyのleaseでは入力を許可し、degradedではnative identityを証明できるread-only診断のみ許可します。
-quarantine、停止済み・曖昧なprocess、未完了command runがある場合は操作を拒否します。
-port再利用、browser/page/document/node identityの変化、切り詰めたsnapshotは入力の根拠になりません。
-変更操作は1回だけ試み、切断後に自動再実行しません。完了不明や証拠確定失敗ならrunning commandのbarrierを残し、
-実際の結果と証拠を確認してreviewを伴う復旧を判断します。destroy/GCはgeneric process treeの不在確認後に
-profileを削除し、browser独自cleanupや自動再起動は行いません。
+すべてのbrowser操作で、CDP処理から証拠の確定までリースのfenceを保持します。
+操作を許可する条件は次のとおりです。
+
+- activeで期限内、かつreadyのリースでは入力できます。
+- degradedのリースでは、ネイティブプロセスの識別情報を証明できる場合に限り、読み取り専用の診断ができます。
+- quarantine、停止済みまたは識別情報が曖昧なプロセス、未完了のcommand runがある場合は操作を拒否します。
+
+ポートの再利用、browser・page・document・nodeの識別情報の変化、切り詰めたsnapshotは、入力を
+許可する根拠にはなりません。変更操作は一度だけ試み、切断後に自動再実行しません。
+
+完了を確認できない場合や証拠の確定に失敗した場合は、commandをrunningのまま残して後続処理を
+止めます。実際の結果と証拠を確認し、レビューを経て復旧してください。
+destroyとGCは汎用processツリーの不在を確認してからprofileを削除します。
+browser独自のcleanupや自動再起動は行いません。
 [browser設計](design-docs/browser-cdp-automation.ja.md)を参照してください。
 
 ## Controller と worker の復旧
@@ -120,6 +170,8 @@ worker と controller の journal に payload の識別情報、作用開始の�
 artifact upload より先に local 結果を保存し、global RELEASED には worker の cleanup 証明を必要とします。
 heartbeat や controller 接続の消失では観測を古い状態・UNKNOWN とし、再配置、cleanup、host instance の変更を
 許可する根拠にはしません。
+
+### 並行実行と未対応の復旧操作
 
 初期実装の worker は操作を直列に実行しますが、作成済み lease は並行して稼働します。
 controller は同じ lease の二つ目の active 操作を、remote test 中の destroy も含めて拒否します。

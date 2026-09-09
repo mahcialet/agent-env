@@ -3,38 +3,46 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/audits/repository-correctness/index.md
-source_sha256: 2719cd1cf3f51b47e2856b9a0e9e6969033c23da5930c8d0557b342d8733365c
+source_sha256: eea3c0043503bc21c336fcdbd3878a08875f5be0023a96df7b80c1d5af531f4c
 ---
 
 # リポジトリ正確性監査
 
 [English](index.md)
 
-実行指示: [完了した監査 Plan](../../exec-plans/completed/repository-correctness-audit.ja.md)。
-Phase A の固定対象は PR #10 merge 後 master の `031869c8b9073b8e23bc17fbc55243666a52f557`。作業ブランチは `audit/repository-correctness`。
+完了した監査の指摘と証拠を探すためのindexです。これは履歴の報告であり、現在のrevisionを
+再検証したという意味ではありません。現在の挙動は[製品仕様](../../product-specs/index.ja.md)、
+検証コマンドは[品質方針](../../QUALITY.ja.md)を参照してください。
 
-Phase A/Bは完了。当初採用15件の実装・回帰・native受入検証は成功。その後merge後4件を再現・追加採用し、計19件となった。19件すべての修正・独立レビュー・検証が完了し、監査を完了した。過去テスト名の対応表は、過去の全不具合版を mutation replay したという意味ではない。
+実行指示は[完了した監査Plan](../../exec-plans/completed/repository-correctness-audit.ja.md)にあります。
+Phase Aの固定対象はPR #10 merge後のmaster、`031869c8b9073b8e23bc17fbc55243666a52f557`です。
+監査時のbranchは`audit/repository-correctness`でした。
+
+Phase A/Bは完了しています。当初採用した15件は実装・回帰・native受け入れを通過しました。
+その後merge後の4件を再現・採用し、計19件を修正して独立レビューしました。
+過去の回帰テスト名が記録されていても、すべての過去の不具合版をmutation replayしたという意味ではありません。
 
 ## レポート
 
-- [文書の過去指摘とフラグメント監査](documentation.ja.md) / [English](documentation.md)
-- [制御処理の監査](current-control-plane.ja.md) / [English](current-control-plane.md)
-- [mobile の過去指摘](history-mobile.ja.md) / [English](history-mobile.md)
-- [mobile の現行監査](current-mobile.ja.md) / [English](current-mobile.md)
-- [process/browser/MVP の過去指摘](history-process-browser.ja.md) / [English](history-process-browser.md)
-- [Compose/release の過去指摘](history-compose-release.ja.md) / [English](history-compose-release.md)
+採否と修正状況は指摘一覧、subsystemの検証範囲はmatrixから確認できます。
+ほかのレポートは、その根拠となる観測結果と履歴資料です。各レポートには日本語版があります。
 
-- [過去指摘の全体索引と見逃し分析](historical-corpus.ja.md) / [English](historical-corpus.md)
+| 知りたいこと | レポート |
+| --- | --- |
+| 何を採用し、修正したか | [指摘の採否と修正](findings.ja.md) |
+| どの不変条件を何で守るか | [subsystem × invariant matrix](matrix.ja.md) |
+| どの履歴資料を調べたか | [全履歴資料と見逃しの要約](historical-corpus.ja.md)、[文書履歴とfragment](documentation.ja.md) |
+| control planeをどう調べたか | [control-plane監査](current-control-plane.ja.md) |
+| Android・Flutter・UIをどう調べたか | [mobile履歴](history-mobile.ja.md)、[mobile現行監査](current-mobile.ja.md) |
+| processとbrowserをどう調べたか | [process/browser/MVP履歴](history-process-browser.ja.md)、[process/browser現行監査](current-process-browser.ja.md) |
+| Composeとreleaseをどう調べたか | [Compose/release履歴](history-compose-release.ja.md)、[Compose/release現行監査](current-compose-release.ja.md) |
+| PR #10の終盤に何が追加されたか | [Browser追補](supplemental-browser.ja.md)、[CLI結果追補](supplemental-cli.ja.md) |
 
-- [Compose と release の現行監査](current-compose-release.ja.md) / [English](current-compose-release.md)
+## 証拠の読み分け
 
-- [process と Browser の現行監査](current-process-browser.ja.md) / [English](current-process-browser.md)
-
-- [指摘の採否と修正](findings.ja.md) / [English](findings.md)
-
-- [Subsystem × 不変条件と予防機構の表](matrix.ja.md) / [English](matrix.md)
-
-- 遅れて確認したPR #10追加資料: [Browser/CDP](supplemental-browser.ja.md)、[CLI結果](supplemental-cli.ja.md)。
+以下の基準検証は固定した開始時の製品、修正版の検証は初期修正、最終受け入れは最後の追補revisionの
+結果です。revisionと、失敗・未実行の項目を分けて読んでください。数値は当時の結果を保持したもので、
+今回の文書編集で再測定した値ではありません。
 
 ## 基準検証
 

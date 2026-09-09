@@ -1,9 +1,9 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-08
+last_verified: 2026-09-09
 translation_of: docs/design-docs/browser-cdp-automation.md
-source_sha256: 31402134de30cd0c12f2fcacd96425d72dd2e6fc9872fe5d29a3e670d9b85f78
+source_sha256: 34712fd936ff46bbef295935beda554ae906f59a2dff2e5285428cbe2eb8e5db
 ---
 
 # Browser/CDP設計
@@ -48,6 +48,23 @@ semantic入力にはdigestを検証した登録済みsnapshotが必要です。�
 cross-origin/OOPIF観測とすべてのiframe semantic入力は今回明示的に非対応です。内部の固定node readbackは使いますが、
 任意評価は公開しません。Browser/Android UIの共通抽象化はまだ導入しません。
 
+### Navigation と引数の検証
+
+明示navigationはhash/history変化でも以前のbrowser snapshotを無効にします。document tokenは
+raw URLのdigest（query文字列そのものは保存しない）、node fingerprintは許可した非text AX stateを含みます。
+set-textは明示的な`--text`が必須で、明示した空文字列はfieldを消去します。CLIは操作の必須引数を検証し、
+明示zero durationはstoreを開く前に拒否します。
+
+### Frame の同一 origin を確認する
+
+frameへのアクセスはbrowser報告のsecurity originで判定します。継承した`about:blank`や
+`about:srcdoc`でChromeがopaqueの代用値を返す場合、分離した親world内の非公開・固定
+predicateで、nativeの`contentDocument` getterへのアクセスがChromiumの同一origin制約で
+許されるか確認します。worldにはuniversal accessを与えず、page scriptによる上書きを
+信用しません。上限付きtarget一覧で、frame treeから省かれた選択pageの別process iframeを
+拒否します。origin不明かつ未commitでURLが空のframeは、waitの既存期限内でのみ再観測し、
+その状態で観測や入力を許可しません。
+
 ## 副作用・診断・privacy
 
 すべての操作でprotocol処理と証拠確定までlease fenceを保持します。変更操作はrun intentを先に保存し、
@@ -60,21 +77,6 @@ PNGは保存前に画像の完全性・サイズ・寸法を検証します。se
 構造化データ中の文字列をredactしてJSONの妥当性を保ちます。networkはheader/bodyを保存せず、
 console/networkは接続期間を限定します。screenshotと未認識のpage textには秘密が残り得るためprivateに扱います。
 永続background診断、download、browser再起動、外部接続、公開CDP passthroughは提供しません。
-
-## 検証方針
-
-configの負例で明示的bindingと正確なswitch要件を検証します。app testは所有権再検証、
-古い参照・別lease参照、run/証拠の失敗、destroy fencingを対象にします。
-transport fixtureは別接続先discovery、不正・過大応答を拒否することを検証します。
-native testはWindows・macOS・Linux、Go 1.27、Chrome for Testing 152.0.7977.82で実行します。
-`391288c`の3 native jobはすべて成功し（Browser native 34247636411）、CDP 1.3を報告しました。
-browser/backend fixtureは同じleaseのendpointを使います。Planには実行したnative検証の証拠を、
-cross-buildの結果と分けて記録しています。
-
-明示navigationはhash/history変化でも以前のbrowser snapshotを無効にします。document tokenは
-raw URLのdigest（query文字列そのものは保存しない）、node fingerprintは許可した非text AX stateを含みます。
-set-textは明示的な`--text`が必須で、明示した空文字列はfieldを消去します。CLIは操作の必須引数を検証し、
-明示zero durationはstoreを開く前に拒否します。
 
 ### reviewで強化した証拠と待機の境界
 
@@ -89,10 +91,12 @@ console/networkで保持するすべての文字列（IDやmetadataも含む）�
 残さず、全体を置き換えます。上限付きqueueには、実行中captureのsessionと必要なevent
 種別だけを入れ、無関係な通知は無視します。購読対象eventがあふれた場合は引き続き拒否します。
 
-frameへのアクセスはbrowser報告のsecurity originで判定します。継承した`about:blank`や
-`about:srcdoc`でChromeがopaqueの代用値を返す場合、分離した親world内の非公開・固定
-predicateで、nativeの`contentDocument` getterへのアクセスがChromiumの同一origin制約で
-許されるか確認します。worldにはuniversal accessを与えず、page scriptによる上書きを
-信用しません。上限付きtarget一覧で、frame treeから省かれた選択pageの別process iframeを
-拒否します。origin不明かつ未commitでURLが空のframeは、waitの既存期限内でのみ再観測し、
-その状態で観測や入力を許可しません。
+## 検証方針
+
+configの負例で明示的bindingと正確なswitch要件を検証します。app testは所有権再検証、
+古い参照・別lease参照、run/証拠の失敗、destroy fencingを対象にします。
+transport fixtureは別接続先discovery、不正・過大応答を拒否することを検証します。
+native testはWindows・macOS・Linux、Go 1.27、Chrome for Testing 152.0.7977.82で実行します。
+`391288c`の3 native jobはすべて成功し（Browser native 34247636411）、CDP 1.3を報告しました。
+browser/backend fixtureは同じleaseのendpointを使います。Planには実行したnative検証の証拠を、
+cross-buildの結果と分けて記録しています。

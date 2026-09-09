@@ -8,31 +8,44 @@ last_verified: 2026-09-09
 
 [日本語](index.ja.md)
 
-Execution authority: [completed audit plan](../../exec-plans/completed/repository-correctness-audit.md).
-Frozen Phase A target: `031869c8b9073b8e23bc17fbc55243666a52f557`, post-PR-#10 master. Working branch: `audit/repository-correctness`.
+This index explains the completed audit's findings and evidence. It is a
+historical report, not a statement that today's revision was re-tested.
+For current behavior use the [product contracts](../../product-specs/index.md);
+for current verification commands use [quality](../../QUALITY.md).
 
-Phase A/B are complete. The initial15 accepted findings have passed implementation/regression/native acceptance; four postmerge findings were subsequently reproduced and accepted, for19 total. All19 are resolved, independently reviewed and validated; the audit is complete. Historical regression names do not imply that every past defective revision was mutation-replayed.
+Execution authority: [completed audit plan](../../exec-plans/completed/repository-correctness-audit.md).
+Frozen Phase A target: `031869c8b9073b8e23bc17fbc55243666a52f557`, post-PR-#10 master.
+The audit used branch `audit/repository-correctness`.
+
+Phase A/B are complete. The initial 15 accepted findings passed implementation,
+regression, and native acceptance. Four postmerge findings were then reproduced
+and accepted, for 19 total. All 19 are resolved and independently reviewed.
+Historical regression names do not imply that every past defective revision was
+mutation-replayed.
 
 ## Reports
 
-- [Documentation history and fragment audit](documentation.md) / [日本語](documentation.ja.md)
-- [Control-plane audit](current-control-plane.md) / [日本語](current-control-plane.ja.md)
-- [Mobile historical corpus](history-mobile.md) / [日本語](history-mobile.ja.md)
-- [Mobile current audit](current-mobile.md) / [日本語](current-mobile.ja.md)
-- [Process/browser/MVP historical corpus](history-process-browser.md) / [日本語](history-process-browser.ja.md)
-- [Compose/release historical corpus](history-compose-release.md) / [日本語](history-compose-release.ja.md)
+Start with the findings for disposition, or the matrix for subsystem coverage.
+The remaining reports retain the observations and historical corpus behind them.
+Every report has a corresponding Japanese page.
 
-- [Complete historical inventory and escape summary](historical-corpus.md) / [日本語](historical-corpus.ja.md)
+| Reader question | Report |
+| --- | --- |
+| What was accepted and repaired? | [Finding disposition and remediation](findings.md) |
+| Which invariant has which guardrail? | [Subsystem × invariant matrix](matrix.md) |
+| Which historical material was reviewed? | [Complete corpus and escape summary](historical-corpus.md), [documentation history and fragments](documentation.md) |
+| What was checked in the control plane? | [Control-plane audit](current-control-plane.md) |
+| What was checked for Android/Flutter/UI? | [Mobile history](history-mobile.md), [mobile current audit](current-mobile.md) |
+| What was checked for processes and browsers? | [Process/browser/MVP history](history-process-browser.md), [process/browser current audit](current-process-browser.md) |
+| What was checked for Compose and release? | [Compose/release history](history-compose-release.md), [Compose/release current audit](current-compose-release.md) |
+| What arrived late in PR #10? | [Browser supplement](supplemental-browser.md), [CLI result supplement](supplemental-cli.md) |
 
-- [Compose and release current audit](current-compose-release.md) / [日本語](current-compose-release.ja.md)
+## How to read the evidence
 
-- [Process and Browser current audit](current-process-browser.md) / [日本語](current-process-browser.ja.md)
-
-- [Finding disposition and remediation](findings.md) / [日本語](findings.ja.md)
-
-- [Subsystem × invariant and guardrail matrix](matrix.md) / [日本語](matrix.ja.md)
-
-- Late PR #10 supplements: [Browser/CDP](supplemental-browser.md), [CLI result](supplemental-cli.md).
+The baseline below belongs to the frozen starting product. Candidate verification
+covers the first repairs; final acceptance covers the last supplemental revision.
+Keep those revisions and the failed/unexecuted cases separate. The numbers below
+are retained historical results, not fresh validation from an editorial rewrite.
 
 ## Baseline evidence
 

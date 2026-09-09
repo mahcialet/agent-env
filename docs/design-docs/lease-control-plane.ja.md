@@ -3,16 +3,24 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/design-docs/lease-control-plane.md
-source_sha256: 4aeda5c6d64f5106aa1d983aa1ef277b13119c77f4f5f1aeb49fe7d9310e47a4
+source_sha256: bc7956644f4e5c7f41e59aba9c33347f1cce8fe7752978a1be22ad26efe3dd55
 ---
 
 [English（翻訳元）](lease-control-plane.md)
 
 # Lease コントロールプレーン
 
+この文書では、local lease の記録、アダプターの責務、作成・削除に伴う復旧の仕組みを説明します。
+現在の公開仕様は[製品仕様の索引](../product-specs/index.ja.md)から参照できます。
+[MVP 仕様](../product-specs/agent-env-mvp.ja.md)は初期の範囲を記録しています。
+[複数 host の調整](multi-host-control-plane.ja.md)は、この local の規則を維持したまま、
+remote の割り当てと操作配送の管理を追加します。
+
 ## Environment
 
-アプリケーションを実行可能にする実際のリソースです。worktree、Compose プロジェクト、コンテナ、network、volume、生成設定、ポート、ログに加え、将来は emulator や browser も含みます。
+アプリケーションを動かす実際のリソースです。worktree、Compose プロジェクト、コンテナ、network、volume、
+生成設定、ポート、ログに加え、選択した Emulator や常駐プロセスを含みます。
+Browser 操作は所有を確認した常駐プロセスを使い、別のライフサイクル管理主体は追加しません。
 
 ## Lease
 
@@ -60,7 +68,9 @@ MVP は起動グループに `stack` を使い、profile overlay は実装しま
 
 ## Capability
 
-解決済み環境が提供する意味上の機能で、`api`、`web-ui`、`logs`、`browser-e2e`、将来の `android-ui` などです。MVP の capability は記述用であり、capability に基づく stack の自動選択は後の拡張です。
+解決済み環境が提供する機能を表し、`api`、`web-ui`、`logs`、`browser-e2e`、`android-ui` などを指します。
+local のモデルでは環境の説明に使い、capability による stack の自動選択は将来の拡張です。
+remote worker の capability は、複数 host の設計における配置判定に使う別の概念です。
 
 ## Scenario
 
@@ -70,7 +80,8 @@ capability を要求し、テストや観測を実行する、繰り返し可能
 
 ## 永続化と lifecycle
 
-推奨する Go domain 型:
+以下は domain の責務を表す概念上の名前です。現在の Go の型宣言の一覧ではありません。
+実装された型は [domain](../../internal/domain/lease.go)を参照してください。
 
 ```text
 Lease
@@ -96,7 +107,9 @@ database row struct、YAML struct、domain struct を 1 つの共有型に統合
 
 ## ランタイムアダプターの契約
 
-正確な名前は異なっても構いませんが、責務を維持します。
+この概念上の interface は、検証、計画、作用、観測、削除の責務を分けます。
+[実装された app interface](../../internal/app/lifecycle.go) と各ランタイムの provider がその責務を担います。
+以下は現在の API 宣言そのものではありません。
 
 ```go
 type Runtime interface {
@@ -114,6 +127,9 @@ type Runtime interface {
 
 ## Source アダプターの契約
 
+以下の例は、source の解決、展開、検査、削除の責務を分けたものです。
+現在の interface は [app/plan.go](../../internal/app/plan.go)を参照してください。
+
 ```go
 type SourceProvider interface {
     Resolve(ctx context.Context, spec SourceSpec, requestedRef string) (ResolvedSource, error)
@@ -129,7 +145,7 @@ Git 実装は、ライブラリで Git object/ref の動作を再実装するの
 
 ## `agent-env plan`
 
-`plan` は Git、Docker、SQLite の lease 状態を変更してはいけません。
+`plan` は Git、ランタイムのリソース、SQLite の lease 状態を変更してはいけません。
 
 次を実施します。
 
@@ -169,12 +185,12 @@ Warnings:
 概念上の saga:
 
 ```text
-lease ID とリソース名を予約
-  -> 要求された lease とイベントを永続化
-  -> 完全な source set を解決して永続化
+plan と完全な不変 source set を解決
+  -> lease ID とリソース名を予約
+  -> 要求された lease、source、イベントを永続化
   -> 全 worktree を作成
   -> ランタイム plan を展開して検証
-  -> Compose プロジェクトを作成/起動
+  -> 選択したランタイムのリソースを作成/起動
   -> readiness を確認
   -> 観測リソースと証拠を永続化
   -> ready に変更
@@ -192,7 +208,7 @@ lease ID とリソース名を予約
 releasing に変更
   -> 新しいコマンドを禁止
   -> 最終ログ/設定を収集
-  -> Compose プロジェクトを停止/down
+  -> 所有するランタイムのリソースを停止/down
   -> worktree の追跡対象変更を検査
   -> 安全な worktree を削除
   -> policy に従い artifact を保持
@@ -203,18 +219,26 @@ releasing に変更
 
 ## 状態パスと所有権
 
+### 保存先
+
 AGENT_ENV_HOME は OS の既定値を上書きします。Linux は XDG_STATE_HOME/agent-env または ~/.local/state/agent-env、macOS は ~/Library/Application Support/agent-env、Windows は LOCALAPPDATA/agent-env を使います。
 
 state.db と worktrees、repositories、leases、artifacts、logs、generated、locks はこの状態ルート以下に置きます。
 
 独立して破棄できる cache は OS の cache 位置を使います。ローカル SQLite が必須で、NFS/SMB 上の状態 database は未対応です。
 
+### 状態と所有者の記録
+
 desired state は active、stopped、released です。observed state は allocating、starting、ready、degraded、stopped、failed、releasing、released、quarantined、unknown を区別します。割り当て/起動失敗は failed、不在/不健全なリソースは degraded、危険/不完全な解放は quarantined になります。timestamp は UTC/RFC3339 で永続化し、要求 stack、解決済みコンポーネント、manifest と source-set の digest、所有権、作成、heartbeat、期限を保存します。
 
-所有権は参考情報であり認可ではありません。明示した --owner が AGENT_ENV_OWNER を上書きします。指定がなければ PID だけでなく生成した一意 token を使い、説明的なローカル所有者情報を導出します。lease コマンドは heartbeat を更新します。renew は期限を変更し、既定 TTL は 4 時間で、ホスト policy により設定可能です。
+lease の所有者を説明する情報は参考情報であり、認可には使いません。明示した --owner が AGENT_ENV_OWNER を上書きします。指定がなければ PID だけでなく生成した一意 token を使い、説明的なローカル所有者情報を導出します。lease コマンドは heartbeat を更新します。renew は期限を変更し、組み込みの host policy が既定 TTL を 4 時間に定めます。利用者が編集する host policy ファイルは未実装です。
+
+### 永続化と source の識別
 
 正規化した repositories、leases、lease_sources、lease_components、resources、events、command_runs、artifacts を永続化し、外部キーと owner/state/expiration/repository/resource 検索用 index を持たせます。一意なリソース名はトランザクションで予約します。YAML/domain/database のモデルは分けます。foreign_keys、少なくとも 5000 ミリ秒の busy_timeout、検証済み WAL を有効にします。秘密情報を含む任意の環境 map を serialize してはいけません。
 
 alias/リポジトリ識別情報/解決済み commit をソートした組が source-set digest を決めます。各 source の正確な要求 ref、解決済み commit、checkout mode、書き込み policy、timestamp を materialize 前に保存します。review worktree は detached で、生成出力を書き込み可能です。ファイルシステム権限を review policy とみなすのではなく、削除前に staged/unstaged の追跡対象変更を検出します。
+
+### Readiness の中断と削除の制御
 
 command readiness は実行前に running の command 行を永続化する。プロセス群の終了確認と証拠の永続化が完了した場合だけ terminal 行に進める。終了または出力が未確認なら再試行せず、作成を隔離し running 行を残して、後続の destroy/GC でも source を保持する。終了確認済みの通常 probe 失敗は再試行できる。永続化された中断要求では次の試行を開始せず readiness を停止する。

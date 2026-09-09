@@ -10,7 +10,41 @@ last_verified: 2026-09-09
 
 The observer operates only on an existing, confirmed lease-owned Android Emulator.
 It sees Android accessibility semantics, including those exposed by Flutter, not
-Flutter widgets. No target-project instrumentation or manifest changes are required.
+Flutter widgets. This capability is implemented. No target-project instrumentation or manifest
+changes are required. Use this contract for setup, selection, input safety and
+evidence limits; the [Android runtime contract](android-emulator.md) owns device
+allocation and cleanup.
+
+## Companion and portability
+
+A separate agent-env-owned, self-targeting instrumentation APK uses stable Android
+platform `UiAutomation`; Android API 26 or later is required. It has no AndroidX or
+target-app dependency. Its source, protocol version and build inputs belong to this
+repository. An explicit native Go build tool produces an APK and metadata containing
+its digest and source digest. Ordinary Go builds/tests require no Android SDK/JDK.
+Set `AGENT_ENV_UI_HELPER` to an explicit helper directory before normal helper use;
+an unset or whitespace-only value never selects files from the current directory.
+Recovery instead uses the recorded verified helper identity even when host helper
+files have disappeared or been replaced.
+The runtime verifies this metadata and installed APK identity before using it;
+a conflicting preinstalled helper is refused, not replaced. Removing the disposable
+AVD removes the helper. No global ADB service or host tool configuration is changed.
+
+### Build the companion
+
+Build the optional companion once with an installed SDK and JDK, then set
+`AGENT_ENV_UI_HELPER` to the generated directory using your host environment
+settings. The output directory must not exist. The example platform and
+build-tools versions must already be installed; the builder neither installs
+tools nor accepts licenses. Ordinary Go builds and unrelated commands need
+neither the companion nor a JDK.
+
+```text
+go run ./tools/uihelper --sdk <sdk> --jdk <jdk> --platform android-35 --build-tools 36.0.0 --output <new-directory>
+```
+
+When running from source, replace `agent-env ui ...` in the command examples
+below with `go run ./cmd/agent-env ui ...`.
 
 ## Selection and state
 
@@ -29,7 +63,7 @@ observer companion on the disposable owned device; this effect is recorded.
 
 ## Commands
 
-Use the existing `--output table|json` envelope. The proposed command surface is:
+Use the existing `--output table|json` envelope. The implemented command surface is:
 
 ```text
 agent-env ui snapshot LEASE --application mobile-app
@@ -51,6 +85,8 @@ polls at most once per second and reports timeout without input or unbounded ret
 
 ## Snapshot and action contract
 
+### Snapshot contents and bounds
+
 Version 1 snapshots identify lease, runtime, serial, package scope, backend version,
 capture time and snapshot ID. Windows and nodes retain class, package, resource ID,
 label, text, bounds, relevant state/actions and parent context. Node references are
@@ -58,6 +94,8 @@ local to a snapshot. Bounds are device pixels. Stable traversal supplies compact
 numbered text. Limits are 1000 nodes, depth 64, 4096 characters per field and 1 MiB
 of response data; truncation is explicit. Android window IDs are observation-only
 and do not form persistent action identity. Partial snapshots are diagnostic only.
+
+### Registered references and stale targets
 
 A semantic action loads a registered snapshot with verified path and digest,
 checks lease/runtime and recorded backend provenance, and reobserves under the same
@@ -71,6 +109,8 @@ editable/password values. Missing and duplicate matches produce stable
 There is no coordinate fallback. Dynamic movement deliberately requires a fresh
 snapshot. There is no atomicity guarantee against the app changing after validation.
 
+### Input and read-back
+
 Text replacement uses `ACTION_SET_TEXT` and requires a focused editable node that
 advertises that action. Tap and take a fresh snapshot first if focus is required.
 Success requires read-back equality, otherwise the result is uncertain and must not
@@ -79,6 +119,8 @@ Coordinate tap is a separate explicit action. Back/Home and single-pointer swipe
 use native Android input. Unsupported APIs report `AGENTENV-UI-UNAVAILABLE`.
 
 ## Evidence and privacy
+
+### Text evidence and secret suppression
 
 Intent, target identity, completion or uncertainty, and artifact digests are durable.
 Editable/password node fields are always suppressed. The set-text payload is fully
@@ -100,9 +142,13 @@ JSON escaping and snapshot metadata. Omitted fields or whole nodes are explicitl
 marked truncated; oversized metadata produces a bounded invalid result.
 Evidence uses private file permissions.
 
+### Screenshots
+
 Screenshots cover the entire display even when an application is selected. PNG
 pixels cannot be text-redacted. A complete PNG is decoded, dimensions checked and
 bounded to 16 MiB / 16 megapixels before atomic persistence and digest registration.
+
+### Application logcat
 
 Logcat requires an application, scopes to its currently observed PID and reports
 that PID and device-time lower bound. It does not claim historical coverage across
@@ -114,20 +160,7 @@ history. `--since` accepts whole seconds from 1s through 1h; fractional seconds
 are rejected before execution. The device tail requests one extra record to detect
 actual omission: exactly 2000 complete in-window lines alone do not mean truncation.
 
-## Companion and portability
-
-A separate agent-env-owned, self-targeting instrumentation APK uses stable Android
-platform `UiAutomation`; Android API 26 or later is required. It has no AndroidX or
-target-app dependency. Its source, protocol version and build inputs belong to this
-repository. An explicit native Go build tool produces an APK and metadata containing
-its digest and source digest. Ordinary Go builds/tests require no Android SDK/JDK.
-Set `AGENT_ENV_UI_HELPER` to an explicit helper directory before normal helper use;
-an unset or whitespace-only value never selects files from the current directory.
-Recovery instead uses the recorded verified helper identity even when host helper
-files have disappeared or been replaced.
-The runtime verifies this metadata and installed APK identity before using it;
-a conflicting preinstalled helper is refused, not replaced. Removing the disposable
-AVD removes the helper. No global ADB service or host tool configuration is changed.
+## Interrupted operations and recovery
 
 An internal operation timeout may use up to ten additional seconds to stop only
 this verified companion and confirm its absence, while the original lease fence
@@ -135,7 +168,9 @@ remains valid. Input is never retried. If the caller cancels or the fence is los
 automatic recovery does not run. Interrupted/unconfirmed device operations retain
 the existing running-command cleanup barrier. Destroy cannot race input; it may return busy while a bounded
 observer operation owns the fence. Uncertain input must be investigated, never
-silently retried. After an interruption, `ui recover LEASE --run RUN` can terminate a registered running
+silently retried.
+
+After an interruption, `ui recover LEASE --run RUN` can terminate a registered running
 UI helper operation only when the registry already records positive
 `termination-unconfirmed` recovery eligibility and the original result artifact is
 registered and verifiable. Missing classification, including a crash before that
@@ -147,3 +182,9 @@ It never recovers native input or arbitrary test processes, removes another run'
 barrier, reconstructs lost screenshots, or reports the interrupted operation as
 successful. Evidence failures still require retained completion/recovery evidence
 before cleanup can proceed.
+
+## Design and validation evidence
+
+The [design](../design-docs/android-ui-observer.md) explains companion, fence and
+recovery responsibilities. The [completed ExecPlan](../exec-plans/completed/android-ui-observer.md)
+records implementation acceptance evidence.

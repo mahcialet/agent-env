@@ -1,7 +1,7 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-08
+last_verified: 2026-09-09
 ---
 
 # Persistent process runtimes
@@ -10,7 +10,8 @@ last_verified: 2026-09-08
 
 A `process` runtime owns a foreground native host process for a lease. It uses a
 pinned source, direct argv execution, private mutable state, file-backed output,
-and durable native process-tree identity. It does not require Compose or a daemon.
+and durable native process-tree identity. It does not require Compose or a daemon. This lifecycle is implemented; use this
+contract to configure a foreground service and understand when cleanup is safe.
 The [completed ExecPlan](../exec-plans/completed/persistent-process-runtime.md) tracks
 implementation and native acceptance; this document specifies the contract.
 
@@ -37,11 +38,15 @@ components:
         url: http://127.0.0.1:${endpoint:http}/health
 ```
 
+### Executable and working directory
+
 `working_directory` is required, source-relative, and confined to the selected
 worktree after symlink resolution. Executables are source-relative paths or bare
 PATH tool names. No interpolation is allowed in either the executable name or
 working directory. Windows `.bat`/`.cmd` wrappers are unsupported. Command arrays
 execute directly without an implicit shell; there is no shell command type.
+
+### Arguments and secrets
 
 Command arguments and environment values accept only `${runtime_dir}`,
 `${lease_id}`, `${port:name}`, and `${env:NAME}`. `runtime_dir` identifies the
@@ -50,6 +55,8 @@ missing host environment inputs fail before launch. Credential-like environment
 keys must contain one exact host environment reference; literal credentials must
 not enter durable manifests. Expanded credentials must not enter launch metadata.
 Applications must avoid emitting secrets into their private raw stdout/stderr files.
+
+### Ports and component endpoints
 
 Named ports require explicit `protocol: tcp`. Fixed host ports, UDP, and discovery
 by parsing logs are unsupported. Each allocated loopback port is reserved before
@@ -66,11 +73,15 @@ process-only fields are rejected on other runtime types. Runtime names must be
 path-safe and cannot collide by case. Existing Compose manifests retain their
 canonical representation when the new fields are omitted.
 
+### Readiness references
+
 HTTP readiness may use `${endpoint:localName}` for a declared endpoint on the
 same component. It expands to the numeric reserved port, so a URL can use
 `http://127.0.0.1:${endpoint:http}/health`. It is not a whole host:port address.
 Command readiness arguments also accept these endpoint references and the process
 argument references above; executable interpolation remains forbidden.
+
+## Private files and diagnostic logs
 
 Runtime files reside in `leases/<id>/process-runtimes/<runtime>/`: `state/`,
 `stdout.log`, `stderr.log`, ownership marker `owner.json`, private `launch.json`,
@@ -90,6 +101,8 @@ no automatic restart. A foreground lifecycle anchor must remain alive until
 termination. Self-daemonization, adoption of external processes, interactive
 stdin, PTY, remote execution, and service installation are outside this contract.
 
+### When resources can be released
+
 Destroy revalidates native identity, requests bounded termination, and confirms
 whole-tree absence before releasing ports, mutable state, or source worktrees.
 Uncertain ownership retains resources and quarantines the lease. Unix root exit
@@ -98,7 +111,13 @@ Job/guardian ownership; cross-build success alone is not native runtime evidence
 Repeated destroy and GC use the same ownership checks. Mutable state can contain
 sensitive profiles or databases; it is not automatically retained as an artifact.
 
+## Evidence and related capabilities
+
 Executable path, source/host origin, and readable-file digest provide launch
-evidence. They do not make a mutable PATH tool reproducible. Browser/CDP behavior
-belongs in a future consumer above this generic lifecycle. See the
+evidence. They do not make a mutable PATH tool reproducible. [Browser/CDP behavior](browser-cdp-automation.md) is implemented as a separate
+consumer above this generic lifecycle. See the
 [design](../design-docs/persistent-process-runtime.md).
+
+The [design](../design-docs/persistent-process-runtime.md) explains supervision and
+ownership. The [completed ExecPlan](../exec-plans/completed/persistent-process-runtime.md)
+records implementation and native validation evidence.

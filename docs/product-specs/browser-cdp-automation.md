@@ -10,7 +10,9 @@ last_verified: 2026-09-09
 
 Browser commands observe and control an explicitly declared Chromium-family
 browser owned by a persistent process lease. They do not launch a second browser,
-attach to an external browser, or reuse a personal profile. Implementation and
+attach to an external browser, or reuse a personal profile. This implemented
+contract defines setup, page selection, safe input and retained evidence.
+The [process contract](persistent-process-runtime.md) defines process lifetime. Implementation and
 native acceptance are tracked in the [completed ExecPlan](../exec-plans/completed/browser-cdp-automation.md).
 
 ## Manifest and prerequisites
@@ -52,6 +54,8 @@ stacks:
   browser: {roots: [browser]}
 ```
 
+### Binding and required switches
+
 `browsers` is optional; when present it is a nonempty mapping. Each binding must
 name an existing `process` runtime and one of its named TCP ports. A runtime has
 at most one browser binding. Names must be portable and cannot collide under case
@@ -86,12 +90,16 @@ agent-env browser page-close <lease> --browser web --page <page>
 agent-env destroy <lease>
 ```
 
+### Browser and page selection
+
 Omitting `--browser` requires exactly one allocated browser binding. Page listings
 are deterministic. Page-specific operations require an explicit page when more
 than one eligible page exists; closing a page always requires its exact ID.
 Creating a page defaults to `about:blank`. Navigation accepts only HTTP(S) URLs
 without user credentials, or `about:blank`, and invalidates prior document handles.
 Capabilities reports product/version/protocol without navigation or input.
+
+### Lease eligibility and ownership
 
 All browser operations hold the lease operation fence. Mutations require an
 active, unexpired, ready lease. Read-only diagnostics also permit degraded leases
@@ -103,12 +111,16 @@ listener reusing an old port is never sufficient authority.
 
 ## Snapshots, input and limits
 
+### Snapshot identity and supported frames
+
 Version 1 snapshots provide structured JSON and compact semantic text. Handles
 such as `n4` belong to one registered snapshot, lease, browser, page and document.
 The Accessibility tree supplies roles, names and states; bounded DOM/layout
 snapshots supplement that evidence. Same-origin iframe and shadow-DOM observation
 are supported. Cross-origin/OOPIF observations are explicitly unsupported; all iframe semantic
 input is also unsupported in this first slice. Ambiguous identities fail closed.
+
+### Input validation and focus
 
 Every semantic input requires `--snapshot` and `--node`. A fresh browser/page,
 document loader, frame and backend DOM fingerprint must match before input.
@@ -124,6 +136,15 @@ The document and exact target must hold focus before dispatch, including after
 select-all. Page activation or focus can have effects; a subsequent failure
 without verified input outcome remains uncertain.
 
+Explicit navigation invalidates earlier browser snapshots even for hash/history
+changes. Document tokens also include a raw-URL digest (not its query text), and
+node fingerprints include allowlisted nontext AX state flags. Set-text requires
+an explicit `--text`; an explicit empty string clears the field. CLI validates
+required operation arguments and refuses explicit zero durations before opening
+the store.
+
+### Operation limits and waits
+
 Operations default to a 30-second timeout, with a 60-second maximum. Console and
 network captures default to one second and allow 1 ms through 10 seconds. Text
 replacement is valid UTF-8 without NUL, at most 4096 bytes. Scroll deltas are
@@ -132,13 +153,22 @@ and disappearance; timeout ends polling. Response, node and artifact bounds expo
 truncation or explicit failure instead of silently treating partial evidence as
 complete.
 
+URL waits require a nonempty `--contains`; `--role` is only available for text or
+node-disappearance predicates. An incomplete snapshot cannot establish that a
+node is gone. Input run evidence records the page, source snapshot and node before
+acting, including when the browser response is lost; entered text stays redacted.
+
 ## Evidence, privacy and recovery
+
+### Registered artifacts
 
 Artifacts live below `leases/<lease>/artifacts/<run>/`: `run.json`, snapshot JSON
 and text, optional DOM JSON and PNG. Result evidence contains bounded console and
 network collections. Registered digests and lease identity protect snapshot reuse.
 Screenshots require valid PNG data and retain dimensions and a digest tied to the
 observed page. They may contain secrets; pixels are not automatically redacted.
+
+### Privacy and redaction
 
 Editable/password values are suppressed from semantic and DOM text evidence.
 Input text is not clear-text action metadata. Recognized inherited secrets and
@@ -148,6 +178,13 @@ status, type, timestamp and failure; headers and response bodies are never store
 Console capture is bounded to its attachment window, with no promise of durable
 history from before attachment. Page text, URLs and console messages may still
 contain unrecognized secrets: treat all browser artifacts as private.
+
+Before set-text, a registered artifact stores only length and full/prefix SHA
+fingerprints. Later observations load this proof to redact entered text echoed
+by page or console. Missing or corrupt proof fails closed and verification has a
+CPU budget. Fingerprints are private recovery evidence, not encryption.
+
+### Uncertain completion and cleanup
 
 A disconnect during input is uncertainty, not proof that the action did not occur.
 The command remains a cleanup barrier when completion cannot be confirmed. Do not
@@ -174,19 +211,4 @@ These persisted limits also apply after redaction. Capture duration starts befor
 subscription and domain enable; if enable cannot finish within it, capture fails.
 Omitted console argument values are explicitly marked truncated.
 
-Before set-text, a registered artifact stores only length and full/prefix SHA
-fingerprints. Later observations load this proof to redact entered text echoed
-by page or console. Missing or corrupt proof fails closed and verification has a
-CPU budget. Fingerprints are private recovery evidence, not encryption.
-
-Explicit navigation invalidates earlier browser snapshots even for hash/history
-changes. Document tokens also include a raw-URL digest (not its query text), and
-node fingerprints include allowlisted nontext AX state flags. Set-text requires
-an explicit `--text`; an explicit empty string clears the field. CLI validates
-required operation arguments and refuses explicit zero durations before opening
-the store.
-
-URL waits require a nonempty `--contains`; `--role` is only available for text or
-node-disappearance predicates. An incomplete snapshot cannot establish that a
-node is gone. Input run evidence records the page, source snapshot and node before
-acting, including when the browser response is lost; entered text stays redacted.
+For implementation responsibilities, read the [design](../design-docs/browser-cdp-automation.md). Future capabilities belong in the [roadmap](../roadmap.md).

@@ -28,12 +28,16 @@ Ordinary local mutation and GC cannot bypass controller management, even with
 force or expiry. Worker operations carry the exact assignment tuple and retain
 the existing app/local operation fences.
 
+### Delivery and cleanup authority
+
 Persist operation identity and payload on both sides. Duplicate delivery recovers
 a journaled result; uncertainty after possible effect start requires reconciliation
 and never authorizes blind mutation replay. Results become durable locally before
 artifact delivery. Global RELEASED requires worker cleanup/absence proof.
 Heartbeat loss marks OFFLINE/stale/UNKNOWN without reassigning live or uncertain
 resources. Friendly host names cannot transfer ownership to a different instance.
+
+### Verified transfer and local endpoints
 
 Transfer committed, independently verifiable Git bundles and evidence through a
 bounded SHA-256 CAS, with 1 GiB source-object and 64 MiB artifact limits. Caller
