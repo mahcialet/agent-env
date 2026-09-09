@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/ed25519"
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/json"
@@ -243,7 +244,7 @@ func TestMultiHostNativeCLI(t *testing.T) {
 	}
 	create := func(host string) domain.Lease {
 		t.Helper()
-		args := []string{"create", repo, "--stack", "review"}
+		args := []string{"create", repo, "--stack", "review", "--ttl", "30m"}
 		if host != "" {
 			args = append(args, "--host", host)
 		}
@@ -292,6 +293,107 @@ func TestMultiHostNativeCLI(t *testing.T) {
 	second := create("")
 	if second.Management.HostID != "worker-b" {
 		t.Fatalf("drained host selected: %+v", second.Management)
+	}
+
+	// Execute one named test with a caller-owned operation ID, then repeat the
+	// same request. The appended proof file detects a hidden second execution.
+	testOperationID := "named-test-idempotency-01"
+	var tested protocol.Operation
+	if e = json.Unmarshal(remote("--operation-id", testOperationID, "test", first.ID, "verify"), &tested); e != nil || tested.Result == nil || tested.Result.State != "completed" {
+		t.Fatalf("remote named test: %+v %v", tested, e)
+	}
+	var testResponse worker.Response
+	if e = json.Unmarshal(tested.Result.Payload, &testResponse); e != nil || testResponse.Run == nil || testResponse.Run.Status != "passed" {
+		t.Fatalf("named test evidence: %s %v", tested.Result.Payload, e)
+	}
+	var repeated protocol.Operation
+	if e = json.Unmarshal(remote("--operation-id", testOperationID, "test", first.ID, "verify"), &repeated); e != nil || repeated.ID != tested.ID || repeated.Result == nil || !bytes.Equal(repeated.Result.Payload, tested.Result.Payload) {
+		t.Fatalf("operation retry did not recover identical result: %+v %v", repeated, e)
+	}
+	if _, e = invoke(clientHome, append(append([]string{}, remoteArgs...), "--operation-id", testOperationID, "test", first.ID, "different-payload")...); e == nil {
+		t.Fatal("operation ID accepted conflicting payload")
+	}
+	proofPath := filepath.Join(first.Sources[0].WorktreePath, "reports", "proof.txt")
+	proof, e := os.ReadFile(proofPath)
+	if e != nil || string(proof) != "named test marker\n" {
+		t.Fatalf("named test replayed or missed: %q %v", proof, e)
+	}
+	var inspected protocol.Operation
+	if e = json.Unmarshal(remote("operation", testOperationID), &inspected); e != nil || inspected.ID != tested.ID || inspected.Result == nil || inspected.Result.State != "completed" {
+		t.Fatalf("operation lookup failed: %+v %v", inspected, e)
+	}
+	// Retained run logs and live runtime logs are separate typed remote requests.
+	var runLogs protocol.Operation
+	if e = json.Unmarshal(remote("logs", first.ID, "--run", testResponse.Run.ID), &runLogs); e != nil || runLogs.Result == nil {
+		t.Fatalf("remote run logs: %+v %v", runLogs, e)
+	}
+	var logsResponse struct {
+		Value map[string]string `json:"value"`
+	}
+	if e = json.Unmarshal(runLogs.Result.Payload, &logsResponse); e != nil || !strings.Contains(logsResponse.Value["stdout"], "named test marker") {
+		t.Fatalf("named stdout missing: %+v %v", logsResponse, e)
+	}
+	var liveLogs protocol.Operation
+	if e = json.Unmarshal(remote("logs", first.ID, "--component", "first"), &liveLogs); e != nil || liveLogs.Result == nil {
+		t.Fatalf("remote live logs: %+v %v", liveLogs, e)
+	}
+	logsResponse.Value = nil
+	if e = json.Unmarshal(liveLogs.Result.Payload, &logsResponse); e != nil {
+		t.Fatal(e)
+	}
+	foundLive := false
+	for name, body := range logsResponse.Value {
+		if strings.Contains(name, "second") || strings.Contains(body, "fixture runtime=second") {
+			t.Fatalf("component log isolation failed: %s %q", name, body)
+		}
+		if strings.Contains(body, "fixture runtime=first") {
+			foundLive = true
+		}
+	}
+	if !foundLive {
+		t.Fatalf("live process output not transported: %+v", logsResponse.Value)
+	}
+	var artifactsOperation protocol.Operation
+	if e = json.Unmarshal(remote("artifacts", first.ID), &artifactsOperation); e != nil || artifactsOperation.Result == nil {
+		t.Fatalf("remote artifacts: %+v %v", artifactsOperation, e)
+	}
+	var artifactResponse struct {
+		Value []worker.ArtifactReference `json:"value"`
+	}
+	if e = json.Unmarshal(artifactsOperation.Result.Payload, &artifactResponse); e != nil {
+		t.Fatal(e)
+	}
+	expectedDigest := fmt.Sprintf("%x", sha256.Sum256([]byte("named test marker\n")))
+	var proofArtifact *worker.ArtifactReference
+	for i := range artifactResponse.Value {
+		a := &artifactResponse.Value[i]
+		if a.Artifact.RunID == testResponse.Run.ID && a.Artifact.Kind == "test-output" && a.Blob.Digest == expectedDigest {
+			proofArtifact = a
+		}
+	}
+	if proofArtifact == nil {
+		t.Fatalf("registered declared proof artifact missing: %+v", artifactResponse.Value)
+	}
+	destination := filepath.Join(base, "downloaded named proof.txt")
+	remote("artifact-download", proofArtifact.Blob.Digest, "--destination", destination)
+	downloaded, e := os.ReadFile(destination)
+	if e != nil || !bytes.Equal(downloaded, proof) || fmt.Sprintf("%x", sha256.Sum256(downloaded)) != proofArtifact.Blob.Digest {
+		t.Fatalf("download verification: %q %v", downloaded, e)
+	}
+	if _, e = invoke(clientHome, append(append([]string{}, remoteArgs...), "artifact-download", proofArtifact.Blob.Digest, "--destination", destination)...); e == nil {
+		t.Fatal("artifact download overwrote existing destination")
+	}
+	preserved, e := os.ReadFile(destination)
+	if e != nil || !bytes.Equal(preserved, proof) {
+		t.Fatalf("rejected download modified existing destination: %q %v", preserved, e)
+	}
+	var renewed protocol.Operation
+	if e = json.Unmarshal(remote("renew", first.ID, "--ttl", "2h"), &renewed); e != nil || renewed.Result == nil || renewed.Result.State != "completed" {
+		t.Fatalf("remote renew: %+v %v", renewed, e)
+	}
+	var renewedResponse worker.Response
+	if e = json.Unmarshal(renewed.Result.Payload, &renewedResponse); e != nil || renewedResponse.Lease == nil || !renewedResponse.Lease.ExpiresAt.After(first.ExpiresAt) || *renewedResponse.Lease.Management != *first.Management {
+		t.Fatalf("renew changed assignment or failed extension: original expiry=%s management=%+v; renewed lease=%+v; error=%v", first.ExpiresAt, first.Management, renewedResponse.Lease, e)
 	}
 	var leases []protocol.Lease
 	if e = json.Unmarshal(remote("list"), &leases); e != nil || len(leases) != 2 {
@@ -364,7 +466,7 @@ func TestMultiHostNativeCLI(t *testing.T) {
 	if e = json.Unmarshal(remote("show", second.ID), &shown); e != nil || shown.HostID != second.Management.HostID || shown.Epoch != int64(second.Management.AssignmentEpoch) {
 		t.Fatalf("destroy affected other assignment: %+v %v", shown, e)
 	}
-	t.Logf("native %s/%s: real TLS controller/client/two worker processes, committed two-runtime leases, placement/drain/isolation/local refusal/outage/controller+worker restart/cleanup passed; same physical host only", runtime.GOOS, runtime.GOARCH)
+	t.Logf("native %s/%s: real TLS controller/client/two worker processes, committed two-runtime leases, placement/drain/isolation/named test/idempotent retry/logs/artifact download/renew/local refusal/outage/controller+worker restart/cleanup passed; same physical host only", runtime.GOOS, runtime.GOARCH)
 }
 
 func multiHostProbe(t *testing.T, port int) {
@@ -389,8 +491,8 @@ func multiHostRepository(t *testing.T, base, suffix string, run func(string, str
 	}
 	source := filepath.Join(base, "fixture.go")
 	program := `package main
-import("flag";"fmt";"net/http";"os";"time")
-func main(){port:=flag.Int("port",0,"");flag.Parse();go func(){time.Sleep(8*time.Minute);os.Exit(9)}();http.HandleFunc("/",func(w http.ResponseWriter,r *http.Request){fmt.Fprintf(w,"fixture pid=%d",os.Getpid())});if e:=http.ListenAndServe(fmt.Sprintf("127.0.0.1:%d",*port),nil);e!=nil{panic(e)}}
+import("flag";"fmt";"net/http";"os";"path/filepath";"time")
+func main(){port:=flag.Int("port",0,"");label:=flag.String("label","","");named:=flag.Bool("named-test",false,"");flag.Parse();if *named {if e:=os.MkdirAll("reports",0700);e!=nil{panic(e)};f,e:=os.OpenFile(filepath.Join("reports","proof.txt"),os.O_WRONLY|os.O_CREATE|os.O_APPEND,0600);if e!=nil{panic(e)};if _,e=f.WriteString("named test marker\n");e!=nil{panic(e)};if e=f.Close();e!=nil{panic(e)};fmt.Println("named test marker");return};go func(){time.Sleep(8*time.Minute);os.Exit(9)}();fmt.Printf("fixture runtime=%s\n",*label);http.HandleFunc("/",func(w http.ResponseWriter,r *http.Request){fmt.Fprintf(w,"fixture pid=%d",os.Getpid())});if e:=http.ListenAndServe(fmt.Sprintf("127.0.0.1:%d",*port),nil);e!=nil{panic(e)}}
 `
 	if e := os.WriteFile(source, []byte(program), 0600); e != nil {
 		t.Fatal(e)
@@ -406,13 +508,13 @@ runtimes:
     type: process
     source: self
     working_directory: .
-    command: [%s, "--port", "${port:http}"]
+    command: [%s, "--port", "${port:http}", "--label", "first"]
     ports: {http: {protocol: tcp}}
   second:
     type: process
     source: self
     working_directory: .
-    command: [%s, "--port", "${port:http}"]
+    command: [%s, "--port", "${port:http}", "--label", "second"]
     ports: {http: {protocol: tcp}}
 components:
   first:
@@ -427,7 +529,14 @@ components:
       - {type: http, url: "http://127.0.0.1:${endpoint:http}/", timeout: 30s}
 stacks:
   review: {roots: [first, second]}
-`, command, command)
+tests:
+  verify:
+    stack: review
+    source: self
+    command: [%s, "--named-test"]
+    timeout: 10s
+    artifacts: [reports]
+`, command, command, command)
 	if e := os.WriteFile(filepath.Join(repo, ".agent-env.yaml"), []byte(manifest), 0600); e != nil {
 		t.Fatal(e)
 	}

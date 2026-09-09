@@ -37,10 +37,12 @@ func ValidID(s string) bool     { return identifier.MatchString(s) }
 func ValidDigest(s string) bool { return digest.MatchString(s) }
 
 type Store struct {
-	db           *sql.DB
-	Path         string
-	ID           string
-	OfflineAfter time.Duration
+	// ProductVersion is configured once before serving controller requests.
+	ProductVersion string
+	db             *sql.DB
+	Path           string
+	ID             string
+	OfflineAfter   time.Duration
 }
 
 func Open(path string) (*Store, error) {
@@ -137,9 +139,6 @@ func canonical(v any) ([]byte, string, error) {
 }
 func (s *Store) Register(ctx context.Context, r protocol.RegisterRequest) (protocol.Host, error) {
 	var out protocol.Host
-	if r.ProtocolVersion != protocol.Version {
-		return out, fault("version", "unsupported protocol version")
-	}
 	if r.ControllerID != "" && r.ControllerID != s.ID {
 		return out, fault("identity", "controller identity mismatch")
 	}
@@ -167,6 +166,8 @@ func (s *Store) Register(ctx context.Context, r protocol.RegisterRequest) (proto
 		return out, fault("identity", "host ID is bound to a different or removed instance")
 	}
 	out = protocol.Host{WorkerIdentity: r.WorkerIdentity, ProductVersion: r.ProductVersion, OS: r.OS, Arch: r.Arch, Capabilities: r.Capabilities, Capacity: r.Capacity, Draining: draining, Online: true, LastSeen: time.Now().UnixNano()}
+	out.ProtocolVersion = r.ProtocolVersion
+	s.compatibility(&out)
 	out.ControllerID = s.ID
 	data, _ := json.Marshal(out)
 	_, err = tx.ExecContext(ctx, "INSERT INTO hosts(id,instance_id,incarnation,data,draining,removed,last_seen) VALUES(?,?,?,?,?,0,?) ON CONFLICT(id) DO UPDATE SET incarnation=excluded.incarnation,data=excluded.data,last_seen=excluded.last_seen", r.HostID, r.HostInstanceID, r.Incarnation, data, draining, out.LastSeen)
@@ -192,7 +193,27 @@ func (s *Store) worker(ctx context.Context, q queryer, w protocol.WorkerIdentity
 	if removed || w.HostInstanceID != instance || w.Incarnation != inc {
 		return fault("identity", "worker identity or incarnation mismatch")
 	}
+	h, err := s.host(ctx, q, w.HostID)
+	if err != nil {
+		return err
+	}
+	if !h.Compatible {
+		return fault("version", h.CompatibilityError)
+	}
 	return nil
+}
+
+func (s *Store) compatibility(h *protocol.Host) {
+	h.Compatible = false
+	switch {
+	case h.ProtocolVersion != protocol.Version:
+		h.CompatibilityError = "incompatible protocol version"
+	case s.ProductVersion != "" && h.ProductVersion != s.ProductVersion:
+		h.CompatibilityError = "incompatible product version"
+	default:
+		h.Compatible = true
+		h.CompatibilityError = ""
+	}
 }
 func (s *Store) Heartbeat(ctx context.Context, w protocol.WorkerIdentity) (protocol.Host, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
@@ -231,6 +252,7 @@ func (s *Store) host(ctx context.Context, q queryer, id string) (protocol.Host, 
 	stored.Removed = h.Removed
 	stored.LastSeen = h.LastSeen
 	stored.Online = !stored.Removed && time.Since(time.Unix(0, h.LastSeen)) <= s.OfflineAfter
+	s.compatibility(&stored)
 	return stored, nil
 }
 func (s *Store) ListHosts(ctx context.Context) ([]protocol.Host, error) {
@@ -350,7 +372,7 @@ func (s *Store) Create(ctx context.Context, r protocol.CreateRequest) (protocol.
 		if e != nil {
 			return zero, e
 		}
-		if !h.Online {
+		if !h.Online || !h.Compatible {
 			continue
 		}
 		caps := map[string]bool{}

@@ -16,6 +16,7 @@ import (
 
 	"github.com/mahcialet/agent-env/internal/app"
 	"github.com/mahcialet/agent-env/internal/blobstore"
+	"github.com/mahcialet/agent-env/internal/browser/cdp"
 	"github.com/mahcialet/agent-env/internal/buildinfo"
 	"github.com/mahcialet/agent-env/internal/controlplane/auth"
 	"github.com/mahcialet/agent-env/internal/controlplane/protocol"
@@ -150,6 +151,7 @@ func addServices(root *cobra.Command, f *remoteFlags, emit func(any) error, errO
 		}
 		factory := func(authority *domain.Management) *app.Service {
 			s := serviceForStore(home, local, errOut, errOut)
+			s.BrowserProvider = cdp.Client{}
 			s.Management = authority
 			return s
 		}

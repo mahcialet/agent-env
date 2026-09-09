@@ -30,6 +30,7 @@ type Server struct {
 }
 
 func New(s *store.Store, b BlobStore, version string) *Server {
+	s.ProductVersion = version
 	return &Server{Store: s, Blobs: b, ProductVersion: version}
 }
 func (s *Server) Run(ctx context.Context, listener net.Listener, tlsConfig *tls.Config) error {
@@ -141,8 +142,6 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 			if err = decode(w, r, &q); err == nil {
 				if q.HostID != e.HostID {
 					err = reject("forbidden", "certificate is enrolled for another host")
-				} else if q.ProductVersion != s.ProductVersion {
-					err = reject("version", "incompatible product version")
 				} else {
 					var h protocol.Host
 					h, err = s.Store.Register(r.Context(), q)

@@ -65,20 +65,21 @@ func (r *Runner) Run(ctx context.Context) error {
 			}
 			continue
 		}
-		if info.ProtocolVersion != protocol.Version || info.ProductVersion != r.Registration.ProductVersion {
-			return errors.New("incompatible controller protocol or product version")
-		}
 		if e = r.Journal.Bind(ctx, info.ControllerID); e != nil {
 			return e
 		}
 		registration := r.Registration
 		registration.WorkerIdentity = r.Journal.Identity
 		registration.ProtocolVersion = protocol.Version
-		if _, e = r.Transport.Register(ctx, registration); e != nil {
+		registered, e := r.Transport.Register(ctx, registration)
+		if e != nil {
 			if e = pause(ctx, delay); e != nil {
 				return e
 			}
 			continue
+		}
+		if info.ProtocolVersion != protocol.Version || info.ProductVersion != r.Registration.ProductVersion || !registered.Host.Compatible || registered.ControllerID != info.ControllerID || registered.Host.WorkerIdentity != r.Journal.Identity {
+			return errors.New("incompatible controller/worker version or registration identity; worker inventory retained without dispatch")
 		}
 		e = r.session(ctx)
 		if ctx.Err() != nil {

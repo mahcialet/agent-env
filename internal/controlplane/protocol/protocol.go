@@ -41,15 +41,18 @@ type RegisterResult struct {
 }
 type Host struct {
 	WorkerIdentity
-	ProductVersion string   `json:"product_version"`
-	OS             string   `json:"os"`
-	Arch           string   `json:"arch"`
-	Capabilities   []string `json:"capabilities"`
-	Capacity       Capacity `json:"capacity"`
-	Draining       bool     `json:"draining"`
-	Removed        bool     `json:"removed"`
-	Online         bool     `json:"online"`
-	LastSeen       int64    `json:"last_seen"`
+	ProtocolVersion    int      `json:"protocol_version"`
+	Compatible         bool     `json:"compatible"`
+	CompatibilityError string   `json:"compatibility_error,omitempty"`
+	ProductVersion     string   `json:"product_version"`
+	OS                 string   `json:"os"`
+	Arch               string   `json:"arch"`
+	Capabilities       []string `json:"capabilities"`
+	Capacity           Capacity `json:"capacity"`
+	Draining           bool     `json:"draining"`
+	Removed            bool     `json:"removed"`
+	Online             bool     `json:"online"`
+	LastSeen           int64    `json:"last_seen"`
 }
 type PollRequest struct {
 	WorkerIdentity

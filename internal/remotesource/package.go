@@ -200,7 +200,7 @@ func equalStrings(a, b []string) bool {
 
 // git runs only local operations, disabling ambient Git transport/config overrides.
 func git(ctx context.Context, dir string, args ...string) (string, error) {
-	base := []string{"-c", "protocol.allow=never", "-c", "protocol.file.allow=always", "-c", "core.hooksPath=" + os.DevNull}
+	base := []string{"-c", "protocol.allow=never", "-c", "protocol.file.allow=always", "-c", "core.hooksPath=" + os.DevNull, "-c", "core.longpaths=true"}
 	cmd := exec.CommandContext(ctx, "git", append(base, args...)...)
 	cmd.Dir = dir
 	for _, e := range os.Environ() {

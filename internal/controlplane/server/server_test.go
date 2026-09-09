@@ -184,8 +184,14 @@ func TestMTLSEnrollmentRolesAndControllerIdentity(t *testing.T) {
 	}
 	badReq = req
 	badReq.ProductVersion = "other"
-	if _, e = f.worker.Register(ctx, badReq); !statusCode(e, 400) {
-		t.Fatal("wrong product accepted")
+	if result, err := f.worker.Register(ctx, badReq); err != nil || result.Host.Compatible || result.Host.CompatibilityError == "" {
+		t.Fatalf("incompatible worker not visible: %+v %v", result, err)
+	}
+	if _, e = f.worker.Poll(ctx, protocol.PollRequest{WorkerIdentity: req.WorkerIdentity}); !statusCode(e, 400) {
+		t.Fatalf("incompatible worker polled: %v", e)
+	}
+	if host, err := f.admin.GetHost(ctx, req.HostID); err != nil || host.Compatible || host.ProductVersion != "other" {
+		t.Fatalf("incompatible inventory missing: %+v %v", host, err)
 	}
 	result, e := f.worker.Register(ctx, req)
 	if e != nil || result.Host.HostInstanceID != "instance" {
