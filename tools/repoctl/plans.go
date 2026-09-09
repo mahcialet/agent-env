@@ -119,7 +119,7 @@ func planGitReadiness(root string, g *planGraph) (planReadinessContext, error) {
 				// unrelated commit that happens to be reachable from base.
 				ctx.Merged[key] = planMergeProof(root, dep, base) == nil
 			} else if dep.Status == "active" || dep.Status == "completed" {
-				head, err := planRevision(root, expectedPlanBranch(dep))
+				head, err := planStackedHead(root, dep)
 				if err == nil {
 					consumer, consumerErr := planRevision(root, expectedPlanBranch(p))
 					if consumerErr != nil {
@@ -175,20 +175,112 @@ func planProvenance(root string, p planMetadata, prBody string) error {
 	if p.Branch != "" && p.Branch != branch {
 		return errors.New("declared branch differs from deterministic branch")
 	}
-	base, err := planRevision(root, p.BaseBranch)
-	if err != nil {
-		return err
+	g := &planGraph{ByID: map[string]planMetadata{}}
+	if len(p.DependsOn) > 0 {
+		g, err = loadPlanGraph(root)
+		if err != nil {
+			return err
+		}
 	}
 	head, err := planRevision(root, "HEAD")
 	if err != nil {
 		return err
 	}
-	commits, err := planGit(root, "rev-list", "--no-merges", base+".."+head)
+	if err := planCommitProvenance(root, p, head, g, map[string]bool{}, true); err != nil {
+		return err
+	}
+	if prBody != "" {
+		count := 0
+		for _, line := range strings.Split(documentProse(prBody), "\n") {
+			if strings.HasPrefix(line, "ExecPlan:") {
+				if strings.TrimSpace(strings.TrimPrefix(line, "ExecPlan:")) != p.PlanID {
+					return errors.New("PR Plan-ID mismatch")
+				}
+				count++
+			}
+		}
+		if count != 1 {
+			return errors.New("PR requires one visible standalone ExecPlan: ID line")
+		}
+	}
+	return nil
+}
+
+// Completed dependencies use immutable merge evidence, even after branch deletion.
+// A squash proves only its resulting commit; it cannot prove ancestry of the old tip.
+func planStackedHead(root string, p planMetadata) (string, error) {
+	if p.Status == "active" {
+		return planRevision(root, expectedPlanBranch(p))
+	}
+	if p.Status != "completed" {
+		return "", errors.New("stacked dependency is not active or completed")
+	}
+	base, err := planRevision(root, p.BaseBranch)
+	if err != nil {
+		return "", err
+	}
+	if err := planMergeProof(root, p, base); err != nil {
+		return "", err
+	}
+	parents, err := planGit(root, "show", "-s", "--format=%P", p.MergeCommit)
+	if err != nil {
+		return "", err
+	}
+	if list := strings.Fields(parents); len(list) == 2 {
+		return list[1], nil
+	}
+	return p.MergeCommit, nil
+}
+
+func planCommitProvenance(root string, p planMetadata, head string, g *planGraph, visiting map[string]bool, requireOwn bool) error {
+	if visiting[p.PlanID] {
+		return errors.New("cyclic provenance dependency")
+	}
+	visiting[p.PlanID] = true
+	defer delete(visiting, p.PlanID)
+	base, err := planRevision(root, p.BaseBranch)
+	if err != nil {
+		return err
+	}
+	args := []string{"rev-list", "--no-merges", head, "^" + base}
+	for _, d := range p.DependsOn {
+		if d.Satisfaction != "stacked" {
+			continue
+		}
+		dep, ok := g.ByID[d.PlanID]
+		if !ok {
+			return fmt.Errorf("unknown dependency %s", d.PlanID)
+		}
+		tip, err := planStackedHead(root, dep)
+		if err != nil {
+			return err
+		}
+		if !planAncestor(root, tip, head) {
+			return fmt.Errorf("%s: stacked dependency is not inherited", d.PlanID)
+		}
+		ok, err = planIdentityAt(root, tip, dep.PlanID)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return fmt.Errorf("%s: inherited history lacks Plan identity", dep.PlanID)
+		}
+		if dep.Status == "active" {
+			if err := planCommitProvenance(root, dep, tip, g, visiting, false); err != nil {
+				return err
+			}
+		}
+		args = append(args, "^"+tip)
+	}
+	commits, err := planGit(root, args...)
 	if err != nil {
 		return err
 	}
 	if commits == "" {
-		return errors.New("no implementation commits beyond base")
+		if requireOwn {
+			return errors.New("no implementation commits beyond base and dependencies")
+		}
+		return nil
 	}
 	for _, sha := range strings.Split(commits, "\n") {
 		body, err := planGit(root, "show", "-s", "--format=%B", sha)
@@ -214,20 +306,6 @@ func planProvenance(root string, p planMetadata, prBody string) error {
 		}
 		if found != 1 {
 			return fmt.Errorf("%s: requires exactly one ExecPlan: %s trailer", sha, p.PlanID)
-		}
-	}
-	if prBody != "" {
-		count := 0
-		for _, line := range strings.Split(documentProse(prBody), "\n") {
-			if strings.HasPrefix(line, "ExecPlan:") {
-				if strings.TrimSpace(strings.TrimPrefix(line, "ExecPlan:")) != p.PlanID {
-					return errors.New("PR Plan-ID mismatch")
-				}
-				count++
-			}
-		}
-		if count != 1 {
-			return errors.New("PR requires one visible standalone ExecPlan: ID line")
 		}
 	}
 	return nil

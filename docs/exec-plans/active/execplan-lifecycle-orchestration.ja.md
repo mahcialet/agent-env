@@ -12,7 +12,7 @@ workstreams:
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/exec-plans/active/execplan-lifecycle-orchestration.md
-source_sha256: a682e35e05f4fbeb397ebd27b60d3c67e89731e9b164d652302d1b0d165cef64
+source_sha256: 4610c15f3792d535eb818961e5c081d7d6fdc3f9eb625c7f95e7aa6991838bd8
 ---
 
 # ExecPlan lifecycle orchestrationと自動delivery gateを追加する
@@ -435,3 +435,22 @@ race付き50回反復で失敗した。キャンセルと永続化が競合す�
 最終の対象検証：`go test -race ./internal/app -run
 '^TestLifecycle(CreatePersistedIntentAndUniqueIsolation|ReadinessTimeoutRollsBack)$'
 -count=50 -timeout=3m`は成功（22.606秒）。正常系とrollbackを両方検証した。
+
+### stacked履歴の帰属と依存証拠の保持（2026-09-10）
+
+レビューで、readinessは継承したstacked commitを認める一方、provenanceは
+baseからHEADまでの全範囲をconsumerに帰属させる不整合が見つかった。
+また、完了を検証できてもstacked readinessが依存branchの存続を要求していた。
+両方を修正した。activeな依存の履歴を再帰的に検証し、検証したtipの履歴を
+consumerの検査範囲から除外する。consumer自身のcommitが少なくとも1件必要な
+条件と、正確なtrailerの検査は維持する。completedな依存は、削除されたbranchの
+代わりに検証済みの不変なmerge証拠を使う。親が2つのmergeではsource headを、
+squashでは配信されたsquash commitだけを証拠とし、consumerが実際にそのcommitを
+含むことを要求する。任意の過去のtipを推測で採用しない。
+
+検証：隔離Git回帰テストで、コマンド入口を通した正常なstacked provenance、
+依存側・consumer側の誤ったtrailer、consumer commitの欠落、祖先関係の欠落、
+完了後のbranch削除、不正なmerge証拠を検証した。
+`go test -race ./tools/repoctl -count=1`は成功（12.162秒）、全`repoctl check`も
+成功した。読み取り専用の独立レビューに指摘はなかった。以前の個別fixtureが
+見落とした、選択と帰属検査を組み合わせた挙動を今回のテストで検証する。

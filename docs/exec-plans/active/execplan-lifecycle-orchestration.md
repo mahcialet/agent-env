@@ -507,3 +507,22 @@ and full race checks passed during repair; final repeat evidence follows below.
 Final focused validation: `go test -race ./internal/app -run
 '^TestLifecycle(CreatePersistedIntentAndUniqueIsolation|ReadinessTimeoutRollsBack)$'
 -count=50 -timeout=3m` passed (22.606s), exercising both success and rollback.
+
+### Stacked provenance and retained dependency evidence (2026-09-10)
+
+Review found that readiness accepted inherited stacked commits while provenance
+attributed the entire base-to-HEAD range to the consumer. It also found that
+stacked readiness required a live dependency branch even after verified completion.
+Both findings are addressed: recursively validate active prerequisite histories
+and exclude their verified tips from the consumer range; require at least one
+consumer commit and retain its exact trailer checks. Completed prerequisites use
+verified immutable merge evidence instead of the deleted branch. A two-parent
+merge supplies the source head; a squash supplies only the delivered squash commit,
+which the consumer must actually contain. No arbitrary historical tip is inferred.
+
+Validation: isolated Git regression tests cover valid stacked provenance through
+the command entry point, bad prerequisite/consumer trailers, absent consumer
+commits, missing ancestry, completed branch deletion and incorrect merge evidence.
+`go test -race ./tools/repoctl -count=1` passed (12.162s); full `repoctl check`
+passed. Independent read-only review found no defects. These tests exercise the
+combined selection/provenance behavior missed by the earlier separate fixtures.

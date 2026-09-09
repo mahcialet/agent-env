@@ -221,3 +221,110 @@ func TestLifecycleDirectoriesKeepBilingualStructureChecks(t *testing.T) {
 		})
 	}
 }
+
+func TestStackedProvenanceValidatesSeparateHistories(t *testing.T) {
+	for _, mode := range []string{"valid", "bad dependency", "bad consumer", "no consumer", "not inherited"} {
+		t.Run(mode, func(t *testing.T) {
+			root := planTestRepo(t)
+			initial := planTestGit(t, root, "rev-parse", "HEAD")
+			a := planMetadata{PlanID: "EP-TEST-001", PlanType: "implementation", Status: "active", BaseBranch: "master"}
+			b := planMetadata{PlanID: "EP-TEST-002", PlanType: "implementation", Status: "active", BaseBranch: "master", DependsOn: []planDependency{{PlanID: a.PlanID, Satisfaction: "stacked"}}}
+			planTestGit(t, root, "switch", "-c", expectedPlanBranch(a))
+			path := filepath.Join(root, "docs", "exec-plans", "active", "a.md")
+			if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(path, modelPlanYAML(a.PlanID, "active", ""), 0644); err != nil {
+				t.Fatal(err)
+			}
+			planTestGit(t, root, "add", ".")
+			trailer := "ExecPlan: " + a.PlanID
+			if mode == "bad dependency" {
+				trailer = "ExecPlan: EP-WRONG-001"
+			}
+			planTestGit(t, root, "commit", "-m", "dependency", "-m", trailer)
+			planTestGit(t, root, "switch", "-c", expectedPlanBranch(b))
+			if mode == "not inherited" {
+				planTestGit(t, root, "switch", "--detach", initial)
+			}
+			if mode != "no consumer" {
+				trailer = "ExecPlan: " + b.PlanID
+				if mode == "bad consumer" {
+					trailer = "ExecPlan: " + a.PlanID
+				}
+				planTestGit(t, root, "commit", "--allow-empty", "-m", "consumer", "-m", trailer)
+			}
+			g := &planGraph{ByID: map[string]planMetadata{a.PlanID: a, b.PlanID: b}}
+			head := planTestGit(t, root, "rev-parse", "HEAD")
+			err := planCommitProvenance(root, b, head, g, map[string]bool{}, true)
+			if (err == nil) != (mode == "valid") {
+				t.Fatalf("%s: %v", mode, err)
+			}
+			if mode == "valid" {
+				for _, entry := range []struct{ name, id, extra string }{
+					{"a", a.PlanID, ""},
+					{"b", b.PlanID, "depends_on:\n  - plan_id: EP-TEST-001\n    satisfaction: stacked\n"},
+				} {
+					for _, suffix := range []string{".md", ".ja.md"} {
+						if err := os.WriteFile(filepath.Join(filepath.Dir(path), entry.name+suffix), modelPlanYAML(entry.id, "active", entry.extra), 0644); err != nil {
+							t.Fatal(err)
+						}
+					}
+				}
+				if err := planProvenance(root, b, "ExecPlan: "+b.PlanID); err != nil {
+					t.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
+func TestCompletedStackedDependencySurvivesBranchDeletion(t *testing.T) {
+	root := planTestRepo(t)
+	initial := planTestGit(t, root, "rev-parse", "HEAD")
+	a := planMetadata{PlanID: "EP-TEST-001", PlanType: "implementation", Status: "active", BaseBranch: "master"}
+	b := planMetadata{PlanID: "EP-TEST-002", PlanType: "implementation", Status: "active", BaseBranch: "master", DependsOn: []planDependency{{PlanID: a.PlanID, Satisfaction: "stacked"}}}
+	planTestGit(t, root, "switch", "-c", expectedPlanBranch(a))
+	path := filepath.Join(root, "docs", "exec-plans", "active", "a.md")
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, modelPlanYAML(a.PlanID, "active", ""), 0644); err != nil {
+		t.Fatal(err)
+	}
+	planTestGit(t, root, "add", ".")
+	planTestGit(t, root, "commit", "-m", "dependency", "-m", "ExecPlan: "+a.PlanID)
+	planTestGit(t, root, "switch", "-c", expectedPlanBranch(b))
+	planTestGit(t, root, "commit", "--allow-empty", "-m", "consumer", "-m", "ExecPlan: "+b.PlanID)
+	consumer := planTestGit(t, root, "rev-parse", "HEAD")
+	planTestGit(t, root, "switch", "master")
+	planTestGit(t, root, "merge", "--no-ff", expectedPlanBranch(a), "-m", "merge dependency")
+	a.MergeCommit = planTestGit(t, root, "rev-parse", "HEAD")
+	a.Status = "completed"
+	planTestGit(t, root, "branch", "-d", expectedPlanBranch(a))
+	for _, mode := range []string{"valid", "stale consumer", "wrong merge"} {
+		t.Run(mode, func(t *testing.T) {
+			dep := a
+			planTestGit(t, root, "branch", "-f", expectedPlanBranch(b), consumer)
+			if mode == "stale consumer" {
+				planTestGit(t, root, "branch", "-f", expectedPlanBranch(b), initial)
+			}
+			if mode == "wrong merge" {
+				dep.MergeCommit = initial
+			}
+			g := &planGraph{Plans: []planMetadata{dep, b}, ByID: map[string]planMetadata{dep.PlanID: dep, b.PlanID: b}}
+			ctx, err := planGitReadiness(root, g)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if ctx.Stacked[b.PlanID+"/"+a.PlanID] != (mode == "valid") {
+				t.Fatalf("unexpected readiness: %+v", ctx)
+			}
+			if mode == "valid" {
+				if err := planCommitProvenance(root, b, consumer, g, map[string]bool{}, true); err != nil {
+					t.Fatal(err)
+				}
+			}
+		})
+	}
+}
