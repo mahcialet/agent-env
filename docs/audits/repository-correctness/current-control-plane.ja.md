@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/audits/repository-correctness/current-control-plane.md
-source_sha256: 6ae8a2fda9be386c2925b6d91f9008fbc0c7486990d9a2b31c002262d4de15b6
+source_sha256: 7adb54b59c909908748d5415e8a2bb5df4986378b1330a8daba570b2eae68339
 ---
 
 # 制御処理の現行監査
@@ -47,3 +47,9 @@ source_sha256: 6ae8a2fda9be386c2925b6d91f9008fbc0c7486990d9a2b31c002262d4de15b6
 - 関連: process/browser 歴史付録の MVP HM10/HM11、不完全なプロセス群・出力の過去修正、readiness の補助関数だけの検証。
 - 見逃し: 検出 S9、最も早い現実的防止 S4。型付き Runner 契約と Create 隔離分岐は既にあり、全体入口で失敗注入できた。S2/S3 は executor と名前付きテストを別々に確認し、S6 に呼出し元の合成テストがなく、S7/S8 は全利用箇所を辿らなかった。COMPOSITION_GAP、FAILURE_INJECTION_GAP、HELPER_ONLY、REVIEW_CHECKLIST_GAP。
 - 防止策: 安全性分類の共有、Create 全体の複数負例、永続 command による削除制御。今後 S6 より前の S3/S4 で検出する。まだ未実装で共通ポリシーは変更しない。
+
+## Phase C の解決と独立レビュー
+
+AUDIT-CLEANUP-001 は ACCEPT とし `readinessCommand`/`runProbe` で修正した。command の各試行前に running 行を保存し、終了・出力確認、artifact 登録、terminal 行の保存まで完了して初めて終了扱いにする。診断を秘匿しつつ安全性の型を保ち、未確認なら running 行と source を保持して Create を隔離する。強制 Destroy と GC は既存の永続 run 保護に従う。終了確認済みの通常失敗は再試行でき、成功後は failed と passed の terminal 行が残る。
+
+`readiness_safety_test.go` で両未確認エラー、秘匿診断、1回だけの実行、source/running 行の保持、後続の実際の強制 Destroy、通常失敗から成功と解放を確認する。未確認の負例は修正前に失敗した。独立レビューで最初の修正が永続中断要求後も再試行する問題を発見し、実 Store.RequestRunCancel の再現が0.119秒で失敗した。context.Canceled の型を保持して停止すると同じ再現が0.110秒で成功し、`TestReviewReadinessCancellationDoesNotRetry` として残した。別担当は GC/Destroy の lock 内再確認も辿り、対象 race を3回実行（2.559秒）した。途中の失敗した修正を最終成功だけで隠さない。候補版全体の検証は別途記録する。
