@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/product-specs/multi-host-control-plane.md
-source_sha256: cd90b516eae7607731001d166d50de96844dcf54fd0d83fe865348112936046e
+source_sha256: 2b5b94d2aab9ab7c53fb176cdefeaac642d7f7ff24af671f566cfc560a84039c
 ---
 
 # 複数 host の control plane
@@ -142,3 +142,7 @@ heartbeatが期限切れになるまで待つ。この登録拒否は再試行�
 公開できない場合は上限付きの`evidence_error`を付ける。証拠のstage失敗によって、成功したtest/UI/
 browser操作を失敗した変更操作へ変えない。公開経路を復旧したら別のartifact操作で証拠を取得し、
 証拠の再取得だけを理由に元の操作を繰り返さない。中断されたUI復旧では、実行中のrunと不確実性を保持する。
+
+workerの`--android-slots`は0〜65を受け付ける。これはlocal allocatorの偶数console port
+5554〜5682に対応する。範囲外の値はTLS初期化・状態作成・登録の前に拒否する。
+0はAndroid容量なしとして広告する。

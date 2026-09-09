@@ -126,3 +126,28 @@ func TestWorkerCapacityBoundedBeforeResources(t *testing.T) {
 		})
 	}
 }
+
+func TestWorkerAndroidCapacityBoundedBeforeResources(t *testing.T) {
+	for _, n := range []int{-1, 0, 1, 65, 66, 1000} {
+		t.Run(fmt.Sprint(n), func(t *testing.T) {
+			home := filepath.Join(t.TempDir(), "uncreated-home")
+			t.Setenv("AGENT_ENV_HOME", home)
+			cmd := New(io.Discard, io.Discard)
+			cmd.SetArgs([]string{"worker", "serve", "--host-id=fixture", "--android-slots=" + fmt.Sprint(n)})
+			err := cmd.Execute()
+			if err == nil {
+				t.Fatal("worker unexpectedly started")
+			}
+			if n < 0 || n > 65 {
+				if !strings.Contains(err.Error(), "android-slots") {
+					t.Fatalf("capacity check did not precede TLS: %v", err)
+				}
+			} else if !strings.Contains(err.Error(), "remote mode requires") {
+				t.Fatalf("supported capacity rejected before TLS: %v", err)
+			}
+			if _, err := os.Stat(home); !os.IsNotExist(err) {
+				t.Fatalf("worker created resources during preflight: %v", err)
+			}
+		})
+	}
+}

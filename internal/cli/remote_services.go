@@ -97,8 +97,8 @@ func addServices(root *cobra.Command, f *remoteFlags, emit func(any) error, errO
 		if maximum <= 0 || maximum > policy.Defaults().MaxActive {
 			return fmt.Errorf("max-leases must be between 1 and the worker local policy limit %d", policy.Defaults().MaxActive)
 		}
-		if androidSlots < 0 {
-			return errors.New("android-slots must be nonnegative")
+		if androidSlots < 0 || androidSlots > sqlite.AndroidSlotCapacity {
+			return fmt.Errorf("android-slots must be between 0 and the worker allocator limit %d", sqlite.AndroidSlotCapacity)
 		}
 		c, e := f.client()
 		if e != nil {
@@ -202,7 +202,7 @@ func addServices(root *cobra.Command, f *remoteFlags, emit func(any) error, errO
 	}}
 	workerServe.Flags().StringVar(&workerHost, "host-id", "", "enrolled worker host ID")
 	workerServe.Flags().IntVar(&maximum, "max-leases", 1, "maximum controller lease reservations")
-	workerServe.Flags().IntVar(&androidSlots, "android-slots", 0, "maximum emulator reservations")
+	workerServe.Flags().IntVar(&androidSlots, "android-slots", 0, fmt.Sprintf("maximum emulator reservations (0-%d)", sqlite.AndroidSlotCapacity))
 	workerCommand.AddCommand(workerServe)
 	root.AddCommand(workerCommand)
 }

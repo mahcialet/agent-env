@@ -165,3 +165,7 @@ Remote responses expose `evidence_status` and, when unavailable, a bounded
 browser action into a failed mutation. Retrieve evidence with a separate artifact
 operation after repairing publication; do not repeat the original action solely
 to retry evidence. Interrupted UI recovery retains its running run and uncertainty.
+
+Worker `--android-slots` accepts 0 through 65, matching the local allocator's
+even console ports 5554 through 5682. Out-of-range values are rejected before
+TLS setup, state creation or registration; zero advertises no Android capacity.
