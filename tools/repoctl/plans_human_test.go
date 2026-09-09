@@ -22,7 +22,7 @@ func humanFixture(t *testing.T) (string, string) {
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		t.Fatal(err)
 	}
-	c := humanContract{PlanID: "EP-TEST-001", Scenarios: []humanScenario{{ID: "EP-TEST-001-01", Purpose: "test", Actions: []string{"observe"}, Expected: "isolated", PassCriteria: "evidence"}}}
+	c := humanContract{PlanID: "EP-TEST-001", Executables: []string{"git"}, Endpoints: []string{"worker"}, Scenarios: []humanScenario{{ID: "EP-TEST-001-01", Purpose: "test", Actions: []string{"observe"}, Expected: "isolated", PassCriteria: "evidence"}}}
 	raw, _ := json.Marshal(c)
 	path := filepath.Join(dir, "EP-TEST-001.json")
 	if err := os.WriteFile(path, raw, 0600); err != nil {
@@ -31,12 +31,16 @@ func humanFixture(t *testing.T) (string, string) {
 	planTestGit(t, root, "init")
 	planTestGit(t, root, "config", "user.name", "Test")
 	planTestGit(t, root, "config", "user.email", "test@example.invalid")
+	planTestGit(t, root, "add", "docs/exec-plans")
 	commitHumanContract(t, root)
 	return root, path
 }
 func commitHumanContract(t *testing.T, root string) {
 	t.Helper()
 	planTestGit(t, root, "add", "docs/exec-plans/validation")
+	if planTestGit(t, root, "diff", "--cached", "--name-only") == "" {
+		return
+	}
 	planTestGit(t, root, "commit", "-m", "scenario contract")
 }
 
@@ -497,5 +501,64 @@ func TestHumanContractAcceptsCleanCRLFCheckout(t *testing.T) {
 	}
 	if contract.SHA256 != fmt.Sprintf("%x", sha256.Sum256(raw)) {
 		t.Fatal("digest did not use committed LF bytes")
+	}
+}
+
+func TestHumanRejectsUncommittedPlanAndEmptyPrerequisites(t *testing.T) {
+	for _, kind := range []string{"untracked-plan", "dirty-plan", "empty-executables", "empty-endpoints"} {
+		t.Run(kind, func(t *testing.T) {
+			root, path := humanFixture(t)
+			if kind == "untracked-plan" {
+				planTestGit(t, root, "rm", "--cached", "docs/exec-plans/active/human.md", "docs/exec-plans/active/human.ja.md")
+				planTestGit(t, root, "commit", "-m", "remove plan")
+			} else if kind == "dirty-plan" {
+				data := strings.Replace(modelPlanFixture, "plan_type: implementation", "plan_type: human-validation\nexecution_mode: human-kick", 1)
+				data = strings.Replace(data, "priority: 10", "priority: 20", 1)
+				modelWritePair(t, root, "human", data)
+			} else {
+				var c humanContract
+				if err := readHumanJSON(path, &c); err != nil {
+					t.Fatal(err)
+				}
+				if kind == "empty-executables" {
+					c.Executables = nil
+				} else {
+					c.Endpoints = nil
+				}
+				raw, _ := json.Marshal(c)
+				if err := os.WriteFile(path, raw, 0600); err != nil {
+					t.Fatal(err)
+				}
+				commitHumanContract(t, root)
+			}
+			observation := filepath.Join(root, "observation.json")
+			if err := os.WriteFile(observation, []byte(`{"observation":"checked","evidence_refs":["receipt"]}`), 0600); err != nil {
+				t.Fatal(err)
+			}
+			for _, mode := range []string{"preflight", "record"} {
+				dir := filepath.Join(root, mode+"-bundle")
+				args := []string{mode, "--plan", "EP-TEST-001", "--kick", "--evidence-dir", dir}
+				if mode == "preflight" {
+					args = append(args, "--config", "not-read.json")
+				} else {
+					args = append(args, "--scenario", "EP-TEST-001-01", "--result", "PASS", "--evidence", observation)
+				}
+				var out bytes.Buffer
+				err := executePlanHuman(root, args, &out)
+				expected := "human plan must match contract revision"
+				if strings.HasPrefix(kind, "empty-") {
+					expected = "nonempty executable and endpoint prerequisites"
+				}
+				if err == nil || !strings.Contains(err.Error(), expected) {
+					t.Fatalf("expected %s rejection before effects: %v", kind, err)
+				}
+				if out.Len() != 0 {
+					t.Fatal("invalid input emitted evidence")
+				}
+				if _, err := os.Stat(dir); !os.IsNotExist(err) {
+					t.Fatal("invalid input reserved evidence directory")
+				}
+			}
+		})
 	}
 }

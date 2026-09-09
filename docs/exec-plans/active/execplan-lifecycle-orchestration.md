@@ -563,3 +563,20 @@ the committed blob as digest authority. Regression coverage includes committed
 metadata, explicit branch resolution, contract modification/reconstruction, clean
 CRLF checkout and invalid evidence destinations without network probes.
 Final harness/race results and delivery commit are recorded in the review replies.
+
+### PR #14 dependency and Human Validation authorization follow-up (2026-09-10)
+
+Five further threads exposed gaps between individual validators. Active stacked
+prerequisite metadata is now compared with its own branch tip before recursively
+validating its commits, preventing consumer-side base edits from hiding invalid
+trailers. Identity-history scans use explicit branch refs even with same-named
+tags. Completed graph validation now verifies declared merged/stacked dependencies
+against immutable delivery evidence, rather than trusting completion of the
+consumer alone or its surviving branch.
+
+Human Validation also requires the selected English/Japanese Plan metadata to
+match the contract's committed revision before effects. Both named executable and
+endpoint prerequisite lists must be nonempty; malformed contracts cannot produce
+READY without checks. Regression tests cover consumer-rewritten dependency bases,
+tag collisions, unsatisfied completed dependencies, dirty/untracked Human Plans
+and empty prerequisite lists. Final harness/race evidence accompanies PR replies.

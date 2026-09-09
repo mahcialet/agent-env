@@ -300,6 +300,9 @@ func planCommitProvenance(root string, p planMetadata, head string, g *planGraph
 			return fmt.Errorf("%s: inherited history lacks Plan identity", dep.PlanID)
 		}
 		if dep.Status == "active" {
+			if err := planMetadataMatchesRevision(root, tip, dep); err != nil {
+				return err
+			}
 			if err := planCommitProvenance(root, dep, tip, g, visiting, false); err != nil {
 				return err
 			}
@@ -389,12 +392,8 @@ func executePlans(root string, args []string, out io.Writer) error {
 				return fmt.Errorf("%s branch mismatch", p.PlanID)
 			}
 			if p.Status == "completed" {
-				base, err := planBaseRevision(root, p.BaseBranch)
-				if err != nil {
+				if err := planCompletedDependencies(root, g, p); err != nil {
 					return err
-				}
-				if planMergeProof(root, p, base) != nil {
-					return fmt.Errorf("%s completion is not proven merged into %s", p.PlanID, p.BaseBranch)
 				}
 			}
 		}
@@ -457,7 +456,7 @@ func planIdentityHistory(root string, g *planGraph) error {
 	}
 	sort.Strings(keys)
 	for _, base := range keys {
-		rev, err := planRevision(root, base)
+		rev, err := planBaseRevision(root, base)
 		if err != nil {
 			return err
 		}

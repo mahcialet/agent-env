@@ -224,7 +224,7 @@ func TestLifecycleDirectoriesKeepBilingualStructureChecks(t *testing.T) {
 }
 
 func TestStackedProvenanceValidatesSeparateHistories(t *testing.T) {
-	for _, mode := range []string{"valid", "bad dependency", "bad consumer", "no consumer", "not inherited"} {
+	for _, mode := range []string{"valid", "bad dependency", "bad consumer", "no consumer", "not inherited", "changed dependency base"} {
 		t.Run(mode, func(t *testing.T) {
 			root := planTestRepo(t)
 			initial := planTestGit(t, root, "rev-parse", "HEAD")
@@ -238,9 +238,13 @@ func TestStackedProvenanceValidatesSeparateHistories(t *testing.T) {
 			if err := os.WriteFile(path, modelPlanYAML(a.PlanID, "active", ""), 0644); err != nil {
 				t.Fatal(err)
 			}
+			if err := os.WriteFile(strings.TrimSuffix(path, ".md")+".ja.md", modelPlanYAML(a.PlanID, "active", ""), 0644); err != nil {
+				t.Fatal(err)
+			}
+			a, _, _ = parsePlanMetadata(modelPlanYAML(a.PlanID, "active", ""), "docs/exec-plans/active/a.md")
 			planTestGit(t, root, "add", ".")
 			trailer := "ExecPlan: " + a.PlanID
-			if mode == "bad dependency" {
+			if mode == "bad dependency" || mode == "changed dependency base" {
 				trailer = "ExecPlan: EP-WRONG-001"
 			}
 			planTestGit(t, root, "commit", "-m", "dependency", "-m", trailer)
@@ -254,6 +258,9 @@ func TestStackedProvenanceValidatesSeparateHistories(t *testing.T) {
 					trailer = "ExecPlan: " + a.PlanID
 				}
 				planTestGit(t, root, "commit", "--allow-empty", "-m", "consumer", "-m", trailer)
+			}
+			if mode == "changed dependency base" {
+				a.BaseBranch = expectedPlanBranch(b)
 			}
 			g := &planGraph{ByID: map[string]planMetadata{a.PlanID: a, b.PlanID: b}}
 			head := planTestGit(t, root, "rev-parse", "HEAD")
@@ -409,5 +416,27 @@ func TestProvenanceRequiresCommittedMetadata(t *testing.T) {
 		if err := planProvenance(root, q, ""); err == nil {
 			t.Fatalf("accepted %s", mode)
 		}
+	}
+}
+
+func TestIdentityHistoryUsesBranchNotSameNamedTag(t *testing.T) {
+	root := planTestRepo(t)
+	initial := planTestGit(t, root, "rev-parse", "HEAD")
+	planTestGit(t, root, "tag", "master", initial)
+	path := filepath.Join(root, "docs", "exec-plans", "active", "a.md")
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, modelPlanYAML("EP-TEST-001", "active", ""), 0644); err != nil {
+		t.Fatal(err)
+	}
+	planTestGit(t, root, "add", ".")
+	planTestGit(t, root, "commit", "-m", "Plan on branch only")
+	if err := planIdentityHistory(root, &planGraph{ByID: map[string]planMetadata{}}); err == nil {
+		t.Fatal("tag hid branch Plan identity")
+	}
+	g := &planGraph{ByID: map[string]planMetadata{"EP-TEST-001": {PlanID: "EP-TEST-001"}}}
+	if err := planIdentityHistory(root, g); err != nil {
+		t.Fatal(err)
 	}
 }

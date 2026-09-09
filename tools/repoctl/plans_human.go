@@ -193,6 +193,9 @@ func loadHumanContract(root, id string) (humanContract, error) {
 		}
 	}
 	for _, list := range [][]string{c.Executables, c.Endpoints} {
+		if len(list) == 0 {
+			return c, fmt.Errorf("human contract requires nonempty executable and endpoint prerequisites")
+		}
 		seen = map[string]bool{}
 		for _, v := range list {
 			if strings.TrimSpace(v) == "" || seen[v] {
@@ -243,6 +246,9 @@ func executePlanHuman(root string, args []string, out io.Writer) error {
 	c, err := loadHumanContract(root, *id)
 	if err != nil {
 		return err
+	}
+	if err := planMetadataMatchesRevision(root, c.Revision, p); err != nil {
+		return fmt.Errorf("human plan must match contract revision: %w", err)
 	}
 	e := humanEvidence{PlanID: *id, ContractRevision: c.Revision, ContractSHA256: c.SHA256, Kind: mode, Timestamp: time.Now().UTC().Format(time.RFC3339)}
 	if mode == "preflight" {

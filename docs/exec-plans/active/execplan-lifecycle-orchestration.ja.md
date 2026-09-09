@@ -12,7 +12,7 @@ workstreams:
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/exec-plans/active/execplan-lifecycle-orchestration.md
-source_sha256: fce7af5aa3b022c5daf236cfefd3c82f20dee0e457dc0491e78b0d65aeb8bf67
+source_sha256: 26bae16b8c47b3a09ca041dffb3eb4faf87d1765ff264217dc1c1ecfc2e6a088
 ---
 
 # ExecPlan lifecycle orchestrationと自動delivery gateを追加する
@@ -488,3 +488,19 @@ JSON・Markdownの証拠に記録する。未追跡・変更済み契約は拒�
 回帰テストには、commit済みmetadata、明示的branch解決、契約の変更・復元、
 clean CRLF checkout、通信を伴わない不正な証拠保存先の拒否を含める。
 最終harness・race結果と実装commitはレビュー返信に記録する。
+
+### PR #14の依存関係とHuman Validation実行条件の追加対応（2026-09-10）
+
+追加5件のThreadで、個別validator間の検証不足が判明した。activeなstacked依存の
+commitを再帰検証する前に、その依存自身のbranch tipとmetadataを照合する。
+consumer側のbase編集で不正なtrailerを検査範囲から隠せない。
+ID履歴の走査も同名tagに影響されない明示的branch refを使用する。
+completed graphの検証では、consumer自身の完了や存続branchを信用するだけでなく、
+不変な配信証拠に対して宣言されたmerged/stacked依存を検証する。
+
+Human Validationでは、副作用の前に選択した英日Planのmetadataが契約のcommit済み
+revisionと一致することも要求する。名前付きの実行ファイルとendpointの前提条件一覧は
+両方とも空を禁止し、不正な契約が無検査でREADYを出さないようにした。
+回帰テストは、consumerで書き換えた依存base、tag衝突、未充足なcompleted依存、
+変更済み・未追跡Human Plan、空の前提条件一覧を対象にする。
+最終harness・raceの証拠はPR返信に記録する。
