@@ -1,28 +1,42 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-08
+last_verified: 2026-09-09
 ---
 
 # Architecture
 
 [日本語](ARCHITECTURE.ja.md)
 
-The system materializes pinned local Git sources and a selected component closure into an environment lease with Compose, Android Emulator and/or persistent native process resources. The [MVP specification](docs/product-specs/agent-env-mvp.md) defines behavior; the [completed plan](docs/exec-plans/completed/agent-env-mvp.md) records delivered boundaries and verification evidence.
+This map explains which layer owns a lease operation and where to make a change.
+agent-env resolves pinned Git sources and a selected component closure into owned
+Compose, Android Emulator, or persistent-process resources. Applications and UI
+observation use those resources through separate interfaces. Explicit remote mode
+adds placement and transport around worker-local lifecycle management.
 
-The CLI parses arguments and formats output, then delegates use cases to app. Domain types model leases, immutable source sets, components, resources and events without concrete adapters. Config strictly decodes the manifest; stack resolves deterministic dependency closure. App coordinates source and runtime interfaces, policy, readiness, evidence, and compensating cleanup.
+The [product specifications](docs/product-specs/index.md) define current behavior;
+[design documents](docs/design-docs/index.md) explain individual mechanisms.
+The [original MVP plan](docs/exec-plans/completed/agent-env-mvp.md) records the
+initial implementation, not the full current feature set.
 
-SQLite owns desired state, reservations, ownership, source identity and event history. Git source providers resolve refs, create detached worktrees, inspect tracked changes and remove safe worktrees. Compose runtime adapters validate normalized configuration, create selected services, inspect resources, collect evidence and destroy by explicit project identity. Reconciliation compares registry intent against Git and the recorded Compose provider’s observations; it never equates a stored ready row with a live healthy environment.
+## Local operation flow
 
-`internal/runtime/compose.Client` dispatches to private Docker and Podman clients
-within the same package boundary. Both use the common policy and canonical JSON
-snapshot. Podman children enter a native bridge in the current agent-env binary
-with recorded engine arguments; no shell wrapper or Python dependency enters the
-core. Domain runtime snapshots retain provider identity and `cleanup_evidence`;
-app persists pre-down ownership evidence so interrupted cleanup can resume without
-reconstructing deleted container attachments. See the
-[provider design](docs/design-docs/compose-providers.md) and its completed
-implementation evidence; real Podman Machine infrastructure was unavailable.
+| Layer | Responsibility |
+| --- | --- |
+| CLI | Parse arguments, format output, and delegate use cases to app. |
+| Domain | Model leases, immutable source sets, components, resources, and events without concrete adapters. |
+| Config | Strictly decode the manifest. |
+| Stack | Resolve a deterministic dependency closure. |
+| App | Coordinate source/runtime interfaces, policy, readiness, evidence, and compensating cleanup. |
+
+
+SQLite owns desired state, reservations, ownership, source identity and event history.
+
+Git source providers resolve refs, create detached worktrees, inspect tracked changes and remove safe worktrees.
+
+Compose runtime adapters validate normalized configuration, create selected services, inspect resources, collect evidence and destroy by explicit project identity.
+
+Reconciliation compares registry intent against Git and each recorded runtime provider’s observations; it never equates a stored ready row with a live healthy environment.
 
 ## Dependency direction
 
@@ -42,7 +56,23 @@ Allocation is a saga across separate authorities. Save intent before effects, re
 
 The development harness is separate from the target manifest: [agent instructions](AGENTS.md), indexed docs, plans, repoctl and CI describe this repository; `.agent-env.yaml` describes target-repository startup.
 
-Android Emulator resources extend Compose through a separate `app.AndroidProvider` and `internal/runtime/android` adapter. The adapter uses domain identities, app observations and `execx` native process boundaries; it never imports Compose. SQLite owns exclusive AVD/port reservations, and app owns compensation and readiness. Detached processes are distinct from bounded command process trees. See the [Android design](docs/design-docs/android-emulator.md) and [completed execution evidence](docs/exec-plans/completed/android-emulator-lease.md). Browser/CDP automation is implemented through its own provider and adapter, described below; it does not share Android lifecycle or UI behavior.
+## Compose services
+
+`internal/runtime/compose.Client` dispatches to private Docker and Podman clients
+within the same package boundary. Both use the common policy and canonical JSON
+snapshot. Podman children enter a native bridge in the current agent-env binary
+with recorded engine arguments; no shell wrapper or Python dependency enters the
+core. Domain runtime snapshots retain provider identity and `cleanup_evidence`;
+app persists pre-down ownership evidence so interrupted cleanup can resume without
+reconstructing deleted container attachments. See the
+[provider design](docs/design-docs/compose-providers.md) and its completed
+implementation evidence; real Podman Machine infrastructure was unavailable.
+
+## Android Emulator lifecycle
+
+Android Emulator resources use a separate `app.AndroidProvider` and `internal/runtime/android` adapter. The adapter uses domain identities, app observations and `execx` native process boundaries; it never imports Compose. SQLite owns exclusive AVD/port reservations, and app owns compensation and readiness. Detached processes are distinct from bounded command process trees. See the [Android design](docs/design-docs/android-emulator.md) and [completed execution evidence](docs/exec-plans/completed/android-emulator-lease.md). Browser/CDP automation is implemented through its own provider and adapter, described below; it does not share Android lifecycle or UI behavior.
+
+## Flutter application lifecycle
 
 Flutter builds use `app.FlutterProvider` and the independent
 `internal/runtime/flutter` adapter. Android package/install/reverse/launch effects
@@ -52,6 +82,8 @@ compensation. Additive application/build/reverse records use the existing Lease
 JSON persistence. See the [Flutter design](docs/design-docs/flutter-android-runtime.md)
 and [ADR 0005](docs/adr/0005-separate-flutter-applications.md).
 
+## Android UI observation
+
 Android UI observation uses `app.AndroidUIProvider`, implemented by the same Android
 adapter and its optional self-targeting companion in `internal/runtime/android/uihelper`.
 App owns selection, stale-reference policy, operation fencing, recovery and artifact
@@ -60,18 +92,6 @@ effects and helper identity. Existing `CommandRun` rows provide intent and clean
 barriers; no SQL migration or target-manifest section is added. `tools/uihelper`
 builds the companion explicitly using native tool argv. No runtime adapter imports
 another runtime. See the [observer design](docs/design-docs/android-ui-observer.md).
-
-## Standalone release boundary
-
-`internal/buildinfo` exposes executable identity; `internal/assets` owns generic
-digest-verified materialization, without Android or Flutter lifecycle behavior.
-The current CLI embeds no runtime companion assets. The Android UI helper remains
-an explicitly built external input. `tools/repoctl` owns Git release validation,
-CGO-disabled cross-builds, archive normalization, checksums, manifest validation
-and extracted native smoke tests. Release metadata does not belong in lease/domain
-models. GitHub Actions orchestrates these commands and publishes validated bytes;
-it does not implement a second packaging algorithm. See the
-[distribution design](docs/design-docs/standalone-distribution.md).
 
 ## Persistent host processes
 
@@ -125,3 +145,22 @@ transport state never replaces local cleanup evidence. Implementation and native
 acceptance evidence are recorded in the [completed multi-host control-plane
 ExecPlan](docs/exec-plans/completed/multi-host-control-plane.md), including the
 documented support boundaries and unverified environments.
+
+## Standalone release boundary
+
+`internal/buildinfo` exposes executable identity; `internal/assets` owns generic
+digest-verified materialization, without Android or Flutter lifecycle behavior.
+The current CLI embeds no runtime companion assets. The Android UI helper remains
+an explicitly built external input. `tools/repoctl` owns Git release validation,
+CGO-disabled cross-builds, archive normalization, checksums, manifest validation
+and extracted native smoke tests. Release metadata does not belong in lease/domain
+models. GitHub Actions orchestrates these commands and publishes validated bytes;
+it does not implement a second packaging algorithm. See the
+[distribution design](docs/design-docs/standalone-distribution.md).
+
+## Changing a boundary
+
+Read [AGENTS.md](AGENTS.md) and [plan policy](docs/PLANS.md) before implementation.
+The [reliability policy](docs/RELIABILITY.md) defines recovery guarantees; the
+[quality guide](docs/QUALITY.md) identifies which checks and native evidence
+validate them. A successful build alone does not prove runtime acceptance.

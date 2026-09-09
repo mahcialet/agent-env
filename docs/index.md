@@ -4,39 +4,69 @@ owner: maintainers
 last_verified: 2026-09-09
 ---
 
-# Repository knowledge
+# Find the right documentation
 
 [日本語](index.ja.md)
 
-Start with [architecture](../ARCHITECTURE.md) / [日本語](../ARCHITECTURE.ja.md), [MVP specification](product-specs/agent-env-mvp.md) / [日本語](product-specs/agent-env-mvp.ja.md), and the [completed ExecPlan](exec-plans/completed/agent-env-mvp.md).
+Choose the question you need to answer. The [README](../README.md) introduces
+agent-env and the first lease workflow. Current specifications describe behavior;
+completed Plans and audit reports record what was tested at a particular revision.
 
-Delivered extension: [Android Emulator contract](product-specs/android-emulator.md) / [日本語](product-specs/android-emulator.ja.md) and its [completed ExecPlan](exec-plans/completed/android-emulator-lease.md).
+## Use a capability
 
-Delivered extension: [Flutter Android contract](product-specs/flutter-android-runtime.md) / [日本語](product-specs/flutter-android-runtime.ja.md) and its [completed ExecPlan](exec-plans/completed/flutter-android-runtime.md) / [日本語](exec-plans/completed/flutter-android-runtime.ja.md).
+The [product specification index](product-specs/index.md) covers every current
+contract. Start with the [manifest](product-specs/manifest-v1.md) to configure a
+repository and the [CLI contract](product-specs/cli-contract.md) to operate it.
 
-- [Product specifications](product-specs/index.md) / [日本語](product-specs/index.ja.md): user-visible contracts.
-- [Design documents](design-docs/index.md) / [日本語](design-docs/index.ja.md): mechanisms and boundaries.
-- [ADRs](adr/index.md) / [日本語](adr/index.ja.md): accepted alternatives and consequences.
-- [Plan policy](PLANS.md) / [日本語](PLANS.ja.md): living work and completion evidence.
-- [Quality](QUALITY.md) / [日本語](QUALITY.ja.md): commands and verification scope.
-- [Reliability](RELIABILITY.md) / [日本語](RELIABILITY.ja.md): failures and conservative recovery.
-- [Security](SECURITY.md) / [日本語](SECURITY.ja.md): trust and host policy.
-- [Portability](PORTABILITY.md) / [日本語](PORTABILITY.ja.md): native platform requirements.
-- [Roadmap](roadmap.md) / [日本語](roadmap.ja.md): deferred features and unresolved decisions.
-- [References](references/index.md) / [日本語](references/index.ja.md): historical provenance.
+| Reader question | Read next |
+| --- | --- |
+| Which container engine can I select? | [Compose providers](product-specs/compose-providers.md) |
+| How do I keep a native server running? | [Persistent process leases](product-specs/persistent-process-runtime.md) |
+| How do I run an Emulator or a Flutter app? | [Android Emulator](product-specs/android-emulator.md), then [Flutter applications](product-specs/flutter-android-runtime.md) |
+| How do I observe or interact with UI? | [Android UI](product-specs/android-ui-observer.md) or [Browser/CDP](product-specs/browser-cdp-automation.md) |
+| How do I install the executable or construct a release? | [Standalone distribution](product-specs/standalone-distribution.md) |
+| How do I enroll hosts and run remotely? | [Multi-host setup and operations](product-specs/multi-host-control-plane.md) |
+| What was in the original MVP? | [Original MVP scope](product-specs/agent-env-mvp.md) |
 
-Design, product, ADR and plan documents carry status, owner and last_verified metadata. Their local indexes make all durable documents discoverable. Archive material is governed by the references index; generated truth is produced from migrations when implemented. Freshness dates describe document review, not proof that planned features are implemented.
+## Change the repository
 
-- [Generated database schema](generated/db-schema.md): mechanically derived from embedded migrations.
+Start with [AGENTS.md](../AGENTS.md) for the workflow and [Architecture](../ARCHITECTURE.md)
+for dependency boundaries. [Plan policy](PLANS.md) explains how active ExecPlans
+control substantial work and when they can be archived.
 
-- [Language policy](design-docs/bilingual-documentation.md) / [日本語](design-docs/bilingual-documentation.ja.md): canonical English, maintained Japanese translations, and explicit exceptions.
+| What you need to decide | Policy or mechanism |
+| --- | --- |
+| Which checks establish acceptance? | [Quality](QUALITY.md) |
+| What happens after failure or interrupted cleanup? | [Reliability](RELIABILITY.md) |
+| Which repositories and effects are trusted? | [Security](SECURITY.md) |
+| Which OS assumptions and prerequisites are supported? | [Portability](PORTABILITY.md) |
+| How should English and Japanese be maintained? | [Language policy](design-docs/bilingual-documentation.md) |
+| Why does a subsystem work this way? | [Design index](design-docs/index.md) and [accepted ADRs](adr/index.md) |
+| Where is the database structure defined? | [Generated schema](generated/db-schema.md), derived from migrations |
 
-Browser/CDP: [product contract](product-specs/browser-cdp-automation.md) / [日本語](product-specs/browser-cdp-automation.ja.md), [design](design-docs/browser-cdp-automation.md) / [日本語](design-docs/browser-cdp-automation.ja.md), and [completed execution evidence](exec-plans/completed/browser-cdp-automation.md) / [日本語](exec-plans/completed/browser-cdp-automation.ja.md).
+The [roadmap](roadmap.md) distinguishes implemented capabilities, current work,
+and deferred decisions. It does not promise that proposed features are commands.
 
-Multi-host coordination acceptance is complete within the documented scope: [product contract](product-specs/multi-host-control-plane.md),
-[design](design-docs/multi-host-control-plane.md), [ADR 0006](adr/0006-single-authority-multi-host.md),
-and [ExecPlan](exec-plans/completed/multi-host-control-plane.md).
-[README usage](../README.md#explicit-remote-mode) describes enrollment and role startup;
-[quality](QUALITY.md#multi-host-native-verification) records successful native
-Windows/macOS/Linux TLS execution and distinguishes it from pending physical-host
-coverage.
+## Find evidence without treating history as current policy
+
+The [quality guide](QUALITY.md) is the entry point for commands, verification
+scope, and native acceptance evidence. Capability contracts and designs link to
+their completed implementation Plans. For example:
+
+- [MVP implementation](exec-plans/completed/agent-env-mvp.md),
+  [Android implementation](exec-plans/completed/android-emulator-lease.md), and
+  [Flutter implementation](exec-plans/completed/flutter-android-runtime.md)
+  explain the delivered local foundations.
+- [Browser implementation](exec-plans/completed/browser-cdp-automation.md) and
+  [multi-host implementation](exec-plans/completed/multi-host-control-plane.md)
+  record later acceptance. [Multi-host quality evidence](QUALITY.md#multi-host-native-verification)
+  distinguishes same-runner TLS tests from unverified physical-host coverage.
+- The [correctness audit index](audits/repository-correctness/index.md) separates
+  frozen baseline, repaired candidates, and findings. [Historical references](references/index.md)
+  explain older provenance and archive exceptions.
+
+Designs, specifications, ADRs, and Plans carry `status`, `owner`, and
+`last_verified`. Local indexes keep durable documents reachable. A review date
+is not proof that a planned feature is implemented. Generated documents and
+historical reference archives follow the explicit exceptions in the language
+policy and references index.

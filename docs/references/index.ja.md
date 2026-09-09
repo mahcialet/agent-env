@@ -1,17 +1,34 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-08
+last_verified: 2026-09-09
 translation_of: docs/references/index.md
-source_sha256: 82a2201d5a3afb3d5fcd444a599bee9d8a89a1dbbc131fa898f0046a3b6247db
+source_sha256: 40b07bcdf6642c6a3ffa2e073da6db88c2cf0cf097804f98a8c8ba9bef7b8243
 ---
 
-[英語版（翻訳元）](index.md)
+# 初期資料と外部参照
 
-# 参考資料
+[English](index.md)
 
-[保存済みbootstrap handoff](handoffs/CHATGPT_HANDOFF_30.md)は、2026-09-07に`.codex/CHATGPT_HANDOFF_30.md`として提供されました。SHA-256は`3f72a24b1767009cd66a0664ee62ba3359d9518599fb27d3d80fa26c7bfa864a`です。このarchiveは、実装証拠によって置き換えられている可能性のある提案も含め、当時の入力を保持します。実務での判断はactive planと索引付きの製品・設計文書に従います。保存済みhandoffは恒常文書metadataとローカル索引の強制対象から除外しますが、ここから引き続き見つけられるようにします。
+リポジトリの初期入力を辿るときや、利用ツールの公式資料を読むときの入口です。
+現在の操作は[文書index](../index.ja.md)とactive ExecPlanに従ってください。
+archive内の提案は、現行の製品仕様や設計に優先しません。
 
-handoffにあるライセンス未解決項目は、保持するリポジトリ既存の[MITライセンス](../../LICENSE)によって解決済みです。
+## 保存した初期handoff
 
-実装に関する公式資料：[Goサポートポリシー](https://go.dev/doc/devel/release)、[Git worktree](https://git-scm.com/docs/git-worktree)、[Compose CLI](https://docs.docker.com/reference/cli/docker/compose/)、[SQLite driver](https://pkg.go.dev/modernc.org/sqlite)。
+[初期handoffのarchive](handoffs/CHATGPT_HANDOFF_30.md)は、2026-09-07に
+`.codex/CHATGPT_HANDOFF_30.md`として提供されたものです。SHA-256は
+`3f72a24b1767009cd66a0664ee62ba3359d9518599fb27d3d80fa26c7bfa864a`です。
+後の実装証拠によって置き換わった提案も含め、当時の入力を保持しています。
+資料内のlicense未決定事項は、維持している既存の[MIT license](../../LICENSE)で解消されています。
+
+archiveしたhandoffは、durable文書のmetadataとlocal index検査の対象外です。
+このページから辿れる状態を保ちます。翻訳例外は[言語方針](../design-docs/bilingual-documentation.ja.md)
+を参照してください。archive自体のバイト列は編集しません。
+
+## 実装で参照する公式資料
+
+- [Go support policy](https://go.dev/doc/devel/release): サポートするreleaseの範囲。
+- [Git worktrees](https://git-scm.com/docs/git-worktree): worktreeの仕組み。
+- [Compose CLI](https://docs.docker.com/reference/cli/docker/compose/): Docker Composeコマンド。
+- [SQLite driver](https://pkg.go.dev/modernc.org/sqlite): Goの永続化driver。

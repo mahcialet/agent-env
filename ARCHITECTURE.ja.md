@@ -1,30 +1,44 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-08
+last_verified: 2026-09-09
 translation_of: ARCHITECTURE.md
-source_sha256: 1294838d8aa28d02169aa98708f95f783738a841baaac46f7776714d81a154b7
+source_sha256: a1fdb1cdaccee855f03320dd49e98648e8336733af51663b622a5552ef4f15a8
 ---
 
 [英語版（翻訳元）](ARCHITECTURE.md)
 
 # アーキテクチャ
 
-このシステムは、固定したローカルGitソースと選択したコンポーネントの依存閉包を、Compose、Android Emulator、常駐native processのリソースを持つ環境リースとして実体化します。[MVP仕様](docs/product-specs/agent-env-mvp.ja.md)が振る舞いを定義し、[完了済み計画](docs/exec-plans/completed/agent-env-mvp.md)が実装済みの責務境界と検証証拠を記録します。
+この文書は、leaseの操作をどの層が担当し、変更をどこに置くかを説明します。
+agent-envは、commitを固定したGitソースと選択componentの依存関係を解決し、
+所有権を管理するCompose、Android Emulator、常駐processのリソースを作成します。
+アプリケーションとUI観測は、独立したinterfaceを通じてそれらを利用します。
+remote modeでは、worker内のlifecycle管理の外側に配置と通信の仕組みを加えます。
 
-CLIは引数を解析し、出力を整形して、ユースケースをappに委譲します。domainの型は、具体的なアダプターに依存せず、リース、不変のソース集合、コンポーネント、リソース、イベントをモデル化します。configはマニフェストを厳密にデコードし、stackは決定的な依存閉包を解決します。appはソースとruntimeのインターフェース、ポリシー、準備完了判定、証拠、補償cleanupを調整します。
+現在の挙動は[製品仕様](docs/product-specs/index.ja.md)、各機構の詳細は
+[設計文書](docs/design-docs/index.ja.md)を参照してください。
+[当初のMVP Plan](docs/exec-plans/completed/agent-env-mvp.md)は最初の実装記録であり、
+現在の機能すべてを定義するものではありません。
 
-SQLiteは期待状態、予約、所有権、ソースの識別情報、イベント履歴を管理します。Gitソースプロバイダーはrefを解決し、detached worktreeを作成し、追跡対象の変更を検査して、安全なworktreeを削除します。Compose runtimeアダプターは正規化した設定を検証し、選択したサービスを作成し、リソースを検査し、証拠を収集して、明示的なプロジェクト識別情報に基づき破棄します。reconcileはレジストリの意図とGitと記録済みCompose providerの観測結果を比較します。保存されたreadyの行を、稼働中の健全な環境と同一視しません。
+## ローカル操作の流れ
 
-`internal/runtime/compose.Client`は同じpackage境界内の非公開Docker/Podman clientへ
-処理を振り分けます。両者は共通policyとcanonical JSON snapshotを使います。Podmanの
-子processは、記録済みengine引数を持って現在のagent-envバイナリのnative bridgeへ入り、
-coreにshell wrapperやPython依存を追加しません。domainのruntime snapshotはprovider
-情報と`cleanup_evidence`を保持します。appはdown前の所有証拠を永続化するため、中断後の
-cleanupで、削除済みcontainerの接続を再構成する必要がありません。
-[provider設計](docs/design-docs/compose-providers.ja.md)を参照してください。
-実providerの受け入れは完了済みの実装証拠を参照してください。実機のPodman Machine環境は
-利用できませんでした。
+| 層 | 担当すること |
+| --- | --- |
+| CLI | 引数を解析し、出力を整形して、ユースケースをappへ委譲する。 |
+| Domain | 具体的なadapterに依存せず、lease、不変のソース集合、component、resource、eventをモデル化する。 |
+| Config | manifestを厳密にdecodeする。 |
+| Stack | 決定的な依存閉包を解決する。 |
+| App | ソースとruntimeのinterface、policy、準備完了判定、証拠、失敗時の補償cleanupを調整する。 |
+
+
+SQLiteは期待状態、予約、所有権、ソースの識別情報、イベント履歴を管理します。
+
+Gitソースプロバイダーはrefを解決し、detached worktreeを作成し、追跡対象の変更を検査して、安全なworktreeを削除します。
+
+Compose runtimeアダプターは正規化した設定を検証し、選択したサービスを作成し、リソースを検査し、証拠を収集して、明示的なプロジェクト識別情報に基づき破棄します。
+
+reconcileはレジストリの意図とGitと記録済みの各runtime providerの観測結果を比較します。保存されたreadyの行を、稼働中の健全な環境と同一視しません。
 
 ## 依存方向
 
@@ -42,9 +56,25 @@ cleanupで、削除済みcontainerの接続を再構成する必要がありま�
 
 割り当ては、SQLite、Git、runtimeのそれぞれが管理する状態にまたがるsagaです。外部作用の前に意図を保存し、結果を記録し、逆順で補償します。追跡対象のソースが変更されている場合、識別情報が曖昧な場合、cleanupが不完全な場合は、イベントと成果物を伴うquarantined状態を維持します。リースの隔離は偶発的な衝突を防ぐものであり、悪意あるコードを封じ込めるsandboxではありません。
 
-開発harnessと対象マニフェストは別物です。[エージェント向け指示](AGENTS.md)、索引付き文書、計画、repoctl、CIはこのリポジトリを説明し、`.agent-env.yaml`は対象リポジトリの起動方法を説明します。
+開発harnessと対象マニフェストは別物です。[エージェント向け指示](AGENTS.ja.md)、索引付き文書、計画、repoctl、CIはこのリポジトリを説明し、`.agent-env.yaml`は対象リポジトリの起動方法を説明します。
 
-Android Emulatorリソースは、独立した`app.AndroidProvider`と`internal/runtime/android`アダプターを通じて、Composeに加えて利用できます。このアダプターはdomainの識別情報、appの観測結果、`execx`のネイティブプロセス境界を使い、Composeをimportしません。SQLiteはAVDとポートの排他的予約を担い、appは補償と準備完了判定を担います。detached processと実行時間を制限したコマンドのプロセスツリーは別の仕組みです。[Android設計](docs/design-docs/android-emulator.ja.md)と[完了済みの実行証拠](docs/exec-plans/completed/android-emulator-lease.md)を参照してください。Browser/CDP自動化は、後述する専用providerとadapterで実装しています。AndroidのライフサイクルやUI動作とは分離しています。
+## Composeサービス
+
+`internal/runtime/compose.Client`は同じpackage境界内の非公開Docker/Podman clientへ
+処理を振り分けます。両者は共通policyとcanonical JSON snapshotを使います。Podmanの
+子processは、記録済みengine引数を持って現在のagent-envバイナリのnative bridgeへ入り、
+coreにshell wrapperやPython依存を追加しません。domainのruntime snapshotはprovider
+情報と`cleanup_evidence`を保持します。appはdown前の所有証拠を永続化するため、中断後の
+cleanupで、削除済みcontainerの接続を再構成する必要がありません。
+[provider設計](docs/design-docs/compose-providers.ja.md)を参照してください。
+実providerの受け入れは完了済みの実装証拠を参照してください。実機のPodman Machine環境は
+利用できませんでした。
+
+## Android Emulatorのlifecycle
+
+Android Emulatorリソースは、独立した`app.AndroidProvider`と`internal/runtime/android`アダプターを通じて、利用できます。このアダプターはdomainの識別情報、appの観測結果、`execx`のネイティブプロセス境界を使い、Composeをimportしません。SQLiteはAVDとポートの排他的予約を担い、appは補償と準備完了判定を担います。detached processと実行時間を制限したコマンドのプロセスツリーは別の仕組みです。[Android設計](docs/design-docs/android-emulator.ja.md)と[完了済みの実行証拠](docs/exec-plans/completed/android-emulator-lease.md)を参照してください。Browser/CDP自動化は、後述する専用providerとadapterで実装しています。AndroidのライフサイクルやUI動作とは分離しています。
+
+## Flutterアプリケーションのlifecycle
 
 Flutterのビルドには `app.FlutterProvider` と独立した
 `internal/runtime/flutter` アダプターを使います。Androidのパッケージ確認、インストール、
@@ -54,6 +84,8 @@ reverse、起動は `app.AndroidApplicationProvider` を通じ、既存のAndroi
 [Flutter設計](docs/design-docs/flutter-android-runtime.ja.md)と
 [ADR 0005](docs/adr/0005-separate-flutter-applications.ja.md)を参照してください。
 
+## Android UIの観測
+
 Android UI の観測には `app.AndroidUIProvider` を使います。既存の Android adapter と、
 `internal/runtime/android/uihelper` にある任意の自己対象 companion がこれを実装します。
 app は対象選択、古い参照の扱い、operation fencing、復旧、artifact 公開を担います。
@@ -61,18 +93,6 @@ domain は直列化できる UI 値を定義し、adapter は accessibility/ADB 
 操作意図と cleanup barrier には既存の `CommandRun` row を使い、SQL migration や対象 manifest の
 section は追加しません。`tools/uihelper` が native tool の argv を使って companion を明示的に build します。
 runtime adapter 同士の import はありません。[observer 設計](docs/design-docs/android-ui-observer.ja.md)を参照してください。
-
-## スタンドアロンリリースの責務境界
-
-`internal/buildinfo` は実行ファイルの識別情報を公開し、`internal/assets` は digest を
-検証する汎用のファイル配置を担当します。Android や Flutter の lifecycle は扱いません。
-現在の CLI は runtime companion の資産を埋め込みません。Android UI helper は
-明示的に別途ビルドする外部入力です。`tools/repoctl` は Git リリース条件の検証、
-CGO 無効のクロスビルド、アーカイブの正規化、checksum、manifest 検証、
-展開した実行ファイルのネイティブ smoke test を担当します。リリースのメタデータは
-lease/domain のモデルに入れません。GitHub Actions はこれらのコマンドを呼び出し、
-検証済みのバイト列を公開します。別のパッケージ生成処理は持ちません。
-[配布設計](docs/design-docs/standalone-distribution.ja.md)を参照してください。
 
 ## 常駐host process
 
@@ -113,8 +133,26 @@ remote receiptとapp interfaceを組み合わせ、CLIが具体的なproviderを
 正規化したplanを検証します。`internal/blobstore`と`internal/instance`は独立した
 storage部品です。repoctlは正常例と違反例のfixtureでこれらのimport境界を検査します。
 
-assignment epochはleaseの配置ごとに固定し、個々のcommandをoperation IDで識別します。
-worker-localの管理metadataは変更できません。controllerの通信状態をlocal cleanupの
-証拠として扱いません。実装とnative環境の受け入れの証拠は、
+assignment epochはleaseの配置ごとに固定します。個々のcommandはoperation IDで区別し、
+操作のfenceとして使います。worker内の管理metadataは変更できません。controllerの通信状態で、
+worker内に保持したcleanupの証拠を置き換えてはいけません。実装とnative環境の受け入れの証拠は、
 [完了したmulti-host control-plane ExecPlan](docs/exec-plans/completed/multi-host-control-plane.ja.md)
 に記録し、文書化した対応範囲と未検証の環境も明示しています。
+
+## スタンドアロンリリースの責務境界
+
+`internal/buildinfo` は実行ファイルの識別情報を公開し、`internal/assets` は digest を
+検証する汎用のファイル配置を担当します。Android や Flutter の lifecycle は扱いません。
+現在の CLI は runtime companion の資産を埋め込みません。Android UI helper は
+明示的に別途ビルドする外部入力です。`tools/repoctl` は Git リリース条件の検証、
+CGO 無効のクロスビルド、アーカイブの正規化、checksum、manifest 検証、
+展開した実行ファイルのネイティブ smoke test を担当します。リリースのメタデータは
+lease/domain のモデルに入れません。GitHub Actions はこれらのコマンドを呼び出し、
+検証済みのバイト列を公開します。別のパッケージ生成処理は持ちません。
+[配布設計](docs/design-docs/standalone-distribution.ja.md)を参照してください。
+
+## 責務境界を変更するとき
+
+実装前に[AGENTS.md](AGENTS.ja.md)と[Planの方針](docs/PLANS.ja.md)を読んでください。
+復旧の保証は[信頼性の方針](docs/RELIABILITY.ja.md)、対応する検査とnativeの証拠は
+[品質方針](docs/QUALITY.ja.md)にあります。ビルドの成功だけではruntimeの受け入れを証明できません。

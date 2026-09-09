@@ -8,10 +8,54 @@ last_verified: 2026-09-09
 
 [日本語](multi-host-control-plane.ja.md)
 
-This document defines the required multi-host contract. Implementation and final
-acceptance evidence within the documented scope are recorded in the completed
-[ExecPlan](../exec-plans/completed/multi-host-control-plane.md). A requirement here
-is not a claim that its integration or native acceptance test has passed.
+Remote mode places each whole lease on one enrolled worker. This document defines
+the implemented setup, authentication, placement and uncertain-operation contract.
+Local mode remains the default and needs no controller.
+
+See the acceptance section and [completed ExecPlan](../exec-plans/completed/multi-host-control-plane.md)
+for the environments actually verified. A requirement here is not itself a claim
+that its integration or native acceptance test has passed.
+
+## Set up explicit remote mode
+
+Pre-provision a CA, a controller server certificate valid for its DNS name, and
+separate client and worker certificates. Set a distinct absolute `AGENT_ENV_HOME`
+for the controller, each worker and the client using your host's environment settings.
+
+### Enroll certificates and start the controller
+
+Enrollment is an offline administrative command against the controller's state
+root. Run it there before starting the controller.
+
+```text
+agent-env control-plane enroll --certificate client.pem --role client
+agent-env control-plane enroll --certificate worker.pem --role worker --host-id build-a
+agent-env --tls-ca ca.pem --tls-cert controller.pem --tls-key controller.key control-plane serve --listen 0.0.0.0:9443
+```
+
+### Start the worker
+
+Use the worker's own state root and install its runtime prerequisites before running:
+
+```text
+agent-env --controller https://controller.example:9443 --tls-ca ca.pem --tls-cert worker.pem --tls-key worker.key worker serve --host-id build-a --max-leases 2
+```
+
+### Connect from the client
+
+Substitute your controller URL, certificates and committed repository:
+
+```text
+agent-env --controller https://controller.example:9443 --tls-ca ca.pem --tls-cert client.pem --tls-key client.key hosts list
+agent-env --controller https://controller.example:9443 --tls-ca ca.pem --tls-cert client.pem --tls-key client.key create ../trusted-repo --stack api --host build-a
+agent-env --controller https://controller.example:9443 --tls-ca ca.pem --tls-cert client.pem --tls-key client.key artifact-download <digest> --destination evidence.json
+```
+
+Use the same connection flags for list/show, renew, reconcile, destroy, named
+tests and supported UI/browser actions. Artifact digests come from registered
+remote evidence. Downloads verify them and require a new destination file.
+`hosts drain <host-id>` blocks new placements; `hosts undrain <host-id>` restores
+eligibility. Remote `set-text` is unsupported; use local mode for text input.
 
 ## Modes and placement
 
@@ -26,6 +70,25 @@ with the required capabilities and capacity. Capability names include `git`,
 `persistent-process` and `browser-cdp`. A requested host bypasses ranking only;
 it cannot bypass enrollment, compatibility, capability or capacity checks.
 Drain blocks new placements without migrating or destroying existing leases.
+
+## Lifetime and capacity
+
+Remote create uses a stable user/host owner by default; explicit `--owner` or
+`AGENT_ENV_OWNER` takes precedence. Fresh-process retries with the same operation
+ID therefore preserve request identity. Worker `--max-leases` must be between 1
+and the local policy limit of 8.
+
+Worker `--android-slots` accepts 0 through 65, matching the local allocator's
+even console ports 5554 through 5682. Out-of-range values are rejected before
+TLS setup, state creation or registration; zero advertises no Android capacity.
+
+The controller persists expiry from create acceptance time (default 4 hours,
+maximum 24 hours). A successful renew sets expiry from that renew's acceptance
+time and requested TTL; replay or restart does not extend it again. Expiry queues
+one ordinary, non-force destroy when no operation is active. Offline workers,
+uncertain results and failed cleanup retain capacity until cleanup is proven.
+Host removal also refuses queued or dispatched operations on released leases;
+a removed host cannot receive newly submitted operations.
 
 ## Authentication and ownership
 
@@ -49,6 +112,10 @@ alter a controller-managed lease. Local force is not an authority bypass.
 Read-only access returns recorded management metadata; it does not silently
 reconcile a lease without assignment authority. Managed lifetime expiry or a
 controller outage alone never authorizes local cleanup.
+
+An assignment binds a lease to a host instance and epoch; an operation is an
+individual typed request within that assignment. A worker incarnation identifies
+one running registration session, separately from the durable host-instance ID.
 
 ### Initial operation dispatch policy
 
@@ -77,6 +144,18 @@ be retried by digest; they do not authorize replaying the operation that produce
 the evidence. Repository content and artifacts are private administrative data;
 encryption at rest is not claimed.
 
+### Transfer and response bounds
+
+Blob uploads and downloads use the caller's context deadline and cancellation,
+without the metadata request's absolute timeout. Metadata, connection setup and
+TLS/header limits remain bounded. The 4 MiB canonical manifest is transmitted once
+in create requests; compact packages are hydrated before worker validation, while
+legacy packages retain duplicate-manifest consistency checks.
+
+Remote worker lease responses omit the repeated manifest and process command/env
+declarations. Runtime identity, paths, ports, state and digests remain available;
+canonical declarations remain in the create envelope/source CAS and local lease.
+
 ## Operations, uncertainty and recovery
 
 Remote operations cover create, list/show, renew, reconcile, destroy, named tests,
@@ -100,57 +179,12 @@ A different instance cannot adopt a friendly host name while assignments remain.
 Host removal is refused while active, stale, uncertain or unreleased assignments
 remain. Controller restart retains its identity, assignments and journals.
 
-## Limits and acceptance
-
-This slice assumes one trusted administrative domain and one active controller.
-Cloning controller databases does not provide safe failover. HA, live migration,
-split-host leases, transparent endpoint tunnels, secret distribution and implicit
-break-glass recovery are outside this contract.
-
-Acceptance requires actual TLS socket tests with two distinct worker state roots
-and native controller/worker/client execution on Windows, macOS and Linux.
-Same-host worker processes prove protocol isolation, not physical multi-host
-behavior. Cross-builds do not prove native execution. Physical-machine or VM
-coverage, unavailable prerequisites and remaining verification gaps must remain
-explicit in the ExecPlan before completion.
-
-## Review-hardened lifetime and request rules
-
-Remote create uses a stable user/host owner by default; explicit `--owner` or
-`AGENT_ENV_OWNER` takes precedence. Fresh-process retries with the same operation
-ID therefore preserve request identity. Worker `--max-leases` must be between 1
-and the local policy limit of 8.
-
-The controller persists expiry from create acceptance time (default 4 hours,
-maximum 24 hours). A successful renew sets expiry from that renew's acceptance
-time and requested TTL; replay or restart does not extend it again. Expiry queues
-one ordinary, non-force destroy when no operation is active. Offline workers,
-uncertain results and failed cleanup retain capacity until cleanup is proven.
-Host removal also refuses queued or dispatched operations on released leases;
-a removed host cannot receive newly submitted operations.
-
 Remote Android UI and Browser `set-text` are unsupported until a non-persistent
 input channel exists. CLI, controller and worker reject text input before durable
 journaling, including direct protocol submissions. Local `set-text` remains
-available. Permanent registration rejection terminates the worker; transient
-transport, rate-limit and server failures remain retryable.
+available.
 
-Blob uploads and downloads use the caller's context deadline and cancellation,
-without the metadata request's absolute timeout. Metadata, connection setup and
-TLS/header limits remain bounded. The 4 MiB canonical manifest is transmitted once
-in create requests; compact packages are hydrated before worker validation, while
-legacy packages retain duplicate-manifest consistency checks.
-
-Remote worker lease responses omit the repeated manifest and process command/env
-declarations. Runtime identity, paths, ports, state and digests remain available;
-canonical declarations remain in the create envelope/source CAS and local lease.
-
-A different worker incarnation cannot replace an online registration. Genuine
-restart waits for the prior heartbeat to expire; the registration refusal is
-retryable. Previously dispatched operations are not polled by a new incarnation.
-A worker with its original durable journal may recover and report them; a lost
-journal requires explicit recovery while capacity remains held. This does not
-claim to distinguish malicious copies of both pending journals and credentials.
+### Action outcome and evidence retrieval
 
 Read-only logs/artifact results do not change lease phase, including uncertain
 recovery. Successful reconcile may confirm an already released local lease.
@@ -166,6 +200,36 @@ browser action into a failed mutation. Retrieve evidence with a separate artifac
 operation after repairing publication; do not repeat the original action solely
 to retry evidence. Interrupted UI recovery retains its running run and uncertainty.
 
-Worker `--android-slots` accepts 0 through 65, matching the local allocator's
-even console ports 5554 through 5682. Out-of-range values are rejected before
-TLS setup, state creation or registration; zero advertises no Android capacity.
+### Worker restart and registration rejection
+
+Permanent registration rejection terminates the worker; transient
+transport, rate-limit and server failures remain retryable.
+
+A different worker incarnation cannot replace an online registration. Genuine
+restart waits for the prior heartbeat to expire; the registration refusal is
+retryable. Previously dispatched operations are not polled by a new incarnation.
+A worker with its original durable journal may recover and report them; a lost
+journal requires explicit recovery while capacity remains held. This does not
+claim to distinguish malicious copies of both pending journals and credentials.
+
+## Limits and acceptance
+
+This slice assumes one trusted administrative domain and one active controller.
+Cloning controller databases does not provide safe failover. HA, live migration,
+split-host leases, transparent endpoint tunnels, secret distribution and implicit
+break-glass recovery are outside this contract.
+
+Acceptance requires actual TLS socket tests with two distinct worker state roots
+and native controller/worker/client execution on Windows, macOS and Linux.
+Same-host worker processes prove protocol isolation, not physical multi-host
+behavior. Cross-builds do not prove native execution. Physical-machine or VM
+coverage, unavailable prerequisites and remaining verification gaps must remain
+explicit in the ExecPlan before completion.
+
+Real-TLS acceptance passed on Windows, macOS and Linux at `440082b`
+(run 34320519252), with two worker roots on each runner. The fixture covers named
+tests, logs, artifact downloads, renewal and environment isolation as well as
+placement and restart. Physical multi-host/VM coverage remains unverified;
+the agreed acceptance is complete. See [quality](../QUALITY.md) and the
+[completed plan](../exec-plans/completed/multi-host-control-plane.md) for evidence,
+and the [design](../design-docs/multi-host-control-plane.md) for responsibilities.

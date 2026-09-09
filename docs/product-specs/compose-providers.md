@@ -1,17 +1,18 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-08
+last_verified: 2026-09-09
 ---
 
 # Compose providers
 
 [日本語](compose-providers.ja.md)
 
-This is the provider contract delivered by the
-[completed ExecPlan](../exec-plans/completed/compose-provider-podman.md). Real Linux rootless acceptance has passed with Podman 5.4.2 and podman-compose
-1.6.0, including Docker coexistence. Native Windows/macOS/Linux provider CI passed on 4a5de3d (run 34216579481);
-real Podman Machine infrastructure is unavailable.
+Compose runtimes support Docker Compose v2 and standalone podman-compose.
+This contract defines how to select a provider, which engine identity later
+operations must use, and when resources can be deleted. Implementation is
+complete within the documented scope; real Podman Machine forwarding remains
+unverified. See acceptance evidence below.
 
 ## Selection and prerequisites
 
@@ -53,6 +54,8 @@ continue to work without Podman or Python.
 
 ## Identity, endpoints and cleanup
 
+### Recorded engine identity
+
 Each lease owns an explicit Compose project on a recorded engine. Subsequent
 operations must retain that engine even when a default connection changes.
 Re-observation that cannot establish the recorded identity blocks destructive
@@ -60,6 +63,8 @@ cleanup and preserves quarantine evidence. The fingerprint distinguishes support
 local/remote configurations using endpoint, host OS/architecture and storage roots;
 it cannot prove that an engine was not reset in place with identical topology.
 Resource ownership checks remain necessary.
+
+### Dynamic endpoints and reachability
 
 Both providers apply the existing host policy before creating resources. Only the
 selected service closure starts. Fixed host ports remain rejected; dynamic
@@ -73,15 +78,20 @@ is inferred. Applications needing UDP response validation must supply their own
 readiness check. Native fake tests and cross-builds do not establish real Machine
 forwarding support.
 
+### Inventory and resource ownership
+
 Podman inventory uses the recorded native engine to enumerate labelled containers,
 networks and volumes. It does not execute or require podman-compose, including
 when the recorded Compose executable has been removed or moved.
 
 Live container, network and volume observations must prove ownership using
 provider-native identities together with agent-env ownership evidence. A matching
-generated name alone is insufficient. Logs preserve timestamps and service/container
-attribution. Destroy re-inspects resources after provider down and preserves sibling
+generated name alone is insufficient.
+
+Logs preserve timestamps and service/container attribution. Destroy re-inspects resources after provider down and preserves sibling
 leases and unrelated resources.
+
+### Anonymous volume cleanup
 
 Anonymous volumes require explicit cleanup evidence. Before down, app saves
 `Runtime.cleanup_evidence` with the exact native volume fingerprint and proven
@@ -91,6 +101,8 @@ no external or sibling container currently references it. Uncertainty requires
 quarantine. No lease cleanup uses global Podman prune commands.
 
 ## Scope and acceptance
+
+### Supported configuration
 
 Pod creation is disabled and `x-podman*` extensions are rejected recursively at
 any nesting depth. Mount types are limited to `bind`, `volume` and `tmpfs`;
@@ -109,6 +121,14 @@ host access or rereading later ambient environment values.
 Arbitrary provider executables, Docker
 Compose v1, Quadlet/Kubernetes, OCI retention and hostile-code sandboxing are out
 of scope.
+
+### Acceptance evidence
+
+Real Linux rootless acceptance passed with Podman 5.4.2 and podman-compose 1.6.0,
+including Docker coexistence. Native Windows/macOS/Linux provider CI passed on
+4a5de3d (run 34216579481). Real Podman Machine infrastructure was unavailable.
+The [completed ExecPlan](../exec-plans/completed/compose-provider-podman.md) retains
+the exact commands and outcomes.
 
 Acceptance requires unchanged real Docker integration, Linux rootless Podman with
 Podman 5.x and podman-compose >=1.6.0,<2.0.0, two concurrent Podman leases, reachable dynamic

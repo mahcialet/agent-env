@@ -1,9 +1,9 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-08
+last_verified: 2026-09-09
 translation_of: docs/product-specs/flutter-android-runtime.md
-source_sha256: ae01c4492f42343dba5bd1b4da01f72249b7a2d10c59c8201de6559f4b9f0307
+source_sha256: 9d175b4a9fd187d1e1fc1b97693bf351aefa865481076655ebb050536fe29453
 ---
 
 # Flutter Androidアプリケーション
@@ -11,13 +11,15 @@ source_sha256: ae01c4492f42343dba5bd1b4da01f72249b7a2d10c59c8201de6559f4b9f0307
 [English（翻訳元）](flutter-android-runtime.md)
 
 Flutterアプリケーションは、リースが所有する `android-emulator` ランタイムとは別に宣言します。
-既存のComposeのみ、Androidのみのマニフェストは変更不要です。
+ビルド、インストール、reverse 設定、起動まで実装済みです。既存の Compose のみ、Android のみのマニフェストは変更不要です。端末の所有確認は [Android ランタイム仕様](android-emulator.ja.md)、処理の責務分担は[設計](../design-docs/flutter-android-runtime.ja.md)を参照してください。
 
 ## マニフェストの契約
 
+### ビルドとパッケージの宣言
+
 `applications.<名前>` に `type: flutter-android`、既知の `source`、Androidの
 `runtime`、ソース内の相対パス `project_directory`（既定 `.`）を指定します。
-`build.command` は空でないargv配列です。先頭要素でPATH上のFlutter実行ファイル、
+`build.command` は空でない引数配列です。先頭要素でPATH上のFlutter実行ファイル、
 またはホスト上の明示パスを選び、残りはシェルで解釈せずそのまま渡します。
 `build.artifact` はプロジェクト内に収まる、空でない `.apk` 相対パスです。
 任意の `build.timeout` は正の期間で、既定値は `20m` です。
@@ -27,6 +29,8 @@ Flutterアプリケーションは、リースが所有する `android-emulator`
 アンダースコアだけを使えます。デバイスのシェルにそのまま渡せるよう、入れ子クラスの
 `$` を含む名前は意図的に対象外とします。
 
+### コンポーネントの選択と reverse 設定
+
 コンポーネントは `application: <名前>` でアプリを選び、同じAndroidランタイムを指定します。
 任意の `reverse` 配列は1〜65535の `device_port` と
 `endpoint: <コンポーネント>.<エンドポイント>` を指定します。
@@ -35,26 +39,35 @@ Flutterアプリケーションは、リースが所有する `android-emulator`
 同じランタイムを使うアプリ間ではパッケージとデバイスポートを重複させられません。
 別ランタイムや別リースでは再利用できます。
 
+### 出力先とパスの分離
+
 同時に選択する異なるアプリは、同じソース内の正規化したソース相対APK出力パスを共有できません。
 移植性のため比較時は大文字・小文字を区別しません。同じアプリを複数コンポーネントから
 選択することは可能です。
 plan/createはビルドやランタイム操作より前に衝突を拒否します。プロジェクトまたは出力パスを
-分けてください。別々のstackでのみ選択するアプリ間の衝突は、それぞれの利用を妨げません。
+分けてください。別々のスタックでのみ選択するアプリ間の衝突は、それぞれの利用を妨げません。
 プロジェクトから割り当てたソースルートまでのパスにシンボリックリンクは使えません。
 リンク先がソース内でも、ビルド前後の検査で拒否します。
 
 ## ライフサイクルと証拠
+
+### 計画と前提条件
 
 planは選択アプリ、ソース、ランタイム、APKパス、reverse要件を示し、ビルドや
 ランタイム確保は行いません。`agent-env doctor <repository> --runtime flutter-android` による前提条件診断は、
 宣言されたすべてのアプリについて現在のソースcheckout、Flutter実行ファイル、プロジェクトの
 メタデータ、Android AVD前提条件を検査し、Dockerやワークツリー確保を必要としません。
 SDKのインストールやライセンス承諾は行いません。createは固定プロジェクトと選択依存先を別途検査します。
-ビルドは固定コミットの使い捨てワークツリー内で、時間制限付きargv実行により行い、
+
+### ビルドの証拠
+
+ビルドは固定コミットの使い捨てワークツリー内で、時間制限付き引数配列実行により行い、
 秘匿情報を伏せた出力を記録します。インストール前に範囲内の通常APKファイルの
 ハッシュを計算します。コミット、Flutterバージョン、コマンド・パス・出力、APKの
 SHA-256、対象ランタイムとシリアルを証拠として保持します。
 ダイジェストはビルドの識別用であり、再現可能性や破棄後のAPK保存を保証しません。
+
+### インストールと起動完了の条件
 
 createは宣言パッケージが既に存在すればインストール前に拒否します。AVDテンプレート由来の
 パッケージを新APKのダイジェストに誤って結び付けないためです。
@@ -64,28 +77,35 @@ createは宣言パッケージが既に存在すればインストール前に�
 明示アクティビティを起動します。すべて成功して初めてREADYになります。
 その後アプリが前面や実行中である必要はありません。パッケージや必須マッピングの
 欠落はDEGRADED、デバイス識別の曖昧さは隔離の対象です。
+
+### 削除の条件と永続ビルドガード
+
 要求しただけのマッピングは所有を証明しません。設定を確認できないままマッピングが存在する
 場合は、除去せず隔離します。既に存在しなければ、そのままで安全です。
 アプリのreconciliationでは、そのアプリがreverseを宣言していなければ、reverse一覧と
 バックエンドのエンドポイントへの問い合わせを省略します。
 クリーンアップは所有を確認したマッピングだけを除去し、既存のAndroidライフサイクルで
 専用Emulator状態を破棄します。ビルドと失敗の証拠は保持します。
+
 ビルド前に永続的な `build_unconfirmed` ガードを設定し、クラッシュやプロセス・出力終了の
-未確認時には保持します。再起動後の強制destroyを含め、以後のソースcleanupを阻止します。
+未確認時には保持します。再起動後の強制destroyを含め、以後のソースクリーンアップを阻止します。
 終了証拠の調査が必要であり、CLIがこのガードを黙って解除することはありません。
+
 別の永続ガード `build_evidence_incomplete` もビルド前に設定し、必須の両ビルドログ成果物と
 最終リース状態の保存がすべて成功した後だけ解除します。証拠保存の失敗時は隔離を維持し、
-ストア復旧後の通常・強制cleanupでもソースとAPKを保持します。
+ストア復旧後の通常・強制クリーンアップでもソースとAPKを保持します。
 このガードを解除する前に、欠けた証拠を調査・復旧する必要があります。
 
 `destroy --dry-run` は `--force` 併用時も、二つの永続ビルドガードをそれぞれ
 削除を阻止する理由として報告し、リースの変更やリソース削除は行いません。
 
+## 名前付きテストと対象外の機能
+
 名前付きテストの `${android:<runtime>:serial}` は、選択済みで所有を確認した
 Androidランタイムだけを参照します。既存の `${lease_id}` と `${env:NAME}` も使えます。
 Flutter結合テストは別APKを再ビルド・再インストールする場合があるため、その結果だけで
 create時のAPKを実行したとはいえません。この区別は名前付きテストの出力と保存する実行の
-`notes` に記録します。[Android UI 観測](android-ui-observer.ja.md)は、所有 runtime 上の独立した機能です。
+`notes` に記録します。[Android UI 観測](android-ui-observer.ja.md)は、所有ランタイム上の独立した機能です。
 過去 APK の保管・昇格は引き続き後続作業です。
 
 ## 実結合の検証
@@ -93,7 +113,7 @@ create時のAPKを実行したとはいえません。この区別は名前付�
 PATH上のGit・Flutter・Docker Compose、稼働中のDockerエンジン、`ANDROID_HOME` または
 `ANDROID_SDK_ROOT` で設定したAndroid SDK、`AGENT_ENV_ANDROID_TEMPLATE` で選択する
 インストール済み・停止中のAVD、Emulator高速化、Flutter互換のJava/Gradle/Android
-ビルドツールを用意し、次を実行します。
+ビルドツールが前提条件です。
 
 同時に作成する専用AVDコピーとテンプレートのuserdataパーティションを格納できる、一時領域の
 ディスク容量を確保してください。ホストのディスクに空きがあっても、メモリー上の一時領域は
@@ -104,16 +124,16 @@ PATH上のGit・Flutter・Docker Compose、稼働中のDockerエンジン、`AND
 go test -tags=flutterintegration -run TestRealFlutterAndroidBackendLease -v ./internal/cli -timeout=40m
 ```
 
-任意の fixture 専用環境変数 `AGENT_ENV_FLUTTER_OFFLINE_FIXTURE=1` を設定すると、使い捨て project の
-作成時に Flutter 標準の `flutter create --offline` option を追加します。既存の package cache を使用し、
+任意の検証用フィクスチャ専用環境変数 `AGENT_ENV_FLUTTER_OFFLINE_FIXTURE=1` を設定すると、使い捨て project の
+作成時に Flutter 標準の `flutter create --offline` option を追加します。既存のパッケージ cache を使用し、
 cache が不足していれば失敗します。通常の build/runtime の挙動や受け入れ検査は変更しません。
-cache を使った fixture 作成が必要な場合に、host の環境変数として設定します。
+cache を使った検証用フィクスチャ作成が必要な場合に、ホストの環境変数として設定します。
 
 明示選択するこのテストは、使い捨てFlutterプロジェクトと同時に存在する二つのリースを作成します。
 それぞれdebug APKをビルド・インストールし、reverse経由で専用の実Composeバックエンドにつないで
 起動し、FlutterのHTTPリクエストを観測し、所有シリアルを使う名前付き `adb get-state` テストを
 実行します。一方をforceなしで破棄し、他方がREADYでゲストからバックエンドへ新しいHTTPリクエストを送れることを確認してから、
 他方も破棄します。前提条件不足は失敗にします。通常のFlutter/Gradleビルドは承諾済み
-ライセンスの下で宣言された依存を取得する場合がありますが、fixtureはライセンスを承諾しません。
+ライセンスの下で宣言された依存を取得する場合がありますが、検証用フィクスチャはライセンスを承諾しません。
 実Emulatorポートを予約する他のテストとは分けて実行してください。
-cleanup失敗時は証拠とリソースを保持し、明示的な調査を必要とします。
+クリーンアップ失敗時は証拠とリソースを保持し、明示的な調査を必要とします。

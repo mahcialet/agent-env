@@ -1,14 +1,24 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-08
+last_verified: 2026-09-09
 ---
 
 # MVP specification
 
 [日本語](agent-env-mvp.ja.md)
 
-The Compose-backed CLI and repository harness are implemented. This document preserves the original required scope and acceptance criteria; completion of every platform and review gate is tracked from evidence in the [implementation plan](../exec-plans/completed/agent-env-mvp.md). The [CLI contract](cli-contract.md) and [manifest reference](manifest-v1.md) describe current commands, fields, limits, and recovery behavior.
+This document preserves the original MVP requirements and acceptance criteria.
+The Compose-backed CLI and repository harness are implemented; the
+[completed implementation plan](../exec-plans/completed/agent-env-mvp.md) records
+platform and review evidence. The exclusion list below describes the first MVP,
+not today's available capabilities.
+
+For current usage, start with the [CLI contract](cli-contract.md),
+[manifest reference](manifest-v1.md), or [capability index](index.md). Later
+capability specifications extend this baseline without rewriting its history.
+
+## Product purpose
 
 Implement `agent-env`, a reusable CLI that materializes one or more Git repositories at pinned commits into an isolated, disposable, inspectable environment lease.
 
@@ -27,6 +37,8 @@ A repository or workspace describes how it should be started in `.agent-env.yaml
 - make the `agent-env` repository itself legible and operable by coding agents through a repository-native development harness;
 - preserve design intent, progress, validation evidence, and recurring operational lessons in version-controlled artifacts rather than relying on chat history.
 
+### Two separate harnesses
+
 The repository-development harness and the product runtime manifest are distinct:
 
 ```text
@@ -38,6 +50,8 @@ Target-repository runtime harness
   .agent-env.yaml
   -> tells agent-env how to materialize a target repository/workspace
 ```
+
+### Lease workflow
 
 The implemented workflow is:
 
@@ -52,7 +66,9 @@ agent-env destroy <lease-id>
 
 The CLI must hide implementation details such as worktree locations, Compose file locations, Compose project names, transient ports, and resource cleanup order from the calling agent.
 
-The long-term target is broader than Compose:
+### Original delivery boundary
+
+The original long-term target was broader than Compose:
 
 ```text
 repository/workspace definition
@@ -73,7 +89,7 @@ However, the first implementation must produce a reliable Compose-backed vertica
 
 ## Scope
 
-## Must implement
+### Must implement
 
 1. Repository-native harness bootstrap: concise `AGENTS.md`, `ARCHITECTURE.md`, indexed `docs/`, `docs/PLANS.md`, active ExecPlan, initial ADRs, and cross-platform `tools/repoctl`.
 2. Go CLI skeleton and version command.
@@ -95,7 +111,7 @@ However, the first implementation must produce a reliable Compose-backed vertica
 18. `repoctl docs-check`, `generated-check`, and an initial `arch-check` with stable diagnostic codes.
 19. CI that invokes the repository harness and verifies the active plan, document indexes, generated schema, and architecture checks remain coherent.
 
-## Should implement if the vertical slice is stable
+### Should implement if the vertical slice is stable
 
 - `agent-env init` candidate manifest generation for simple Compose repositories.
 - Generated Compose override for dynamic loopback endpoint publishing.
@@ -104,7 +120,7 @@ However, the first implementation must produce a reliable Compose-backed vertica
 - environment descriptor JSON under each lease directory.
 - recording actual image IDs/digests used by running services.
 
-## Explicitly out of scope for the first MVP
+### Explicitly out of scope for the first MVP
 
 - Android Emulator lifecycle;
 - Flutter APK build/install;
@@ -125,7 +141,7 @@ However, the first implementation must produce a reliable Compose-backed vertica
 
 ## Acceptance criteria
 
-## Core behavior
+### Core behavior
 
 1. A fixture repository with `api` and `dashboard` components can validate successfully.
 2. `plan --stack api` resolves only the API dependency closure.
@@ -142,7 +158,7 @@ However, the first implementation must produce a reliable Compose-backed vertica
 13. A named test streams output, records exit code, and stores stdout/stderr evidence.
 14. Multiple local repository sources are resolved and their commit tuple is visible in `show` and JSON output.
 
-## Cross-platform behavior
+### Cross-platform behavior
 
 15. The CLI compiles with `CGO_ENABLED=0` for at least:
 
@@ -160,7 +176,7 @@ However, the first implementation must produce a reliable Compose-backed vertica
 19. Command arguments containing spaces and quotes survive round-trip execution on each OS.
 20. `doctor` reports missing `git`, `docker`, or Compose v2 without a panic or misleading success.
 
-## Documentation and safety
+### Documentation and safety
 
 21. README includes an explicit statement that environment isolation is not a malicious-code sandbox.
 22. `ARCHITECTURE.md` explains the lease/source/runtime/reconciliation boundaries without duplicating low-level implementation details.

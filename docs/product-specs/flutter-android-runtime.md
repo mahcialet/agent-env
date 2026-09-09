@@ -1,7 +1,7 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-08
+last_verified: 2026-09-09
 ---
 
 # Flutter Android applications
@@ -9,9 +9,14 @@ last_verified: 2026-09-08
 [日本語](flutter-android-runtime.ja.md)
 
 A Flutter application is separate from its lease-owned `android-emulator` runtime.
-Existing Compose-only and Android-only manifests require no changes.
+This implemented contract covers build, install, reverse mapping and launch.
+Existing Compose-only and Android-only manifests require no changes. Read the
+[Android runtime contract](android-emulator.md) for device ownership and the
+[design](../design-docs/flutter-android-runtime.md) for orchestration boundaries.
 
 ## Manifest contract
+
+### Build and package declaration
 
 Declare `applications.<name>` with `type: flutter-android`, a known `source`,
 a known Android `runtime`, and source-relative `project_directory` (default `.`).
@@ -26,6 +31,8 @@ Activity segments start with an ASCII letter or underscore and contain only ASCI
 letters, digits and underscores; nested-class `$` names are deliberately excluded
 to keep device-shell commands literal.
 
+### Component selection and reverse mappings
+
 A component selects an application with `application: <name>` and must use the
 same Android runtime. An optional `reverse` array declares `device_port` in
 1..65535 and `endpoint: <component>.<endpoint>`. The endpoint must belong to a
@@ -33,6 +40,8 @@ transitive dependency of every component selecting that application and use TCP
 (the endpoint protocol defaults to TCP). Endpoint references must be unambiguous.
 Packages and device ports must be unique across applications sharing a runtime;
 separate runtimes and separate leases may reuse them.
+
+### Output and path isolation
 
 Selected applications must not share the same source and normalized source-relative
 APK output path (compared case-insensitively for portability). Several components
@@ -44,6 +53,8 @@ inside the source; this is checked before and after the build.
 
 ## Lifecycle and evidence
 
+### Planning and prerequisites
+
 Planning lists selected applications, source, runtime, build artifact and reverse
 requirements without building or allocating runtimes. Prerequisite diagnostics
 are available through `agent-env doctor <repository> --runtime flutter-android`.
@@ -51,6 +62,9 @@ They inspect every declared application in its current source checkout, check th
 selected Flutter executable, project metadata and Android AVD prerequisites, and
 require no Docker or worktree allocation. They do not install SDKs or accept
 licenses. Create independently validates pinned projects and selected dependencies.
+
+### Build evidence
+
 Builds run in pinned disposable source worktrees,
 with bounded argv execution and captured, redacted output. A regular confined
 APK is hashed before installation. Evidence retains source commit, Flutter
@@ -58,8 +72,7 @@ version, build command/path/output, APK SHA-256 and target runtime/serial.
 A digest identifies the installed build; it does not prove reproducibility or
 promise retention of the APK after destruction.
 
-Application reconciliation skips reverse-mapping and backend-endpoint queries
-when that application declares no reverse mappings.
+### Installation and readiness
 
 Creation rejects an already-installed declared package before installing, so a
 package inherited from an AVD template cannot be attributed to the new APK digest.
@@ -69,15 +82,23 @@ resolves actual selected Compose host endpoints, requires loopback TCP addresses
 mappings, then launches the explicit activity. READY requires all these steps.
 The application need not remain foreground or running afterward. Missing packages
 or required mappings degrade a lease; ambiguous device identity quarantines it.
+
+Application reconciliation skips reverse-mapping and backend-endpoint queries
+when that application declares no reverse mappings.
+
+### Cleanup and durable build barriers
+
 A requested mapping is not proven owned: if establishment was never confirmed
 and a mapping exists, cleanup quarantines it without removal. An absent mapping
 is safe to leave absent. Cleanup removes only confirmed owned mappings and
 destroys private Emulator state
 through the existing Android lifecycle. Build and failure evidence remain available.
+
 A durable `build_unconfirmed` guard is set before the build and remains after a
 crash or unconfirmed process/output termination. It blocks subsequent source
 cleanup, including forced destroy after restart. Investigate termination evidence;
 the CLI does not silently clear this guard.
+
 A separate durable `build_evidence_incomplete` guard is set before the build and
 cleared only after both required build-log artifacts and final lease state are
 saved successfully. Failed evidence persistence keeps the lease quarantined and
@@ -86,6 +107,8 @@ recovers. Investigate and recover the missing evidence before releasing this gua
 
 `destroy --dry-run`, including with `--force`, reports either durable build guard
 as a cleanup blocker without changing the lease or removing resources.
+
+## Named tests and scope limits
 
 Named tests may use `${android:<runtime>:serial}` only for a selected, confirmed
 lease-owned Android runtime. Existing `${lease_id}` and `${env:NAME}` remain
@@ -96,10 +119,10 @@ owned runtime. Historical artifact promotion remains follow-up work.
 
 ## Real integration validation
 
-With Git, Flutter and Docker Compose available on PATH, a running Docker engine,
+Prerequisites are Git, Flutter and Docker Compose on PATH, a running Docker engine,
 an Android SDK configured through `ANDROID_HOME` or `ANDROID_SDK_ROOT`, a stopped
 installed AVD selected by `AGENT_ENV_ANDROID_TEMPLATE`, working Emulator
-acceleration, and a Flutter-compatible Java/Gradle/Android build toolchain, run:
+acceleration, and a Flutter-compatible Java/Gradle/Android build toolchain.
 
 Provide enough on-disk temporary storage for concurrent private AVD copies and
 the template's userdata partitions. A memory-backed temporary directory may be

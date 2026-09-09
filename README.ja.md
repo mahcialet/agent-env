@@ -3,48 +3,124 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: README.md
-source_sha256: d9051df4713ee59e1330ade0827c4b693aed26d91ad3f47f9ce2bf07cf538c44
+source_sha256: e0a6b0816c263a90f41ba0ea8544e6bcfccc5122ddfaa4b17ef228d32528d2b7
 ---
-
-[英語版（翻訳元）](README.md)
 
 # agent-env
 
-固定したローカルGitコミットと、DockerまたはPodmanを使う隔離されたComposeプロジェクト、専用Android Emulator、foregroundのnative process runtimeから、使い捨ての環境リースを作成します。stackを選び、稼働状態を確認し、証拠を保持する名前付きテストを実行して、最後にリソースを片付けます。複数リポジトリと同時に存在する複数リースに対応します。
+[English](README.md)
 
-**環境の隔離は、悪意あるコードを封じ込めるsandboxではありません。** Dockerfile、Compose設定、テスト、パッケージスクリプトは、リポジトリが制御するコードを実行します。信頼できる、または管理下にあるリポジトリを使用してください。任意の信頼できないpull requestには、より強い外側の境界が必要です。
+agent-envは、commitを固定したGitソースから、開発やテスト用の使い捨て環境を作成します。
+環境の管理単位を**lease**と呼びます。leaseは独立したruntimeリソースを所有し、テストの証拠を
+保持します。元のcheckout内のfileを編集せずに、状態の確認と後片付けを行えます。
+複数のリポジトリを使う場合や、複数のleaseを同時に動かす場合にも対応しています。
 
-## スタンドアロンアーカイブ
+runtimeにはComposeサービス、専用Android Emulator、フォアグラウンドのnative processを
+選べます。Flutterアプリ、Android UIの観測、ブラウザ自動操作は、それらのruntime上で動作します。
+既定はローカル実行です。任意のcontrollerを使い、登録済みworkerにlease全体を配置することもできます。
 
-GitHub Releases から OS と CPU に合うアーカイブを取得し、バージョン付き
-ディレクトリを展開します。`agent-env`（Windows では `agent-env.exe`）を直接実行するか、
-そのディレクトリを PATH に追加します。`agent-env version --output json` はリリース
-バージョン、ソースコミット、ビルドに使った Go のバージョン、プラットフォームを表示します。
-実行に Go や checkout は不要です。ソースからのビルドには Go が必要です。
-リリースの公開状況とネイティブ検証の証拠は
-[リリース計画](docs/exec-plans/completed/standalone-release-finalization.ja.md)で管理します。
+**環境の分離は、悪意あるコードを閉じ込めるsandboxではありません。** Dockerfile、Compose設定、
+テスト、package scriptは対象リポジトリが指定したコードを実行します。信頼できる、または管理下に
+あるリポジトリを使ってください。任意の未信頼PRを実行するには、外側により強い分離境界が必要です。
+詳しくは[セキュリティ方針](docs/SECURITY.ja.md)を参照してください。
 
-| 機能 | 外部の前提条件 |
-| --- | --- |
-| version、help、基本診断 | なし。Go、シェル、Docker、SDK、Flutter、Java は不要 |
-| ソース解決と管理対象 worktree | Git と信頼できるローカルリポジトリ |
-| Docker Compose リース（既定） | Git、Docker daemon、Compose v2 plugin |
-| Podman Compose リース | Git、Podman 5.x、独立したpodman-compose >=1.6.0,<2.0.0。5.4.2 / 1.6.0でLinux rootless受け入れを検証済み |
-| 常駐processリース | Gitと宣言したnative実行ファイル。container daemonやSDKは不要 |
-| Browser/CDP自動操作 | process leaseと、直接起動できる互換headless Chromium系browser。同梱しない |
-| Android Emulator リース | Git、Android SDK、Emulator、adb、インストール済み system image/AVD テンプレート、ホストのアクセラレーション |
-| Flutter Android アプリ | Android の前提条件に加え、Flutter と互換性のある Java/Android ビルドツールチェーン |
-| Android UI 観測 | Android リースと別途ビルドした任意の UI companion。そのビルドには SDK/JDK と Go が必要 |
-| 複数 host の controller/client/worker role | 事前に用意した TLS 証明書、source 転送用 Git、選択 runtime 用の worker ツール |
-| リリースの作成 | Git と対応する Go ツールチェーン。リリース CI は Go 1.27.1 に固定 |
+## 配布archiveから使う
 
-機能ごとの外部ツールと任意の UI companion はアーカイブに同梱しません。Pythonはagent-env coreの依存関係ではありません。
-任意の前提ツールがなくても version/help は実行できます。
-[配布仕様](docs/product-specs/standalone-distribution.ja.md)を参照してください。
+GitHub ReleasesからOSとarchitectureに合うarchiveを取得し、バージョン名付きディレクトリを
+展開します。中の`agent-env`（Windowsでは`agent-env.exe`）を直接実行するか、そのディレクトリを
+PATHへ追加してください。
 
-## ビルドと検証
+```text
+agent-env version --output json
+agent-env --help
+```
 
-Go 1.26.xまたは1.27.xを使用します。runtime操作にはGitに加え、選択したruntimeの前提条件が必要です。コンテナーならCompose v2を備えたDocker、またはpodman-composeを備えたPodman、Androidならインストール済みのAndroid SDK、Emulator、adb、停止したAVDテンプレートを、process runtimeなら宣言したnative実行ファイルを用意します。リポジトリharnessの通常の単体検査にはBash、Make、PowerShell、Dockerは不要です。
+version出力ではrelease version、ソースcommit、ビルド時のGo version、platformを確認できます。
+実行にGoやリポジトリのcheckoutは不要です。外部runtimeツールと任意のAndroid UI companionは
+同梱していません。任意のツールがなくてもversionとhelpは使えます。Pythonもコアの依存ではありません。
+
+archiveの内容とrelease条件は[配布仕様](docs/product-specs/standalone-distribution.ja.md)、
+releaseの提供状況とnative検証の記録は[完了済みrelease Plan](docs/exec-plans/completed/standalone-release-finalization.ja.md)
+で確認できます。
+
+## 使いたい機能を選ぶ
+
+| 目的 | 必要な外部ツール・環境 | 詳細と次の手順 |
+| --- | --- | --- |
+| ソースを解決し、管理対象worktreeを作る | Gitと信頼できるローカルリポジトリ | [manifest仕様](docs/product-specs/manifest-v1.ja.md) |
+| コンテナサービスを動かす | Git、Docker daemonとCompose v2。またはPodman 5.xとstandalone podman-compose >=1.6.0,<2.0.0 | [Compose provider](docs/product-specs/compose-providers.ja.md) |
+| native serverを継続して動かす | Gitと宣言したnative実行ファイル。daemonやSDKは不要 | [永続process](docs/product-specs/persistent-process-runtime.ja.md) |
+| ブラウザを観測・操作する | process leaseと、直接実行できる対応headless Chromium系ブラウザ | [Browser/CDP操作](docs/product-specs/browser-cdp-automation.ja.md) |
+| Android Emulatorを動かす | Git、Android SDK、Emulator、adb、導入済みsystem image、停止中のAVD template、ホストの仮想化支援 | [Android Emulator lease](docs/product-specs/android-emulator.ja.md) |
+| Flutter Androidアプリをビルド・起動する | Androidの前提条件、Flutter、互換性のあるJava/Android build toolchain | [Flutterアプリ](docs/product-specs/flutter-android-runtime.ja.md) |
+| Android UIを観測・操作する | Android leaseと任意のUI companion。companionのビルドにはSDK/JDKとGo | [UIの準備・コマンド・復旧](docs/product-specs/android-ui-observer.ja.md) |
+| 別ホストでleaseを動かす | 事前に用意したTLS証明書、ソース転送用Git、選択したruntimeに必要なworker側のツール | [controller・client・workerの準備](docs/product-specs/multi-host-control-plane.ja.md) |
+
+コンテナの既定providerはDocker Composeです。Podmanは明示的に選び、選択結果をleaseに固定します。
+自動fallbackは行いません。processやAndroidだけのstackにDockerは不要です。ブラウザ操作は宣言済み
+processを使い、別のブラウザを起動しません。UI観測も既存の所有Emulatorを使うため、runtimeを新規作成
+したりmanifestを変更したりしません。
+
+各仕様では、実装済みの挙動、対象外の機能、検証済み環境を区別しています。未検証環境を含む
+受け入れ証拠の詳細は[品質方針](docs/QUALITY.ja.md)と[移植性](docs/PORTABILITY.ja.md)を参照してください。
+
+## 信頼できるリポジトリで使う
+
+`.agent-env.yaml`にsources、runtimes、任意のapplications、components、stacks、名前付きのargvテストを
+記述します。[manifest仕様](docs/product-specs/manifest-v1.ja.md)に完全な例があります。
+リポジトリ直下にCompose fileが1つだけある場合、`init`は既存fileを上書きせずmanifest候補を作れます。
+実行前に、選択されたサービスとホストのポリシーを確認してください。
+
+実行ファイルをPATHに置いたら、次のリポジトリ、stack、テスト、lease IDを自分の値に置き換えます。
+
+```text
+agent-env doctor ../trusted-repo
+agent-env validate ../trusted-repo
+agent-env plan ../trusted-repo --stack api
+agent-env create ../trusted-repo --stack api --ref HEAD
+agent-env list --output json
+agent-env show <lease-id>
+agent-env capabilities <lease-id>
+agent-env test <lease-id> api-smoke
+agent-env destroy <lease-id> --dry-run
+agent-env destroy <lease-id>
+```
+
+`plan`はcommitを解決しますが、リソースは確保しません。`plan`と`create`の`--manifest <path>`で
+信頼できる制御用manifestを明示できます。runtimeのfileは引き続き固定したソースから取得します。
+複数リポジトリのrefを上書きする場合は`--source alias=ref`を使います。componentのendpointにより、
+元のCompose fileを編集せずloopbackへ動的に公開できます。コマンドの挙動と復旧は
+[CLI仕様](docs/product-specs/cli-contract.ja.md)を参照してください。
+
+名前付きテストはargv配列で実行し、cleanup後もstdout、stderr、終了status、宣言したartifactを保持します。
+UI・ブラウザのsnapshotに基づく操作には、最新で一意に特定できる対象が必要です。入力を自動再実行することは
+ありません。保持するテキストを秘匿化しても、PNGには秘密情報が写り得ます。remoteのUI/browser `set-text`は
+永続化して送信する前に拒否されます。テキスト入力にはlocal modeを使ってください。
+
+## 状態の保存と制約
+
+状態は対象リポジトリの外へ保存します。既定の保存先はLinuxのXDG state、macOSのApplication Support、
+WindowsのLOCALAPPDATAです。`AGENT_ENV_HOME`に絶対パスを設定して変更できます。保存先にはSQLiteの
+`state.db`、管理対象worktree、正規化したruntime設定、artifact、診断用の
+`leases/<id>/environment.json`があります。永続状態の判断基準はSQLiteであり、診断用descriptorは
+その代わりにはなりません。
+
+既定TTLは4時間、最大TTLは24時間、同時に保持する予約の上限は8です。隔離中のleaseも予約を保持します。
+ホストポリシーを設定するfileはまだ公開していません。Composeのリソースはproject内に限定する必要があります。
+固定container名、privileged mode、host networking、Docker socket mount、安全でない外部bindは拒否します。
+
+`gc`は期限切れ候補のpreviewです。削除を要求するには`gc --apply`を明示します。追跡fileの変更、
+不明な所有権、未完了のcleanupがあるleaseは隔離します。`destroy --force`で追跡fileの変更を破棄する場合も、
+先にdiffの証拠を保持します。所有権の不一致を無視することはできません。
+
+remote modeのendpointはworker上にあり、clientへのtunnelはありません。workerは操作を順番に処理しますが、
+作成済みleaseは並行稼働できます。同じleaseで操作が実行中の場合は、テスト中のdestroyも含めて別の操作を拒否します。
+localのforceやGCでcontroller管理を迂回することはできません。準備、ソース転送、登録、artifact、対応操作は
+[remote仕様](docs/product-specs/multi-host-control-plane.ja.md)を参照してください。
+
+## ソースからのビルドと検証
+
+開発にはGo 1.26.xまたは1.27.xを使います。通常のunit検査にBash、Make、PowerShell、Dockerは不要です。
 
 ```text
 go run ./tools/repoctl doctor
@@ -53,151 +129,10 @@ go build ./cmd/agent-env
 go run ./tools/repoctl test-integration
 ```
 
-最後のコマンドは、Linux上で実際のDocker fixtureを明示的に実行します。Windows/macOS/Linuxのネイティブ単体CIと、CGOを無効にした5つのビルド対象は、Docker統合の検証範囲とは別です。完了した受け入れ確認と検証証拠は、[実装計画](docs/exec-plans/completed/agent-env-mvp.md)、[品質ガイド](docs/QUALITY.ja.md)、[移植性の注意事項](docs/PORTABILITY.ja.md)に記録しています。
+最後のコマンドは、Linuxで実Docker fixtureを明示的に実行します。native OSテストやCGO無効のcross-buildは
+別の検証です。このcheckoutからなら、使用例の`agent-env`を`go run ./cmd/agent-env`に置き換えても実行できます。
+releaseの作成にはGitとGoが必要です。release CIはGo 1.27.1に固定しています。
 
-## 信頼できるリポジトリを使う
-
-対象の`.agent-env.yaml`に、sources、runtimes、任意のapplications、components、stacks、名前付きargvテストを宣言します。[マニフェストリファレンス](docs/product-specs/manifest-v1.ja.md)に完全な例があります。ルートにComposeファイルがちょうど1つある単純なリポジトリでは、`init`が既存ファイルを上書きせずに候補マニフェストを作成します。実行前に、選択されたサービスとホストポリシーを確認してください。
-
-次のコマンドは、このcheckoutから実行します。リポジトリパス、stack、名前付きテストは自分の値に置き換えてください。
-
-```text
-go run ./cmd/agent-env doctor ../trusted-repo
-go run ./cmd/agent-env validate ../trusted-repo
-go run ./cmd/agent-env plan ../trusted-repo --stack api
-go run ./cmd/agent-env create ../trusted-repo --stack api --ref HEAD
-go run ./cmd/agent-env list --output json
-go run ./cmd/agent-env show <lease-id>
-go run ./cmd/agent-env capabilities <lease-id>
-go run ./cmd/agent-env test <lease-id> api-smoke
-go run ./cmd/agent-env destroy <lease-id> --dry-run
-go run ./cmd/agent-env destroy <lease-id>
-```
-
-実行ファイルをビルドしてPATHに追加すれば、`agent-env`（Windowsでは`agent-env.exe`）として使用できます。`plan`はリソースを割り当てずにコミットを解決します。`plan`と`create`は`--manifest <path>`で信頼する制御用マニフェストを明示的に選択できます。runtimeのファイルは引き続き各固定ソースから取得します。複数リポジトリのref上書きには`--source alias=ref`を使います。
-
-コンポーネントのendpointを宣言すると、ソースのComposeファイルを編集せずに、保存される実行設定へ動的なloopbackホスト公開設定を生成できます。Composeリソースはプロジェクト単位に限定され、mountはホストポリシーを満たす必要があります。固定コンテナー名、privileged mode、host networking、Docker socketのmount、安全でない外部bindは拒否されます。
-
-名前付きテストはargv配列を使い、stdout、stderr、終了ステータス、宣言した成果物はcleanup後も保持されます。[CLI契約](docs/product-specs/cli-contract.ja.md)と[セキュリティポリシー](docs/SECURITY.ja.md)を参照してください。
-
-`gc`は期限切れ候補をプレビューし、削除を要求するのは`gc --apply`だけです。追跡対象の変更、所有権の不確定、不完全なcleanupがあるリースはquarantinedになります。明示的な`destroy --force`は、追跡対象の編集を破棄する前に差分証拠を保持し、所有権の不一致を上書きすることはありません。
-
-Compose runtimeには`provider: docker-compose`（省略時の既定値）または
-`provider: podman-compose`を指定できます。選択はleaseごとに固定し、ツールがなくても
-fallbackしません。`doctor --provider podman-compose`はそのproviderを検査し、
-`doctor <repository>`はmanifestで宣言したproviderを検査します。Podman 5.4.2と
-podman-compose 1.6.0で、並行leaseとDocker共存を含む実Linux rootless受け入れが
-成功しました。Windows/macOS/Linuxのnative provider CIは4a5de3d（run 34216579481）で成功で、実機のPodman Machine環境はありません。[provider契約](docs/product-specs/compose-providers.ja.md)を
-参照してください。
-
-## 常駐processリース
-
-`type: process`に固定`source`、`working_directory`、native argvの`command`を宣言します。
-任意の名前付きTCP portと`${runtime_dir}`を使うと、Composeなしでlocal serverや専用profile
-状態を管理できます。process診断には`doctor --runtime process`を使います。
-foreground processはcreate CLI終了後も存続し、readiness、show/logs、保守的destroyに
-参加します。予期しない終了でも再起動しません。
-[process契約](docs/product-specs/persistent-process-runtime.ja.md)を参照してください。
-native integration受け入れはWindows・macOS・Linuxで成功しました。
-[完了済みExecPlan](docs/exec-plans/completed/persistent-process-runtime.ja.md)を参照してください。
-
-## Android Emulatorリース
-
-`type: android-emulator`、`source: app`、`avd: <installed-template>`を持つruntimeを宣言し、Compose servicesを持たないコンポーネントから参照します。SDKの前提条件は`doctor --runtime android-emulator`で、稼働状態は`doctor <lease-id>`で確認します。AndroidのみのstackにはDockerは不要です。各リースは専用の書き込み可能なAVD状態と予約済みのconsole/ADBポートペアを持ち、`show`でserialを確認できます。完全なマニフェストと復旧ルールは[Android契約](docs/product-specs/android-emulator.ja.md)を参照してください。
-
-[Flutter Androidアプリケーション](docs/product-specs/flutter-android-runtime.ja.md)は、固定ソースからのAPKビルド、所有Emulatorへのインストール、バックエンドへのreverse設定、Activity起動に対応します。任意の `applications` を宣言し、コンポーネントから選択します。`doctor <repository> --runtime flutter-android` で設定済みFlutter実行ファイル、プロジェクト、Androidの前提条件を確認できます。互換性のあるFlutter・Java・Androidビルドツールチェーンが必要です。
-
-## Android UI を観測する
-
-[Android UI observer](docs/product-specs/android-ui-observer.ja.md) は、所有する Emulator の
-accessibility snapshot と PNG を取得し、古い参照を拒否する意味情報に基づく tap、Unicode の
-text 置換、現在の PID に範囲を限定した logcat 収集を行います。対象アプリに test 依存を追加せず、
-Flutter semantics と native Android UI を扱えます。UI 観測で runtime を作成したり、manifest を変更したりしません。
-
-インストール済み SDK/JDK を使って任意の companion を一度 build し、host の環境変数設定で
-`AGENT_ENV_UI_HELPER` に生成先 directory を指定します。出力 directory は新規である必要があります。
-例で指定する version は事前にインストールされている必要があり、builder は tool のインストールや
-license 受諾を行いません。通常の Go build や関係のないコマンドに companion や JDK は不要です。
-
-```text
-go run ./tools/uihelper --sdk <sdk> --jdk <jdk> --platform android-35 --build-tools 36.0.0 --output <new-directory>
-go run ./cmd/agent-env ui snapshot <lease-id> --application mobile-app
-go run ./cmd/agent-env ui screenshot <lease-id> --application mobile-app
-go run ./cmd/agent-env ui tap <lease-id> --snapshot <snapshot-id> --node n7
-go run ./cmd/agent-env ui set-text <lease-id> --snapshot <snapshot-id> --node n3 --text <replacement>
-go run ./cmd/agent-env ui logcat <lease-id> --application mobile-app --since 30s
-```
-
-意味情報に基づく参照は一つの snapshot に属します。対象が変化した場合や曖昧な場合は新しい snapshot が必要で、
-入力を自動再実行することはありません。text 置換には、focus のある編集可能な node と読み戻しの一致確認が必要です。
-保持する text 証拠では編集可能な値を伏せますが、PNG のピクセルには秘密情報が含まれ得ます。
-helper run が中断した場合、cleanup 前に `ui recover <lease-id> --run <run-id>` が必要になる場合があります。
-復旧では失敗または結果不確実という outcome を保持し、入力は再試行しません。
-上限、状態の制約、navigation、wait、復旧の詳細は仕様を参照してください。
-
-## 状態と制限
-
-状態は対象リポジトリの外に保存されます。`AGENT_ENV_HOME`に絶対パスを指定すると、OS標準の保存先（LinuxのXDG state、macOSのApplication Support、WindowsのLOCALAPPDATA）を上書きできます。このhomeには`state.db`、管理対象worktree、正規化したruntime設定、リースの成果物、診断用の`leases/<id>/environment.json`記述子が入ります。リース状態の判断では、診断用記述子よりSQLiteの記録を優先します。既定のTTLは4時間、最大TTLは24時間、有効な予約数の上限は8です。quarantinedのリースは予約を保持します。ホストポリシー設定ファイルはまだ公開していません。
-
-iOS、リモートGitキャッシュ、registry promotion、書き込み可能な修正リースは[ロードマップ項目](docs/roadmap.ja.md)です。
-
-貢献者は[AGENTS.md](AGENTS.md)と[文書索引](docs/index.ja.md)から始めてください。既存の[MITライセンス](LICENSE)を適用します。
-
-## Browser/CDP自動操作
-
-`browsers.<name>`からprocess runtimeと名前付きTCP CDP portを明示的に参照します。
-manifestにheadless、automation、loopback debugging、専用profileの正確なflagを宣言し、
-browser層は別processを起動しません。`browser pages`、`snapshot`、`screenshot`、`navigate`と、
-snapshotに限定したsemantic入力を使えます。console/network captureには上限があり、
-profileとartifactはprivateです。PNG pixelの自動redactionはしません。
-完全なmanifestとコマンドは[browser契約](docs/product-specs/browser-cdp-automation.ja.md)、
-native受け入れ状況は[完了plan](docs/exec-plans/completed/browser-cdp-automation.ja.md)を参照してください。
-Chromeは外部の前提ツールであり、同梱しません。
-
-## 明示的な remote モード
-
-任意の [複数 host control plane](docs/product-specs/multi-host-control-plane.ja.md) は、
-lease 全体を登録済み worker 一つに配置します。既定の local モードに controller は不要です。
-CA、controller の DNS 名に有効な server 証明書、別々の client/worker 証明書を事前に用意します。
-controller、各 worker、client ごとに、host の環境変数設定で別々の絶対 path の `AGENT_ENV_HOME` を
-指定してください。enrollment は controller の状態 root に対する offline の管理コマンドです。
-controller 起動前にその状態 root で実行します。
-
-```text
-agent-env control-plane enroll --certificate client.pem --role client
-agent-env control-plane enroll --certificate worker.pem --role worker --host-id build-a
-agent-env --tls-ca ca.pem --tls-cert controller.pem --tls-key controller.key control-plane serve --listen 0.0.0.0:9443
-```
-
-worker では専用の状態 root と runtime の前提環境を用意して実行します。
-
-```text
-agent-env --controller https://controller.example:9443 --tls-ca ca.pem --tls-cert worker.pem --tls-key worker.key worker serve --host-id build-a --max-leases 2
-```
-
-client では controller URL、証明書、commit 済み repository を自分のものに置き換えます。
-
-```text
-agent-env --controller https://controller.example:9443 --tls-ca ca.pem --tls-cert client.pem --tls-key client.key hosts list
-agent-env --controller https://controller.example:9443 --tls-ca ca.pem --tls-cert client.pem --tls-key client.key create ../trusted-repo --stack api --host build-a
-agent-env --controller https://controller.example:9443 --tls-ca ca.pem --tls-cert client.pem --tls-key client.key artifact-download <digest> --destination evidence.json
-```
-
-list/show、renew、reconcile、destroy、名前付き test、対応する UI/browser 操作にも同じ接続 flag を使います。
-artifact digest は登録済みの remote 証拠から取得します。download 時に digest を検証し、保存先には新しいファイルを
-指定します。`hosts drain <host-id>` は新規配置を止め、`hosts undrain <host-id>` は配置対象に戻します。
-commit 済み source は検証済み Git bundle で転送し、client の path や暗黙の環境変数の秘密値を worker 入力にしません。
-loopback endpoint は worker を指し、client への tunnel はありません。
-
-worker は操作を直列に実行しますが、作成済み lease は並行して稼働できます。
-同じ lease に対する二つ目の active 操作は、remote test 中の destroy も含めて拒否します。
-remote の実行中操作の cancellation は未実装です。local force/GC で controller の管理を回避できません。
-実 TLS の受け入れ検証は、各 runner の二つの worker root を使い、`440082b` の Windows・macOS・Linux で
-成功しました（run 34320519252）。配置・再起動に加え、名前付き test、log、artifact download、
-期限更新、環境変数の分離を検証しています。物理的な複数 host・VM の検証は未実施であり、
-合意した範囲の受け入れ検証は完了しました。[品質](docs/QUALITY.ja.md) と
-[完了Plan](docs/exec-plans/completed/multi-host-control-plane.ja.md) を参照してください。
-
-remote UI/Browserの`set-text`は現在、永続的な送信処理に入る前に拒否します。text入力はlocal
-modeを使用してください。その他のremote操作と期限の規則は
-[multi-hostの製品仕様](docs/product-specs/multi-host-control-plane.ja.md)を参照してください。
+開発の入口は[AGENTS.md](AGENTS.ja.md)です。目的別の資料は[文書index](docs/index.ja.md)、
+iOS、remote Git cache、image promotion、変更を残すfix leaseなどの未実装事項は
+[roadmap](docs/roadmap.ja.md)にあります。ライセンスは既存の[MIT license](LICENSE)です。

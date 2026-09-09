@@ -1,16 +1,24 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-08
+last_verified: 2026-09-09
 ---
 
 # Android Emulator leases
 
 [日本語](android-emulator.ja.md)
 
-An `android-emulator` runtime owns one Emulator and private writable AVD state,
-independently of Flutter. APK installation, builds, adb reverse, UI interaction,
-screenshots, logcat, physical devices and remote hosts remain outside this scope.
+Use `android-emulator` to allocate a lease-owned Emulator with private writable
+AVD state. This lifecycle is implemented independently of Flutter. This document
+defines configuration, readiness and safe cleanup.
+
+APK installation, builds, adb reverse, UI interaction, screenshots and logcat
+belong to the separate [Flutter](flutter-android-runtime.md) and
+[Android UI](android-ui-observer.md) contracts. Physical devices and remote-host
+coordination are outside this runtime contract; remote placement has its own
+[multi-host contract](multi-host-control-plane.md).
+
+## Manifest and isolation
 
 ```yaml
 version: 1
@@ -26,16 +34,21 @@ stacks:
 
 `source` identifies a pinned managed source. `avd` selects an existing local AVD
 template. Android runtimes reject Compose files, project directories, services
-and endpoints. Compose and Android may coexist in one stack. Components sharing
+and endpoints.
+
+Compose and Android may coexist in one stack. Components sharing
 one Android runtime share that lease's Emulator; different leases always receive
-distinct writable state, AVD identities, console/ADB ports and serials. Android
-runtime names must also be distinct under case folding on every OS. Generated
+distinct writable state, AVD identities, console/ADB ports and serials.
+
+Android runtime names must also be distinct under case folding on every OS. Generated
 runtime directories must not overlap any selected template or system-image tree,
 including aliases through existing symlinks.
 
+## Planning and startup prerequisites
+
 `plan . --stack android-runtime --output json` describes the requirement without
 SDK discovery, reservations or runtime effects. `create` validates runnable SDK tools, host acceleration, and AVD
-before reservation; Android-only stacks do not require Docker. Missing tools or
+before reservation. Android-only stacks do not require Docker. Missing tools or
 templates are prerequisite failures (exit status 3). Installed image ABI metadata
 (`source.properties`) must identify an accelerated native-host-compatible image;
 template ABI/CPU settings must agree. Existing shared ADB servers are checked
@@ -45,6 +58,8 @@ server must be compatible with the selected SDK. Creation starts an absent serve
 separately from Emulator containment; malformed or incompatible existing servers
 are refused without automatic replacement. Shared-server diagnostics are retained,
 and destroying a lease never stops that shared SDK service.
+
+## Observation and logs
 
 `runtimes[].android` records the template, SDK/system image, private paths, unique
 AVD name, console/ADB ports, serial, native process birth identity and state.
@@ -56,16 +71,34 @@ Emulator and shared-ADB stdout/stderr for active or released leases, with
 `--component` selection and secret redaction; these are process logs, not logcat. Show/list/reconcile observe
 the live device; confirmed manual termination degrades an active lease.
 
+## Failure and safe cleanup
+
 Boot failure compensates in reverse order. A runtime cleanup failure retains its
 evidence and reservation while independent runtimes are still cleaned up.
-Sources remain until all runtime cleanup is confirmed. Operation cancellation or
+Sources remain until all runtime cleanup is confirmed.
+
+Operation cancellation or
 loss of the registry fence stops further effects. Destroy verifies the unique AVD name
 and requests stop on the same authenticated console connection, then confirms
 termination before deleting private writable state. Ambiguous process/AVD
 identity, changed ownership evidence, unsafe paths or incomplete cleanup
 quarantine the lease and retain reservations. Force never bypasses this barrier.
 Repeated destroy cannot affect a new user of released ports. Template and sibling
-state are never deleted. An externally occupied reserved port fails creation with compensation; allocation does not silently move to a different port. Global adb shutdown or Emulator pruning is forbidden.
+state are never deleted.
+
+An externally occupied reserved port fails creation with compensation; allocation does not silently move to a different port. Global adb shutdown or Emulator pruning is forbidden.
+
+## Private Emulator helper state
+
+Emulator child processes receive private temporary and netsim discovery paths
+inside their lease's Android state. This isolates helper daemons across leases
+without changing the host environment or the shared ADB-server policy. Each
+instance requests a dynamic HCI port; the auxiliary netsim web UI is disabled to
+avoid its fixed host port. Radio simulation and guest networking remain enabled.
+Private helper processes are still part of the existing native process ownership
+and confirmed-cleanup checks; a surviving ambiguous group remains quarantined.
+
+## Validation evidence
 
 SDK images and compatible host acceleration are external prerequisites. Native
 fake-adapter and process tests cover Windows/macOS/Linux; actual Emulator evidence
@@ -89,13 +122,3 @@ real SQLite/app orchestration and a synthetic source provider, checks sibling
 survival and manual termination, then removes only confirmed owned resources.
 Uncertain cleanup retains the temporary state path printed by the test for recovery.
 It does not replace the separate Git/Compose integration fixtures.
-
-## Private Emulator helper state
-
-Emulator child processes receive private temporary and netsim discovery paths
-inside their lease's Android state. This isolates helper daemons across leases
-without changing the host environment or the shared ADB-server policy. Each
-instance requests a dynamic HCI port; the auxiliary netsim web UI is disabled to
-avoid its fixed host port. Radio simulation and guest networking remain enabled.
-Private helper processes are still part of the existing native process ownership
-and confirmed-cleanup checks; a surviving ambiguous group remains quarantined.

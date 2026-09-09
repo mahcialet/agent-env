@@ -1362,3 +1362,7 @@ separately from the document authorship.
   `3f72a24b1767009cd66a0664ee62ba3359d9518599fb27d3d80fa26c7bfa864a`.
 - No source, tests, translation exceptions, generated output or historical report
   bodies changed. No new Windows/macOS/native infrastructure coverage is claimed.
+
+Milestone commit `b733c73` records the bilingual editorial policy, seven policy pairs
+and this active execution record. The next milestone groups entry points and product
+contracts so that README recipe moves land atomically.
