@@ -38,12 +38,14 @@ type Request struct {
 	Browser   app.BrowserOptions `json:"browser,omitempty"`
 }
 type Response struct {
-	Artifacts     []ArtifactReference `json:"artifacts,omitempty"`
-	Lease         *domain.Lease       `json:"lease,omitempty"`
-	Run           *domain.CommandRun  `json:"run,omitempty"`
-	Value         any                 `json:"value,omitempty"`
-	Error         string              `json:"error,omitempty"`
-	EndpointScope string              `json:"endpoint_scope"`
+	Artifacts      []ArtifactReference `json:"artifacts,omitempty"`
+	Lease          *domain.Lease       `json:"lease,omitempty"`
+	Run            *domain.CommandRun  `json:"run,omitempty"`
+	Value          any                 `json:"value,omitempty"`
+	Error          string              `json:"error,omitempty"`
+	EvidenceStatus string              `json:"evidence_status,omitempty"`
+	EvidenceError  string              `json:"evidence_error,omitempty"`
+	EndpointScope  string              `json:"endpoint_scope"`
 }
 type prepared struct {
 	operation protocol.Operation
@@ -294,6 +296,7 @@ func (e *AppExecutor) execute(ctx context.Context, op protocol.Operation, before
 	case "ui-recover":
 		v, runErr := s.RecoverUI(ctx, op.LeaseID, p.request.Name)
 		err = runErr
+		out.Run = &v.Run
 		out.Value = v
 	case "browser":
 		v, runErr := s.Browser(ctx, op.LeaseID, p.request.Browser)
@@ -319,9 +322,13 @@ func (e *AppExecutor) execute(ctx context.Context, op protocol.Operation, before
 	}
 	if out.Run != nil && out.Run.ID != "" && out.Run.Status != "running" {
 		refs, blobs, e := e.artifacts(ctx, s, op, "", out.Run.ID)
-		if e != nil {
-			err = errors.Join(err, e)
+		if e != nil || len(blobs) > 1024 {
+			// Publication is separate from the terminal action outcome. Retrying
+			// the action could duplicate input even though its local run passed.
+			out.EvidenceStatus = "unavailable"
+			out.EvidenceError = "artifact staging failed; request artifacts for this run separately to retry available evidence; do not retry the action"
 		} else {
+			out.EvidenceStatus = "staged"
 			out.Artifacts = refs
 			artifacts = append(artifacts, blobs...)
 		}
@@ -414,61 +421,6 @@ func responseResult(state string, out Response, err error) protocol.Result {
 		data = []byte(`{"error":"worker response exceeds metadata transfer limit; operation was not replayed and evidence remains on worker; request a narrower component, run, or artifact","endpoint_scope":"worker-local"}`)
 	}
 	return protocol.Result{State: state, Payload: data}
-}
-func (e *AppExecutor) packageRoot() (string, error) {
-	root := filepath.Join(e.Home, "remote-lease-inputs")
-	if err := os.MkdirAll(root, 0700); err != nil {
-		return "", err
-	}
-	st, err := os.Lstat(root)
-	if err != nil || !st.IsDir() || st.Mode()&os.ModeSymlink != 0 {
-		return "", errors.New("unsafe retained input directory")
-	}
-	return root, nil
-}
-func (e *AppExecutor) retainPackage(id string, p remotesource.Package) error {
-	root, err := e.packageRoot()
-	if err != nil {
-		return err
-	}
-	data, err := json.Marshal(p)
-	if err == nil {
-		var value any
-		decoder := json.NewDecoder(bytes.NewReader(data))
-		decoder.UseNumber()
-		err = decoder.Decode(&value)
-		if err == nil {
-			data, err = json.Marshal(value)
-		}
-	}
-	if err != nil {
-		return err
-	}
-	temp, err := os.MkdirTemp(root, ".incoming-")
-	if err != nil {
-		return err
-	}
-	defer os.RemoveAll(temp)
-	if err = os.WriteFile(filepath.Join(temp, "package.json"), data, 0600); err != nil {
-		return err
-	}
-	if err = os.Rename(temp, filepath.Join(root, id)); err != nil {
-		existing, e := e.loadPackage(id)
-		if e != nil {
-			return e
-		}
-		if !bytes.Equal(existing, data) {
-			return errors.New("lease source package changed")
-		}
-	}
-	return nil
-}
-func (e *AppExecutor) loadPackage(id string) ([]byte, error) {
-	root, err := e.packageRoot()
-	if err != nil {
-		return nil, err
-	}
-	return readOwned(root, id+"/package.json", 8<<20)
 }
 func readOwned(root, relative string, limit int64) ([]byte, error) {
 	if relative == "" || strings.ContainsAny(relative, "\\:\x00") || strings.HasPrefix(relative, "/") {

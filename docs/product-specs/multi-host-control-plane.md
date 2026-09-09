@@ -158,3 +158,10 @@ Compose display log capture and aggregate retained display logs are bounded; ove
 explicit incomplete-output error rather than accumulating unbounded worker memory.
 Validated retained source packages are reused before CAS extraction. Forced dirty
 source cleanup records a bounded patch before removing its owned worktree.
+
+A known terminal action outcome is independent of automatic evidence publication.
+Remote responses expose `evidence_status` and, when unavailable, a bounded
+`evidence_error`. Failure to stage evidence does not turn a successful test/UI/
+browser action into a failed mutation. Retrieve evidence with a separate artifact
+operation after repairing publication; do not repeat the original action solely
+to retry evidence. Interrupted UI recovery retains its running run and uncertainty.

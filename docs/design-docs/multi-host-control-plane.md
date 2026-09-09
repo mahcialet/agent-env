@@ -194,3 +194,10 @@ and bounded Android file reads before aggregation. The existing full durable
 cleanup-log capture remains separate; a display limit does not authorize dropping
 required cleanup evidence. Remote-source diff capture uses a non-embedded bounded
 buffer so io.Copy cannot bypass Write via bytes.Buffer.ReadFrom.
+
+Retained remote packages are cleanup authority and must be durably published
+before the journal crosses the effect boundary. The package file is synchronized,
+then staged/published directory barriers are applied using the native platform
+mechanism. Existing identical packages re-establish durability before success;
+corrupt or conflicting records are refused. Worker serialization owns this local
+retention root. Native API barrier tests are not physical power-loss experiments.

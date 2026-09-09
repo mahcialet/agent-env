@@ -27,6 +27,10 @@ avoid duplicate manifest envelopes, and make acknowledged CAS publication durabl
 - [x] Fence incarnation replacement against active copied worker roots.
 - [x] Preserve lease state after uncertain read-only logs/artifacts.
 - [x] Bound Compose log capture before buffering remote results.
+- [x] Bound Android display-log reads before allocation (new overlapping thread).
+- [x] Make retained package publication durable before effects, including retries.
+- [x] Preserve the running UI recovery barrier in uncertain results.
+- [x] Separate successful action outcome from failed artifact publication.
 - [ ] Validate, push, reply to and resolve all additional threads; archive this plan.
 
 ## Surprises & Discoveries
@@ -150,3 +154,24 @@ worktrees, not bare cache repositories. The retained lifecycle regression verifi
 logs/artifact/reconcile/repeated destroy after removal using an empty CAS without
 relaxing validation. Source diff and reuse have fail-before coverage; a17MiB real
 diff fails safely at the enforced capture bound, retaining cleanup safety.
+
+After `9707fed` was pushed, four further threads arrived: PRRT_kwDOURHsR86glp9w,
+PRRT_kwDOURHsR86glp93, PRRT_kwDOURHsR86glp9_, PRRT_kwDOURHsR86glp-C. Android
+bounded reads are already included in that commit. This plan also owns retained
+package publication durability and truthful UI/action outcomes. Retention methods
+were moved to package_retention.go to keep their durability implementation isolated.
+
+2026-09-09 final additional-fix evidence: `go run ./tools/repoctl check` and
+`go test -race ./...` passed (worker15.948s, CLI44.877s); actual native two-worker
+CLI restart fixture passed (46.995s). UI recovery/evidence regressions failed
+against the old executor and pass after correction. Independent review found
+that a legacy duplicate package requires synchronizing its winning file inode,
+not merely the discarded staged copy; the new failure-injection regression and
+full worker race passed (10.774s). No remaining independent-review blockers.
+
+Decision (2026-09-09, implementation/review): preserve terminal action state and
+report automatic staging failure separately as evidence unavailable; a separate
+artifact operation retries available evidence without repeating the action.
+Retained packages use native publication barriers before effects, including legacy
+duplicates. Physical power-loss behavior is not claimed as experimentally proved.
+All 40 PR checks on `9707fed` passed, including native Windows/macOS/Linux.

@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/product-specs/multi-host-control-plane.md
-source_sha256: fc215a84880491230c75909a720107f643c904e94a4eae351abc7a99d15c21c3
+source_sha256: cd90b516eae7607731001d166d50de96844dcf54fd0d83fe865348112936046e
 ---
 
 # 複数 host の control plane
@@ -137,3 +137,8 @@ heartbeatが期限切れになるまで待つ。この登録拒否は再試行�
 保存済みログの合計に上限を設け、超過時はworkerのmemoryを無制限に使わず、出力が不完全なことを
 明示するエラーを返す。検証済みの保持source packageはCAS展開前に再利用する。
 変更済みsourceのforce cleanupでは、所有するworktreeを削除する前に上限付きpatchを記録する。
+
+確定した操作の結果と、自動的な証拠公開の結果は別に扱う。remote応答は`evidence_status`を返し、
+公開できない場合は上限付きの`evidence_error`を付ける。証拠のstage失敗によって、成功したtest/UI/
+browser操作を失敗した変更操作へ変えない。公開経路を復旧したら別のartifact操作で証拠を取得し、
+証拠の再取得だけを理由に元の操作を繰り返さない。中断されたUI復旧では、実行中のrunと不確実性を保持する。

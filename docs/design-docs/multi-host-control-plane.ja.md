@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/design-docs/multi-host-control-plane.md
-source_sha256: d2b7416d16be92a09d39e4395b6795619e82e3c90f0dc0b31c2c2caa1f753323
+source_sha256: f7c63aa45f7a8bbfff1e62dfb5cfea0638805a66abe9eec78b630829717d72e5
 ---
 
 # 一つの管理主体による複数 host の調整
@@ -168,3 +168,8 @@ localの永続receiptによる復旧完了は受け付ける。incarnationを記
 使う。既存の完全なcleanupログの証拠収集は別経路とし、表示上限を理由に必須証拠を捨てない。
 remote source diffではbufferを埋め込まず、io.Copyがbytes.Buffer.ReadFrom経由でWriteの上限を
 迂回できないようにする。
+
+保持remote packageはcleanupの判断に必要な情報であり、journalが作用境界を越える前に永続的に
+公開しなければならない。package fileを同期してから、platformのnative方式で一時・公開directoryの
+永続化を確認する。同一packageが既にあっても成功応答前に再確認し、破損・不一致の記録は拒否する。
+このlocal保持rootはworkerの直列処理で管理する。native APIの検証は物理的な電源断試験ではない。

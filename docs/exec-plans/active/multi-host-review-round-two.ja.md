@@ -1,6 +1,6 @@
 ---
 translation_of: docs/exec-plans/active/multi-host-review-round-two.md
-source_sha256: 118a19f10a429667f8696dd35b2c08eadaeba898cfa6135c9bf4e66b0efc03af
+source_sha256: d79d5b1552a1233496158429073b5e6cb40fa02c6bc378b2ccc5625144a39c80
 status: active
 owner: maintainers
 last_verified: 2026-09-09
@@ -31,6 +31,10 @@ manifestの二重送信をなくし、応答済みCAS公開の永続性を確保
 - [x] 稼働中のworker root複製によるincarnationの奪取を防ぐ。
 - [x] 読み取り専用logs/artifactsの不確実な結果でlease状態を変えない。
 - [x] remote結果の構築前にComposeログのcapture量を制限する。
+- [x] Android表示ログを読み込み前に制限する（追加の重複指摘）。
+- [x] 再試行も含め、作用前に保持packageを永続的に公開する。
+- [x] 不確実な結果にUI復旧中のrunを保持する。
+- [x] 成功した操作の結果とartifact公開失敗を分ける。
 - [ ] 検証・push・追加Threadすべてへの返信とResolveを終え、このPlanをarchiveする。
 
 ## 想定外の発見
@@ -142,3 +146,20 @@ adapterの転送methodを検出し、push前に修正した。
 残る。保存した回帰テストで、削除後に空CASを使うlogs/artifact/reconcile/再destroyを確認した。
 検証条件は緩めていない。source diffと再利用は修正前の失敗も確認済み。実17MiB diffは実効化した
 capture上限で安全に失敗し、cleanupの安全性を維持する。
+
+`9707fed`のpush後にさらに4件が入った。PRRT_kwDOURHsR86glp9w、PRRT_kwDOURHsR86glp93、
+PRRT_kwDOURHsR86glp9_、PRRT_kwDOURHsR86glp-C。Androidの上限付き読み込みは同commitに含まれる。
+保持packageの永続化とUI/操作結果の正確な保持も本Planで対応する。保持処理のmethodは
+package_retention.goへ移し、永続化の実装を分離した。
+
+2026-09-09の追加修正検証: `go run ./tools/repoctl check`と`go test -race ./...`が成功した
+（worker15.948秒、CLI44.877秒）。実nativeの2worker CLI再起動fixtureも成功した（46.995秒）。
+UI復旧と証拠の回帰テストは旧executorで失敗し、修正後に成功した。独立レビューでは、旧形式の
+重複packageは破棄する一時コピーだけでなく、既存fileのinodeも同期する必要があると判明した。
+追加の失敗注入テストとworker全raceが成功した（10.774秒）。独立レビューの未対応指摘はない。
+
+判断（2026-09-09、実装・レビュー担当）: 確定した操作結果を保持し、自動staging失敗は証拠の
+利用不可として別途報告する。別artifact操作で利用可能な証拠を再取得し、元の操作は繰り返さない。
+保持packageは旧形式の重複も含め、作用前にnativeの公開同期を完了する。物理的な電源断を
+実験で証明したとは主張しない。`9707fed`のPR検査40件はすべて成功した（Windows/macOS/Linuxの
+native検証を含む）。
