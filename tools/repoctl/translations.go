@@ -102,7 +102,7 @@ func translationCheck(root string, paths []string) error {
 			problems = append(problems, fmt.Errorf("AGENTENV-DOC-008: %s has no canonical English sibling %s; restore the source or remove the orphan translation", name, canonical))
 			continue
 		}
-		fields, err := translationMetadata(documents[name])
+		fields, err := documentationTranslationMetadata(name, documents[name])
 		if err != nil {
 			problems = append(problems, fmt.Errorf("AGENTENV-DOC-008: %s translation metadata: %w", name, err))
 			continue
@@ -133,7 +133,7 @@ func translationCheck(root string, paths []string) error {
 		} else if digest != translationDigest(source) {
 			problems = append(problems, fmt.Errorf("AGENTENV-DOC-009: %s is stale relative to %s; update the translation and source_sha256 together", name, canonical))
 		}
-		canonicalFields, err := translationMetadata(source)
+		canonicalFields, err := documentationTranslationMetadata(canonical, source)
 		if err != nil {
 			// Documents without canonical front matter (for example AGENTS.md)
 			// still require valid core metadata on their Japanese sibling above.

@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -57,7 +59,11 @@ func TestPrivateProfileFlags(t *testing.T) {
 func mockBrowser(t *testing.T, respond func(envelope) any) (*connection, func()) {
 	t.Helper()
 	up := websocket.Upgrader{}
+	// This fixture dials exactly one WebSocket. HTTP Server.Close does not join
+	// hijacked WebSocket handlers, so track that handler explicitly.
+	handlerDone := make(chan struct{})
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer close(handlerDone)
 		ws, e := up.Upgrade(w, r, nil)
 		if e != nil {
 			return
@@ -83,7 +89,14 @@ func mockBrowser(t *testing.T, respond func(envelope) any) (*connection, func())
 		server.Close()
 		t.Fatal(e)
 	}
-	return c, func() { c.close(); server.Close() }
+	var cleanup sync.Once
+	return c, func() {
+		cleanup.Do(func() {
+			c.close()
+			server.Close()
+			<-handlerDone
+		})
+	}
 }
 func TestTransportCancellationAndDisconnect(t *testing.T) {
 	c, done := mockBrowser(t, func(envelope) any { time.Sleep(100 * time.Millisecond); return map[string]any{} })
@@ -196,4 +209,60 @@ func TestBrowserPIDAndDiscoveryProof(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestMockBrowserCancellationJoinsInFlightHandler(t *testing.T) {
+	entered := make(chan struct{})
+	release := make(chan struct{})
+	var unblock sync.Once
+	releaseHandler := func() { unblock.Do(func() { close(release) }) }
+	var completed atomic.Int32
+	c, done := mockBrowser(t, func(envelope) any {
+		close(entered)
+		<-release
+		completed.Add(1)
+		return map[string]any{}
+	})
+	defer done()
+	defer releaseHandler()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	result := make(chan error, 1)
+	go func() { result <- c.call(ctx, "", "Test.blocked", nil, nil) }()
+	select {
+	case <-entered:
+	case <-time.After(5 * time.Second):
+		t.Fatal("handler was not entered")
+	}
+	cancel()
+	select {
+	case err := <-result:
+		if err == nil {
+			t.Fatal("canceled request succeeded")
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("client waited for blocked server")
+	}
+	if completed.Load() != 0 {
+		t.Fatal("handler completed before release")
+	}
+	cleanupStarted := make(chan struct{})
+	cleanupFinished := make(chan struct{})
+	go func() { close(cleanupStarted); done(); close(cleanupFinished) }()
+	<-cleanupStarted
+	select {
+	case <-cleanupFinished:
+		t.Fatal("cleanup returned while handler was blocked")
+	case <-time.After(50 * time.Millisecond):
+	}
+	releaseHandler()
+	select {
+	case <-cleanupFinished:
+	case <-time.After(5 * time.Second):
+		t.Fatal("cleanup failed to join handler")
+	}
+	if completed.Load() != 1 {
+		t.Fatal("cleanup returned before handler completion")
+	}
+	done() // Cleanup is idempotent, including after cancellation.
 }

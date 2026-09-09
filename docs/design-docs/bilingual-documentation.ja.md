@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/design-docs/bilingual-documentation.md
-source_sha256: 1c4056b7053411df9fecf02d060b48c6aa02784e1883622f748f71cf20c33eda
+source_sha256: aad904dd26e3612ee97057001a46e3870579e56692565016725ade09517563d7
 ---
 
 # 英語・日本語のドキュメント
@@ -14,7 +14,7 @@ source_sha256: 1c4056b7053411df9fecf02d060b48c6aa02784e1883622f748f71cf20c33eda
 
 ## 適用範囲と名前
 
-リポジトリ直下のMarkdownと`docs/`配下のMarkdownに適用する。日本語版は`.md`を`.ja.md`に置き換え、例えば`README.ja.md`や`docs/product-specs/android-emulator.ja.md`とする。索引、エージェント向け案内、ADR、新しいactive/completed ExecPlanも対象となる。ソースのコメント、CLIメッセージ、第三者コード、この文書範囲外にあるテストfixtureは翻訳しない。
+リポジトリ直下のMarkdownと`docs/`配下のMarkdownに適用する。日本語版は`.md`を`.ja.md`に置き換え、例えば`README.ja.md`や`docs/product-specs/android-emulator.ja.md`とする。索引、エージェント向け案内、ADR、5種類すべての状態にある新しいExecPlanも対象となる。ソースのコメント、CLIメッセージ、第三者コード、この文書範囲外にあるテストfixtureは翻訳しない。
 
 英語と日本語は同じ一貫した変更単位で更新する。意味、制約、証拠を省略せず訳し、コマンド、識別子、診断コード、パスは保つ。英語の索引は両言語へのリンクを示す。日本語の索引は日本語版へリンクし、例外となる過去の記録・生成文書へのリンクは英語のままにする。各日本語文書には、翻訳元の英語版へ読者が辿れるリンクを置く。
 
@@ -58,7 +58,11 @@ translation_of: docs/design-docs/bilingual-documentation.md
 source_sha256: 1c4056b7053411df9fecf02d060b48c6aa02784e1883622f748f71cf20c33eda
 ```
 
-メタデータの値は1行の通常の文字列、または両端の引用符が対応する文字列とする。入れ子や複数行のYAMLはハーネスのメタデータ形式の対象外である。
+通常文書のメタデータは1行の文字列、または両端の引用符が対応する文字列とし、入れ子や複数行のYAMLは対象外とする。
+ExecPlanには追加で[計画の規則](../PLANS.ja.md)が定義するYAMLのリストとオブジェクトを使う。
+Plan ID、状態、依存関係、マージ方針を含むライフサイクルの値は両言語で一致させる。
+両言語の組を同じdraft、active、paused、completed、abandonedディレクトリに置く。
+過去の計画に対する新メタデータ形式の免除は、翻訳の免除を意味しない。
 
 `translation_of`は、リポジトリ相対でスラッシュ区切りの正確な英語パスとする。`source_sha256`はfront matterを含む英語ファイル全体について、改行CRLFをLFへ正規化した後のSHA-256とする。末尾の改行を含む、それ以外のバイトは意味を持つ。これによりWindows、macOS、Linuxのネイティブ実行で同じ結果になる。
 

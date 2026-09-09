@@ -14,11 +14,14 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-go@v5
         with:
           go-version: ${{ matrix.go }}
       - run: go run ./tools/repoctl doctor
       - run: go run ./tools/repoctl check
+      - run: go run ./tools/repoctl plans check
       - name: Repeat process cancellation on macOS
         if: runner.os == 'macOS'
         run: go test ./internal/app -run '^TestDestroyCancelsActualCommandTreeBeforeSourceCleanup$' -count=50 -timeout=5m

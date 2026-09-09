@@ -217,7 +217,7 @@ stacks:
 	operations := []string{}
 	source := &lifecycleSource{states: map[string]SourceObservation{}, operations: &operations}
 	runtime := &lifecycleRuntime{projects: map[string]bool{}, operations: &operations, store: store}
-	service := &Service{Store: store, Source: source, Runtime: runtime, Home: filepath.Join(root, "state"), Policy: policy.Defaults(), ReadinessTimeout: 50 * time.Millisecond, ReadinessInterval: time.Millisecond}
+	service := &Service{Store: store, Source: source, Runtime: runtime, Home: filepath.Join(root, "state"), Policy: policy.Defaults(), ReadinessTimeout: 5 * time.Second, ReadinessInterval: time.Millisecond}
 	return service, PlanOptions{Repository: repo, Stack: "review"}, source, runtime, &operations
 }
 
@@ -343,6 +343,7 @@ func TestLifecycleCleanupFailureAndDirtySourceQuarantine(t *testing.T) {
 
 func TestLifecycleReadinessTimeoutRollsBack(t *testing.T) {
 	s, o, source, runtime, _ := lifecycleFixture(t)
+	s.ReadinessTimeout = 50 * time.Millisecond
 	runtime.notReady = true
 	l, err := s.Create(context.Background(), o, CreateOptions{Owner: "tester"})
 	if err == nil || l.Observed != "released" || len(runtime.projects) != 0 || len(source.states) != 0 {

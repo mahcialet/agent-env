@@ -1,0 +1,86 @@
+{
+  "plan_id": "EP-MHOST-001",
+  "executables": [
+    "agent-env",
+    "git"
+  ],
+  "endpoints": [
+    "controller",
+    "worker-a",
+    "worker-b"
+  ],
+  "scenarios": [
+    {
+      "id": "EP-MHOST-001-01",
+      "purpose": "Two agents",
+      "actions": [
+        "Run two agents against one controller with separate worker registrations."
+      ],
+      "expected": "Each assigned lease stays on its selected worker; identities and artifacts do not cross.",
+      "pass_criteria": "Record the expected observation and bounded evidence; unexpected behavior is FINDING, missing prerequisites are BLOCKED."
+    },
+    {
+      "id": "EP-MHOST-001-02",
+      "purpose": "Authentication and workspace confinement",
+      "actions": [
+        "Attempt a missing-token request and a source path outside the approved workspace."
+      ],
+      "expected": "Both requests fail without creating a lease or exposing credentials.",
+      "pass_criteria": "Record the expected observation and bounded evidence; unexpected behavior is FINDING, missing prerequisites are BLOCKED."
+    },
+    {
+      "id": "EP-MHOST-001-03",
+      "purpose": "Compose runtime",
+      "actions": [
+        "Create, inspect and destroy a Compose lease on each worker."
+      ],
+      "expected": "Explicit project ownership is isolated and cleanup removes only owned resources.",
+      "pass_criteria": "Record the expected observation and bounded evidence; unexpected behavior is FINDING, missing prerequisites are BLOCKED."
+    },
+    {
+      "id": "EP-MHOST-001-04",
+      "purpose": "Android runtime",
+      "actions": [
+        "Create an Emulator lease through the client on the designated remote worker; record worker and lease identity, worker-side ADB boot readiness, then destroy the lease and verify absence on that worker."
+      ],
+      "expected": "AVD and ports are exclusively reserved, and cleanup records verified absence.",
+      "pass_criteria": "Record evidence that the emulator starts, becomes ready and stops on the designated worker, with exclusive AVD/port ownership. Missing worker-side Android SDK, emulator or ADB support is BLOCKED. Client-local ADB or TCP connectivity alone is not acceptance evidence."
+    },
+    {
+      "id": "EP-MHOST-001-05",
+      "purpose": "Persistent process runtime",
+      "actions": [
+        "Start a process lease, collect logs and destroy it."
+      ],
+      "expected": "Process identity and descendants are observed, terminated and recorded.",
+      "pass_criteria": "Record the expected observation and bounded evidence; unexpected behavior is FINDING, missing prerequisites are BLOCKED."
+    },
+    {
+      "id": "EP-MHOST-001-06",
+      "purpose": "Browser runtime",
+      "actions": [
+        "Use a process-backed browser lease to list pages, capture a snapshot and perform a supported action."
+      ],
+      "expected": "Registered browser identity and snapshot provenance remain valid across remote transport.",
+      "pass_criteria": "Record the expected observation and bounded evidence; unexpected behavior is FINDING, missing prerequisites are BLOCKED."
+    },
+    {
+      "id": "EP-MHOST-001-07",
+      "purpose": "TCP forwarding",
+      "actions": [
+        "Open a TCP forward to an owned lease endpoint, transfer test data and close the lease."
+      ],
+      "expected": "Data reaches only the owned endpoint; forward listeners disappear on cleanup.",
+      "pass_criteria": "Record the expected observation and bounded evidence; unexpected behavior is FINDING, missing prerequisites are BLOCKED."
+    },
+    {
+      "id": "EP-MHOST-001-08",
+      "purpose": "Recovery and redaction",
+      "actions": [
+        "Restart the controller, disconnect and reconnect a worker, retry the same operation ID, and inspect sanitized evidence."
+      ],
+      "expected": "Receipts prevent duplicate effects, ambiguous resources remain visible, and secrets are absent from published evidence.",
+      "pass_criteria": "Record the expected observation and bounded evidence; unexpected behavior is FINDING, missing prerequisites are BLOCKED."
+    }
+  ]
+}

@@ -18,6 +18,8 @@
 - Preserve user changes, existing assets, and the MIT license.
 - Read the relevant product and design documents before changing behavior.
 - Maintain the active ExecPlan at meaningful checkpoints.
+- Use Plan IDs, dependency selection and Git provenance from the plan policy.
+- Never auto-promote drafts, auto-run human validation, or merge with stale review.
 - Resolve uncertain public behavior before implementing dependent changes.
 - Make a demonstrable change, then verify the relevant behavior.
 - Record discoveries, decisions, failed checks, and next actions in the plan.
@@ -88,7 +90,7 @@ Maintain status, owner, and last_verified metadata on durable documents/plans.
 Promote recurring findings into tests or checks rather than enlarging this file.
 Avoid nested instruction files unless a subtree has materially different rules.
 The archived handoff is historical input, not the permanent project manual.
-Finish every acceptance requirement before moving the active plan to completed.
+Finish acceptance and prove merge into base before archiving a plan as completed.
 Update links when moving a completed plan and retain its retrospective.
 
 Durable human-facing documentation is maintained in English and Japanese.
