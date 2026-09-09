@@ -104,13 +104,16 @@ func planGitReadiness(root string, g *planGraph) (planReadinessContext, error) {
 		if p.Status == "active" && strings.Contains("\n"+worktrees+"\n", "\nbranch refs/heads/"+expectedPlanBranch(p)+"\n") {
 			ctx.Running = append(ctx.Running, p.PlanID)
 		}
+		base, err := planRevision(root, p.BaseBranch)
+		if err != nil {
+			if p.Status == "active" {
+				return ctx, fmt.Errorf("%s: unavailable base_branch %q: %w", p.PlanID, p.BaseBranch, err)
+			}
+			continue
+		}
 		for _, d := range p.DependsOn {
 			dep := g.ByID[d.PlanID]
 			key := p.PlanID + "/" + dep.PlanID
-			base, err := planRevision(root, p.BaseBranch)
-			if err != nil {
-				continue
-			}
 			if d.Satisfaction == "merged" {
 				if dep.Status != "completed" || !planAncestor(root, dep.MergeCommit, base) {
 					continue

@@ -202,3 +202,13 @@ func TestStackedProofCannotReviveAbandonedDependency(t *testing.T) {
 		}
 	}
 }
+
+func TestCompletedPlanCommitFormats(t *testing.T) {
+	for _, n := range []int{39, 40, 41, 63, 64, 65} {
+		data := strings.Replace(modelPlanFixture, "status: active", "status: completed\nmerge_commit: "+strings.Repeat("a", n), 1)
+		_, _, err := parsePlanMetadata([]byte(data), "completed/test.md")
+		if (err == nil) != (n == 40 || n == 64) {
+			t.Fatalf("commit length %d: %v", n, err)
+		}
+	}
+}

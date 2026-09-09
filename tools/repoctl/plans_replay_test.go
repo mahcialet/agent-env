@@ -148,3 +148,72 @@ func TestPlanReplayExercisesDependencySelectionAndParentFinalization(t *testing.
 		t.Fatal("unproven implementation merge released dependent plan")
 	}
 }
+
+func TestPlanReplayRequiresArchiveDeliveryBySourceParent(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		sourceEdit string
+		mergeEdit  string
+		wantError  string
+	}{
+		{name: "unrelated later merge", wantError: "did not introduce or change"},
+		{name: "archive removed by source and restored at merge", sourceEdit: "remove", mergeEdit: "restore", wantError: "missing at source parent"},
+		{name: "archive edited only at merge", mergeEdit: "edit", wantError: "differs from source parent"},
+		{name: "source archive changed again at merge", sourceEdit: "edit", mergeEdit: "edit", wantError: "differs from source parent"},
+		{name: "source updates existing archive", sourceEdit: "edit"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root, plan, _, _ := replayFixture(t, false)
+			filename := filepath.Join(root, filepath.FromSlash(plan))
+			original, err := os.ReadFile(filename)
+			if err != nil {
+				t.Fatal(err)
+			}
+			write := func(data []byte) {
+				t.Helper()
+				if err := os.WriteFile(filename, data, 0644); err != nil {
+					t.Fatal(err)
+				}
+			}
+			replayGit(t, root, "checkout", "-b", "later-feature")
+			switch tc.sourceEdit {
+			case "remove":
+				replayGit(t, root, "rm", plan)
+			case "edit":
+				write(append(append([]byte{}, original...), []byte("\nSource acceptance evidence.\n")...))
+				replayGit(t, root, "add", plan)
+			}
+			replayGit(t, root, "commit", "--allow-empty", "-m", "later work")
+			replayGit(t, root, "checkout", "master")
+			replayGit(t, root, "merge", "--no-ff", "--no-commit", "later-feature")
+			if tc.mergeEdit != "" {
+				if err := os.MkdirAll(filepath.Dir(filename), 0755); err != nil {
+					t.Fatal(err)
+				}
+				if tc.mergeEdit == "restore" {
+					write(original)
+				} else {
+					// A trailing newline must count as a different blob, even though
+					// replay's document reader trims surrounding whitespace.
+					data, err := os.ReadFile(filename)
+					if err != nil {
+						t.Fatal(err)
+					}
+					write(append(data, '\n'))
+				}
+				replayGit(t, root, "add", plan)
+			}
+			replayGit(t, root, "commit", "-m", "later merge")
+			merge := replayGit(t, root, "rev-parse", "HEAD")
+			var out bytes.Buffer
+			err = executePlanReplay(root, []string{"--plan", plan, "--merge", merge}, &out)
+			if tc.wantError == "" {
+				if err != nil || out.Len() == 0 {
+					t.Fatalf("valid archive update rejected: %v; output: %s", err, out.String())
+				}
+			} else if err == nil || !strings.Contains(err.Error(), tc.wantError) || out.Len() != 0 {
+				t.Fatalf("want rejection %q without evidence, got error %v; output: %s", tc.wantError, err, out.String())
+			}
+		})
+	}
+}

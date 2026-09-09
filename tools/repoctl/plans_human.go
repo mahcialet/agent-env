@@ -73,6 +73,9 @@ func readHumanJSONSnapshot(path string, target any) ([]byte, error) {
 	if len(trimmed) == 0 || trimmed[0] != '{' {
 		return nil, fmt.Errorf("JSON input must contain exactly one object")
 	}
+	if err := validateHumanJSONKeys(json.NewDecoder(bytes.NewReader(raw))); err != nil {
+		return nil, err
+	}
 	d := json.NewDecoder(bytes.NewReader(raw))
 	d.DisallowUnknownFields()
 	if err = d.Decode(target); err != nil {
@@ -84,6 +87,44 @@ func readHumanJSONSnapshot(path string, target any) ([]byte, error) {
 	}
 	return raw, nil
 }
+
+// Check every object, including objects inside arrays, before decoding can merge
+// repeated members or replace an earlier value. Do not expose input keys in errors.
+func validateHumanJSONKeys(d *json.Decoder) error {
+	token, err := d.Token()
+	if err != nil {
+		return fmt.Errorf("invalid JSON input")
+	}
+	delim, container := token.(json.Delim)
+	if !container {
+		return nil
+	}
+	seen := map[string]bool{}
+	for d.More() {
+		if delim == '{' {
+			key, err := d.Token()
+			if err != nil {
+				return fmt.Errorf("invalid JSON input")
+			}
+			name, ok := key.(string)
+			if !ok {
+				return fmt.Errorf("invalid JSON input")
+			}
+			if seen[name] {
+				return fmt.Errorf("duplicate JSON object key")
+			}
+			seen[name] = true
+		}
+		if err := validateHumanJSONKeys(d); err != nil {
+			return err
+		}
+	}
+	if _, err := d.Token(); err != nil {
+		return fmt.Errorf("invalid JSON input")
+	}
+	return nil
+}
+
 func loadHumanContract(root, id string) (humanContract, error) {
 	var c humanContract
 	if !planIDPattern.MatchString(id) {

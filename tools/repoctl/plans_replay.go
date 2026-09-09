@@ -106,6 +106,27 @@ func executePlanReplay(root string, args []string, out io.Writer) error {
 	if err != nil {
 		return fmt.Errorf("plans replay: archived plan missing at merge: %w", err)
 	}
+	// Presence in the merge alone also matches every later unrelated merge.
+	// Tie the archive to this source parent, using blob identities so even
+	// whitespace-only merge edits cannot be mistaken for source evidence.
+	mergedBlob, err := git("rev-parse", "--verify", *mergeSHA+":"+*planPath)
+	if err != nil {
+		return err
+	}
+	sourceBlob, err := git("rev-parse", "--verify", parents[2]+":"+*planPath)
+	if err != nil {
+		return fmt.Errorf("plans replay: archived plan missing at source parent: %w", err)
+	}
+	if sourceBlob != mergedBlob {
+		return fmt.Errorf("plans replay: archived plan at merge differs from source parent")
+	}
+	changed, err := git("diff-tree", "--no-commit-id", "--name-only", "-r", parents[1], parents[2], "--", *planPath)
+	if err != nil {
+		return err
+	}
+	if changed == "" {
+		return fmt.Errorf("plans replay: source parent did not introduce or change archived plan relative to base parent")
+	}
 	document = strings.ReplaceAll(document, "\r\n", "\n")
 	// Historical Plans need not carry modern lifecycle IDs. Read their original
 	// metadata and exact starting revision without migrating historical content.
@@ -149,7 +170,7 @@ func executePlanReplay(root string, args []string, out io.Writer) error {
 		Commits:            commits,
 		ProjectionNotice:   "Derived nodes are a lifecycle projection, not historical child ExecPlans. Earlier archival is recorded as historical behavior; current completion requires merge before archive. Parent acceptance and review cannot be inferred from Git ancestry.",
 		Nodes: []planReplayNode{
-			{ID: "implementation", Role: "implementation", State: "completed", DependsOn: []string{}, Evidence: "branch head is the second parent of the reachable merge; completed plan exists in that merge"},
+			{ID: "implementation", Role: "implementation", State: "completed", DependsOn: []string{}, Evidence: "branch head is the second parent of the reachable merge; source parent introduced or changed the completed archive relative to base and its content matches the merge"},
 			{ID: "review", Role: "review", State: "unknown", DependsOn: []string{"implementation"}, Evidence: "structured review evidence must be supplied independently"},
 			{ID: "parent", Role: "parent-finalization", State: "awaiting-reconciliation", DependsOn: []string{"implementation", "review"}, Evidence: "merged child alone does not establish parent acceptance or authorize human validation"},
 		},

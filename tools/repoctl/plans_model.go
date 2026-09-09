@@ -49,7 +49,7 @@ type planGraph struct {
 }
 
 var planIDPattern = regexp.MustCompile(`^EP-[A-Z][A-Z0-9]*-[0-9]{3,}$`)
-var planCommitPattern = regexp.MustCompile(`^[0-9a-f]{40}$`)
+var planCommitPattern = regexp.MustCompile(`^([0-9a-f]{40}|[0-9a-f]{64})$`)
 var legacyCompletedPlans = map[string]bool{
 	"agent-env-mvp.md":                          true,
 	"android-emulator-lease.md":                 true,

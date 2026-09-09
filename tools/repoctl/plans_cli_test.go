@@ -328,3 +328,39 @@ func TestCompletedStackedDependencySurvivesBranchDeletion(t *testing.T) {
 		})
 	}
 }
+
+func TestReadinessRejectsMissingBaseWithoutDependencies(t *testing.T) {
+	root := planTestRepo(t)
+	p := planMetadata{PlanID: "EP-TEST-001", Status: "active", BaseBranch: "missing"}
+	g := &planGraph{Plans: []planMetadata{p}, ByID: map[string]planMetadata{p.PlanID: p}}
+	if _, err := planGitReadiness(root, g); err == nil || !strings.Contains(err.Error(), "unavailable base_branch") {
+		t.Fatalf("missing base accepted: %v", err)
+	}
+	for _, state := range []string{"draft", "paused", "completed", "abandoned"} {
+		p.Status = state
+		g.Plans = []planMetadata{p}
+		if _, err := planGitReadiness(root, g); err != nil {
+			t.Fatalf("noncandidate %s blocked readiness: %v", state, err)
+		}
+	}
+	p.Status = "active"
+	p.BaseBranch = "master"
+	g.Plans = []planMetadata{p}
+	if _, err := planGitReadiness(root, g); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestSHA256PlanAncestry(t *testing.T) {
+	root := t.TempDir()
+	planTestGit(t, root, "init", "--object-format=sha256", "-b", "master")
+	planTestGit(t, root, "config", "user.email", "test@example.invalid")
+	planTestGit(t, root, "config", "user.name", "Test")
+	planTestGit(t, root, "commit", "--allow-empty", "-m", "initial")
+	base := planTestGit(t, root, "rev-parse", "HEAD")
+	planTestGit(t, root, "commit", "--allow-empty", "-m", "next")
+	head := planTestGit(t, root, "rev-parse", "HEAD")
+	if len(base) != 64 || !planAncestor(root, base, head) || planAncestor(root, head, base) {
+		t.Fatal("SHA-256 ancestry incorrect")
+	}
+}

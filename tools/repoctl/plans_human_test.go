@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func humanFixture(t *testing.T) (string, string) {
@@ -205,5 +206,104 @@ func TestHumanJSONSnapshotRetainsValidatedBytes(t *testing.T) {
 	}
 	if !bytes.Equal(snapshot, original) || observation.Observation != "observed" {
 		t.Fatal("validated snapshot changed")
+	}
+}
+
+func TestHumanJSONRejectsDuplicateKeys(t *testing.T) {
+	for name, body := range map[string]string{
+		"top level":     `{"observation":"failed","observation":"passed","evidence_refs":["receipt"]}`,
+		"escaped alias": `{"observation":"failed","\u006fbservation":"passed","evidence_refs":["receipt"]}`,
+		"nested map":    `{"endpoints":{"worker":"first","worker":"second"}}`,
+		"array object":  `{"scenarios":[{"id":"first","id":"second"}]}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "input.json")
+			if err := os.WriteFile(path, []byte(body), 0600); err != nil {
+				t.Fatal(err)
+			}
+			var target any
+			if _, err := readHumanJSONSnapshot(path, &target); err == nil || !strings.Contains(err.Error(), "duplicate") {
+				t.Fatalf("expected duplicate rejection: %v", err)
+			}
+			if target != nil {
+				t.Fatal("duplicate input decoded into target")
+			}
+		})
+	}
+	// Names may recur in distinct objects; JSON member uniqueness is per object.
+	path := filepath.Join(t.TempDir(), "valid.json")
+	if err := os.WriteFile(path, []byte(`{"scenarios":[{"id":"first"},{"id":"second"}]}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	var target any
+	if err := readHumanJSON(path, &target); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestHumanDuplicateInputHasNoEffects(t *testing.T) {
+	for _, mode := range []string{"preflight", "record", "contract"} {
+		t.Run(mode, func(t *testing.T) {
+			root, contractPath := humanFixture(t)
+			listener, err := net.ListenTCP("tcp", &net.TCPAddr{IP: net.ParseIP("127.0.0.1")})
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer listener.Close()
+			var contract humanContract
+			if err := readHumanJSON(contractPath, &contract); err != nil {
+				t.Fatal(err)
+			}
+			contract.Endpoints = []string{"worker"}
+			raw, err := json.Marshal(contract)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if mode == "contract" {
+				raw = bytes.Replace(raw, []byte(`"purpose":"test"`), []byte(`"purpose":"first","purpose":"test"`), 1)
+			}
+			if err := os.WriteFile(contractPath, raw, 0600); err != nil {
+				t.Fatal(err)
+			}
+			configPath := filepath.Join(root, "config.json")
+			address, _ := json.Marshal(listener.Addr().String())
+			config := `{"endpoints":{"worker":` + string(address) + `}}`
+			if mode == "preflight" {
+				config = `{"endpoints":{"worker":"127.0.0.1:1","worker":` + string(address) + `}}`
+			}
+			if err := os.WriteFile(configPath, []byte(config), 0600); err != nil {
+				t.Fatal(err)
+			}
+			dir := filepath.Join(root, "bundle")
+			args := []string{"preflight", "--plan", "EP-TEST-001", "--kick", "--config", configPath, "--evidence-dir", dir}
+			if mode == "record" {
+				observation := filepath.Join(root, "observation.json")
+				if err := os.WriteFile(observation, []byte(`{"observation":"failed","observation":"passed","evidence_refs":["receipt"]}`), 0600); err != nil {
+					t.Fatal(err)
+				}
+				args = []string{"record", "--plan", "EP-TEST-001", "--kick", "--scenario", "EP-TEST-001-01", "--result", "PASS", "--evidence", observation, "--evidence-dir", dir}
+			}
+			var out bytes.Buffer
+			if err := executePlanHuman(root, args, &out); err == nil || !strings.Contains(err.Error(), "duplicate") {
+				t.Fatalf("expected duplicate rejection: %v", err)
+			}
+			if out.Len() != 0 {
+				t.Fatal("invalid input emitted evidence")
+			}
+			if _, err := os.Stat(dir); !os.IsNotExist(err) {
+				t.Fatal("invalid input created evidence bundle")
+			}
+			if err := listener.SetDeadline(time.Now().Add(20 * time.Millisecond)); err != nil {
+				t.Fatal(err)
+			}
+			conn, err := listener.Accept()
+			if err == nil {
+				conn.Close()
+				t.Fatal("invalid input probed endpoint")
+			}
+			if timeout, ok := err.(net.Error); !ok || !timeout.Timeout() {
+				t.Fatalf("unexpected accept error: %v", err)
+			}
+		})
 	}
 }

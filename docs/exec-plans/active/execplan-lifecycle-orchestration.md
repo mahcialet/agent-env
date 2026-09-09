@@ -526,3 +526,20 @@ commits, missing ancestry, completed branch deletion and incorrect merge evidenc
 `go test -race ./tools/repoctl -count=1` passed (12.162s); full `repoctl check`
 passed. Independent read-only review found no defects. These tests exercise the
 combined selection/provenance behavior missed by the earlier separate fixtures.
+
+### PR #14 review follow-up (2026-09-10)
+
+Addressed all four new threads: active candidates now resolve their base even
+without dependencies; replay requires the source parent to introduce/change the
+archive and match the merge blob; bounded Human Validation JSON rejects duplicate
+keys recursively before typed decoding; full commit IDs accept SHA-1 and SHA-256.
+Regression tests cover missing bases, unrelated replay merges and merge-only
+archive edits, nested/escaped duplicate JSON keys without probes or evidence
+writes, and actual SHA-256 Git ancestry plus accepted/rejected metadata lengths.
+
+Independent review caught an over-broad first base check: deleted bases of
+noncandidate historical Plans must not block all selection. Mandatory resolution
+is therefore limited to active candidates; draft/paused/completed/abandoned
+records with absent bases are covered by regression tests. The actual PR #12
+historical replay still passes. Integrated full harness and repoctl race passed
+before this final scope correction; final validation is recorded in PR replies.

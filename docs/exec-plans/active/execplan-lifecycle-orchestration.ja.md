@@ -12,7 +12,7 @@ workstreams:
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/exec-plans/active/execplan-lifecycle-orchestration.md
-source_sha256: 4610c15f3792d535eb818961e5c081d7d6fdc3f9eb625c7f95e7aa6991838bd8
+source_sha256: ed384579013b45ab70d13eed4b70c5ebe0f4f63b012ce88d0f6a8e3ede3d310d
 ---
 
 # ExecPlan lifecycle orchestrationと自動delivery gateを追加する
@@ -454,3 +454,18 @@ squashでは配信されたsquash commitだけを証拠とし、consumerが実�
 `go test -race ./tools/repoctl -count=1`は成功（12.162秒）、全`repoctl check`も
 成功した。読み取り専用の独立レビューに指摘はなかった。以前の個別fixtureが
 見落とした、選択と帰属検査を組み合わせた挙動を今回のテストで検証する。
+
+### PR #14レビュー対応（2026-09-10）
+
+新しい4件のThreadに対応した。activeな候補は依存がなくてもbaseを解決する。
+replayはsource parentでのarchive追加・変更とmerge時のblob一致を要求する。
+サイズ制限付きHuman Validation JSONは、型へのdecode前に重複キーを再帰的に拒否する。
+完全なcommit IDはSHA-1とSHA-256に対応した。回帰テストで、baseの欠落、無関係な
+replay mergeとmerge時のみのarchive変更、通信・証拠書き込みを伴わない入れ子・
+escape表記のJSON重複キー拒否、実際のSHA-256 Git祖先関係、メタデータのID長を検証する。
+
+独立レビューで、最初のbase検査の適用範囲が広すぎると判明した。実行候補ではない
+履歴Planのbase削除によって選択全体を止めるべきではない。このため必須の解決は
+activeな候補に限定し、baseがないdraft/paused/completed/abandonedも回帰テストに含めた。
+実際のPR #12の履歴replayは引き続き成功している。この最後の適用範囲修正前には
+統合した全harnessとrepoctl raceが成功した。最終検証はPR返信に記録する。
