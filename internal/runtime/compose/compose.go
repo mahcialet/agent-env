@@ -350,6 +350,9 @@ func (c dockerClient) Inspect(ctx context.Context, r domain.Runtime) (Observatio
 			return o, fmt.Errorf("container inspection returned an incomplete resource set")
 		}
 		for _, v := range data {
+			if v.ID == "" {
+				return o, fmt.Errorf("container inspection returned an empty identity; quarantine without deleting")
+			}
 			if err := verifyLabels(r, v.Config.Labels); err != nil {
 				return o, err
 			}

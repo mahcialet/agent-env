@@ -54,3 +54,17 @@ func TestReleaseBinaryDetectsConcatenatedPathLiteral(t *testing.T) {
 		t.Fatal("real binary source path literal escaped detection")
 	}
 }
+
+func TestReleaseBinaryShortCheckoutPaths(t *testing.T) {
+	for _, root := range []string{"/a", "/ab", "/abc"} {
+		t.Run(root, func(t *testing.T) {
+			if !releaseBinaryContainsPath([]byte("prefix"+root+"/private.go"), root) {
+				t.Fatal("short checkout leak accepted")
+			}
+			module := "example.invalid" + root
+			if releaseBinaryContainsPathWithModules([]byte(module+"/internal.Run"), root, []string{module}) {
+				t.Fatal("module identity treated as a host path")
+			}
+		})
+	}
+}

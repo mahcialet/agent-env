@@ -11,10 +11,12 @@ last_verified: 2026-09-09
 [Execution authority](../../exec-plans/active/repository-correctness-audit.md)
 
 Phase A target: `031869c8b9073b8e23bc17fbc55243666a52f557`.
-Review and temporary Go overlays only; no production/test changes, commits,
-provider mutations or publication. Findings await Phase B disposition.
+Phase A used review and temporary Go overlays only. Phase B accepted the three
+findings below at checkpoint `56b9c2c`. Phase C implementation and validation are
+recorded at the end of this report; no provider mutations or publication were
+performed by this review slice.
 
-## Coverage matrix
+## Phase A coverage matrix
 
 | Invariant | Reviewed implementation and evidence | Result / limits |
 | --- | --- | --- |
@@ -32,7 +34,7 @@ provider mutations or publication. Findings await Phase B disposition.
 
 ## AUDIT-RELEASE-001 — short absolute source roots bypass leakage detection
 
-- Severity: Low. Disposition: not yet assigned (Phase A).
+- Severity: Low. Disposition: ACCEPT (`56b9c2c`).
 - Invariant: a known nonempty absolute checkout path in binary bytes must not be
   exempted solely because its root string is short.
 - Location: `tools/repoctl/release.go:releaseBinaryContainsPathWithModules`,
@@ -50,7 +52,7 @@ provider mutations or publication. Findings await Phase B disposition.
   literal fixture also uses `/agent-env`.
 - Reproducer: temporary `go test -overlay` test calling the two expressions above
   and requiring true; observed both failures on native Linux Go 1.27.1.
-- Regression / resolution: not added / not changed during Phase A.
+- Regression / resolution: Phase A made no changes; see the Phase C record below.
 - Verification: failing overlay `TestAuditShortReleaseRootLeak`; no normal test
   files changed. Related: historical HCR-R13/R14, current path/boundary audit.
 - Escape: detected S9; earliest S2. `BOUNDARY_GAP`, `NEGATIVE_FIXTURE_GAP`.
@@ -59,11 +61,11 @@ provider mutations or publication. Findings await Phase B disposition.
   helper nor real-binary test exercised this branch.
 - Preventive guardrail: structural root cases plus length-adjacent valid roots and
   genuine/module-path positive/negative pairs. Expected future stage S2.
-  Guard implementation/evidence: deferred until disposition.
+  Guard implementation/evidence: see the Phase C record below.
 
 ## AUDIT-RELEASE-002 — preflight file size does not bound the actual read
 
-- Severity: Medium. Disposition: not yet assigned (Phase A).
+- Severity: Medium. Disposition: ACCEPT (`56b9c2c`).
 - Invariant: `regularRead(path, limit)` cannot return more than `limit` bytes or
   allocate based on unbounded growth after its size check.
 - Location: `tools/repoctl/release.go:regularRead` checks `os.Lstat().Size()` then
@@ -88,7 +90,7 @@ provider mutations or publication. Findings await Phase B disposition.
   reader loops up to 20,000 calls, fails on `err == nil && len(bytes) > 1`.
   Writer is joined at exit. If no interleaving occurs, the fixture explicitly
   skips rather than treating the run as safety proof.
-- Regression / resolution: not added / not changed during Phase A. The writer
+- Regression / resolution: Phase A made no changes; see the Phase C record below. The writer
   staging recurrence is source-confirmed but not separately fault-injected.
 - Verification: failing overlay on native Linux Go 1.27.1, 0.008s package run
   including RELEASE-001. Existing repoctl race suite passed 8.768s separately.
@@ -100,11 +102,11 @@ provider mutations or publication. Findings await Phase B disposition.
   The asset repair was local, leaving the same pattern in release infrastructure.
 - Preventive guardrail: shared bounded regular-file read semantics or a reusable
   cap/growth fixture across asset/release/evidence readers. Expected S2/S3;
-  current implementation and audit-added guard: none pending disposition.
+  implementation and regression evidence: see the Phase C record below.
 
 ## AUDIT-OWNERSHIP-001 — missing container identity authorizes Down
 
-- Severity: High. Disposition: not yet assigned (Phase A).
+- Severity: High. Disposition: ACCEPT (`56b9c2c`).
 - Invariant: missing external container identity is incomplete observation and
   cannot authorize destructive Compose Down.
 - Location: `internal/runtime/compose/compose.go:dockerClient.Inspect`, container
@@ -126,7 +128,7 @@ provider mutations or publication. Findings await Phase B disposition.
   existing runtimeFixture, writes a temporary canonical snapshot, sets LeaseID,
   and returns the described runner responses. Assertion requires error and zero
   Down dispatch. Observed `dispatched=true err=<nil>` (0.025s package run).
-- Regression / resolution: not added / not changed during Phase A.
+- Regression / resolution: Phase A made no changes; see the Phase C record below.
 - Related: historical HCR-P04/P06; same-pattern search found existing guards in
   named resource/Inventory and strict ID equality in Podman anonymous attachment.
   Count-only matching of nonempty sets remains a separate unconfirmed hypothesis.
@@ -137,7 +139,7 @@ provider mutations or publication. Findings await Phase B disposition.
   reaches its effect. Existing identity fixtures coupled IDs to valid records.
 - Preventive guardrail: missing/empty/duplicate/wrong-ID response matrices shared
   by provider inspection plus public Down negative effect assertions. Expected
-  future detection S2/S3. No guard added before disposition.
+  future detection S2/S3. The Phase C record below documents the guard added after disposition.
 
 ## Rejected and bounded hypotheses
 
@@ -166,12 +168,48 @@ provider mutations or publication. Findings await Phase B disposition.
 
 The [historical corpus](history-compose-release.md) records all successful
 package/focused race runs and native/candidate limitations. Two temporary Go
-overlays added tests only through Go's overlay mapping; the repository remains
+overlays added tests only through Go's overlay mapping; Phase A left the repository
 free of product changes. The release overlay uses only native Go temporary files,
 and the Compose overlay uses an injected runner: no Docker/Podman mutation.
 
-Phase B must decide each confirmed finding and historical coverage limitations
-separately. Keep observed defects,
-missing tests and unconfirmed hypotheses distinct. After disposition, a regression
-must fail before the minimal fix; current failing overlays provide that baseline
-without crossing the review-only boundary.
+The Phase B checkpoint accepted all three findings. The historical coverage
+limitations and unconfirmed hypotheses remain distinct from those decisions.
+
+## Phase C resolution and validation
+
+- **AUDIT-OWNERSHIP-001:** `dockerClient.Inspect` now rejects a missing/empty
+  container ID before collecting observations or reaching Down. Permanent
+  `TestMissingContainerIdentityRefusesInspectionAndDown` exercises both public
+  Inspect/Down entries and both omitted/explicit-empty fields, requiring actual
+  inspection, the identity diagnostic, and zero destructive dispatch. All four
+  cases failed against the pre-fix implementation; Down dispatched and returned
+  nil in both destructive cases. This is a provider-level prevention guard (S3).
+- **AUDIT-RELEASE-001:** the blanket length cutoff is replaced with a structural
+  empty-path/filesystem-root exclusion. Normal roots `/a`, `/ab`, `/abc` now retain
+  leak detection, including concatenated literals, while known module identities
+  remain excluded. `TestReleaseBinaryShortCheckoutPaths` failed for `/a` and
+  `/ab` before the fix and now passes all three real/module pairs (S2).
+- **AUDIT-RELEASE-002:** `regularRead` opens the file, verifies the opened handle's
+  type/size, then reads at most the configured cap plus one probe byte. Growing
+  files return an error without exposing partial data. Archive staging now uses
+  that same bounded helper, removing the second unbounded member read.
+  `TestReleaseReadBoundsGrowthAfterOpenedStat` uses a real file whose wrapper grows
+  it immediately after capturing Stat; there are no sleeps, races or skip paths.
+  With the equivalent extracted unbounded reader it failed at caps 0/1/16,
+  returning 65,536 bytes each time. The fixed reader rejects every case and the
+  test asserts actual consumed bytes never exceed cap+1. Public
+  `TestReleaseRegularReadExactBounds` covers empty/exact/one-over inputs (S2/S3).
+
+Native Linux Go 1.27.1 validation after these changes:
+
+- Focused path/read/archive and provider identity race tests, ten repetitions:
+  repoctl 2.945s and Compose 1.129s, PASS.
+- All `TestRelease*` race tests: PASS, 1.886s; opt-in real candidate test remains
+  skipped here and is not claimed as release-build evidence.
+- Full Compose race package: PASS, 1.185s.
+- Windows/amd64 CGO-disabled test binaries for both packages compile successfully;
+  this is compile portability evidence, not native Windows runtime evidence.
+
+No public behavior was broadened to admit uncertain ownership or oversized
+input. Broader harness/native/release validation and independent review belong
+to the parent audit's integration phase. No commit is made by this slice.

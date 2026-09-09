@@ -58,16 +58,9 @@ func writeArchive(dst, dir, prefix string, zipMode bool, mt time.Time) (err erro
 	contents := map[string][]byte{}
 	for _, name := range names {
 		p := filepath.Join(dir, name)
-		st, e := os.Lstat(p)
+		b, e := regularRead(p, maxReleaseMemberSize)
 		if e != nil {
-			return e
-		}
-		if !st.Mode().IsRegular() || st.Size() > maxReleaseMemberSize {
-			return fmt.Errorf("invalid archive source %s", name)
-		}
-		b, e := os.ReadFile(p)
-		if e != nil {
-			return e
+			return fmt.Errorf("invalid archive source %s: %w", name, e)
 		}
 		contents[name] = b
 	}

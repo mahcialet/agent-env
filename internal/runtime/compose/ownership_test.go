@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/mahcialet/agent-env/internal/domain"
+	"github.com/mahcialet/agent-env/internal/execx"
 )
 
 func TestManagedResourcesRequireBothOwnershipLabels(t *testing.T) {
@@ -171,5 +172,56 @@ func TestDeclaredOwnershipObservationFailuresAreClosed(t *testing.T) {
 			}
 			f.done()
 		})
+	}
+}
+
+func TestMissingContainerIdentityRefusesInspectionAndDown(t *testing.T) {
+	for _, operation := range []string{"inspect", "down"} {
+		for _, explicitEmpty := range []bool{false, true} {
+			t.Run(operation+map[bool]string{false: "/missing", true: "/empty"}[explicitEmpty], func(t *testing.T) {
+				r := runtimeFixture(t)
+				r.LeaseID = "owned-lease"
+				r.ConfigPath = filepath.Join(t.TempDir(), "snapshot.json")
+				if err := os.WriteFile(r.ConfigPath, []byte(`{"services":{"api":{"image":"fixture"}}}`), 0600); err != nil {
+					t.Fatal(err)
+				}
+				down, inspected := false, false
+				c := Client{Runner: podmanRunnerFunc(func(_ context.Context, q execx.Command) (execx.Result, error) {
+					args := strings.Join(q.Args, " ")
+					if strings.Contains(args, " compose ") {
+						down = true
+						return execx.Result{}, nil
+					}
+					if down {
+						return execx.Result{}, nil
+					}
+					if strings.Contains(args, " ps ") {
+						return execx.Result{Stdout: "listed-container"}, nil
+					}
+					if strings.Contains(args, " inspect --type container ") {
+						inspected = true
+						row := map[string]any{"Config": map[string]any{"Labels": map[string]string{projectLabel: r.Project, leaseLabel: r.LeaseID, runtimeLabel: r.Name, "com.docker.compose.service": "api"}}, "State": map[string]any{"Running": true, "Status": "running"}}
+						if explicitEmpty {
+							row["Id"] = ""
+						}
+						data, err := json.Marshal([]any{row})
+						if err != nil {
+							t.Fatal(err)
+						}
+						return execx.Result{Stdout: string(data)}, nil
+					}
+					return execx.Result{}, nil
+				})}
+				var err error
+				if operation == "down" {
+					err = c.Down(context.Background(), r)
+				} else {
+					_, err = c.Inspect(context.Background(), r)
+				}
+				if !inspected || err == nil || !strings.Contains(err.Error(), "empty identity") || down {
+					t.Fatalf("missing identity did not fail closed: inspected=%v down=%v err=%v", inspected, down, err)
+				}
+			})
+		}
 	}
 }
