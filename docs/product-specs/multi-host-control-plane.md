@@ -80,7 +80,8 @@ encryption at rest is not claimed.
 ## Operations, uncertainty and recovery
 
 Remote operations cover create, list/show, renew, reconcile, destroy, named tests,
-logs/artifacts and typed Android UI and Browser/CDP operations on capable workers.
+logs/artifacts and typed Android UI and Browser/CDP operations on capable workers,
+except remote `set-text` (see the request rules below).
 Existing local operation fences, stale snapshot checks and resource ownership
 checks continue to apply. Endpoint-consuming operations execute on the worker:
 `127.0.0.1` URLs in results are worker-local, not client-local tunnels.
@@ -112,3 +113,24 @@ Same-host worker processes prove protocol isolation, not physical multi-host
 behavior. Cross-builds do not prove native execution. Physical-machine or VM
 coverage, unavailable prerequisites and remaining verification gaps must remain
 explicit in the ExecPlan before completion.
+
+## Review-hardened lifetime and request rules
+
+Remote create uses a stable user/host owner by default; explicit `--owner` or
+`AGENT_ENV_OWNER` takes precedence. Fresh-process retries with the same operation
+ID therefore preserve request identity. Worker `--max-leases` must be between 1
+and the local policy limit of 8.
+
+The controller persists expiry from create acceptance time (default 4 hours,
+maximum 24 hours). A successful renew sets expiry from that renew's acceptance
+time and requested TTL; replay or restart does not extend it again. Expiry queues
+one ordinary, non-force destroy when no operation is active. Offline workers,
+uncertain results and failed cleanup retain capacity until cleanup is proven.
+Host removal also refuses queued or dispatched operations on released leases;
+a removed host cannot receive newly submitted operations.
+
+Remote Android UI and Browser `set-text` are unsupported until a non-persistent
+input channel exists. CLI, controller and worker reject text input before durable
+journaling, including direct protocol submissions. Local `set-text` remains
+available. Permanent registration rejection terminates the worker; transient
+transport, rate-limit and server failures remain retryable.

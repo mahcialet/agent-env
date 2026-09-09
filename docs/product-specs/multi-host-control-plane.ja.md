@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/product-specs/multi-host-control-plane.md
-source_sha256: 0ad195c33c79d1f96bf491bd01bf15005fcdb46f8fe853e2fa86814f6f668ef9
+source_sha256: a72daea942f44914448362fffaeb95282a69a7b0f6dad4c4965f56f6b32590c8
 ---
 
 # 複数 host の control plane
@@ -72,7 +72,7 @@ local の結果を永続化してから証拠を upload します。転送失敗
 ## 操作、不確実性、復旧
 
 remote 操作の対象は create、list/show、renew、reconcile、destroy、名前付き test、logs/artifacts、
-対応 worker 上の型付き Android UI および Browser/CDP 操作です。既存の local operation fence、
+対応 worker 上の型付き Android UI および Browser/CDP 操作です（remote `set-text`は除外。後述のリクエスト規則を参照）。既存の local operation fence、
 古い snapshot の検査、resource 所有権の検査を維持します。endpoint を使う操作は worker で実行します。
 結果の `127.0.0.1` URL は worker-local であり、client-local の tunnel ではありません。
 
@@ -99,3 +99,20 @@ Windows、macOS、Linux の native controller/worker/client 実行が必要で�
 同じ host の worker process で証明できるのは protocol の分離であり、物理的な複数 host の挙動ではありません。
 cross-build も native 実行の証明にはなりません。物理マシン・VM での検証範囲、利用できない前提環境、
 残る検証不足は、完了前に ExecPlan へ明記し続けます。
+
+## レビューで補強した期限とリクエストの規則
+
+remote createの既定ownerはユーザーとhostに基づく安定した値とし、明示した`--owner`または
+`AGENT_ENV_OWNER`を優先する。同じoperation IDを別processから再試行してもリクエストの
+識別情報を維持する。workerの`--max-leases`は1以上、local policyの上限8以下とする。
+
+controllerはcreate受理時刻に基づく期限を永続化する（既定4時間、最大24時間）。renewが
+成功すると、そのrenewの受理時刻と要求TTLから期限を設定する。再送や再起動によって期限を
+さらに延ばさない。期限切れでは、実行中の操作がなければ通常の非force destroyを1件予約する。
+offline worker、不確実な結果、cleanup失敗では、不在を証明するまでcapacityを保持する。
+解放済みleaseでもqueued/dispatched操作が残るhostは削除できず、削除したhostへの新規操作は拒否する。
+
+非永続の入力経路ができるまで、remote Android UIとBrowserの`set-text`は非対応とする。
+直接protocolへ送信した場合も含め、CLI・controller・workerはjournalへの保存前にtext入力を
+拒否する。localの`set-text`は引き続き利用できる。恒久的な登録拒否ではworkerを終了し、
+一時的な通信障害、レート制限、server障害は再試行する。

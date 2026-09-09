@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/mahcialet/agent-env/internal/app"
+	"github.com/mahcialet/agent-env/internal/controlplane/protocol"
 	"github.com/mahcialet/agent-env/internal/domain"
 	"github.com/mahcialet/agent-env/internal/worker"
 	"github.com/spf13/cobra"
@@ -22,6 +23,9 @@ func remoteActionPayload(cmd *cobra.Command, args []string) (string, json.RawMes
 	family := cmd.Parent().Name()
 	if family != "ui" && family != "browser" {
 		return "", nil, errors.New("unsupported remote action family")
+	}
+	if cmd.Name() == "set-text" {
+		return "", nil, protocol.ErrTransientInput
 	}
 	if err := cmd.ValidateArgs(args); err != nil {
 		return "", nil, err
@@ -78,5 +82,11 @@ func remoteActionPayload(cmd *cobra.Command, args []string) (string, json.RawMes
 		return "", nil, fmt.Errorf("unsupported remote action %s", family)
 	}
 	payload, err := json.Marshal(request)
+	if err == nil {
+		err = protocol.ValidateDurablePayload(family, payload)
+	}
+	if err != nil {
+		return "", nil, err
+	}
 	return family, payload, err
 }

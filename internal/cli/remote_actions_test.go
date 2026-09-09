@@ -2,6 +2,8 @@ package cli
 
 import (
 	"encoding/json"
+	"errors"
+	"github.com/mahcialet/agent-env/internal/controlplane/protocol"
 	"io"
 	"reflect"
 	"strings"
@@ -28,7 +30,7 @@ func remoteActionCommand(t *testing.T, family, action string, flags []string) *c
 }
 
 func TestRemoteUIFlagsPreserveTypedValues(t *testing.T) {
-	cmd := remoteActionCommand(t, "ui", "set-text", []string{"--application", "app", "--snapshot", "snapshot-01", "--node", "n7", "--text", "空白 ; $(echo unsafe)\n", "--timeout", "8s"})
+	cmd := remoteActionCommand(t, "ui", "tap", []string{"--application", "app", "--snapshot", "snapshot-01", "--node", "n7", "--timeout", "8s"})
 	kind, payload, e := remoteActionPayload(cmd, []string{"lease-01"})
 	if e != nil {
 		t.Fatal(e)
@@ -37,7 +39,7 @@ func TestRemoteUIFlagsPreserveTypedValues(t *testing.T) {
 	if e = json.Unmarshal(payload, &request); e != nil {
 		t.Fatal(e)
 	}
-	want := app.UIOptions{Operation: "set-text", Application: "app", Snapshot: "snapshot-01", Node: "n7", Text: "空白 ; $(echo unsafe)\n", Timeout: 8 * time.Second}
+	want := app.UIOptions{Operation: "tap", Application: "app", Snapshot: "snapshot-01", Node: "n7", Timeout: 8 * time.Second}
 	if kind != "ui" || !reflect.DeepEqual(request.UI, want) {
 		t.Fatalf("typed UI options changed: %s %+v", kind, request.UI)
 	}
@@ -141,9 +143,6 @@ func TestRemoteActionSpecificOptionalFlags(t *testing.T) {
 			return r.Browser.WaitFor == "url" && r.Browser.Contains == "target" && r.Browser.Role == "button"
 		}},
 		{"browser", "console", []string{"--duration", "250ms"}, func(r worker.Request) bool { return r.Browser.Duration == 250*time.Millisecond }},
-		{"browser", "set-text", []string{"--snapshot", "s", "--node", "n", "--text", ""}, func(r worker.Request) bool {
-			return r.Browser.Text == "" && r.Browser.Snapshot == "s" && r.Browser.Node == "n"
-		}},
 	} {
 		t.Run(tc.family+"/"+tc.action, func(t *testing.T) {
 			cmd := remoteActionCommand(t, tc.family, tc.action, tc.flags)
@@ -159,5 +158,19 @@ func TestRemoteActionSpecificOptionalFlags(t *testing.T) {
 				t.Fatalf("action flag lost: %+v", r)
 			}
 		})
+	}
+}
+
+func TestRemoteTextInputRefusedBeforePayloadSubmission(t *testing.T) {
+	for _, family := range []string{"ui", "browser"} {
+		for _, value := range []string{"", "remote-secret-canary"} {
+			t.Run(family+"/set-text/"+value, func(t *testing.T) {
+				cmd := remoteActionCommand(t, family, "set-text", []string{"--text", value})
+				_, payload, err := remoteActionPayload(cmd, []string{"lease-id"})
+				if !errors.Is(err, protocol.ErrTransientInput) || len(payload) != 0 || strings.Contains(err.Error(), "remote-secret-canary") {
+					t.Fatalf("input not safely rejected before submission: payload=%s err=%v", payload, err)
+				}
+			})
+		}
 	}
 }

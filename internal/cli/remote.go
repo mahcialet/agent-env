@@ -215,12 +215,24 @@ func (f *remoteFlags) create(ctx context.Context, c *client.Client, cmd *cobra.C
 	if e != nil {
 		return zero, e
 	}
+	requestOptions := remoteCreateOptions(cmd)
+	return c.Create(ctx, protocol.CreateRequest{OperationID: id, HostID: f.Host, Stack: pkg.Stack, ManifestDigest: pkg.ManifestDigest, PlanDigest: pkg.PlanDigest, SourceSetDigest: pkg.SourceSetDigest, RepositoryID: pkg.RepositoryID, Manifest: pkg.Manifest, Package: raw, Sources: sources, RequiredCapabilities: pkg.RequiredCapabilities, AndroidSlots: pkg.AndroidSlots, ControlBlobDigest: pkg.ManifestBlobDigest, Options: requestOptions})
+}
+
+func remoteCreateOptions(cmd *cobra.Command) json.RawMessage {
 	ttl, _ := cmd.Flags().GetDuration("ttl")
 	purpose, _ := cmd.Flags().GetString("purpose")
 	mode, _ := cmd.Flags().GetString("mode")
 	owner, _ := cmd.Flags().GetString("owner")
-	requestOptions, _ := json.Marshal(map[string]any{"ttl": ttl, "purpose": purpose, "mode": mode, "owner": owner})
-	return c.Create(ctx, protocol.CreateRequest{OperationID: id, HostID: f.Host, Stack: pkg.Stack, ManifestDigest: pkg.ManifestDigest, PlanDigest: pkg.PlanDigest, SourceSetDigest: pkg.SourceSetDigest, RepositoryID: pkg.RepositoryID, Manifest: pkg.Manifest, Package: raw, Sources: sources, RequiredCapabilities: pkg.RequiredCapabilities, AndroidSlots: pkg.AndroidSlots, ControlBlobDigest: pkg.ManifestBlobDigest, Options: requestOptions})
+	if !cmd.Flags().Changed("owner") && os.Getenv("AGENT_ENV_OWNER") == "" {
+		// localOwner appends a fresh invocation ULID. Remote retries must retain
+		// identical request content, while the local command keeps that default.
+		if suffix := strings.LastIndex(owner, "/"); suffix >= 0 {
+			owner = owner[:suffix]
+		}
+	}
+	options, _ := json.Marshal(map[string]any{"ttl": ttl, "purpose": purpose, "mode": mode, "owner": owner})
+	return options
 }
 func (f *remoteFlags) wait(ctx context.Context, c *client.Client, op protocol.Operation, emit func(any) error) error {
 	if f.Wait < 0 {

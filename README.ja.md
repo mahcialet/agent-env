@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: README.md
-source_sha256: b76b06723bbcc9532cb0508b05c5b92098c7872ce7d94f985c6fd6e6c302cea3
+source_sha256: d9051df4713ee59e1330ade0827c4b693aed26d91ad3f47f9ce2bf07cf538c44
 ---
 
 [英語版（翻訳元）](README.md)
@@ -197,3 +197,7 @@ remote の実行中操作の cancellation は未実装です。local force/GC �
 期限更新、環境変数の分離を検証しています。物理的な複数 host・VM の検証は未実施であり、
 合意した範囲の受け入れ検証は完了しました。[品質](docs/QUALITY.ja.md) と
 [完了Plan](docs/exec-plans/completed/multi-host-control-plane.ja.md) を参照してください。
+
+remote UI/Browserの`set-text`は現在、永続的な送信処理に入る前に拒否します。text入力はlocal
+modeを使用してください。その他のremote操作と期限の規則は
+[multi-hostの製品仕様](docs/product-specs/multi-host-control-plane.ja.md)を参照してください。

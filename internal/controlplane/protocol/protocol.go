@@ -1,7 +1,10 @@
 // Package protocol defines the versioned host-runtime-independent wire contract.
 package protocol
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"time"
+)
 
 const Version = 1
 const RoleClient = "client"
@@ -112,19 +115,20 @@ type Result struct {
 	CleanupConfirmed bool            `json:"cleanup_confirmed"`
 }
 type Lease struct {
-	Owner           string `json:"owner"`
-	ID              string `json:"lease_id"`
-	ControllerID    string `json:"controller_id"`
-	HostID          string `json:"host_id"`
-	HostInstanceID  string `json:"host_instance_id"`
-	Epoch           int64  `json:"epoch"`
-	State           string `json:"state"`
-	LastKnownState  string `json:"last_known_state"`
-	AndroidSlots    int    `json:"android_slots"`
-	ManifestDigest  string `json:"manifest_digest"`
-	PlanDigest      string `json:"plan_digest"`
-	SourceSetDigest string `json:"source_set_digest"`
-	RepositoryID    string `json:"repository_id"`
+	ExpiresAt       time.Time `json:"expires_at"`
+	Owner           string    `json:"owner"`
+	ID              string    `json:"lease_id"`
+	ControllerID    string    `json:"controller_id"`
+	HostID          string    `json:"host_id"`
+	HostInstanceID  string    `json:"host_instance_id"`
+	Epoch           int64     `json:"epoch"`
+	State           string    `json:"state"`
+	LastKnownState  string    `json:"last_known_state"`
+	AndroidSlots    int       `json:"android_slots"`
+	ManifestDigest  string    `json:"manifest_digest"`
+	PlanDigest      string    `json:"plan_digest"`
+	SourceSetDigest string    `json:"source_set_digest"`
+	RepositoryID    string    `json:"repository_id"`
 }
 type Enrollment struct {
 	Fingerprint string `json:"fingerprint"`

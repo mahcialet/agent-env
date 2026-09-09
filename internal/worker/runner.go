@@ -6,6 +6,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/mahcialet/agent-env/internal/controlplane/client"
 	"github.com/mahcialet/agent-env/internal/controlplane/protocol"
 	"github.com/mahcialet/agent-env/internal/evidence"
 )
@@ -66,6 +67,10 @@ func (r *Runner) Run(ctx context.Context) error {
 	for ctx.Err() == nil {
 		info, e := r.Transport.Info(ctx)
 		if e != nil {
+			var status *client.StatusError
+			if errors.As(e, &status) && !status.Temporary() {
+				return e
+			}
 			if e = pause(ctx, delay); e != nil {
 				return e
 			}
@@ -79,6 +84,10 @@ func (r *Runner) Run(ctx context.Context) error {
 		registration.ProtocolVersion = protocol.Version
 		registered, e := r.Transport.Register(ctx, registration)
 		if e != nil {
+			var status *client.StatusError
+			if errors.As(e, &status) && !status.Temporary() {
+				return e
+			}
 			if e = pause(ctx, delay); e != nil {
 				return e
 			}

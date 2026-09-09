@@ -42,12 +42,43 @@ func (s *Server) Run(ctx context.Context, listener net.Listener, tlsConfig *tls.
 		return err
 	}
 	defer release()
+	if err := s.Store.QueueExpired(ctx, time.Now()); err != nil {
+		return err
+	}
 	cfg := tlsConfig.Clone()
 	cfg.MinVersion = tls.VersionTLS13
 	cfg.ClientAuth = tls.RequireAndVerifyClientCert
 	srv := &http.Server{Handler: s.Handler(), TLSConfig: cfg, ReadHeaderTimeout: 10 * time.Second, ReadTimeout: 2 * time.Minute, WriteTimeout: 2 * time.Minute, IdleTimeout: 30 * time.Second, BaseContext: func(net.Listener) context.Context { return ctx }}
 	done := make(chan struct{})
 	defer close(done)
+	sweepErrors := make(chan error, 1)
+	sweepCtx, cancelSweep := context.WithCancel(ctx)
+	sweepDone := make(chan struct{})
+	defer func() {
+		cancelSweep()
+		<-sweepDone
+	}()
+	go func() {
+		defer close(sweepDone)
+		ticker := time.NewTicker(time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				if err := s.Store.QueueExpired(sweepCtx, time.Now()); err != nil {
+					if sweepCtx.Err() == nil {
+						sweepErrors <- err
+						_ = srv.Close()
+					}
+					return
+				}
+			case <-sweepCtx.Done():
+				return
+			case <-done:
+				return
+			}
+		}
+	}()
 	go func() {
 		select {
 		case <-ctx.Done():
@@ -59,6 +90,11 @@ func (s *Server) Run(ctx context.Context, listener net.Listener, tlsConfig *tls.
 		}
 	}()
 	err = srv.Serve(tls.NewListener(listener, cfg))
+	select {
+	case sweepErr := <-sweepErrors:
+		return sweepErr
+	default:
+	}
 	if errors.Is(err, http.ErrServerClosed) && ctx.Err() != nil {
 		return nil
 	}

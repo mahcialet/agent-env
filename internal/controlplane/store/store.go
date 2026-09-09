@@ -74,6 +74,8 @@ func Open(path string) (*Store, error) {
  CREATE TABLE IF NOT EXISTS operations(id TEXT PRIMARY KEY,request_hash TEXT NOT NULL,lease_id TEXT NOT NULL,epoch INTEGER NOT NULL,kind TEXT NOT NULL,state TEXT NOT NULL,payload BLOB NOT NULL,result BLOB,result_hash TEXT,created INTEGER NOT NULL);
  CREATE TABLE IF NOT EXISTS blob_refs(digest TEXT NOT NULL,lease_id TEXT NOT NULL,kind TEXT NOT NULL,PRIMARY KEY(digest,lease_id,kind));
  CREATE INDEX IF NOT EXISTS operations_lease ON operations(lease_id,created);
+ CREATE TABLE IF NOT EXISTS lease_lifetimes(lease_id TEXT PRIMARY KEY REFERENCES leases(id),expires_at INTEGER NOT NULL,cleanup_operation_id TEXT NOT NULL DEFAULT '');
+ CREATE INDEX IF NOT EXISTS lease_lifetimes_expiry ON lease_lifetimes(expires_at);
  `
 	if _, err = db.Exec(schema); err != nil {
 		db.Close()
@@ -84,6 +86,10 @@ func Open(path string) (*Store, error) {
 		return nil, err
 	}
 	if err = db.QueryRow("SELECT value FROM metadata WHERE key='controller_id'").Scan(&s.ID); err != nil {
+		db.Close()
+		return nil, err
+	}
+	if err = s.backfillLifetimes(context.Background()); err != nil {
 		db.Close()
 		return nil, err
 	}
@@ -311,6 +317,12 @@ func (s *Store) Remove(ctx context.Context, id string) (protocol.Host, error) {
 	if count > 0 {
 		return h, fault("conflict", "host still owns unreleased or unverified leases")
 	}
+	if err = tx.QueryRowContext(ctx, "SELECT count(*) FROM operations o JOIN leases l ON l.id=o.lease_id WHERE l.host_id=? AND o.state IN ('queued','dispatched')", id).Scan(&count); err != nil {
+		return h, err
+	}
+	if count > 0 {
+		return h, fault("conflict", "host still owns active lease operations")
+	}
 	if _, err = tx.ExecContext(ctx, "UPDATE hosts SET draining=1,removed=1 WHERE id=?", id); err != nil {
 		return h, err
 	}
@@ -410,12 +422,20 @@ func (s *Store) Create(ctx context.Context, r protocol.CreateRequest) (protocol.
 	if len(options.Owner) > 256 {
 		return zero, fault("invalid", "owner exceeds metadata limit")
 	}
+	ttl, err := requestTTL(r.Options)
+	if err != nil {
+		return zero, err
+	}
+	now := time.Now().UTC()
 	l := protocol.Lease{Owner: options.Owner, ID: ulid.Make().String(), ControllerID: s.ID, HostID: chosen.HostID, HostInstanceID: chosen.HostInstanceID, Epoch: 1, State: "ASSIGNED", LastKnownState: "ASSIGNED", AndroidSlots: r.AndroidSlots, ManifestDigest: r.ManifestDigest, PlanDigest: r.PlanDigest, SourceSetDigest: r.SourceSetDigest, RepositoryID: r.RepositoryID}
 	data, _ := json.Marshal(l)
 	if _, err = tx.ExecContext(ctx, "INSERT INTO leases(id,host_id,instance_id,epoch,state,slots,data) VALUES(?,?,?,?,?,?,?)", l.ID, l.HostID, l.HostInstanceID, l.Epoch, l.State, l.AndroidSlots, data); err != nil {
 		return zero, err
 	}
-	if _, err = tx.ExecContext(ctx, "INSERT INTO operations(id,request_hash,lease_id,epoch,kind,state,payload,created) VALUES(?,?,?,1,'create','queued',?,?)", r.OperationID, hash, l.ID, payload, time.Now().UnixNano()); err != nil {
+	if _, err = tx.ExecContext(ctx, "INSERT INTO lease_lifetimes(lease_id,expires_at) VALUES(?,?)", l.ID, now.Add(ttl).UnixNano()); err != nil {
+		return zero, err
+	}
+	if _, err = tx.ExecContext(ctx, "INSERT INTO operations(id,request_hash,lease_id,epoch,kind,state,payload,created) VALUES(?,?,?,1,'create','queued',?,?)", r.OperationID, hash, l.ID, payload, now.UnixNano()); err != nil {
 		return zero, err
 	}
 	for _, d := range sources {
@@ -448,8 +468,16 @@ var AllowedKinds = map[string]bool{"show": true, "renew": true, "reconcile": tru
 
 func (s *Store) Submit(ctx context.Context, r protocol.SubmitRequest) (protocol.Operation, error) {
 	var zero protocol.Operation
+	if err := protocol.ValidateDurablePayload(r.Kind, r.Payload); err != nil {
+		return zero, fault("invalid", "sensitive input cannot be persisted in the remote operation queue")
+	}
 	if !ValidID(r.OperationID) || !ValidID(r.LeaseID) || !AllowedKinds[r.Kind] || len(r.Payload) == 0 {
 		return zero, fault("invalid", "invalid lease operation")
+	}
+	if r.Kind == "renew" {
+		if _, err := requestTTL(r.Payload); err != nil {
+			return zero, err
+		}
 	}
 	payload, hash, err := canonical(r)
 	if err != nil {
@@ -466,6 +494,13 @@ func (s *Store) Submit(ctx context.Context, r protocol.SubmitRequest) (protocol.
 	l, err := s.lease(ctx, tx, r.LeaseID, false)
 	if err != nil {
 		return zero, err
+	}
+	host, err := s.host(ctx, tx, l.HostID)
+	if err != nil {
+		return zero, err
+	}
+	if host.Removed {
+		return zero, fault("conflict", "assigned host has been removed")
 	}
 	var active int
 	if err = tx.QueryRowContext(ctx, "SELECT count(*) FROM operations WHERE lease_id=? AND state IN ('queued','dispatched')", r.LeaseID).Scan(&active); err != nil {
@@ -529,6 +564,11 @@ func (s *Store) lease(ctx context.Context, q queryer, id string, observe bool) (
 	l.Epoch = epoch
 	l.State = state
 	l.LastKnownState = state
+	var expiry int64
+	if err := q.QueryRowContext(ctx, "SELECT expires_at FROM lease_lifetimes WHERE lease_id=?", id).Scan(&expiry); err != nil {
+		return l, err
+	}
+	l.ExpiresAt = time.Unix(0, expiry).UTC()
 	if observe && state != "RELEASED" {
 		h, err := s.host(ctx, q, l.HostID)
 		if err != nil {
@@ -581,10 +621,13 @@ func (s *Store) Poll(ctx context.Context, w protocol.WorkerIdentity) (*protocol.
 	if err = s.worker(ctx, tx, w); err != nil {
 		return nil, err
 	}
+	if err = s.queueExpired(ctx, tx, time.Now()); err != nil {
+		return nil, err
+	}
 	var id string
 	err = tx.QueryRowContext(ctx, "SELECT o.id FROM operations o JOIN leases l ON l.id=o.lease_id WHERE l.host_id=? AND l.instance_id=? AND o.epoch=l.epoch AND o.state IN ('queued','dispatched') ORDER BY o.created LIMIT 1", w.HostID, w.HostInstanceID).Scan(&id)
 	if errors.Is(err, sql.ErrNoRows) {
-		return nil, nil
+		return nil, tx.Commit()
 	}
 	if err != nil {
 		return nil, err
@@ -684,6 +727,19 @@ func (s *Store) Complete(ctx context.Context, r protocol.Result) (protocol.Opera
 	}
 	if _, err = tx.ExecContext(ctx, "UPDATE leases SET state=? WHERE id=?", state, r.LeaseID); err != nil {
 		return zero, err
+	}
+	if op.Kind == "renew" && r.State == "completed" {
+		ttl, err := requestTTL(op.Payload)
+		if err != nil {
+			return zero, err
+		}
+		var created int64
+		if err = tx.QueryRowContext(ctx, "SELECT created FROM operations WHERE id=?", op.ID).Scan(&created); err != nil {
+			return zero, err
+		}
+		if _, err = tx.ExecContext(ctx, "UPDATE lease_lifetimes SET expires_at=?,cleanup_operation_id='' WHERE lease_id=?", time.Unix(0, created).Add(ttl).UnixNano(), r.LeaseID); err != nil {
+			return zero, err
+		}
 	}
 	if err = tx.Commit(); err != nil {
 		return zero, err

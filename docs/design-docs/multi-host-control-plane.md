@@ -145,3 +145,23 @@ integration with two worker state roots, native Windows/macOS/Linux role executi
 and physical-machine/VM multi-host evidence. A same-host test or cross-build cannot
 substitute for those last two categories. The ExecPlan records exact results and
 remaining evidence limits; implementation acceptance is complete within that scope.
+
+## Durable lifetime and sensitive-input boundaries
+
+The additive `lease_lifetimes` table stores controller deadlines and the automatic
+cleanup operation ID. Existing leases are backfilled from durable create and
+completed renew timestamps. Startup, the one-second server sweep and worker polls
+queue expiry cleanup transactionally. Queued/dispatched work defers cleanup;
+failed or uncertain automatic cleanup is not blindly retried as a new mutation.
+Only successful renew resets the deadline and cleanup marker. Sweep database
+errors stop the server visibly instead of silently disabling expiry enforcement.
+
+The shared protocol guard examines UI/browser JSON tokens before persistence,
+including duplicate and case-variant text fields. It rejects transient text and
+`set-text`; it never redacts a payload and then executes altered input. Existing
+journals are not rewritten. A non-persistent input protocol is future work.
+
+After the create effect boundary, failures remain uncertain even if reservation
+returned no lease. A compensated create may include a released local lease in its
+result payload, but does not assert the destroy-only cleanup confirmation field.
+An explicit destroy establishes authoritative release, including after recovery.

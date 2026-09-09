@@ -126,6 +126,9 @@ func sameManagement(l domain.Lease, op protocol.Operation) error {
 	return nil
 }
 func (e *AppExecutor) Prepare(ctx context.Context, op protocol.Operation) error {
+	if err := protocol.ValidateDurablePayload(op.Kind, op.Payload); err != nil {
+		return err
+	}
 	if err := operationValid(op); err != nil {
 		return err
 	}
@@ -251,9 +254,18 @@ func (e *AppExecutor) execute(ctx context.Context, op protocol.Operation, before
 	var out Response
 	var lease domain.Lease
 	var artifacts []protocol.Blob
+	createEffectsStarted := false
 	switch op.Kind {
 	case "create":
-		lease, err = s.Create(ctx, p.options, app.CreateOptions{BeforeReserve: beforeEffects, LeaseID: op.LeaseID, Management: management(op), Owner: p.request.Owner, Purpose: p.request.Purpose, Mode: p.request.Mode, TTL: p.request.TTL})
+		lease, err = s.Create(ctx, p.options, app.CreateOptions{BeforeReserve: func(effectCtx context.Context) error {
+			if beforeEffects != nil {
+				if err := beforeEffects(effectCtx); err != nil {
+					return err
+				}
+			}
+			createEffectsStarted = true
+			return nil
+		}, LeaseID: op.LeaseID, Management: management(op), Owner: p.request.Owner, Purpose: p.request.Purpose, Mode: p.request.Mode, TTL: p.request.TTL})
 		out.Lease = &lease
 	case "show":
 		lease, err = s.Show(ctx, op.LeaseID)
@@ -315,7 +327,7 @@ func (e *AppExecutor) execute(ctx context.Context, op protocol.Operation, before
 	if err != nil {
 		state = "failed"
 	}
-	if out.Run != nil && out.Run.Status == "running" {
+	if out.Run != nil && out.Run.Status == "running" || op.Kind == "create" && createEffectsStarted && err != nil {
 		state = "uncertain"
 	}
 	result := responseResult(state, out, err)
@@ -326,6 +338,12 @@ func (e *AppExecutor) execute(ctx context.Context, op protocol.Operation, before
 	result.Artifacts = artifacts
 	if out.Lease != nil {
 		result.LocalState = out.Lease.Observed
+	}
+	// Compensating create cleanup is retained in the payload, but only a later
+	// assignment-authorized destroy/reconcile may prove global release. Sending
+	// released here would make the controller reject this durable create result.
+	if op.Kind == "create" && result.LocalState == "released" {
+		result.LocalState = ""
 	}
 	result.CleanupConfirmed = op.Kind == "destroy" && !p.request.DryRun && err == nil && lease.Observed == "released"
 	return result
@@ -347,6 +365,9 @@ func (e *AppExecutor) Recover(ctx context.Context, op protocol.Operation) protoc
 	}
 	result := responseResult("uncertain", Response{Lease: &lease}, errors.New("previous execution may have taken effect; mutation was not replayed"))
 	result.LocalState = lease.Observed
+	if op.Kind == "create" && lease.Observed == "released" {
+		result.LocalState = ""
+	}
 	if op.Kind == "destroy" && lease.Observed == "released" {
 		result = responseResult("completed", Response{Lease: &lease}, nil)
 		result.LocalState = lease.Observed
@@ -601,6 +622,15 @@ func sameJSON(a, b []byte) bool {
 }
 
 func validateRequest(op protocol.Operation, req Request) error {
+	if op.Kind == "ui" || op.Kind == "browser" {
+		payload, err := json.Marshal(req)
+		if err != nil {
+			return errors.New("invalid worker request")
+		}
+		if err = protocol.ValidateDurablePayload(op.Kind, payload); err != nil {
+			return err
+		}
+	}
 	if req.Run != "" && req.Component != "" {
 		return errors.New("run and component select different log sources")
 	}

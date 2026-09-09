@@ -26,6 +26,7 @@ import (
 	"github.com/mahcialet/agent-env/internal/execx"
 	"github.com/mahcialet/agent-env/internal/instance"
 	"github.com/mahcialet/agent-env/internal/paths"
+	"github.com/mahcialet/agent-env/internal/policy"
 	"github.com/mahcialet/agent-env/internal/remotesource"
 	"github.com/mahcialet/agent-env/internal/store/sqlite"
 	"github.com/mahcialet/agent-env/internal/worker"
@@ -115,8 +116,11 @@ func addServices(root *cobra.Command, f *remoteFlags, emit func(any) error, errO
 	var maximum, androidSlots int
 	workerCommand := &cobra.Command{Use: "worker", Short: "Operate a worker that connects outbound to its controller"}
 	workerServe := &cobra.Command{Use: "serve", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error {
-		if maximum <= 0 || androidSlots < 0 {
-			return errors.New("max-leases must be positive and android-slots nonnegative")
+		if maximum <= 0 || maximum > policy.Defaults().MaxActive {
+			return fmt.Errorf("max-leases must be between 1 and the worker local policy limit %d", policy.Defaults().MaxActive)
+		}
+		if androidSlots < 0 {
+			return errors.New("android-slots must be nonnegative")
 		}
 		c, e := f.client()
 		if e != nil {

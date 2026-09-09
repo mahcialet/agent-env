@@ -425,6 +425,15 @@ func TestCreateEffectBoundaryPrecedesReserveAndKeepsAmbiguousFailure(t *testing.
 			if process.starts != 0 {
 				t.Fatal("failed boundary started process")
 			}
+			stored, resultErr := j.Get(ctx, op.ID)
+			wantState := "uncertain"
+			if blocked {
+				wantState = "failed"
+			}
+			if resultErr != nil || stored.Result == nil || stored.Result.State != wantState {
+				t.Fatalf("boundary result: %+v %v want %s", stored, resultErr, wantState)
+			}
+
 			if (blocked && reserves != 0) || (!blocked && reserves != 1) {
 				t.Fatalf("reserve count %d blocked=%v", reserves, blocked)
 			}
@@ -438,4 +447,82 @@ func TestCreateEffectBoundaryPrecedesReserveAndKeepsAmbiguousFailure(t *testing.
 			}
 		})
 	}
+}
+
+type compensatedCreateProcess struct{ *executorProcess }
+
+func (p compensatedCreateProcess) Start(_ context.Context, r domain.Runtime) (domain.Runtime, error) {
+	p.starts++
+	return r, errors.New("fixture process start failed")
+}
+func TestCompensatedCreateResultDeliversUncertaintyBeforeExplicitDestroy(t *testing.T) {
+	ctx := context.Background()
+	e, op, process, db := executorFixture(t)
+	e.Factory = func(m *domain.Management) *app.Service {
+		return &app.Service{Store: db, Process: compensatedCreateProcess{process}, Management: m}
+	}
+	j, err := OpenJournal(e.Home, op.HostID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer j.Close()
+	if err = j.Bind(ctx, op.ControllerID); err != nil {
+		t.Fatal(err)
+	}
+	op.HostInstanceID = j.Identity.HostInstanceID
+	receipt, err := j.Receive(ctx, op)
+	if err != nil {
+		t.Fatal(err)
+	}
+	transport := &createResultReviewTransport{}
+	runner := Runner{Journal: j, Executor: e, Transport: transport}
+	if err = runner.handle(ctx, receipt); err != nil {
+		t.Fatal(err)
+	}
+	stored, err := j.Get(ctx, op.ID)
+	if err != nil || stored.State != "completed" || stored.Result == nil {
+		t.Fatalf("create receipt not acknowledged: %s %v", stored.State, err)
+	}
+	var response Response
+	if err = json.Unmarshal(stored.Result.Payload, &response); err != nil {
+		t.Fatal(err)
+	}
+	if response.Lease == nil || response.Lease.Observed != "released" {
+		t.Fatalf("fixture did not compensate create: %+v", response.Lease)
+	}
+	if stored.Result.State != "uncertain" || stored.Result.CleanupConfirmed || stored.Result.LocalState == "released" {
+		t.Fatalf("create falsely finalized assignment: state=%s local=%s cleanup=%v", stored.Result.State, stored.Result.LocalState, stored.Result.CleanupConfirmed)
+	}
+	recovered := e.Recover(ctx, op)
+	if recovered.State != "uncertain" || recovered.CleanupConfirmed || recovered.LocalState == "released" {
+		t.Fatalf("recovery cannot assert create release: %+v", recovered)
+	}
+	destroy := op
+	destroy.ID = "destroy-compensated-create"
+	destroy.Kind = "destroy"
+	destroy.Payload = json.RawMessage(`{}`)
+	receipt, err = j.Receive(ctx, destroy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = runner.handle(ctx, receipt); err != nil {
+		t.Fatal(err)
+	}
+	stored, err = j.Get(ctx, destroy.ID)
+	if err != nil || stored.Result == nil || !stored.Result.CleanupConfirmed || stored.Result.State != "completed" {
+		t.Fatalf("explicit destroy missing release proof: %v", err)
+	}
+	if process.starts != 1 {
+		t.Fatalf("create replayed effects: starts=%d", process.starts)
+	}
+}
+
+type createResultReviewTransport struct{ fakeTransport }
+
+func (t *createResultReviewTransport) Complete(_ context.Context, r protocol.Result) error {
+	if r.LocalState == "released" && (!r.CleanupConfirmed || r.State == "uncertain") {
+		return errors.New("release requires cleanup proof")
+	}
+	t.acks++
+	return nil
 }

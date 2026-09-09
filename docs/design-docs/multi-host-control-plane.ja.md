@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/design-docs/multi-host-control-plane.md
-source_sha256: ace044b032196cd935ab2bfe4771a642e2115fbe6b479598946b26f6d1ad547f
+source_sha256: 38126313210cee100766379268ad6ae0981aed508408931ba8cd70a93603383f
 ---
 
 # 一つの管理主体による複数 host の調整
@@ -128,3 +128,20 @@ client への暗黙の tunnel はありません。HA、migration、host をま�
 Windows/macOS/Linux の native role 実行、物理マシン・VM の複数 host 証拠を区別します。
 同じ host の test や cross-build で最後の二分類を代用できません。
 ExecPlan が正確な結果と不足を記録します。文書化した範囲で実装の受け入れは完了しています。
+
+## 期限の永続化と機密入力の境界
+
+追加する`lease_lifetimes`テーブルにcontrollerの期限と自動cleanupのoperation IDを保存する。
+既存leaseは永続化済みcreateと成功したrenewの時刻から補完する。起動時、1秒ごとのserver検査、
+workerのpollで、期限切れcleanupをtransaction内で予約する。queued/dispatched操作があれば
+cleanupを延期する。自動cleanupが失敗または不確実になっても、新規の変更操作として盲目的に
+再試行しない。成功したrenewだけが期限とcleanup記録をリセットする。検査中のdatabaseエラーは
+serverの終了として表面化させ、期限処理が黙って無効になることを防ぐ。
+
+共通protocol検証は保存前にUI/browserのJSON tokenを調べ、重複や大文字小文字違いのtext項目も
+検査する。一時的なtextと`set-text`を拒否し、伏せ字へ変更した入力を実行しない。
+既存journalは書き換えない。非永続の入力protocolは今後の課題とする。
+
+createの作用境界を越えた失敗は、予約処理がleaseを返さなかった場合も不確実として扱う。
+補償処理したcreateの結果payloadには解放済みlocal leaseを含められるが、destroy専用の
+cleanup確認フィールドでは解放を宣言しない。復旧後も含め、明示的なdestroyで正式に解放を確認する。

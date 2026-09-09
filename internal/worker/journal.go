@@ -133,6 +133,9 @@ func (j *Journal) Receive(ctx context.Context, op protocol.Operation) (Receipt, 
 	if op.ControllerID == "" || op.ControllerID != j.Identity.ControllerID || op.HostID != j.Identity.HostID || op.HostInstanceID != j.Identity.HostInstanceID || op.Epoch <= 0 || !validIdentity(op.ID) || !validIdentity(op.LeaseID) {
 		return empty, errors.New("operation assignment identity mismatch")
 	}
+	if err := protocol.ValidateDurablePayload(op.Kind, op.Payload); err != nil {
+		return empty, err
+	}
 	// Transport state/results are not execution identity. Payload bytes are exact:
 	// retries must preserve the submitted immutable envelope.
 	op.State = ""

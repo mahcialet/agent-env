@@ -195,3 +195,7 @@ named tests, logs, artifact downloads, renewal and environment isolation as well
 as placement and restart. Physical multi-host/VM coverage remains unverified;
 the agreed acceptance is complete. See [quality](docs/QUALITY.md) and the
 [completed plan](docs/exec-plans/completed/multi-host-control-plane.md).
+
+Remote UI/Browser `set-text` is currently rejected before durable submission; use
+local mode for text input. Other remote operation and lifetime rules are described
+in the [multi-host product contract](docs/product-specs/multi-host-control-plane.md).
