@@ -252,6 +252,13 @@ func (c podmanClient) Logs(ctx context.Context, r domain.Runtime) (string, error
 	}
 	return d.Logs(ctx, r)
 }
+func (c podmanClient) LogsBounded(ctx context.Context, r domain.Runtime) (string, error) {
+	d, err := c.checked(ctx, r)
+	if err != nil {
+		return "", err
+	}
+	return d.LogsBounded(ctx, r)
+}
 func (c podmanClient) Inspect(ctx context.Context, r domain.Runtime) (Observation, error) {
 	d, err := c.checked(ctx, r)
 	if err != nil {

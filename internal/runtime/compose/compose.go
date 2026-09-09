@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -46,10 +47,13 @@ var projectPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]{0,62}$`)
 var versionPattern = regexp.MustCompile(`^v?([0-9]+)\.`)
 
 func (c dockerClient) run(ctx context.Context, directory string, args ...string) (execx.Result, error) {
+	return c.runBounded(ctx, directory, 0, args...)
+}
+func (c dockerClient) runBounded(ctx context.Context, directory string, captureLimit int, args ...string) (execx.Result, error) {
 	if c.Runner == nil {
 		return execx.Result{}, fmt.Errorf("Compose runner is not configured")
 	}
-	r, err := c.Runner.Run(ctx, execx.Command{Name: "docker", Args: args, Dir: directory, Timeout: 2 * time.Minute, UnsetEnv: []string{"COMPOSE_FILE", "COMPOSE_PROJECT_NAME", "COMPOSE_PROFILES"}})
+	r, err := c.Runner.Run(ctx, execx.Command{CaptureLimit: captureLimit, Name: "docker", Args: args, Dir: directory, Timeout: 2 * time.Minute, UnsetEnv: []string{"COMPOSE_FILE", "COMPOSE_PROJECT_NAME", "COMPOSE_PROFILES"}})
 	if err != nil {
 		return r, fmt.Errorf("docker %s: %w", strings.Join(args, " "), err)
 	}
@@ -235,13 +239,25 @@ func (c dockerClient) Up(ctx context.Context, r domain.Runtime) error {
 }
 
 func (c dockerClient) Logs(ctx context.Context, r domain.Runtime) (string, error) {
+	return c.logs(ctx, r, 0)
+}
+func (c dockerClient) LogsBounded(ctx context.Context, r domain.Runtime) (string, error) {
+	return c.logs(ctx, r, 1<<20)
+}
+func (c dockerClient) logs(ctx context.Context, r domain.Runtime, limit int) (string, error) {
 	args, err := composeArgs(r)
 	if err != nil {
 		return "", err
 	}
 	args = append(args, "logs", "--no-color", "--timestamps")
 	args = append(args, r.Services...)
-	out, err := c.run(ctx, r.Directory, args...)
+	// Display callers bound both streams before OSRunner accumulates them.
+	// Cleanup retains its existing zero-limit evidence path. Display overflow
+	// is explicit, never a successful truncated log result.
+	out, err := c.runBounded(ctx, r.Directory, limit, args...)
+	if limit > 0 && errors.Is(err, execx.ErrOutputIncomplete) {
+		err = fmt.Errorf("Compose logs exceed the 1 MiB per-stream capture limit; query a narrower log selection: %w", err)
+	}
 	return out.Stdout + out.Stderr, err
 }
 

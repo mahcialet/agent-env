@@ -18,6 +18,7 @@ func TestIncompatibleInventoryRetainsAssignmentWithoutDispatch(t *testing.T) {
 	}
 	r := protocol.RegisterRequest{WorkerIdentity: w, ProtocolVersion: protocol.Version, ProductVersion: "other", OS: "linux", Arch: "amd64", Capabilities: []string{"process"}, Capacity: protocol.Capacity{MaxLeases: 2, AndroidSlots: 2}}
 	r.Incarnation = "incompatible-boot"
+	expireWorkerHeartbeat(t, s, w.HostID)
 	for _, kind := range []string{"product", "protocol"} {
 		if kind == "protocol" {
 			r.ProductVersion = "test"

@@ -133,6 +133,9 @@ func (r runtimeAdapter) Down(ctx context.Context, v domain.Runtime) error {
 func (r runtimeAdapter) Logs(ctx context.Context, v domain.Runtime) (string, error) {
 	return r.client.Logs(ctx, v)
 }
+func (r runtimeAdapter) LogsBounded(ctx context.Context, v domain.Runtime) (string, error) {
+	return r.client.LogsBounded(ctx, v)
+}
 func (r runtimeAdapter) Inspect(ctx context.Context, v domain.Runtime) (app.RuntimeObservation, error) {
 	x, err := r.client.Inspect(ctx, v)
 	return app.RuntimeObservation{Ready: x.Ready, Exists: x.Exists, Resources: x.Resources, Diagnostics: x.Diagnostics, Endpoints: x.Endpoints}, err

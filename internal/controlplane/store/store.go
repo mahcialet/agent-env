@@ -93,6 +93,19 @@ func Open(path string) (*Store, error) {
 		db.Close()
 		return nil, err
 	}
+	// Legacy dispatches have no trustworthy owner token: the old registration
+	// path could already have replaced the host incarnation. Empty is not a
+	// valid worker incarnation, so only retained journal receipts can recover
+	// them; Poll must not invent a safe replay owner from current host metadata.
+	if _, err = db.Exec(`CREATE TABLE IF NOT EXISTS operation_dispatches(operation_id TEXT PRIMARY KEY REFERENCES operations(id),incarnation TEXT NOT NULL);
+ INSERT OR IGNORE INTO operation_dispatches(operation_id,incarnation)
+ SELECT o.id,'' FROM operations o WHERE o.state='dispatched';
+ UPDATE leases SET state='QUARANTINED' WHERE state!='RELEASED' AND id IN (
+ SELECT o.lease_id FROM operations o JOIN operation_dispatches d ON d.operation_id=o.id
+ WHERE o.state='dispatched' AND d.incarnation='' AND o.kind NOT IN ('logs','artifact','show'))`); err != nil {
+		db.Close()
+		return nil, err
+	}
 	return s, nil
 }
 func (s *Store) Close() error { return s.db.Close() }
@@ -163,13 +176,25 @@ func (s *Store) Register(ctx context.Context, r protocol.RegisterRequest) (proto
 	}
 	defer tx.Rollback()
 	var prior, inc string
+	var lastSeen int64
 	var draining, removed bool
-	err = tx.QueryRowContext(ctx, "SELECT instance_id,incarnation,draining,removed FROM hosts WHERE id=?", r.HostID).Scan(&prior, &inc, &draining, &removed)
+	err = tx.QueryRowContext(ctx, "SELECT instance_id,incarnation,last_seen,draining,removed FROM hosts WHERE id=?", r.HostID).Scan(&prior, &inc, &lastSeen, &draining, &removed)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return out, err
 	}
 	if err == nil && (prior != r.HostInstanceID || removed) {
 		return out, fault("identity", "host ID is bound to a different or removed instance")
+	}
+	if err == nil && inc != r.Incarnation && time.Since(time.Unix(0, lastSeen)) <= s.OfflineAfter {
+		return out, fault("unavailable", "previous worker incarnation is still online; retry after it becomes offline")
+	}
+	if err == nil && inc != r.Incarnation {
+		// Silence is not cleanup proof. Preserve placement and capacity while
+		// only an existing durable journal can report dispatched mutations.
+		if _, err = tx.ExecContext(ctx, `UPDATE leases SET state='QUARANTINED' WHERE host_id=? AND state!='RELEASED'
+ AND id IN (SELECT lease_id FROM operations WHERE state='dispatched' AND kind NOT IN ('logs','artifact','show'))`, r.HostID); err != nil {
+			return out, err
+		}
 	}
 	out = protocol.Host{WorkerIdentity: r.WorkerIdentity, ProductVersion: r.ProductVersion, OS: r.OS, Arch: r.Arch, Capabilities: r.Capabilities, Capacity: r.Capacity, Draining: draining, Online: true, LastSeen: time.Now().UnixNano()}
 	out.ProtocolVersion = r.ProtocolVersion
@@ -625,7 +650,11 @@ func (s *Store) Poll(ctx context.Context, w protocol.WorkerIdentity) (*protocol.
 		return nil, err
 	}
 	var id string
-	err = tx.QueryRowContext(ctx, "SELECT o.id FROM operations o JOIN leases l ON l.id=o.lease_id WHERE l.host_id=? AND l.instance_id=? AND o.epoch=l.epoch AND o.state IN ('queued','dispatched') ORDER BY o.created LIMIT 1", w.HostID, w.HostInstanceID).Scan(&id)
+	err = tx.QueryRowContext(ctx, `SELECT o.id FROM operations o JOIN leases l ON l.id=o.lease_id
+ LEFT JOIN operation_dispatches d ON d.operation_id=o.id
+ WHERE l.host_id=? AND l.instance_id=? AND o.epoch=l.epoch
+ AND (o.state='queued' OR (o.state='dispatched' AND d.incarnation=?))
+ ORDER BY o.created LIMIT 1`, w.HostID, w.HostInstanceID, w.Incarnation).Scan(&id)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, tx.Commit()
 	}
@@ -633,6 +662,9 @@ func (s *Store) Poll(ctx context.Context, w protocol.WorkerIdentity) (*protocol.
 		return nil, err
 	}
 	if _, err = tx.ExecContext(ctx, "UPDATE operations SET state='dispatched' WHERE id=? AND state='queued'", id); err != nil {
+		return nil, err
+	}
+	if _, err = tx.ExecContext(ctx, "INSERT OR IGNORE INTO operation_dispatches(operation_id,incarnation) VALUES(?,?)", id, w.Incarnation); err != nil {
 		return nil, err
 	}
 	op, err := s.operation(ctx, tx, id)
@@ -710,7 +742,11 @@ func (s *Store) Complete(ctx context.Context, r protocol.Result) (protocol.Opera
 			return zero, fault("invalid", "release requires worker destroy/reconcile cleanup proof")
 		}
 	}
-	if r.State == "uncertain" {
+	if op.Kind == "logs" || op.Kind == "artifact" {
+		// Retained evidence reads cannot change the runtime phase, including
+		// when interrupted recovery reports an uncertain operation.
+		state = l.LastKnownState
+	} else if r.State == "uncertain" {
 		state = "QUARANTINED"
 	}
 	data, err := json.Marshal(r)

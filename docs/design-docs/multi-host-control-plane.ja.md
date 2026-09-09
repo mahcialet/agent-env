@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/design-docs/multi-host-control-plane.md
-source_sha256: 29d6072ef60b1e1ff0fee6dfffa6b50d578eb14e3799aea1c4d80591bdde2076
+source_sha256: d2b7416d16be92a09d39e4395b6795619e82e3c90f0dc0b31c2c2caa1f753323
 ---
 
 # 一つの管理主体による複数 host の調整
@@ -158,3 +158,13 @@ write-through moveを使う。検証済みの重複blobでも、過去の失敗�
 同一dataを再公開する。同時readerはfileの識別情報の変化を保守的に拒否する場合がある。
 テストは公開失敗を注入して再試行を検証する。物理的な電源断や、native APIを超える
 filesystem/hardwareの保証を実証したものとは扱わない。
+
+配信した操作の所有者を現在のworker登録とは別に永続化する。前のincarnationがonlineなら、
+再試行可能な登録拒否を返す。offline後の交代でも、過去に配信済みの変更操作をpollで引き継がせない。
+localの永続receiptによる復旧完了は受け付ける。incarnationを記録していない旧操作の所有者は
+未確認とし、capacityを保持して再配信しない。移行時点の登録先を推測で所有者にはしない。
+
+対話的なログ取得ではCompose/Podmanの上限付き表示interfaceと、集計前に制限するAndroid file読み込みを
+使う。既存の完全なcleanupログの証拠収集は別経路とし、表示上限を理由に必須証拠を捨てない。
+remote source diffではbufferを埋め込まず、io.Copyがbytes.Buffer.ReadFrom経由でWriteの上限を
+迂回できないようにする。

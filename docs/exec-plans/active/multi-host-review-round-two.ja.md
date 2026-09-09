@@ -1,6 +1,6 @@
 ---
 translation_of: docs/exec-plans/active/multi-host-review-round-two.md
-source_sha256: 86e38585910b5f0ca299a7b53128248c50dba7db38b2443daefb7e39044e3b1f
+source_sha256: 118a19f10a429667f8696dd35b2c08eadaeba898cfa6135c9bf4e66b0efc03af
 status: active
 owner: maintainers
 last_verified: 2026-09-09
@@ -25,7 +25,13 @@ manifestの二重送信をなくし、応答済みCAS公開の永続性を確保
 - [x] blob streamの期限をmetadata要求の上限から分離する。
 - [x] manifestを1回だけ送信し、workerの検証を維持する。
 - [x] 移植性を維持してCAS directory公開を永続化する。
-- [ ] 検証・push・4件への返信とResolveを終え、このPlanをarchiveする。
+- [x] remote force cleanupで上限付きsource diffを保存する。
+- [x] 検証済みpackageを再展開前に再利用する。
+- [x] 明示reconcileで解放済みleaseを確認する。
+- [x] 稼働中のworker root複製によるincarnationの奪取を防ぐ。
+- [x] 読み取り専用logs/artifactsの不確実な結果でlease状態を変えない。
+- [x] remote結果の構築前にComposeログのcapture量を制限する。
+- [ ] 検証・push・追加Threadすべてへの返信とResolveを終え、このPlanをarchiveする。
 
 ## 想定外の発見
 
@@ -89,7 +95,7 @@ CASは再試行も含め、platformに適した永続化を終えてから成功
 
 ## 成果物と注記
 
-PR #12 Thread: PRRT_kwDOURHsR86gk8fD、PRRT_kwDOURHsR86gk8fG、
+PR #12 Thread: PRRT_kwDOURHsR86gk8fC、PRRT_kwDOURHsR86gk8fG、
 PRRT_kwDOURHsR86gk8fL、PRRT_kwDOURHsR86gk8fQ。
 
 ## インターフェースと依存
@@ -107,3 +113,32 @@ localの保存状態と4 MiBの結果上限を維持する。
 （worker8.806秒/CLI43.366秒、server/blobstoreも成功）。大きな応答のテストで完了状態・元の入力・
 合計8MiBのoperation envelope上限を維持することを確認した。省略形式のdownload補完を含め、
 native multi-host CLIも成功した。
+
+`3dba741`のpush後に追加6件が入り、本active Planで引き続き対応する。
+PRRT_kwDOURHsR86glT_l、PRRT_kwDOURHsR86glT_s、PRRT_kwDOURHsR86glT_y、
+PRRT_kwDOURHsR86glT_2、PRRT_kwDOURHsR86glT_7、PRRT_kwDOURHsR86glUAB。
+対象はcleanup証拠、package再利用、reconcileの証明、workerの交代制御、読み取り専用操作の
+状態保持、Composeログの上限である。
+
+追加の発見: 実17MiBのGit diffで、埋め込みbytes.BufferのReadFromが旧buffer上限を迂回した。
+埋め込みをやめて上限を実効化し、remotesource全raceが成功した（5.549秒）。Composeの共通上限は
+必須cleanup証拠にも影響し、多量ログのserviceを削除できなくしたため、最終的には上限付きの
+表示経路を既存のcleanup契約から分ける。Androidの表示ログも集計後ではなく読み込み前に制限する。
+
+`3dba741`のMulti-host native・Browser native・Release previewは全platformで成功した。
+push Verify34333854477では、serverの正常EOFがclientのcancel確認より先になるfixture競合が出た。
+cancel確認までhandlerを未完了に保ち、厳密なエラー判定を維持した。race5回の反復が成功した
+（16.236秒）。PR Verify34333859610では、未変更のTestLifecycleCreatePersistedIntentAndUniqueIsolationが
+lifecycle_test.go229でcontext deadline exceededとなった。証拠を保持し、次commitのCIで確認する。
+
+追加6件の検証: store/serverのraceが成功した（2.241秒/2.969秒）。online交代拒否、offline後の
+再配信防止、所有者不明の移行、読み取り専用状態保持を含む。workerの補償済みcreateから
+reconcile/controllerの解放確認が成功し、appのraceも成功した（52.942秒）。offline判定30秒を含む
+native CLI再起動fixtureが成功した（46.249秒）。実Docker/Podmanのremote Compose fixtureも成功した
+（7.34秒/21.61秒）。これにより本番CLIの上限付き表示adapterを確認した。独立レビューで欠落した
+adapterの転送methodを検出し、push前に修正した。
+
+削除後のcacheへの懸念は再現しなかった。削除対象はlease worktreeであり、bare cache repositoryは
+残る。保存した回帰テストで、削除後に空CASを使うlogs/artifact/reconcile/再destroyを確認した。
+検証条件は緩めていない。source diffと再利用は修正前の失敗も確認済み。実17MiB diffは実効化した
+capture上限で安全に失敗し、cleanupの安全性を維持する。

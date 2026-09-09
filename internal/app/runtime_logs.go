@@ -3,6 +3,8 @@ package app
 import (
 	"context"
 	"errors"
+	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -10,10 +12,26 @@ import (
 	"github.com/mahcialet/agent-env/internal/evidence"
 )
 
+// BoundedRuntimeLogProvider is required for interactive log display; ordinary
+// RuntimeProvider.Logs remains the separate durable cleanup evidence path.
+type BoundedRuntimeLogProvider interface {
+	LogsBounded(context.Context, domain.Runtime) (string, error)
+}
+
 // RuntimeLogEntries isolates both live and retained logs using the component's
 // exact runtime/service contract. Aggregate historical logs cannot be split.
 func (s *Service) RuntimeLogEntries(ctx context.Context, lease domain.Lease, component string) (map[string]string, error) {
 	entries := map[string]string{}
+	const logResponseLimit = 2 << 20
+	remaining := logResponseLimit
+	add := func(name, data string) error {
+		if len(data) > remaining {
+			return errors.New("runtime log response exceeds 2 MiB; select a narrower component or run")
+		}
+		remaining -= len(data)
+		entries[name] = data
+		return nil
+	}
 	selectedRuntime := ""
 	selectedAndroid := false
 	selectedProcess := false
@@ -66,23 +84,32 @@ func (s *Service) RuntimeLogEntries(ctx context.Context, lease domain.Lease, com
 		} else {
 			continue
 		}
-		data, err := os.ReadFile(artifact.Path)
+		file, err := os.Open(artifact.Path)
 		if err != nil {
 			return nil, err
 		}
-		entries[artifact.ID] = string(data)
+		data, readErr := io.ReadAll(io.LimitReader(file, int64(remaining)+1))
+		closeErr := file.Close()
+		if err = errors.Join(readErr, closeErr); err != nil {
+			return nil, err
+		}
+		if err = add(artifact.ID, string(data)); err != nil {
+			return nil, err
+		}
 		matched = true
 	}
 	for _, runtime := range lease.Runtimes {
 		if runtime.Type != "android-emulator" || (component != "" && runtime.Name != selectedRuntime) {
 			continue
 		}
-		logs, err := AndroidProcessLogEntries(s.Home, lease.ID, runtime)
+		logs, err := androidProcessLogEntries(s.Home, lease.ID, runtime, int64(remaining))
 		if err != nil {
 			return nil, err
 		}
 		for name, data := range logs {
-			entries[name] = data
+			if err = add(name, data); err != nil {
+				return nil, err
+			}
 			matched = true
 		}
 	}
@@ -110,12 +137,18 @@ func (s *Service) RuntimeLogEntries(ctx context.Context, lease domain.Lease, com
 			}
 			logs, err = s.Process.Logs(ctx, runtime)
 		} else {
-			logs, err = s.Runtime.Logs(ctx, runtime)
+			bounded, ok := s.Runtime.(BoundedRuntimeLogProvider)
+			if !ok {
+				return nil, errors.New("bounded runtime log provider is required for log display")
+			}
+			logs, err = bounded.LogsBounded(ctx, runtime)
 		}
 		if err != nil {
 			return nil, err
 		}
-		entries[runtime.Name] = evidence.RedactString(logs, evidence.InheritedSecrets())
+		if err = add(runtime.Name, evidence.RedactString(logs, evidence.InheritedSecrets())); err != nil {
+			return nil, fmt.Errorf("runtime %s: %w", runtime.Name, err)
+		}
 	}
 	return entries, nil
 }

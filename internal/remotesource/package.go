@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/mahcialet/agent-env/internal/app"
 	"github.com/mahcialet/agent-env/internal/blobstore"
@@ -251,18 +252,22 @@ func git(ctx context.Context, dir string, args ...string) (string, error) {
 }
 
 type capped struct {
-	bytes.Buffer
+	// Do not embed Buffer: its promoted ReadFrom lets os/exec's io.Copy
+	// bypass Write and therefore bypass the output limit.
+	buffer   bytes.Buffer
 	overflow bool
 }
 
+func (c *capped) String() string { return c.buffer.String() }
+
 func (c *capped) Write(p []byte) (int, error) {
 	n := len(p)
-	left := (16 << 20) - c.Len()
+	left := (16 << 20) - c.buffer.Len()
 	if len(p) > left {
 		p = p[:left]
 		c.overflow = true
 	}
-	_, _ = c.Buffer.Write(p)
+	_, _ = c.buffer.Write(p)
 	return n, nil
 }
 func supported(ctx context.Context, repo, commit string) error {
@@ -444,6 +449,12 @@ func Materialize(ctx context.Context, p Package, home string, cas *blobstore.Sto
 	if err = privateDirectory(root); err != nil {
 		return options, nil, err
 	}
+	dest := filepath.Join(root, p.PlanDigest)
+	if _, err = os.Lstat(dest); err == nil {
+		return validateMaterialized(ctx, p, dest)
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return options, nil, err
+	}
 	temp, err := os.MkdirTemp(root, ".incoming-")
 	if err != nil {
 		return options, nil, err
@@ -481,16 +492,38 @@ func Materialize(ctx context.Context, p Package, home string, cas *blobstore.Sto
 	if err = os.WriteFile(filepath.Join(temp, "manifest.json"), document, 0600); err != nil {
 		return options, nil, err
 	}
-	dest := filepath.Join(root, p.PlanDigest)
 	if err = os.Rename(temp, dest); err != nil {
 		if _, e := os.Lstat(dest); e != nil {
 			return options, nil, err
 		}
 	}
-	if err = privateDirectory(dest); err != nil {
+	return validateMaterialized(ctx, p, dest)
+}
+
+// validateMaterialized rechecks the owned digest directory before using its
+// existing repositories. It neither repairs unexpected paths nor opens bundles.
+func validateMaterialized(ctx context.Context, p Package, dest string) (app.PlanOptions, app.SourceProvider, error) {
+	var options app.PlanOptions
+	if err := materializedDirectory(dest); err != nil {
 		return options, nil, err
 	}
-	if err = privateDirectory(filepath.Join(dest, "sources")); err != nil {
+	if err := materializedDirectory(filepath.Join(dest, "sources")); err != nil {
+		return options, nil, err
+	}
+	control := filepath.Join(dest, "control")
+	if err := materializedRepository(ctx, control, p.ManifestCommit); err != nil {
+		return options, nil, err
+	}
+	original, err := git(ctx, control, "show", p.ManifestCommit+":"+p.ManifestPath)
+	if err != nil {
+		return options, nil, err
+	}
+	normalized, err := normalizeCommitted([]byte(original), p)
+	if err != nil || !bytes.Equal(normalized, p.Manifest) {
+		return options, nil, errors.New("cached manifest differs from committed authority")
+	}
+	document, err := manifestDocument(p.Manifest)
+	if err != nil {
 		return options, nil, err
 	}
 	manifestInfo, e := os.Lstat(filepath.Join(dest, "manifest.json"))
@@ -504,9 +537,8 @@ func Materialize(ctx context.Context, p Package, home string, cas *blobstore.Sto
 	provider := &Provider{git: gitcli.Client{Runner: localRunner{}}, pkg: p, repositories: map[string]string{}}
 	for _, s := range p.Sources {
 		repo := filepath.Join(dest, "sources", s.Alias)
-		st, e := os.Lstat(repo)
-		if e != nil || !st.IsDir() || st.Mode()&os.ModeSymlink != 0 {
-			return options, nil, errors.New("unsafe materialized repository")
+		if err := materializedRepository(ctx, repo, s.Commit); err != nil {
+			return options, nil, err
 		}
 		provider.repositories[repo] = s.RepositoryID
 	}
@@ -519,6 +551,45 @@ func Materialize(ctx context.Context, p Package, home string, cas *blobstore.Sto
 		return options, nil, errors.New("materialized plan identity mismatch")
 	}
 	return options, provider, nil
+}
+
+func materializedDirectory(path string) error {
+	st, err := os.Lstat(path)
+	if err != nil {
+		return err
+	}
+	if !st.IsDir() || st.Mode()&os.ModeSymlink != 0 {
+		return errors.New("unsafe materialized directory")
+	}
+	return nil
+}
+
+func materializedRepository(ctx context.Context, repo, commit string) error {
+	if err := materializedDirectory(repo); err != nil {
+		return err
+	}
+	bare, err := git(ctx, repo, "rev-parse", "--is-bare-repository")
+	if err != nil {
+		return err
+	}
+	if strings.TrimSpace(bare) != "true" {
+		return errors.New("materialized repository must be bare")
+	}
+	common, err := git(ctx, repo, "rev-parse", "--path-format=absolute", "--git-common-dir")
+	if err != nil {
+		return err
+	}
+	if filepath.Clean(strings.TrimSpace(common)) != filepath.Clean(repo) {
+		return errors.New("materialized repository identity mismatch")
+	}
+	resolved, err := git(ctx, repo, "rev-parse", "--verify", "--end-of-options", commit+"^{commit}")
+	if err != nil {
+		return err
+	}
+	if strings.TrimSpace(resolved) != commit {
+		return errors.New("materialized commit identity mismatch")
+	}
+	return nil
 }
 
 // Provider converts worker-local Git identities to the immutable client identities.
@@ -586,6 +657,25 @@ func (p *Provider) Remove(ctx context.Context, s domain.Source, force bool) erro
 		return err
 	}
 	return p.git.Remove(ctx, w, force)
+}
+
+func (p *Provider) Diff(ctx context.Context, s domain.Source) (string, error) {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	w, err := p.native(ctx, s)
+	if err != nil {
+		return "", err
+	}
+	observed, err := p.git.Inspect(ctx, w)
+	if err != nil {
+		return "", err
+	}
+	if !observed.Exists || !observed.Registered || observed.Commit != s.Commit {
+		return "", errors.New("tracked diff requires the owned pinned worktree")
+	}
+	// git bounds stdout/stderr and rejects overflow instead of returning a
+	// truncated patch that could incorrectly authorize destructive cleanup.
+	return git(ctx, s.WorktreePath, "diff", "HEAD", "--binary", "--no-ext-diff", "--no-textconv", "--")
 }
 func safeRelative(s string) bool {
 	if s == "" || strings.ContainsAny(s, "\\:\x00") || strings.HasPrefix(s, "/") {

@@ -181,3 +181,16 @@ data for duplicates; concurrent readers may conservatively reject changed file
 identity. Tests inject publication failures and exercise retries; they do not
 claim to simulate physical power loss or filesystem/hardware guarantees beyond
 the native APIs.
+
+Dispatch ownership is persisted separately from the current worker registration.
+An online prior incarnation yields a retryable registration refusal. Offline
+handoff does not transfer old dispatched mutations through polling; durable local
+receipts may still finish recovery. Legacy dispatches whose incarnation was never
+recorded get an unverified owner, retain capacity and are not redelivered. They are
+not assigned to whichever incarnation happens to be registered during migration.
+
+Interactive log collection uses the bounded display interface for Compose/Podman
+and bounded Android file reads before aggregation. The existing full durable
+cleanup-log capture remains separate; a display limit does not authorize dropping
+required cleanup evidence. Remote-source diff capture uses a non-embedded bounded
+buffer so io.Copy cannot bypass Write via bytes.Buffer.ReadFrom.

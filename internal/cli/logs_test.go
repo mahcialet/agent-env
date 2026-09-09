@@ -30,7 +30,7 @@ type logRuntime struct {
 	calls [][]string
 }
 
-func (r *logRuntime) Logs(_ context.Context, runtime domain.Runtime) (string, error) {
+func (r *logRuntime) LogsBounded(_ context.Context, runtime domain.Runtime) (string, error) {
 	r.calls = append(r.calls, append([]string(nil), runtime.Services...))
 	return strings.Join(runtime.Services, " "), nil
 }

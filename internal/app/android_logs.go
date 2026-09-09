@@ -3,6 +3,7 @@ package app
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -14,6 +15,12 @@ import (
 // Process output survives writable AVD cleanup. Read only the fixed diagnostics
 // beneath the allocated runtime; never follow a replaced path into other state.
 func AndroidProcessLogEntries(home, leaseID string, runtime domain.Runtime) (map[string]string, error) {
+	return androidProcessLogEntries(home, leaseID, runtime, -1)
+}
+
+// A nonnegative budget is for display. The legacy evidence reader is retained
+// for callers whose durable cleanup policy requires complete captured files.
+func androidProcessLogEntries(home, leaseID string, runtime domain.Runtime, remaining int64) (map[string]string, error) {
 	entries := map[string]string{}
 	for _, part := range []string{leaseID, runtime.Name} {
 		if part == "" || part == "." || part == ".." || strings.ContainsAny(part, `/\\:`) {
@@ -59,7 +66,24 @@ func AndroidProcessLogEntries(home, leaseID string, runtime domain.Runtime) (map
 		if !info.Mode().IsRegular() {
 			return nil, fmt.Errorf("Android log is not a regular file: %s", name)
 		}
-		data, err := logs.ReadFile(name)
+		var data []byte
+		if remaining < 0 {
+			data, err = logs.ReadFile(name)
+		} else {
+			if info.Size() > remaining {
+				return nil, errors.New("Android log response exceeds the remaining display byte limit")
+			}
+			file, openErr := logs.Open(name)
+			if openErr != nil {
+				return nil, openErr
+			}
+			data, err = io.ReadAll(io.LimitReader(file, remaining+1))
+			err = errors.Join(err, file.Close())
+			if int64(len(data)) > remaining {
+				return nil, errors.New("Android log response exceeds the remaining display byte limit")
+			}
+			remaining -= int64(len(data))
+		}
 		if err != nil {
 			return nil, err
 		}

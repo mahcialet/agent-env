@@ -348,7 +348,7 @@ func (e *AppExecutor) execute(ctx context.Context, op protocol.Operation, before
 	if op.Kind == "create" && result.LocalState == "released" {
 		result.LocalState = ""
 	}
-	result.CleanupConfirmed = op.Kind == "destroy" && !p.request.DryRun && err == nil && lease.Observed == "released"
+	result.CleanupConfirmed = (op.Kind == "destroy" && !p.request.DryRun || op.Kind == "reconcile") && err == nil && lease.Observed == "released"
 	return result
 }
 func (e *AppExecutor) Recover(ctx context.Context, op protocol.Operation) protocol.Result {
@@ -368,7 +368,7 @@ func (e *AppExecutor) Recover(ctx context.Context, op protocol.Operation) protoc
 	}
 	result := responseResult("uncertain", Response{Lease: &lease}, errors.New("previous execution may have taken effect; mutation was not replayed"))
 	result.LocalState = lease.Observed
-	if op.Kind == "create" && lease.Observed == "released" {
+	if lease.Observed == "released" {
 		result.LocalState = ""
 	}
 	if op.Kind == "destroy" && lease.Observed == "released" {

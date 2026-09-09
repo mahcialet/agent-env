@@ -22,6 +22,7 @@ type provider interface {
 	Up(context.Context, domain.Runtime) error
 	Down(context.Context, domain.Runtime) error
 	Logs(context.Context, domain.Runtime) (string, error)
+	LogsBounded(context.Context, domain.Runtime) (string, error)
 	Inspect(context.Context, domain.Runtime) (Observation, error)
 	Inventory(context.Context, string) ([]domain.Resource, error)
 }
@@ -79,6 +80,15 @@ func (c Client) Logs(ctx context.Context, r domain.Runtime) (string, error) {
 		return "", err
 	}
 	return p.Logs(ctx, r)
+}
+
+// LogsBounded is display-only; durable cleanup uses the established Logs path.
+func (c Client) LogsBounded(ctx context.Context, r domain.Runtime) (string, error) {
+	p, err := c.provider(r.Provider)
+	if err != nil {
+		return "", err
+	}
+	return p.LogsBounded(ctx, r)
 }
 func (c Client) Inspect(ctx context.Context, r domain.Runtime) (Observation, error) {
 	p, err := c.provider(r.Provider)

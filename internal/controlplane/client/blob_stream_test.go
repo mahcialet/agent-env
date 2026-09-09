@@ -117,6 +117,7 @@ func TestBlobTransferPreservesCallerCancellation(t *testing.T) {
 	for _, method := range []string{"upload", "download", "upload-deadline", "download-deadline"} {
 		t.Run(method, func(t *testing.T) {
 			started := make(chan struct{})
+			finish := make(chan struct{})
 			server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.Method == http.MethodPut {
 					first := make([]byte, 1)
@@ -125,14 +126,18 @@ func TestBlobTransferPreservesCallerCancellation(t *testing.T) {
 					}
 					close(started)
 					_, _ = io.Copy(io.Discard, r.Body)
+					<-finish
 					return
 				}
 				_, _ = io.WriteString(w, "prefix")
 				w.(http.Flusher).Flush()
 				close(started)
 				<-r.Context().Done()
+				// Keep the stream unfinished until the client observes cancellation;
+				// otherwise graceful EOF can legitimately win that race.
+				<-finish
 			}))
-			defer server.Close()
+			defer func() { close(finish); server.Close() }()
 			c := &Client{base: server.URL, http: server.Client()}
 			defer c.Close()
 			ctx, cancel := context.WithCancel(context.Background())

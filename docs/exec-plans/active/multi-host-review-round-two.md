@@ -21,7 +21,13 @@ avoid duplicate manifest envelopes, and make acknowledged CAS publication durabl
 - [x] Separate streaming blob deadlines from bounded metadata requests.
 - [x] Serialize the canonical manifest once and retain worker verification.
 - [x] Persist CAS directory publication with portable platform support.
-- [ ] Validate, push, reply to and resolve all four threads; archive this plan.
+- [x] Capture bounded source diffs for forced remote cleanup.
+- [x] Reuse validated materialized packages before extraction.
+- [x] Confirm released leases after explicit reconcile.
+- [x] Fence incarnation replacement against active copied worker roots.
+- [x] Preserve lease state after uncertain read-only logs/artifacts.
+- [x] Bound Compose log capture before buffering remote results.
+- [ ] Validate, push, reply to and resolve all additional threads; archive this plan.
 
 ## Surprises & Discoveries
 
@@ -90,7 +96,7 @@ and ensure retries cannot acknowledge an unsynced winner.
 
 ## Artifacts and Notes
 
-PR #12 threads: PRRT_kwDOURHsR86gk8fD, PRRT_kwDOURHsR86gk8fG,
+PR #12 threads: PRRT_kwDOURHsR86gk8fC, PRRT_kwDOURHsR86gk8fG,
 PRRT_kwDOURHsR86gk8fL, PRRT_kwDOURHsR86gk8fQ.
 
 ## Interfaces and Dependencies
@@ -109,3 +115,38 @@ Final local evidence: repoctl check and Docker integration passed. Final changed
 packages race passed (worker8.806s/CLI43.366s; server/blobstore passed). Large
 response tests preserve completed status, original input and the combined8MiB
 operation envelope. Native multi-host CLI passed with compact download hydration.
+
+After `3dba741` was pushed, six additional review threads arrived and remain in
+this active plan: PRRT_kwDOURHsR86glT_l, PRRT_kwDOURHsR86glT_s,
+PRRT_kwDOURHsR86glT_y, PRRT_kwDOURHsR86glT_2, PRRT_kwDOURHsR86glT_7,
+PRRT_kwDOURHsR86glUAB. They cover cleanup evidence, package reuse, reconcile proof,
+worker incarnation fencing, read-only operation state and bounded Compose logs.
+
+Additional discoveries: real17MiB Git diff bypassed the old buffer limit through
+promoted bytes.Buffer.ReadFrom; replacing the embedded buffer made the bound real.
+Remotesource full race then passed (5.549s). The initial shared Compose cap also
+affected required cleanup evidence and could strand noisy services; the final
+scope separates bounded display from the existing cleanup capture contract.
+Android display logs must be limited before reading, not after aggregation.
+
+CI on `3dba741`: platform Multi-host native, Browser native and Release preview
+passed. Push Verify34333854477 exposed a new cancellation-fixture race (graceful
+server EOF could win before the client observed cancellation). Keep the handler
+unfinished until cancellation is observed, retaining exact error assertions;
+repeated race5 passed (16.236s). PR Verify34333859610 failed the unchanged
+TestLifecycleCreatePersistedIntentAndUniqueIsolation at lifecycle_test.go229 with
+context deadline exceeded; retain this evidence and verify the next commit's CI.
+
+Final six-fix evidence: store/server race passed (2.241s/2.969s), including online
+handoff refusal, offline no-redelivery, unknown-owner migration and read-only state
+preservation. Worker compensated-create/reconcile/controller proof passed; app
+race passed (52.942s). Native CLI restart fixture passed (46.249s) with the30-second
+offline threshold. Actual remote Docker and Podman compose fixture passed
+(7.34s/21.61s), verifying the production CLI bounded-display adapter. Independent
+review caught that missing adapter forwarding and it was repaired before push.
+
+A proposed post-destroy cache concern was disproved: removal deletes lease
+worktrees, not bare cache repositories. The retained lifecycle regression verifies
+logs/artifact/reconcile/repeated destroy after removal using an empty CAS without
+relaxing validation. Source diff and reuse have fail-before coverage; a17MiB real
+diff fails safely at the enforced capture bound, retaining cleanup safety.

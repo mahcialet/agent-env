@@ -171,6 +171,7 @@ func TestControllerIdempotencyEpochAndDurableIdentity(t *testing.T) {
 		t.Fatal(e)
 	}
 	w.Incarnation = "boot-2"
+	expireWorkerHeartbeat(t, s, w.HostID)
 	if _, e = s.Register(ctx, protocol.RegisterRequest{WorkerIdentity: w, ProtocolVersion: 1, ProductVersion: "test", OS: "linux", Arch: "amd64", Capabilities: []string{"process"}, Capacity: protocol.Capacity{MaxLeases: 1, AndroidSlots: 1}}); e != nil {
 		t.Fatal(e)
 	}

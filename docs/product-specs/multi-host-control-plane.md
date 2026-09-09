@@ -144,3 +144,17 @@ legacy packages retain duplicate-manifest consistency checks.
 Remote worker lease responses omit the repeated manifest and process command/env
 declarations. Runtime identity, paths, ports, state and digests remain available;
 canonical declarations remain in the create envelope/source CAS and local lease.
+
+A different worker incarnation cannot replace an online registration. Genuine
+restart waits for the prior heartbeat to expire; the registration refusal is
+retryable. Previously dispatched operations are not polled by a new incarnation.
+A worker with its original durable journal may recover and report them; a lost
+journal requires explicit recovery while capacity remains held. This does not
+claim to distinguish malicious copies of both pending journals and credentials.
+
+Read-only logs/artifact results do not change lease phase, including uncertain
+recovery. Successful reconcile may confirm an already released local lease.
+Compose display log capture and aggregate retained display logs are bounded; overflow returns an
+explicit incomplete-output error rather than accumulating unbounded worker memory.
+Validated retained source packages are reused before CAS extraction. Forced dirty
+source cleanup records a bounded patch before removing its owned worktree.

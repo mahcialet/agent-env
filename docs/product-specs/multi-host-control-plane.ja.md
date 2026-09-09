@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/product-specs/multi-host-control-plane.md
-source_sha256: 0ca5822ca79f376f358d0b09e713bfbaec5951347d7ef4ef9f80b6ef6dc3ea22
+source_sha256: fc215a84880491230c75909a720107f643c904e94a4eae351abc7a99d15c21c3
 ---
 
 # 複数 host の control plane
@@ -125,3 +125,15 @@ blobのupload/downloadはmetadata要求の固定timeoutを使わず、呼び出�
 remote workerのlease応答では、重複するmanifestとprocessのcommand/env宣言を省略する。
 runtimeの識別情報・path・port・状態・digestは維持し、設定の宣言はcreate envelope/source CASと
 local leaseに保持する。
+
+前の登録がonlineの間は、別のworker incarnationへの交代を認めない。通常の再起動でも前の
+heartbeatが期限切れになるまで待つ。この登録拒否は再試行できる。前のincarnationへ配信済みの
+操作は新しいincarnationへpollで再配信しない。元の永続journalを持つworkerは復旧・結果報告が
+できるが、journalを失った場合はcapacityを保持したまま明示的な復旧が必要となる。
+処理中のjournalと認証情報の両方を悪意をもって複製した場合を見分ける保証ではない。
+
+読み取り専用logs/artifactの結果は、復旧が不確実でもleaseの状態を変更しない。
+成功したreconcileでは、既に解放済みのlocal leaseを確認できる。Compose表示ログのcapture量と
+保存済みログの合計に上限を設け、超過時はworkerのmemoryを無制限に使わず、出力が不完全なことを
+明示するエラーを返す。検証済みの保持source packageはCAS展開前に再利用する。
+変更済みsourceのforce cleanupでは、所有するworktreeを削除する前に上限付きpatchを記録する。
