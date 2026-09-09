@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/product-specs/multi-host-control-plane.md
-source_sha256: a72daea942f44914448362fffaeb95282a69a7b0f6dad4c4965f56f6b32590c8
+source_sha256: 0ca5822ca79f376f358d0b09e713bfbaec5951347d7ef4ef9f80b6ef6dc3ea22
 ---
 
 # 複数 host の control plane
@@ -116,3 +116,12 @@ offline worker、不確実な結果、cleanup失敗では、不在を証明す�
 直接protocolへ送信した場合も含め、CLI・controller・workerはjournalへの保存前にtext入力を
 拒否する。localの`set-text`は引き続き利用できる。恒久的な登録拒否ではworkerを終了し、
 一時的な通信障害、レート制限、server障害は再試行する。
+
+blobのupload/downloadはmetadata要求の固定timeoutを使わず、呼び出し元contextの期限とcancelに
+従う。metadata、接続開始、TLS/headerの上限は維持する。4 MiB上限のmanifestはcreate要求に
+1回だけ含める。省略形式のpackageはworkerの検証前に補完し、従来形式では重複manifestの
+一致検証を維持する。
+
+remote workerのlease応答では、重複するmanifestとprocessのcommand/env宣言を省略する。
+runtimeの識別情報・path・port・状態・digestは維持し、設定の宣言はcreate envelope/source CASと
+local leaseに保持する。

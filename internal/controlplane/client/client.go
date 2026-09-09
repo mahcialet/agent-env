@@ -162,13 +162,29 @@ func (c *Client) Remove(ctx context.Context, id string) (protocol.Host, error) {
 	e := c.request(ctx, "POST", "/v1/hosts/"+url.PathEscape(id)+"/remove", nil, &o)
 	return o, e
 }
+
+// blobRequest shares connection/TLS/header protections with metadata requests,
+// but a streaming body is governed by the caller's context, not a whole-request
+// metadata timer. Copying the client leaves concurrent metadata calls bounded.
+func (c *Client) blobRequest(req *http.Request) (*http.Response, error) {
+	streaming := *c.http
+	streaming.Timeout = 0
+	return streaming.Do(req)
+}
 func (c *Client) Upload(ctx context.Context, r io.Reader, digest, kind string) (protocol.Blob, error) {
 	var o protocol.Blob
 	req, e := http.NewRequestWithContext(ctx, "PUT", c.base+"/v1/blobs/"+url.PathEscape(digest)+"?kind="+url.QueryEscape(kind), r)
 	if e != nil {
 		return o, e
 	}
-	resp, e := c.http.Do(req)
+	// Cancellation must also unblock an upload reader waiting for more input.
+	// net/http owns request bodies, but may wait for its body-writing goroutine
+	// before returning from Do; explicitly close a cancelable streaming body.
+	if req.Body != nil {
+		stop := context.AfterFunc(ctx, func() { _ = req.Body.Close() })
+		defer stop()
+	}
+	resp, e := c.blobRequest(req)
 	if e != nil {
 		return o, e
 	}
@@ -188,7 +204,7 @@ func (c *Client) Download(ctx context.Context, digest, kind string) (io.ReadClos
 	if e != nil {
 		return nil, e
 	}
-	resp, e := c.http.Do(req)
+	resp, e := c.blobRequest(req)
 	if e != nil {
 		return nil, e
 	}

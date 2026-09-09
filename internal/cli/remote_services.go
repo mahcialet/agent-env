@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -24,7 +23,6 @@ import (
 	controllerstore "github.com/mahcialet/agent-env/internal/controlplane/store"
 	"github.com/mahcialet/agent-env/internal/domain"
 	"github.com/mahcialet/agent-env/internal/execx"
-	"github.com/mahcialet/agent-env/internal/instance"
 	"github.com/mahcialet/agent-env/internal/paths"
 	"github.com/mahcialet/agent-env/internal/policy"
 	"github.com/mahcialet/agent-env/internal/remotesource"
@@ -46,11 +44,6 @@ func addServices(root *cobra.Command, f *remoteFlags, emit func(any) error, errO
 			return e
 		}
 		home = filepath.Join(home, "control-plane")
-		release, e := instance.Acquire(filepath.Join(home, "controller.lock"))
-		if e != nil {
-			return e
-		}
-		defer release()
 		store, e := controllerstore.Open(filepath.Join(home, "controller.db"))
 		if e != nil {
 			return e
@@ -65,24 +58,9 @@ func addServices(root *cobra.Command, f *remoteFlags, emit func(any) error, errO
 		if e != nil {
 			return e
 		}
-		httpServer := &http.Server{Handler: handler.Handler(), TLSConfig: config, ReadHeaderTimeout: 10 * time.Second, IdleTimeout: 45 * time.Second, MaxHeaderBytes: 32 << 10}
-		done := make(chan struct{})
-		defer close(done)
-		go func() {
-			select {
-			case <-cmd.Context().Done():
-				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-				defer cancel()
-				httpServer.Shutdown(ctx)
-			case <-done:
-			}
-		}()
-		fmt.Fprintf(errOut, "Controller %s listening on https://%s\n", store.ID, listener.Addr())
-		e = httpServer.ServeTLS(listener, "", "")
-		if errors.Is(e, http.ErrServerClosed) {
-			return nil
-		}
-		return e
+		defer listener.Close()
+		fmt.Fprintf(errOut, "Controller %s listening on https://%s\n", store.ID, listener.Addr().String())
+		return handler.Run(cmd.Context(), listener, config)
 	}}
 	serve.Flags().StringVar(&address, "listen", address, "controller TLS listen address")
 	controller.AddCommand(serve)
@@ -173,6 +151,9 @@ func addServices(root *cobra.Command, f *remoteFlags, emit func(any) error, errO
 			var pkg remotesource.Package
 			if e := json.Unmarshal(request.Package, &pkg); e != nil {
 				return e
+			}
+			if len(pkg.Manifest) == 0 || string(pkg.Manifest) == "null" {
+				pkg.Manifest = request.Manifest
 			}
 			if e := remotesource.Validate(pkg); e != nil {
 				return e

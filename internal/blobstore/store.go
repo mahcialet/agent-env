@@ -19,7 +19,15 @@ type Blob struct {
 	Digest string `json:"digest"`
 	Size   int64  `json:"size"`
 }
-type Store struct{ root string }
+type publicationHooks struct {
+	prepare func(string) error
+	rename  func(string, string) error
+	confirm func(string, string, string) error
+}
+type Store struct {
+	root        string
+	publication publicationHooks
+}
 
 func ValidDigest(s string) bool {
 	if len(s) != 64 {
@@ -53,7 +61,7 @@ func New(root string) (*Store, error) {
 	if err = privateDir(root); err != nil {
 		return nil, err
 	}
-	return &Store{root: root}, nil
+	return &Store{root: root, publication: nativePublication()}, nil
 }
 func (s *Store) path(digest string) (string, error) {
 	if !ValidDigest(digest) {
@@ -86,7 +94,7 @@ func checkLimit(limit int64) error {
 	}
 	return nil
 }
-func (s *Store) Put(ctx context.Context, r io.Reader, expected string, limit int64) (Blob, error) {
+func (s *Store) Put(ctx context.Context, r io.Reader, expected string, limit int64) (result Blob, resultErr error) {
 	var b Blob
 	if err := checkLimit(limit); err != nil {
 		return b, err
@@ -128,6 +136,17 @@ func (s *Store) Put(ctx context.Context, r io.Reader, expected string, limit int
 	if err = f.Close(); err != nil {
 		return Blob{}, err
 	}
+	if err = s.publication.prepare(temp); err != nil {
+		return Blob{}, err
+	}
+	release, err := lockPublication(ctx, s.root)
+	if err != nil {
+		return Blob{}, err
+	}
+	defer func() { resultErr = errors.Join(resultErr, release()) }()
+	if err = ctx.Err(); err != nil {
+		return Blob{}, err
+	}
 	dest, err := s.path(b.Digest)
 	if err != nil {
 		return Blob{}, err
@@ -141,18 +160,19 @@ func (s *Store) Put(ctx context.Context, r io.Reader, expected string, limit int
 			return Blob{}, e
 		}
 		old.Close()
-		return b, nil
+		return b, s.publication.confirm(temp, dest, s.root)
 	} else if !os.IsNotExist(e) {
 		return Blob{}, e
 	}
-	if err = os.Rename(temp, dest); err != nil {
+	if err = s.publication.rename(temp, dest); err != nil {
 		old, _, e := s.Open(ctx, b.Digest, limit)
 		if e != nil {
 			return Blob{}, err
 		}
 		old.Close()
+		return b, s.publication.confirm(temp, dest, s.root)
 	}
-	return b, nil
+	return b, s.publication.confirm("", dest, s.root)
 }
 
 // Open verifies bytes before exposing an object, including already-present objects.

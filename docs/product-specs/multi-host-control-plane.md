@@ -134,3 +134,13 @@ input channel exists. CLI, controller and worker reject text input before durabl
 journaling, including direct protocol submissions. Local `set-text` remains
 available. Permanent registration rejection terminates the worker; transient
 transport, rate-limit and server failures remain retryable.
+
+Blob uploads and downloads use the caller's context deadline and cancellation,
+without the metadata request's absolute timeout. Metadata, connection setup and
+TLS/header limits remain bounded. The 4 MiB canonical manifest is transmitted once
+in create requests; compact packages are hydrated before worker validation, while
+legacy packages retain duplicate-manifest consistency checks.
+
+Remote worker lease responses omit the repeated manifest and process command/env
+declarations. Runtime identity, paths, ports, state and digests remain available;
+canonical declarations remain in the create envelope/source CAS and local lease.

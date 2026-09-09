@@ -164,6 +164,7 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len(parts) == 3 && parts[1] == "blobs" {
+
 		s.blob(w, r, e, parts[2])
 		return
 	}
@@ -392,6 +393,9 @@ func (s *Server) blob(w http.ResponseWriter, r *http.Request, e protocol.Enrollm
 			fail(w, reject("forbidden", "role cannot publish this blob kind"))
 			return
 		}
+		if !allowBlobStream(w) {
+			return
+		}
 		b, err := s.Blobs.Put(r.Context(), http.MaxBytesReader(w, r.Body, limit), digest, limit)
 		if err != nil {
 			fail(w, reject("invalid", "blob bytes do not match the required digest or size"))
@@ -408,6 +412,9 @@ func (s *Server) blob(w http.ResponseWriter, r *http.Request, e protocol.Enrollm
 		fail(w, err)
 		return
 	}
+	if !allowBlobStream(w) {
+		return
+	}
 	f, b, err := s.Blobs.Open(r.Context(), digest, limit)
 	if err != nil {
 		fail(w, reject("not_found", "verified blob not found"))
@@ -417,4 +424,17 @@ func (s *Server) blob(w http.ResponseWriter, r *http.Request, e protocol.Enrollm
 	w.Header().Set("Content-Type", "application/octet-stream")
 	w.Header().Set("X-Content-SHA256", b.Digest)
 	http.ServeContent(w, r, "blob", time.Time{}, f)
+}
+
+// allowBlobStream clears absolute metadata deadlines only after operation
+// authorization. Caller cancellation and blob size limits still apply.
+func allowBlobStream(w http.ResponseWriter) bool {
+	controller := http.NewResponseController(w)
+	for _, err := range []error{controller.SetReadDeadline(time.Time{}), controller.SetWriteDeadline(time.Time{})} {
+		if err != nil && !errors.Is(err, http.ErrNotSupported) {
+			fail(w, err)
+			return false
+		}
+	}
+	return true
 }

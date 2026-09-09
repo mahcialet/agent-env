@@ -145,6 +145,9 @@ func (e *AppExecutor) Prepare(ctx context.Context, op protocol.Operation) error 
 		if err := strictJSON(envelope.Package, &pkg); err != nil {
 			return err
 		}
+		if len(pkg.Manifest) == 0 || string(pkg.Manifest) == "null" {
+			pkg.Manifest = envelope.Manifest
+		}
 		if err := remotesource.Validate(pkg); err != nil {
 			return err
 		}
@@ -376,6 +379,25 @@ func (e *AppExecutor) Recover(ctx context.Context, op protocol.Operation) protoc
 	return result
 }
 func responseResult(state string, out Response, err error) protocol.Result {
+	// Remote responses summarize observed lease state, without repeating the
+	// committed manifest and process declarations already retained by the create
+	// envelope, verified source package and local lease registry. Copy each level
+	// before removing declaration fields; execution/recovery still owns originals.
+	if out.Lease != nil {
+		lease := *out.Lease
+		lease.Manifest = nil
+		lease.Runtimes = append([]domain.Runtime(nil), lease.Runtimes...)
+		for i := range lease.Runtimes {
+			if lease.Runtimes[i].Process != nil {
+				process := *lease.Runtimes[i].Process
+				process.Command = nil
+				process.Env = nil
+				lease.Runtimes[i].Process = &process
+			}
+		}
+		out.Lease = &lease
+	}
+
 	out.EndpointScope = "worker-local"
 	if err != nil {
 		out.Error = evidence.RedactString(err.Error(), evidence.InheritedSecrets())

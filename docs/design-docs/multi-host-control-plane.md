@@ -165,3 +165,19 @@ After the create effect boundary, failures remain uncertain even if reservation
 returned no lease. A compensated create may include a released local lease in its
 result payload, but does not assert the destroy-only cleanup confirmation field.
 An explicit destroy establishes authoritative release, including after recovery.
+
+The CLI controller calls the same Server.Run lifecycle as server tests, including
+periodic expiry and shutdown joining. An actual CLI entry-point regression expires
+an offline lease through an independent database connection without polling.
+Authorized blob handlers clear the HTTP server's absolute read/write deadlines;
+metadata and unauthorized requests retain their bounded transport handling.
+
+CAS publication uses file synchronization plus platform namespace barriers before
+acknowledgement: Unix synchronizes the staged directory, published directory, CAS
+root and its parent; Windows uses native write-through moves. A verified duplicate
+must re-establish publication barriers rather than trusting visibility after a
+previous failure. Windows serializes publication and republishes identical synced
+data for duplicates; concurrent readers may conservatively reject changed file
+identity. Tests inject publication failures and exercise retries; they do not
+claim to simulate physical power loss or filesystem/hardware guarantees beyond
+the native APIs.

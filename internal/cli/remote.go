@@ -211,7 +211,11 @@ func (f *remoteFlags) create(ctx context.Context, c *client.Client, cmd *cobra.C
 			return zero, e
 		}
 	}
-	raw, e := json.Marshal(pkg)
+	// The envelope carries the canonical manifest. Avoid duplicating it in
+	// bounded create requests and the resulting operation/poll responses.
+	compact := pkg
+	compact.Manifest = nil
+	raw, e := json.Marshal(compact)
 	if e != nil {
 		return zero, e
 	}

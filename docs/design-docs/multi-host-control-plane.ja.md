@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/design-docs/multi-host-control-plane.md
-source_sha256: 38126313210cee100766379268ad6ae0981aed508408931ba8cd70a93603383f
+source_sha256: 29d6072ef60b1e1ff0fee6dfffa6b50d578eb14e3799aea1c4d80591bdde2076
 ---
 
 # 一つの管理主体による複数 host の調整
@@ -145,3 +145,16 @@ serverの終了として表面化させ、期限処理が黙って無効にな�
 createの作用境界を越えた失敗は、予約処理がleaseを返さなかった場合も不確実として扱う。
 補償処理したcreateの結果payloadには解放済みlocal leaseを含められるが、destroy専用の
 cleanup確認フィールドでは解放を宣言しない。復旧後も含め、明示的なdestroyで正式に解放を確認する。
+
+CLI controllerもserverテストと同じServer.Runを呼び、定期的な期限処理と終了待機を共有する。
+実際のCLI入口を使う回帰テストで、独立したdatabase接続からoffline leaseを期限切れにし、
+pollなしでcleanupを確認する。認可済みblob handlerはHTTP serverの固定read/write期限を解除し、
+metadataと認可されていない要求では通信処理の上限を維持する。
+
+CAS公開ではfile同期に加え、platformの名前空間の永続化処理を成功応答前に実行する。
+Unixでは一時directory、公開directory、CAS rootとその親を同期し、Windowsではnativeの
+write-through moveを使う。検証済みの重複blobでも、過去の失敗後に見えているだけの状態を
+信用せず、公開の永続化処理を再実行する。Windowsでは公開を直列化し、重複時は同期済みの
+同一dataを再公開する。同時readerはfileの識別情報の変化を保守的に拒否する場合がある。
+テストは公開失敗を注入して再試行を検証する。物理的な電源断や、native APIを超える
+filesystem/hardwareの保証を実証したものとは扱わない。
