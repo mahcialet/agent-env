@@ -1,9 +1,9 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-08
+last_verified: 2026-09-09
 translation_of: docs/PORTABILITY.md
-source_sha256: 5796f99945780d92b107e0317433dcc2181ff072328486bccf2f38de2d23c08d
+source_sha256: b1e0292913f567b92d7ab1b81e48d3b79cc6349bf532b255e224606b5431d0e3
 ---
 
 [英語版（翻訳元）](PORTABILITY.md)
@@ -139,3 +139,20 @@ cleanup成功とせず、無関係なerrorは再試行しません。通常のre
 filesystemのcleanupとして扱い、browserのlifecycle管理をCDP adapterへ移しません。
 
 2秒の予算は再試行の開始を制限します。実行中の同期filesystem削除を中断するものではありません。
+
+## 複数 host の role と証拠
+
+controller、外向きに接続する worker、remote client は、同じ native 実行ファイルと Go 標準の
+TLS/filesystem API を使います。core の role 起動に shell、Docker、SDK、Python、Node、CGO は不要です。
+worker には選択した runtime が必要とする外部ツールを用意します。
+事前に用意した PEM 証明書と、別々の絶対 path の `AGENT_ENV_HOME` 状態 root が必要です。
+client の絶対 source path の代わりに commit 済み bundle を転送し、worker-local の path と loopback endpoint は
+worker の OS 上の意味を保持します。
+
+実 TLS の native fixture は、同じ物理 host の二つの worker root を使った Linux/amd64 で 21.406s で成功しました。
+空白・Unicode を含む commit 済み path と、controller/worker 再起動も含みます。
+[multi-host workflow](../.github/workflows/multi-host.yml) は Windows/macOS/Linux の実行を定義していますが、
+native Windows/macOS の結果と、物理的な複数マシン・VM の証拠はまだありません。
+cross-build や同じ host の worker process 数でこの不足を解消したとは扱いません。
+[品質](QUALITY.ja.md#複数-host-の-native-検証) と
+[active Plan](exec-plans/active/multi-host-control-plane.ja.md) を参照してください。

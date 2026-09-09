@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/exec-plans/active/multi-host-control-plane.md
-source_sha256: 4f8ebb4c149a0003cdcb265b9ff831f84d9d6ec18438ad24eefe59239b638363
+source_sha256: 8807ad114297c7ace328679c4153bbf47449c1eab18b17f116bf7f5e2f703914
 ---
 
 # Single-authority multi-host control planeを追加する
@@ -438,49 +438,54 @@ client env secretを自動forwardしない。
 - [x] 2026-09-09: global lease IDと管理metadataをlocal Createに接続し、ローカル変更とGCから保護。
 
 - [x] 2026-09-09: base `dc63308e53f68f8be99f7cbf59cafc78f7296b71`を確認し、`feat/multi-host-control-plane`を作成。
-- [ ] 残るnative runtime baseline検証。
-- [ ] 英日product/design + ADR
-- [ ] protocol/auth contract
-- [ ] controller/worker/global state model
-- [ ] controller SQLite/migrations/id
-- [ ] worker instance id/enrollment
-- [ ] mTLS HTTP
-- [ ] registration/heartbeat/long-poll
-- [ ] capability/capacity
-- [ ] hosts list/show/drain
-- [ ] scheduler
-- [ ] Git source package + CAS
-- [ ] worker source verify/materialize
-- [ ] manifest/plan identity verify
-- [ ] global lease ID local create
-- [ ] controller-managed marker/local GC protection
-- [ ] assignment epoch
-- [ ] controller/worker journals
-- [ ] dispatch/reconnect
-- [ ] remote create/list/show
-- [ ] renew/reconcile/destroy
-- [ ] test/log/artifact
-- [ ] artifact CAS/result manifest
-- [ ] Android UI remote
-- [ ] Browser remote
-- [ ] heartbeat stale/UNKNOWN
-- [ ] no auto reassignment
-- [ ] worker/controller restart recovery
-- [ ] same host-id different instance reject
-- [ ] drain/remove safety
-- [ ] auth/body/path/blob negative tests
-- [ ] duplicate delivery / effect-result loss regression
-- [ ] outage with live resource
-- [ ] two-worker real-socket integration
+- [x] 2026-09-09: 残るnative runtime baseline検証。
+- [x] 2026-09-09: 英日product/design + ADR
+- [x] 2026-09-09: protocol/auth contract
+- [x] 2026-09-09: controller/worker/global state model
+- [x] 2026-09-09: controller SQLite/migrations/id
+- [x] 2026-09-09: worker instance id/enrollment
+- [x] 2026-09-09: mTLS HTTP
+- [x] 2026-09-09: registration/heartbeat/long-poll
+- [x] 2026-09-09: capability/capacity
+- [x] 2026-09-09: hosts list/show/drain
+- [x] 2026-09-09: scheduler
+- [x] 2026-09-09: Git source package + CAS
+- [x] 2026-09-09: worker source verify/materialize
+- [x] 2026-09-09: manifest/plan identity verify
+- [x] 2026-09-09: global lease ID local create
+- [x] 2026-09-09: controller-managed marker/local GC protection
+- [x] 2026-09-09: assignment epoch
+- [x] 2026-09-09: controller/worker journals
+- [x] 2026-09-09: dispatch/reconnect
+- [x] 2026-09-09: remote create/list/show
+- [x] 2026-09-09: renew/reconcile/destroy
+- [x] 2026-09-09: test/log/artifact
+- [x] 2026-09-09: artifact CAS/result manifest
+- [x] 2026-09-09: Android UI remote
+- [x] 2026-09-09: Browser remote
+- [x] 2026-09-09: heartbeat stale/UNKNOWN
+- [x] 2026-09-09: no auto reassignment
+- [x] 2026-09-09: worker/controller restart recovery
+- [x] 2026-09-09: same host-id different instance reject
+- [x] 2026-09-09: drain/remove safety
+- [x] 2026-09-09: auth/body/path/blob negative tests
+- [x] 2026-09-09: duplicate delivery / effect-result loss regression
+- [x] 2026-09-09: outage with live resource
+- [x] 2026-09-09: two-worker real-socket integration
 - [ ] remote process/browser E2E
 - [ ] Docker/Podman remote integration where possible
 - [ ] Windows/macOS/Linux native protocol integration
-- [ ] separate machine/VM evidence where available
-- [ ] bilingual durable docs
+- [x] 2026-09-09: separate machine/VM evidence where available
+- [x] 2026-09-09: bilingual durable docs
 - [ ] final harness/race/native/integration/release
 - [ ] evidence/retrospective/completed
 
 ## 想定外の発見
+
+- 2026-09-09: 最初の実TLS createはJSON objectのkey順序変更によるpackage digest不一致で失敗した。型付きmanifestをcanonical化してhashを計算し、commit済みcontrol fileからの変換証明は独立して維持する。順序変更回帰テストとLinux native E2Eが成功。controllerのglobal stateも、想定した大文字値ではなく`released`を含む実際のdomainの小文字stateに対応させた。
+- 2026-09-09: 独立レビューでpreflight診断の秘密情報漏出を修正前の4ケースで再現。継承secretのredactionとmetadata上限を適用した。controllerが受け付ける可読operation IDをexecutorが拒否する不整合も修正し、lease IDのULID要件は維持した。
+- 2026-09-09: 外部作用前のcreate失敗ではlocal leaseがないためdestroyも失敗し、予約を解放できなかった。journalに作用開始前の境界を原子的に記録し、入力検証済みのnon-dry-run destroyだけが同じassignmentの証明を使えるようにした。local row不在やerror payloadを証明にはしない。再起動、dry-run、不正入力、証拠欠落、作用開始済みの回帰検証が成功。
+- 2026-09-09: `0f05d09`の初回native macOS CIは、同一の一時directory祖先を示す`/var`と`/private/var`を異なるrepository identityとして比較し失敗。Linuxでは見えなかったOSのpath aliasであり、修正とnative再検証を進める。Verify 34314568570、Multi-host native 34314568601。
 
 - 2026-09-09: 独立レビューでPrepare中のheartbeat切断後も外部作用を開始できる経路を発見。永続的なeffect-started遷移の直前に検査を追加し、再接続まで作用を開始しない回帰テストが成功。
 - 2026-09-09: remote actionの初期テストはUI/Browserのflagが全action共通と誤って想定していた。実際のactionごとのflag定義に対応させ、local flagを変更せず修正した。初回全harnessは新規テストで失敗し、修正後の個別テストは成功。再実行はcontrollerの編集中に整形検査で失敗したため、安定した変更単位で全検査を再実行する。
@@ -488,6 +493,9 @@ client env secretを自動forwardしない。
 - 2026-09-09: baselineのunit/vet、raceテストが成功。実Dockerを使用した`repoctl test-integration`も終了コード0。`repoctl check`は、提供された日本語Planに必須の見出しがなかったためdocs-checkで失敗。両言語に不足する節を追加した。残るnative runtime baselineは未実施。
 
 ## 判断の記録
+
+- 2026-09-09、実装担当: workerのoperation dispatchは初期仕様では直列とし、同じleaseの2つ目のactive operationを拒否する。長時間稼働するlease自体は同時に動く。remote destroyによるactive remote testのcancelは専用protocolの将来課題とし、assignment fenceを競合させない。
+- 2026-09-09、検証担当: 別物理host/VMの環境は利用できない。実TLS fixtureは同一host上の独立したnative controller/client/2-worker processを使う。Windows/macOSのnative証拠はcross-buildではなくCIで取得する。
 
 - 2026-09-09、実装担当: assignment epochはleaseの配置ごとに固定し、各commandをoperation IDで識別する。local SQLiteは管理metadataの削除、後付け、変更を、有効なlocal lockがあっても拒否する。
 - 2026-09-09、実装担当: FULL synchronousのSQLiteでworker journalを別管理する。controllerとの恒久的な対応、host-instance ID、processごとのincarnationを保存する。結果upload/ackの再試行は実行開始済みreceiptをリセットしない。native SQLite lockで同じrootのworker二重起動を拒否し、crash後はOSがlockを解放する。
@@ -659,6 +667,8 @@ source/artifact transferはdigestでretry。
 host OFFLINEはcleanup eventではない。
 
 ## 成果物と注記
+
+2026-09-09の統合milestone: `6d9dd7a`（local管理境界）と`0f05d09`（controller/worker/source/CLI）を`origin/feat/multi-host-control-plane`へpush。localの全`repoctl check`と`go test -race ./...`が成功。`TestMultiHostNativeCLI`は実TLSとbuild済みbinaryで21.406sで成功し、配置、role拒否、drain、隔離、outage、controller/worker再起動、cleanupを検証した。既存Browser native/secret、Podman共存（107.695s）、実Android Emulator、実Flutter/Android UI、Docker `repoctl test-integration`も成功。Androidの初回はtemplate指定不足で失敗し、導入済みの停止中templateを明示して再実行した。host固有の前提pathは記録しない。native CIは進行中で、macOSでは上記path alias不具合を検出した。追加remote runtime E2Eの証拠を収集中。
 
 2026-09-09の検証証拠: `go test -race ./internal/worker`成功（1.073s）。receipt再送、upload/ack失敗、結果喪失時の不確実状態、作用直前のheartbeat検査を含む。`go test -race ./internal/instance`成功（1.035s）。nativeの別process排他とcrash後の解放を含む。管理境界のapp/local-store/domain raceは50.167s/16.235s/1.030sで成功。修正前のStore.Saveをoverlayで使用し、6件の不正上書きを再現した。source/CASの反復raceは5.380s/1.011sで成功。architecture境界fixtureは0.028sで成功。native Windows/macOSと実TLSの2-worker受け入れは未完了。
 

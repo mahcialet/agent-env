@@ -1,9 +1,9 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-08
+last_verified: 2026-09-09
 translation_of: docs/RELIABILITY.md
-source_sha256: 2eee6d841939ae68c11c782d14ee93076f19325c9a6e7c99e1b2fef3bea29aff
+source_sha256: 56d714ec6f6fab0ce57e5fb8ba20d0623c5a695711eb2d95a94c9f2ff5a17f35
 ---
 
 [英語版（翻訳元）](RELIABILITY.md)
@@ -109,3 +109,22 @@ port再利用、browser/page/document/node identityの変化、切り詰めたsn
 実際の結果と証拠を確認してreviewを伴う復旧を判断します。destroy/GCはgeneric process treeの不在確認後に
 profileを削除し、browser独自cleanupや自動再起動は行いません。
 [browser設計](design-docs/browser-cdp-automation.ja.md)を参照してください。
+
+## Controller と worker の復旧
+
+[control plane](design-docs/multi-host-control-plane.ja.md) は global 管理用の専用 SQLite を追加し、
+各 worker は local resource registry と fence を維持します。
+assignment の controller/host/host-instance/epoch tuple は各操作を通じて固定します。
+worker と controller の journal に payload の識別情報、作用開始の可能性、local 結果、配送状態を保持します。
+重複配送では既存結果の復旧・upload はできますが、不確実な mutation を無条件に繰り返しません。
+artifact upload より先に local 結果を保存し、global RELEASED には worker の cleanup 証明を必要とします。
+heartbeat や controller 接続の消失では観測を古い状態・UNKNOWN とし、再配置、cleanup、host instance の変更を
+許可する根拠にはしません。
+
+初期実装の worker は操作を直列に実行しますが、作成済み lease は並行して稼働します。
+controller は同じ lease の二つ目の active 操作を、remote test 中の destroy も含めて拒否します。
+remote の実行中操作の cancellation は、operation の識別情報と fence を維持できる専用 protocol を設計するまで対象外です。
+別の destroy で中断できると想定せず、現在の操作を待つか `operation <operation-id>` で確認してください。
+controller/worker の再起動では元の状態 root を再利用します。controller DB の複製は安全な failover ではありません。
+drain は新規配置のみを止めます。local GC は期限切れでも controller 管理下の lease を除外し、
+force でも assignment の所有権や不確実な cleanup を無視できません。

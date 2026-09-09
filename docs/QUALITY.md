@@ -1,7 +1,7 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-08
+last_verified: 2026-09-09
 ---
 
 # Quality and verification
@@ -179,3 +179,27 @@ AX/DOM, screenshots, Unicode input and clearing, stale rejection, iframe/shadow
 observation, bounded diagnostics, a lease-hosted backend, durable input redaction
 and safe profile cleanup. The plan records native evidence and CI repair history
 separately from mock tests and cross-builds.
+
+## Multi-host native verification
+
+```text
+go test -tags=multihostintegration ./internal/cli -run '^TestMultiHostNativeCLI$' -count=1 -v -timeout=12m
+```
+
+This opt-in test needs Go and Git. It builds native agent-env and a committed process
+fixture, generates short-lived test certificates with Go, and launches real
+controller/client/two-worker processes over TLS with separate state roots. It uses
+no shell script, Docker, SDK or browser. It verifies role/enrollment rejection,
+whole-lease placement, drain, two simultaneous leases, distinct ports/worktrees,
+local force refusal, controller outage/restart, worker restart retaining native
+process identity, and independent cleanup. Unconfirmed cleanup retains fixture
+state for investigation.
+
+Linux/amd64 passed in 21.406s. The initial run exposed a real plan-digest mismatch
+when transport canonicalized JSON object order; semantic manifest canonicalization
+and a permanent source roundtrip regression fixed it. The
+[native workflow](../.github/workflows/multi-host.yml) defines Windows/macOS/Linux
+jobs; Windows/macOS pass evidence is still pending. Two workers on one physical
+host do not prove physical-machine/VM multi-host behavior, and cross-builds do not
+prove native role execution. Exact evolving results belong to the
+[ExecPlan](exec-plans/active/multi-host-control-plane.md).

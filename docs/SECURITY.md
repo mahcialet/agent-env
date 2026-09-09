@@ -1,7 +1,7 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-08
+last_verified: 2026-09-09
 ---
 
 # Security and trust
@@ -12,9 +12,9 @@ Environment leases isolate names, worktrees, and lifecycle ownership. They are *
 
 ## Manifest authority
 
-Planning and creation read the control checkout's `.agent-env.yaml` by default. `--manifest` explicitly selects a trusted manifest path; the canonical snapshot and digest are saved with the lease. Source refs choose pinned runtime/test source content, not a silently substituted manifest from the target revision. Review changes to both the manifest and the code it executes. Trusted base/PR overlay merging and remote credential management are deferred.
+Planning and creation read the control checkout's `.agent-env.yaml` by default. `--manifest` explicitly selects a trusted manifest path; the canonical snapshot and digest are saved with the lease. Source refs choose pinned runtime/test source content, not a silently substituted manifest from the target revision. Review changes to both the manifest and the code it executes. Trusted base/PR overlay merging and automatic remote credential provisioning are deferred.
 
-Owner labels and `--mine` are advisory filters. Anyone with access to the local state directory and selected container engine has the corresponding host authority. There is no distributed authentication or hostile multi-user isolation.
+Owner labels and `--mine` are advisory filters. Anyone with access to the local state directory and selected container engine has the corresponding host authority. Local mode provides neither remote authentication nor hostile multi-user isolation. Authentication for explicit remote mode is described below.
 
 ## Built-in host policy
 
@@ -133,3 +133,28 @@ redacts recognized inherited secrets. Screenshots are valid PNG evidence, but
 pixels and unrecognized page/console text can expose secrets; keep artifacts
 private. Typed operations provide no public raw-CDP or arbitrary JavaScript
 escape hatch. See the [browser contract](product-specs/browser-cdp-automation.md).
+
+## Remote administrative boundary
+
+[Remote mode](product-specs/multi-host-control-plane.md) assumes one trusted
+administrative domain. Pre-provision certificates and enroll client/worker roles
+with `control-plane enroll --certificate ... --role ...`; worker enrollment also
+binds `--host-id`. Enrollment modifies the controller's separate local state, not
+a remote self-service endpoint. Production traffic uses HTTPS mutual TLS with
+`--controller`, `--tls-ca`, `--tls-cert` and `--tls-key`. A CA-signed certificate
+without enrollment and a worker certificate used as a client are refused. Workers
+connect outbound; no inbound worker listener or general remote shell is exposed.
+
+Certificate private keys remain protected filesystem inputs, not SQLite records.
+Committed source bundles, operation payloads and artifacts remain sensitive
+administrative data: control-plane storage is private but encryption at rest is
+not claimed. SHA-256 CAS keys never accept caller paths; source objects are limited
+to 1 GiB and artifacts to 64 MiB. Worker source verification rejects uncommitted or
+unsupported source forms before runtime effects. Client environment secrets are
+not forwarded implicitly; `${env:NAME}` resolves on the worker. Existing repository
+trust, redaction, runtime identity and host policy apply on the worker.
+
+Management tuple checks reject local mutation/force/GC and foreign assignment
+operations; ordinary registry Save cannot remove or replace management metadata.
+There is no implicit break-glass adoption. Returned loopback URLs are worker-local,
+not authorization to connect a client to an arbitrary host endpoint.

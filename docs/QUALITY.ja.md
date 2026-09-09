@@ -1,9 +1,9 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-08
+last_verified: 2026-09-09
 translation_of: docs/QUALITY.md
-source_sha256: 55700d38679271e227d8658f8a96427a32bf8fa58e90909c28125542d7c66ff5
+source_sha256: 210c13ee45c423f25d39b29b8645cc53d15168bfd7aeb7cc9085e743f115f260
 ---
 
 # 品質と検証
@@ -166,3 +166,23 @@ config単体・race testはローカルで成功しました。baselineの`go te
 screenshot、Unicode入力と消去、古い参照の拒否、iframe/shadow観測、上限付き診断、
 lease所有backend、永続的な入力redaction、安全なprofile cleanupを検証しました。
 Planにはnativeの証拠とCI修正履歴を、mock testやcross-buildと分けて記録しています。
+
+## 複数 host の native 検証
+
+```text
+go test -tags=multihostintegration ./internal/cli -run '^TestMultiHostNativeCLI$' -count=1 -v -timeout=12m
+```
+
+この明示実行 test には Go と Git が必要です。native の agent-env と commit 済み process fixture を build し、
+Go で短期間の test 証明書を作って、別々の状態 root を持つ controller/client/二 worker の実 process を TLS で接続します。
+shell script、Docker、SDK、browser は不要です。role/enrollment の拒否、lease 全体の配置、drain、
+同時に稼働する二つの lease、port/worktree の分離、local force 拒否、controller 停止・再起動、
+native process の識別情報を保持した worker 再起動、独立した cleanup を検証します。
+cleanup を確認できなければ調査用に fixture 状態を保持します。
+
+Linux/amd64 では 21.406s で成功しました。初回実行では、通信時の JSON object 順序の正規化によって
+実際に plan digest が不一致になる問題を検出し、manifest の意味に基づく正規化と恒久的な source 往復回帰 test で修正しました。
+[native workflow](../.github/workflows/multi-host.yml) は Windows/macOS/Linux の job を定義していますが、
+Windows/macOS の成功の証拠はまだありません。同じ物理 host の二 worker で、物理マシン・VM の複数 host 動作を
+証明したとは扱わず、cross-build も native role 実行の証明にはしません。
+最新の正確な結果は [ExecPlan](exec-plans/active/multi-host-control-plane.ja.md) に記録します。

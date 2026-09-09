@@ -600,68 +600,71 @@ A future secret-provider design may add explicit secret delivery.
 ## Progress
 
 - [x] 2026-09-09: Confirmed base `dc63308e53f68f8be99f7cbf59cafc78f7296b71`; created `feat/multi-host-control-plane`.
-- [ ] Run baseline repoctl/docs/race/current integrations.
+- [x] 2026-09-09: Run baseline repoctl/docs/race/current integrations.
 - [x] 2026-09-09: Write bilingual product/design docs and authority ADR.
-- [ ] Define protocol/version/auth contract.
-- [ ] Add controller store/migrations and persistent controller ID.
+- [x] 2026-09-09: Define protocol/version/auth contract.
+- [x] 2026-09-09: Add controller store/migrations and persistent controller ID.
 - [x] 2026-09-09: Add persistent worker host-instance ID.
-- [ ] Add enrollment/certificate-role validation.
-- [ ] Implement mTLS HTTP foundation.
-- [ ] Add registration/heartbeat/long-poll.
-- [ ] Add capability/capacity snapshot.
-- [ ] Add hosts list/show/drain/undrain.
-- [ ] Implement deterministic scheduler/atomic capacity reservation.
+- [x] 2026-09-09: Add enrollment/certificate-role validation.
+- [x] 2026-09-09: Implement mTLS HTTP foundation.
+- [x] 2026-09-09: Add registration/heartbeat/long-poll.
+- [x] 2026-09-09: Add capability/capacity snapshot.
+- [x] 2026-09-09: Add hosts list/show/drain/undrain.
+- [x] 2026-09-09: Implement deterministic scheduler/atomic capacity reservation.
 - [x] 2026-09-09: Implement source bundle creation/digests.
-- [ ] Implement controller source CAS.
-- [ ] Implement worker source download/verify/materialize.
-- [ ] Verify manifest/source/stack identity before effects.
+- [x] 2026-09-09: Implement controller source CAS.
+- [x] 2026-09-09: Implement worker source download/verify/materialize.
+- [x] 2026-09-09: Verify manifest/source/stack identity before effects.
 - [x] 2026-09-09: Add global lease ID to worker-local create path.
 - [x] 2026-09-09: Mark worker leases controller-managed.
 - [x] 2026-09-09: Protect controller-managed leases from local mutation/GC.
-- [ ] Implement assignment epoch fencing.
-- [ ] Implement controller operation journal.
+- [x] 2026-09-09: Implement assignment epoch fencing.
+- [x] 2026-09-09: Implement controller operation journal.
 - [x] 2026-09-09: Implement worker remote-operation journal.
-- [ ] Implement outbound operation dispatch/reconnect.
-- [ ] Implement remote create/list/show.
-- [ ] Implement renew/reconcile/destroy.
-- [ ] Implement named tests/logs/artifacts.
-- [ ] Implement central artifact/result CAS.
-- [ ] Route Android UI remote operations.
-- [ ] Route Browser/CDP remote operations.
-- [ ] Implement stale/UNKNOWN observation on heartbeat expiry.
-- [ ] Prove no automatic reassignment after worker loss.
-- [ ] Implement controller restart recovery.
-- [ ] Implement worker restart recovery.
-- [ ] Reject same host ID/different instance adoption.
-- [ ] Add drain/remove safety tests.
-- [ ] Add mTLS/auth/body/path/blob negative tests.
-- [ ] Add duplicate-delivery regression.
-- [ ] Add disconnect-after-effect-before-result recovery.
-- [ ] Add controller-outage/live-worker regression.
-- [ ] Add worker-outage/surviving-process regression.
-- [ ] Add two-worker real-socket scheduling/isolation integration.
-- [ ] Add remote process-runtime E2E.
+- [x] 2026-09-09: Implement outbound operation dispatch/reconnect.
+- [x] 2026-09-09: Implement remote create/list/show.
+- [x] 2026-09-09: Implement renew/reconcile/destroy.
+- [x] 2026-09-09: Implement named tests/logs/artifacts.
+- [x] 2026-09-09: Implement central artifact/result CAS.
+- [x] 2026-09-09: Route Android UI remote operations.
+- [x] 2026-09-09: Route Browser/CDP remote operations.
+- [x] 2026-09-09: Implement stale/UNKNOWN observation on heartbeat expiry.
+- [x] 2026-09-09: Prove no automatic reassignment after worker loss.
+- [x] 2026-09-09: Implement controller restart recovery.
+- [x] 2026-09-09: Implement worker restart recovery.
+- [x] 2026-09-09: Reject same host ID/different instance adoption.
+- [x] 2026-09-09: Add drain/remove safety tests.
+- [x] 2026-09-09: Add mTLS/auth/body/path/blob negative tests.
+- [x] 2026-09-09: Add duplicate-delivery regression.
+- [x] 2026-09-09: Add disconnect-after-effect-before-result recovery.
+- [x] 2026-09-09: Add controller-outage/live-worker regression.
+- [x] 2026-09-09: Add worker-outage/surviving-process regression.
+- [x] 2026-09-09: Add two-worker real-socket scheduling/isolation integration.
+- [x] 2026-09-09: Add remote process-runtime E2E.
 - [ ] Add remote Browser/CDP E2E.
 - [ ] Add remote Docker/Podman integration where available.
-- [ ] Add Android-capability scheduling fixture.
+- [x] 2026-09-09: Add Android-capability scheduling fixture.
 - [ ] Run native Windows controller/worker/client integration.
 - [ ] Run native macOS controller/worker/client integration.
-- [ ] Run native Linux controller/worker/client integration.
-- [ ] Record physical/VM multi-host evidence separately if available.
-- [ ] Update bilingual architecture/portability/security/reliability/quality/roadmap.
-- [ ] Update standalone docs for controller/worker modes.
+- [x] 2026-09-09: Run native Linux controller/worker/client integration.
+- [x] 2026-09-09: Record physical/VM multi-host evidence separately if available.
+- [x] 2026-09-09: Update bilingual architecture/portability/security/reliability/quality/roadmap.
+- [x] 2026-09-09: Update standalone docs for controller/worker modes.
 - [ ] Run final harness/race/native/integration/release checks.
 - [ ] Complete acceptance evidence and bilingual retrospective.
 - [ ] Move both plans to `docs/exec-plans/completed/`.
 
 ## Surprises & Discoveries
 
+- 2026-09-09: The first real TLS create failed because JSON object key reordering changed the package digest. Source hashes now canonicalize the typed manifest while independently proving the committed control-file transformation; reordered-JSON regression and native Linux E2E passed. Controller global-state mapping also had to use actual lowercase domain states, including `released`, rather than assumed uppercase wire values.
+- 2026-09-09: Independent review reproduced preflight diagnostic secret leakage in four fail-before cases. Preflight errors now use inherited-secret redaction and bounded remote metadata. A readable operation ID was accepted by the controller but rejected by the executor; the executor now applies the same operation identity contract while retaining ULID lease identities.
+- 2026-09-09: A pre-effect create failure could retain capacity permanently because no local lease existed for destroy. The journal now atomically records its pre-effect boundary. A validated non-dry-run destroy may use exact-assignment journal proof, never a missing local row or an error payload. Restart, dry-run, invalid request, missing evidence and effect-started regressions passed.
+- 2026-09-09: First native macOS CI on `0f05d09` failed because the provider compared `/var` and `/private/var` spellings of the same temporary ancestor as distinct repository identities. Linux success did not expose this OS path alias; repair and new native validation are pending. Runs: Verify 34314568570, Multi-host native 34314568601.
+
 - 2026-09-09: Independent runner review found that heartbeat loss during Prepare could still begin effects. Added a check immediately before the durable effect-started transition; a focused regression confirms no effect before reconnect.
 - 2026-09-09: Initial remote action tests assumed flags were shared by all UI/Browser actions; the existing CLI registers them per action. Corrected the mapping and tests without changing local flags. The first full harness attempt failed those new tests; focused corrected tests passed. A subsequent harness attempt hit formatting while the controller implementation was being edited; the complete harness must be rerun on a stable milestone.
 
 - 2026-09-09: Baseline unit/vet and race tests passed; `repoctl test-integration` exited 0 with real Docker. Baseline `repoctl check` failed docs-check because the supplied Japanese plan lacked mandatory section headings. Added the missing sections in both languages; remaining native runtime baselines are pending.
-
-No discoveries recorded yet.
 
 Record at minimum:
 
@@ -683,6 +686,9 @@ Record at minimum:
 Preserve failed approaches that affect authority/recovery design.
 
 ## Decision Log
+
+- 2026-09-09, implementation: Initially serialize worker operation dispatch and reject a second active operation on the same lease. Long-lived leases still run concurrently. Remote destroy does not cancel an active remote test; a separate cancellation protocol is deferred rather than racing an assignment fence.
+- 2026-09-09, validation: Physical/VM multi-machine evidence is unavailable. The real TLS fixture uses independent native controller/client/two-worker processes on one host. Record this limit explicitly; native Windows/macOS evidence comes from CI, not cross-builds.
 
 - 2026-09-09, implementation: Keep the assignment epoch fixed for a lease placement; distinct operation IDs fence individual commands. Local SQLite rejects removal, adoption, or alteration of management metadata, including writes under a valid local operation lock.
 - 2026-09-09, implementation: Persist a separate worker journal with FULL-synchronous SQLite, a permanent controller binding, a host-instance identity, and a new process incarnation. Result upload and acknowledgement retries never reset effect-started receipts. A native SQLite process lock excludes another worker using the same root and is released by the OS after a crash.
@@ -941,6 +947,8 @@ Source/artifact transfers are retryable by digest. Host OFFLINE is never a
 cleanup event.
 
 ## Artifacts and Notes
+
+2026-09-09 integrated milestone: commits `6d9dd7a` (managed local authority) and `0f05d09` (controller/worker/source/CLI) pushed to `origin/feat/multi-host-control-plane`. Full `repoctl check` and `go test -race ./...` passed locally. `TestMultiHostNativeCLI` passed in 21.406s with real TLS and built binaries, including placement, role denial, drain, isolation, outage, controller/worker restart and cleanup. Existing Browser native/secret tests, Podman coexistence integration (107.695s), real Android Emulator integration, real Flutter/Android UI integration and Docker `repoctl test-integration` all passed. The first Android invocation failed for missing explicit template configuration; rerunning with the installed stopped template passed. No host-specific prerequisite paths are stored here. Native CI is running; macOS revealed the path alias defect above. Additional remote runtime E2E evidence is still being collected.
 
 2026-09-09 milestone evidence: `go test -race ./internal/worker` passed (1.073s), including receipt replay, failed upload/ack retry, lost-result uncertainty and pre-effect heartbeat fencing. `go test -race ./internal/instance` passed (1.035s), including two native processes and crash-release. Managed app/local-store/domain race tests passed (50.167s/16.235s/1.030s); an overlay using the pre-fix Store.Save reproduced six management overwrite failures. Source/CAS repeated focused race tests passed (5.380s/1.011s). Architecture boundary fixtures passed (0.028s). Native Windows/macOS and actual two-worker TLS acceptance remain pending.
 

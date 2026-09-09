@@ -1,7 +1,7 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-08
+last_verified: 2026-09-09
 ---
 
 # Repository knowledge
@@ -32,3 +32,10 @@ Design, product, ADR and plan documents carry status, owner and last_verified me
 - [Language policy](design-docs/bilingual-documentation.md) / [日本語](design-docs/bilingual-documentation.ja.md): canonical English, maintained Japanese translations, and explicit exceptions.
 
 Browser/CDP: [product contract](product-specs/browser-cdp-automation.md) / [日本語](product-specs/browser-cdp-automation.ja.md), [design](design-docs/browser-cdp-automation.md) / [日本語](design-docs/browser-cdp-automation.ja.md), and [completed execution evidence](exec-plans/completed/browser-cdp-automation.md) / [日本語](exec-plans/completed/browser-cdp-automation.ja.md).
+
+Multi-host coordination is under active acceptance: [product contract](product-specs/multi-host-control-plane.md),
+[design](design-docs/multi-host-control-plane.md), [ADR 0006](adr/0006-single-authority-multi-host.md),
+and [ExecPlan](exec-plans/active/multi-host-control-plane.md).
+[README usage](../README.md#explicit-remote-mode) describes enrollment and role startup;
+[quality](QUALITY.md#multi-host-native-verification) distinguishes the Linux socket
+result from pending native and physical-host evidence.

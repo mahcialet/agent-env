@@ -27,6 +27,7 @@ Release availability and native verification are recorded in the
 | Android Emulator leases | Git, Android SDK, Emulator, adb, installed system image/AVD template and host acceleration |
 | Flutter Android applications | Android prerequisites plus Flutter and a compatible Java/Android build toolchain |
 | Android UI observation | Android lease and separately built optional UI companion; SDK/JDK and Go are needed to build that companion |
+| Multi-host controller/client/worker roles | Pre-provisioned TLS certificates; Git for source transfer and worker tools for selected runtimes |
 | Release construction | Git and a supported Go toolchain; release CI pins Go 1.27.1 |
 
 External capability tools and the optional UI companion are not bundled in the
@@ -146,3 +147,50 @@ and PNG pixels are not automatically redacted. See the
 [browser contract](docs/product-specs/browser-cdp-automation.md) for a complete
 manifest and commands, and the [completed plan](docs/exec-plans/completed/browser-cdp-automation.md)
 for native acceptance status. Chrome is an external prerequisite, not bundled.
+
+## Explicit remote mode
+
+The optional [multi-host control plane](docs/product-specs/multi-host-control-plane.md)
+places each whole lease on one enrolled worker. Local mode remains the default and
+needs no controller. Pre-provision a CA, a controller server certificate valid for
+its DNS name, and separate client/worker certificates. Set a distinct absolute
+`AGENT_ENV_HOME` for the controller, each worker and the client using your host's
+environment settings. Enrollment is an offline administrative command against the
+controller's state root; run it there before starting the controller.
+
+```text
+agent-env control-plane enroll --certificate client.pem --role client
+agent-env control-plane enroll --certificate worker.pem --role worker --host-id build-a
+agent-env --tls-ca ca.pem --tls-cert controller.pem --tls-key controller.key control-plane serve --listen 0.0.0.0:9443
+```
+
+On the worker, with its own state root and runtime prerequisites:
+
+```text
+agent-env --controller https://controller.example:9443 --tls-ca ca.pem --tls-cert worker.pem --tls-key worker.key worker serve --host-id build-a --max-leases 2
+```
+
+On the client, substitute your controller URL, certificates and committed repository:
+
+```text
+agent-env --controller https://controller.example:9443 --tls-ca ca.pem --tls-cert client.pem --tls-key client.key hosts list
+agent-env --controller https://controller.example:9443 --tls-ca ca.pem --tls-cert client.pem --tls-key client.key create ../trusted-repo --stack api --host build-a
+agent-env --controller https://controller.example:9443 --tls-ca ca.pem --tls-cert client.pem --tls-key client.key artifact-download <digest> --destination evidence.json
+```
+
+Use the same remote connection flags for list/show, renew, reconcile, destroy,
+named tests and supported UI/browser actions. Artifact digests come from registered
+remote evidence; downloads verify them and require a new destination file.
+`hosts drain <host-id>` blocks new placements, and `hosts undrain <host-id>` restores
+eligibility. Committed sources travel by verified Git bundles; client paths and
+implicit environment secrets do not become worker inputs. Loopback endpoints refer
+to the worker, without a client tunnel.
+
+Workers dispatch operations serially while already-created leases run concurrently.
+A second active operation on one lease is rejected, including destroy during a
+remote test; remote cancel-active is not implemented. Local force/GC cannot bypass
+controller management. Linux real-TLS acceptance passed in 21.406s with two worker
+roots on one physical machine. The native Windows/macOS workflow is defined but
+has not yet supplied pass evidence; physical multi-host/VM coverage also remains
+unverified. See [quality](docs/QUALITY.md) and the
+[active plan](docs/exec-plans/active/multi-host-control-plane.md).

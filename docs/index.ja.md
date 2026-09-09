@@ -1,9 +1,9 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-08
+last_verified: 2026-09-09
 translation_of: docs/index.md
-source_sha256: ac011a2e4bf26a8404c13b5be5c69cb65ab7392087eb0e9e2ec0ee8d08d2088d
+source_sha256: 1f2ec361c882d8489634379c29618def27b930da198271eaa315e0a060373362
 ---
 
 # リポジトリの知識
@@ -34,3 +34,9 @@ source_sha256: ac011a2e4bf26a8404c13b5be5c69cb65ab7392087eb0e9e2ec0ee8d08d2088d
 - [言語の方針](design-docs/bilingual-documentation.ja.md)：英語版を内容の基準にする方針、日本語訳の保守、明示的な例外。
 
 Browser/CDP: [製品契約](product-specs/browser-cdp-automation.ja.md)、[設計](design-docs/browser-cdp-automation.ja.md)、[完了の検証記録](exec-plans/completed/browser-cdp-automation.ja.md)。
+
+複数 host の調整は受け入れ検証中です。[製品仕様](product-specs/multi-host-control-plane.ja.md)、
+[設計](design-docs/multi-host-control-plane.ja.md)、[ADR 0006](adr/0006-single-authority-multi-host.ja.md)、
+[ExecPlan](exec-plans/active/multi-host-control-plane.ja.md) を参照してください。
+[README の使用方法](../README.ja.md#明示的な-remote-モード) に登録と各 role の起動方法を記載しています。
+[品質](QUALITY.ja.md#複数-host-の-native-検証) では、Linux socket 検証の結果と、未検証の native・物理 host の証拠を区別します。

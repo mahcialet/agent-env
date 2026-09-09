@@ -1,9 +1,9 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-08
+last_verified: 2026-09-09
 translation_of: docs/SECURITY.md
-source_sha256: 911974ecf8c525d3844c947875079c670257f0eaab1541d5f37a251b78179a04
+source_sha256: 1b5c8fa1fdc433b09bfd63e2b93f211ac5f48f382a502452dd56441b7af91cd7
 ---
 
 [英語版（翻訳元）](SECURITY.md)
@@ -14,9 +14,9 @@ source_sha256: 911974ecf8c525d3844c947875079c670257f0eaab1541d5f37a251b78179a04
 
 ## マニフェストの権限
 
-planとcreateは、既定で制御用checkoutの`.agent-env.yaml`を読みます。`--manifest`は信頼するマニフェストパスを明示的に選択し、正規化スナップショットとdigestをリースに保存します。ソースrefが選ぶのは固定したruntime/テストのソース内容であり、対象revisionのマニフェストに黙って差し替えるものではありません。マニフェストと、それが実行するコードの両方の変更をレビューしてください。信頼したbase/PR overlayのマージとリモート認証情報管理は今後の課題です。
+planとcreateは、既定で制御用checkoutの`.agent-env.yaml`を読みます。`--manifest`は信頼するマニフェストパスを明示的に選択し、正規化スナップショットとdigestをリースに保存します。ソースrefが選ぶのは固定したruntime/テストのソース内容であり、対象revisionのマニフェストに黙って差し替えるものではありません。マニフェストと、それが実行するコードの両方の変更をレビューしてください。信頼したbase/PR overlayのマージとremote認証情報の自動準備は今後の課題です。
 
-ownerラベルと`--mine`は助言的なフィルターです。ローカル状態ディレクトリと選択したcontainer engineにアクセスできる人は、対応するホスト権限を持ちます。分散認証や敵対的な複数ユーザーの隔離はありません。
+ownerラベルと`--mine`は助言的なフィルターです。ローカル状態ディレクトリと選択したcontainer engineにアクセスできる人は、対応するホスト権限を持ちます。localモードはremote認証を提供せず、敵対的な複数ユーザーも隔離しません。明示的なremoteモードの認証は後述します。
 
 ## 組み込みホストポリシー
 
@@ -118,3 +118,24 @@ networkはheader/bodyを保存せず、URL query・認証情報をredactしま�
 認識した継承secretをredactします。screenshotは有効なPNGとして保存しますが、pixelや未認識のpage/console textは
 秘密を漏らし得るためartifactをprivateに保持します。型付き操作に任意JavaScriptやraw CDPの公開経路はありません。
 [browser契約](product-specs/browser-cdp-automation.ja.md)を参照してください。
+
+## Remote の管理境界
+
+[remote モード](product-specs/multi-host-control-plane.ja.md) は、信頼された一つの管理組織を前提にします。
+証明書を事前に用意し、`control-plane enroll --certificate ... --role ...` で client/worker role を登録します。
+worker の登録には `--host-id` も結び付けます。登録は controller の専用 local 状態を変更する操作であり、
+remote の自己登録 endpoint ではありません。本番通信は `--controller`、`--tls-ca`、`--tls-cert`、`--tls-key` による
+HTTPS 相互 TLS を使います。CA 署名だけで未登録の証明書や、client として使った worker 証明書は拒否します。
+worker から接続するため、worker の受信用 listener や汎用 remote shell は公開しません。
+
+証明書の秘密鍵は保護したファイル入力として保持し、SQLite に記録しません。
+commit 済み source bundle、operation payload、artifact は管理用の機密データとして扱います。
+control-plane の保存領域は非公開ですが、保存時の暗号化は保証しません。
+SHA-256 CAS key に呼出側の path を使わず、source object は 1 GiB、artifact は 64 MiB に制限します。
+worker の source 検証は、runtime に作用する前に未 commit や未対応の source 形式を拒否します。
+client の環境変数の秘密値は暗黙に転送せず、`${env:NAME}` は worker で解決します。
+既存の repository の信頼、redaction、runtime の識別情報、host policy を worker でも適用します。
+
+管理 tuple の検査で local mutation/force/GC と別 assignment の操作を拒否し、通常の registry Save では
+管理 metadata の削除・置換をできなくします。暗黙の緊急管理引継ぎはありません。
+返す loopback URL は worker-local であり、client から任意の host endpoint に接続する許可ではありません。

@@ -1,7 +1,7 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-08
+last_verified: 2026-09-09
 ---
 
 # Portability
@@ -147,3 +147,20 @@ browser lifecycle management into the CDP adapter.
 
 The two-second budget bounds retry scheduling; it does not interrupt a synchronous
 filesystem removal already in progress.
+
+## Multi-host roles and evidence
+
+Controller, outbound worker and remote client use the same native executable and
+standard Go TLS/filesystem APIs; core role startup needs no shell, Docker, SDK,
+Python, Node or CGO. Workers still need the external tools required by the selected
+runtime. Pre-provisioned PEM certificates and separate absolute `AGENT_ENV_HOME`
+state roots are required. Committed bundles replace client absolute source paths;
+worker-local paths and loopback endpoints retain worker OS semantics.
+
+The actual-TLS native fixture passed on Linux/amd64 in 21.406s with two worker
+roots on one physical host, including a committed path containing spaces/Unicode
+and controller/worker restart. The [multi-host workflow](../.github/workflows/multi-host.yml)
+defines Windows/macOS/Linux execution; native Windows/macOS results and physical
+multi-machine/VM evidence are still pending. No cross-build or same-host worker
+process count closes those gaps. See [quality](QUALITY.md#multi-host-native-verification)
+and the [active plan](exec-plans/active/multi-host-control-plane.md).
