@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/product-specs/android-ui-observer.md
-source_sha256: 3aadd1d7f926be3ebaba9ec826343abfc3598a5aca889eb409fede17843f4589
+source_sha256: 0a6243f549cf1dbee7ba5146ad3c08d45a6f26e0e6c4fc68285c9f38863ffb1d
 ---
 
 # Android UI observer
@@ -91,8 +91,9 @@ label や編集可能でない text にも秘密情報が含まれ得るため�
 編集可能でない場所に表示した同じ値が含まれる場合があります。明示的に要求した logcat にも、アプリが log に
 書いた値が含まれ得ます。設定済み秘密値の redaction は引き続き適用します。
 アプリが表示する任意の text に機密情報がないことまでは保証できません。編集可能な値や password 値の自動抑制では、それらの値を含まない fingerprint を保持します。
-設定済み秘密値が node や window の意味情報に含まれる場合、派生した window key と node fingerprint を
+設定済み秘密値が node や window の意味情報に含まれる場合、すべての node fingerprint を
 削除するため、その snapshot は意味情報による入力を許可できません。
+window の意味情報に秘密値が含まれる場合は、派生した window key もすべて削除します。
 操作に秘密値の照合データがある場合、操作後の tree が非公開で秘密値由来の識別情報を検証できないため、
 任意項目である操作後の fingerprint を省略します。
 各フィールドと応答全体の上限は、redaction 後にも JSON の escape と snapshot metadata を含めて適用します。

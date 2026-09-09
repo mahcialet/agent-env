@@ -3,12 +3,12 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/audits/repository-correctness/history-process-browser.md
-source_sha256: 2f4a789a3df7202f7b20d01127f29d61ad918fba10642728a0c2cca647f34e25
+source_sha256: ce6e681d3961b857f0bb9b2feee758eae3f17a482ff5da67e7de3e5ec0c7160d
 ---
 
 # 過去レビュー資料: process・browser・MVP
 
-[English](history-process-browser.md) · [作業を定める監査Plan](../../exec-plans/active/repository-correctness-audit.ja.md)
+[English](history-process-browser.md) · [作業を定める監査Plan](../../exec-plans/completed/repository-correctness-audit.ja.md)
 
 Phase A対象: `031869c8b9073b8e23bc17fbc55243666a52f557`。
 本書はレビュー専用の過去資料であり、処置判断や修正実施ではない。

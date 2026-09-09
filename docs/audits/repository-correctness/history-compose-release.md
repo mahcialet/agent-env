@@ -7,7 +7,7 @@ last_verified: 2026-09-09
 # Historical Compose and standalone release review corpus
 
 [日本語](history-compose-release.ja.md) · [Audit index](index.md) ·
-[Execution authority](../../exec-plans/active/repository-correctness-audit.md)
+[Execution authority](../../exec-plans/completed/repository-correctness-audit.md)
 
 Frozen production revision: `031869c8b9073b8e23bc17fbc55243666a52f557`.
 This is Phase A evidence, not a remediation disposition. No product/test files

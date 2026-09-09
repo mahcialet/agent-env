@@ -6,7 +6,7 @@ last_verified: 2026-09-09
 
 # Current process, browser and executor correctness review
 
-[日本語](current-process-browser.ja.md) · [Audit authority](../../exec-plans/active/repository-correctness-audit.md) · [Historical corpus](history-process-browser.md)
+[日本語](current-process-browser.ja.md) · [Audit authority](../../exec-plans/completed/repository-correctness-audit.md) · [Historical corpus](history-process-browser.md)
 
 Frozen target: `031869c8b9073b8e23bc17fbc55243666a52f557`.
 Phase A reproductions used Go overlays outside the repository. The coordinator

@@ -1,5 +1,5 @@
 ---
-status: active
+status: completed
 owner: maintainers
 last_verified: 2026-09-09
 ---
@@ -383,49 +383,56 @@ be corrected.
 
 ## Progress
 
-- [x] 2026-09-09: PR #10 merged; fast-forwarded master (already current), created audit/repository-correctness and froze Phase A at 031869c8b9073b8e23bc17fbc55243666a52f557. User-supplied untracked bilingual audit plans are preserved and adopted. No product changes are allowed during Phase A.
+- [x] (2026-09-09) PR #10 merged; fast-forwarded master (already current), created audit/repository-correctness and froze Phase A at 031869c8b9073b8e23bc17fbc55243666a52f557. User-supplied untracked bilingual audit plans are preserved and adopted. No product changes are allowed during Phase A.
 
 
-- [x] Merge PR #10 and record the exact audit target revision.
-- [x] Create `audit/repository-correctness`.
-- [ ] Run baseline repoctl/docs/race/native/integration checks.
-- [x] Freeze Phase A target revision.
-- [ ] Define audit matrix and finding-report path/ID convention.
-- [ ] Inventory completed review/follow-up ExecPlans and referenced PR findings.
-- [ ] Build a historical review corpus mapping original findings to current
+- [x] (2026-09-09) Merge PR #10 and record the exact audit target revision.
+- [x] (2026-09-09) Create `audit/repository-correctness`.
+- [x] (2026-09-09) Run baseline repoctl/docs/race/native/integration checks.
+- [x] (2026-09-09) Freeze Phase A target revision.
+- [x] (2026-09-09) Define audit matrix and finding-report path/ID convention.
+- [x] (2026-09-09) Inventory completed review/follow-up ExecPlans and referenced PR findings.
+- [x] (2026-09-09) Build a historical review corpus mapping original findings to current
       regressions, production paths and same-pattern recurrence searches.
-- [ ] For every material historical finding, record earliest preventable stage,
+- [x] (2026-09-09) For every material historical finding, record earliest preventable stage,
       detection opportunities, escape reason and preventive guardrail.
-- [ ] Replay/inspect historical regressions and identify stale or weakened
+- [x] (2026-09-09) Replay/inspect historical regressions and identify stale or weakened
       coverage before product modifications.
-- [ ] Aggregate historical escape reasons by S0-S9 stage and category.
-- [ ] Review boundary/exact-limit semantics.
-- [ ] Review state/positive-proof semantics.
-- [ ] Review persistence/effect ordering.
-- [ ] Review ownership/identity proof.
-- [ ] Review cleanup/absence proof.
-- [ ] Review cancellation/deadline/lock-loss behavior.
-- [ ] Review concurrency/reservations.
-- [ ] Review stale observation/action behavior.
-- [ ] Review redaction/truncation interaction.
-- [ ] Review path/filesystem safety.
-- [ ] Review cross-platform semantics.
-- [ ] Review release correctness.
-- [ ] Review docs enforcement claims.
-- [ ] Complete Phase A without product-code modifications.
-- [ ] Disposition every finding.
-- [ ] Confirm no Critical/High finding is silently deferred.
-- [ ] Add regression evidence before fixes where mechanically possible.
-- [ ] Resolve all accepted Critical/High findings.
-- [ ] Resolve accepted Medium/Low findings in scope.
-- [ ] Promote recurring patterns into shared test/check/helpers where justified.
-- [ ] Perform independent final read-only re-review.
-- [ ] Run final full harness/race/native/integration matrix.
-- [ ] Verify unresolved Critical=0 and High=0.
-- [ ] Complete bilingual Outcomes & Retrospective.
-- [ ] Move both plans to `docs/exec-plans/completed/`.
+- [x] (2026-09-09) Aggregate historical escape reasons by S0-S9 stage and category.
+- [x] (2026-09-09) Review boundary/exact-limit semantics.
+- [x] (2026-09-09) Review state/positive-proof semantics.
+- [x] (2026-09-09) Review persistence/effect ordering.
+- [x] (2026-09-09) Review ownership/identity proof.
+- [x] (2026-09-09) Review cleanup/absence proof.
+- [x] (2026-09-09) Review cancellation/deadline/lock-loss behavior.
+- [x] (2026-09-09) Review concurrency/reservations.
+- [x] (2026-09-09) Review stale observation/action behavior.
+- [x] (2026-09-09) Review redaction/truncation interaction.
+- [x] (2026-09-09) Review path/filesystem safety.
+- [x] (2026-09-09) Review cross-platform semantics.
+- [x] (2026-09-09) Review release correctness.
+- [x] (2026-09-09) Review docs enforcement claims.
+- [x] (2026-09-09) Complete Phase A without product-code modifications.
+- [x] (2026-09-09) Disposition every finding.
+- [x] (2026-09-09) Confirm no Critical/High finding is silently deferred.
+- [x] (2026-09-09) Add regression evidence before fixes where mechanically possible.
+- [x] (2026-09-09) Resolve all accepted Critical/High findings.
+- [x] (2026-09-09) Resolve accepted Medium/Low findings in scope.
+- [x] (2026-09-09) Promote recurring patterns into shared test/check/helpers where justified.
+- [x] (2026-09-09) Perform independent final read-only re-review.
+- [x] (2026-09-09) Run final full harness/race/native/integration matrix.
+- [x] (2026-09-09) Verify unresolved Critical=0 and High=0.
+- [x] (2026-09-09) Complete bilingual Outcomes & Retrospective.
+- [x] (2026-09-09) Move both plans to `docs/exec-plans/completed/`.
 
 ## Surprises & Discoveries
+
+- 2026-09-09 completion checkpoint: all earlier pending checks below have been reconciled. Final19 repairs, independent review, full harness/race, native CI34295144985/34295144958 and final release verification pass. Archived both language plans after filling all38 acceptance rows. Earlier entries retain their observations at that stage, not current open work.
+
+- 2026-09-09 final reconciliation: candidate6872286 Verify34294068659 and Browser native34294068663 pass completely, as do real local integrations and release verification. Final historical-source refresh exposed four postmerge PR10 comments3963154175/4182/4186/4191 absent from its completed plan. Supplemental review-only reproductions now cover page-create128 limit, mutation table output, ignored AX wait and pressed-state fingerprint. Do not archive until supplemental disposition/repair and fresh candidate verification.
+
+- 2026-09-09 checkpoint: Phase A/B are complete (documentation-only commit `56b9c2c`); 15 accepted repairs and their regressions are implemented. Aggregate matrix, final independent review and stable-candidate verification remain open. Frozen disk-backed Flutter passed73.54s; UI failed75.11s at the first tap, confirming AUDIT-UI-001. Initial candidate Flutter107.45s/UI146.19s and Linux Browser race10.178s pass; UI will be repeated after the final evidence-bound repair. Interim harness/race/integration runs failed while new mobile fixture sizes/API responses were being corrected. One process-preview deadline failure under concurrent integration load requires isolated recheck.
+
 
 - 2026-09-09: Frozen baseline passes full repoctl, full race, Docker integration, Linux Browser native race, real Podman coexistence (126.631s), real Android concurrent leases/manual termination (48.587s), and private-clone release verification (six targets, two byte-identical builds, eight files, native Linux smoke). Frozen-master Verify 34290359477 and Browser native 34290359439 pass Windows/macOS/Linux. Flutter/UI integration is running; final candidate validation is pending.
 - 2026-09-09: Two initially guessed CLI test selections used incorrect tags/names and returned “no tests to run”; they are not coverage. Correct Podman integration was then executed. Android fixture creation first requested an absent image variant; a listed installed image succeeded in a private template home.
@@ -439,6 +446,8 @@ collection limit may be falsely marked truncated. Preserve disproven hypotheses
 as such; do not rewrite them as confirmed root causes.
 
 ## Decision Log
+
+- 2026-09-09 supplemental Phase B: all four postmerge comments reproduce against frozen031869c8. ACCEPT AUDIT-BOUNDARY-003 (128-page creation overflow), AUDIT-STATE-001 (ignored AX wait), AUDIT-STALE-002 (pressed fingerprint) and AUDIT-CLI-001 (mutation table), all Medium. The original15 remain accepted; total19. Three CDP negatives failed0.061s; native CLI mutation output failed both create/close assertions while independently verifying side effects and sibling retention. Supplemental reports own details. This is an explicit audit scope reconciliation, not a separate PR task.
 
 - 2026-09-09 Phase B checkpoint: all bounded Phase A reviews and182 historical rows across all20 completed plans are complete; production is still frozen at031869c8. ACCEPT all15 reproduced findings (7 High,6 Medium,2 Low), as recorded in `docs/audits/repository-correctness/findings.md`. No confirmed finding is deferred/rejected/duplicated. Phase C may now modify only these contracts and meaningful regression tests. Baseline real Flutter passes with disk-backed temporary storage; real UI then reproduces AUDIT-UI-001 on its first tap. Do not mark final validation complete.
 
@@ -470,15 +479,83 @@ as such; do not rewrite them as confirmed root causes.
 
 ## Outcomes & Retrospective
 
-Not completed.
+Completed 2026-09-09. Frozen target `031869c8b9073b8e23bc17fbc55243666a52f557`;
+final production revision `f2ec634baa00af5221217dbfcd5c0aef93c624c9` on
+`audit/repository-correctness`. Documentation-only Phase A commit `56b9c2c`
+precedes seven coherent repair commits. The bilingual
+[report index](../../audits/repository-correctness/index.md),
+[ledger](../../audits/repository-correctness/findings.md),
+[matrix](../../audits/repository-correctness/matrix.md) and
+[historical corpus](../../audits/repository-correctness/historical-corpus.md)
+preserve the complete evidence and limitations.
 
-At completion summarize target revision, areas reviewed, finding counts by
-severity/disposition, accepted/resolved findings, rejected/deferred patterns,
-new regression helpers/checks, cross-platform findings, promoted invariants,
-remaining deferred Medium/Low risk and future PR-review recommendations. Include
-a defect-escape table showing findings by detected stage, earliest preventable
-stage and escape-reason category, plus the preventive controls added to move
-future detection earlier.
+Reviewed20 subsystems ×14 invariants and all20 pre-audit completed plans,
+with186 historical material rows (182 initial +4 late external comments).
+Accepted19, resolved19: Critical0, High7, Medium10, Low2.
+REJECT0, DEFER0, DUPLICATE0; unresolved Critical/High/Medium/Low are all0.
+Guardrail-only follow-ups without a demonstrated present defect remain explicit
+in the ledger; they are not undispositioned accepted findings.
+
+| Detection measure | Count |
+| --- | --- |
+| Original independent PR review S8 | 4 |
+| Original repository audit S9 | 15 |
+| Frozen audit reproduction S9 | 19 |
+| Earliest realistic prevention S2 | 9 |
+| Earliest realistic prevention S3 | 7 |
+| Earliest realistic prevention S4 | 3 |
+
+Escape categories overlap; counts are memberships among19 current findings,
+not additional defects. Historical stage-by-stage analysis remains in the corpus.
+
+| Escape reason | Findings |
+| --- | --- |
+| COMPOSITION_GAP | 14 |
+| NEGATIVE_FIXTURE_GAP | 10 |
+| ORACLE_COUPLING | 9 |
+| BOUNDARY_GAP | 7 |
+| FAILURE_INJECTION_GAP | 4 |
+| INVARIANT_GAP | 3 |
+| CONCURRENCY_GAP | 2 |
+| REVIEW_CHECKLIST_GAP | 2 |
+| HELPER_ONLY | 1 |
+
+The common failure was a correct local check not carried through its consumer:
+readiness lost executor certainty; UI/DOM limits ran before final redaction;
+page enumeration did not constrain creation; state production omitted a field
+used by stale-action reasoning. Added controls use existing durable CommandRun
+barriers, shared rendered-prose extraction and opened-file capped readers;
+exact boundary/artifact tests and protocol mutation fixtures exercise real
+consumers. Secret-derived fingerprints are removed when they cannot safely
+support input, while ordinary editable snapshots remain actionable.
+
+Independent reviewers found and helped correct ordinary readiness cancellation
+retry, a post-action opaque fingerprint, and weak fixture reachability/byte
+calibration before completion. One process-preview deadline failed amid heavy
+native integrations; unchanged isolated race×10 and subsequent full native CI
+pass. tmpfs emulator capacity failures were diagnosed from emulator output and
+rerun on disk-backed temporary storage without weakening timeouts or assertions.
+Final historical reconciliation added four real defects missed by the original
+completed Browser plan; corpus completion must include external follow-ups too.
+
+Final `repoctl check`, docs/translation checks, full race and independent reviews
+pass. Verify34295144985 and Browser native34295144958 pass on exact final product
+revision (Windows/macOS/Linux; native evidence distinct from cross-build).
+Real Docker, Podman coexistence, Android, Flutter/UI and Browser passes are in
+the index. Final private-clone release verification builds all six targets twice,
+compares eight identical files and passes Linux native smoke. Later changes are
+audit/product-documentation completion only; no production dependency or
+architectural boundary changed, and no POSIX shell was added to the core.
+
+For future PR review, require independent exact-limit expected values, actual
+injection reachability, full consumer/durable-output assertions, paired refusal
+and permitted behavior, and native evidence where semantics differ. These are
+recommendations and implemented tests here, not unapproved global policy changes.
+Remaining limits: direct Windows second-PID-read scheduling, Java traversal
+producer tests and some release close/late-persistence injections are not fully
+exhausted. Same-user hostile host/ADB and every possible native schedule remain
+outside the proof. No known accepted defect is left open. No merge, public tag,
+release or unrelated repository operation is part of completion.
 
 ## Context and Orientation
 
@@ -610,44 +687,44 @@ Critical/High zero.
 
 | ID | Required behavior | Evidence |
 | --- | --- | --- |
-| A1 | Audit target is exact post-PR-#10 merged master and frozen during Phase A. | Pending |
-| A2 | Phase A completes without product-code modifications. | Pending |
-| A3 | Required subsystem x invariant matrix is complete. | Pending |
-| A4 | Every semantic collection limit affecting completeness is exact-boundary reviewed. | Pending |
-| A5 | Accepted boundary defect classes have limit-1/limit/limit+1 regression coverage. | Pending |
-| A6 | Returned count equal to limit alone never implies truncation. | Pending |
-| A7 | READY/owned/clean/absent/released decisions are audited for positive proof. | Pending |
-| A8 | Major external effects are audited for intent/effect/identity persistence ordering. | Pending |
-| A9 | Successful effect plus persistence failure cannot silently erase effect identity. | Pending |
-| A10 | Cleanup paths are audited for actual absence proof, not command success alone. | Pending |
-| A11 | PID/port/project/connection/serial/page/node reuse is audited for identity confusion. | Pending |
-| A12 | Lock loss/cancellation cannot authorize unintended later effects. | Pending |
-| A13 | Cross-process claims use independent process/connection tests where needed. | Pending |
-| A14 | Android/Browser stale actions revalidate exact targets and reject ambiguous/truncated evidence. | Pending |
-| A15 | `gone`/absence waits do not treat truncated evidence as complete absence. | Pending |
-| A16 | Redaction/truncation covers multibyte and chunk/limit boundaries. | Pending |
-| A17 | Path review covers symlink/traversal/case/space/non-ASCII/Windows paths. | Pending |
-| A18 | Native process semantics are separately verified on Windows/macOS/Linux where different. | Pending |
-| A19 | Release tooling is audited for source identity, deterministic bytes and validated-byte publication. | Pending |
-| A20 | Durable mechanical claims have implementation/negative tests or corrected prose. | Pending |
-| A21 | Every completed review/follow-up ExecPlan is inventoried or explicitly marked not applicable to the frozen target. | Pending |
-| A22 | Historical review regressions are mapped to current tests/entry points and checked for stale or weakened coverage. | Pending |
-| A23 | Each historical defect pattern is searched across other subsystems for recurrence. | Pending |
-| A24 | Historical “why tests missed it” lessons are incorporated into the current audit method/fixtures where still relevant. | Pending |
-| A25 | Every material historical finding has a detected stage and earliest realistic preventable stage (S0-S9). | Pending |
-| A26 | Every material historical finding records concrete pre-discovery detection opportunities and why they failed. | Pending |
-| A27 | Every ACCEPT current finding has escape-reason classification and earliest preventable stage. | Pending |
-| A28 | Every recurring defect class has a preventive guardrail with evidence, or an explicit reason broader prevention is impractical. | Pending |
-| A29 | Every finding has ACCEPT/REJECT/DEFER/DUPLICATE disposition with rationale. | Pending |
-| A30 | Every ACCEPT finding has regression evidence before/with fix. | Pending |
-| A31 | Every accepted Critical/High finding is resolved. | Pending |
-| A32 | Unresolved Critical count is zero. | Pending |
-| A33 | Unresolved High count is zero. | Pending |
-| A34 | Every DEFER finding has explicit risk, reason and follow-up. | Pending |
-| A35 | Repeated defect classes are promoted into reusable harness/check/test mechanisms where justified. | Pending |
-| A36 | Independent final read-only re-review finds no unresolved accepted defect in changed/adjacent code. | Pending |
-| A37 | Final repoctl/docs/translation/race/native/integration matrix passes. | Pending |
-| A38 | Both language plans contain final statistics/evidence/retrospective before archival. | Pending |
+| A1 | Audit target is exact post-PR-#10 merged master and frozen during Phase A. | Frozen `031869c8`; branch and Phase A report commit `56b9c2c`. |
+| A2 | Phase A completes without product-code modifications. | `git diff 031869c8 56b9c2c` contains audit documentation only; product repairs start at `dc358e1`. |
+| A3 | Required subsystem x invariant matrix is complete. | `docs/audits/repository-correctness/matrix.md`: 20 subsystems × 14 invariants. |
+| A4 | Every semantic collection limit affecting completeness is exact-boundary reviewed. | Matrix bounds column and mobile/process-browser/Compose-release annexes; AX/node/frame/log/byte/field limits reviewed. |
+| A5 | Accepted boundary defect classes have limit-1/limit/limit+1 regression coverage. | UI rune4096±1, node1000±1, encoded1MiB±1; log2000±1; DOM encoded1MiB±1; release read cap−1/exact/+1 and Browser page127/128/129 fixtures. |
+| A6 | Returned count equal to limit alone never implies truncation. | Overflow record and whole-node omission controls; exact full counts stay complete. See BOUNDARY-001 and REDACTION-001/002. |
+| A7 | READY/owned/clean/absent/released decisions are audited for positive proof. | Control-plane saga/positive-proof table plus current provider annexes; CLEANUP-001, OWNERSHIP-001, LIFECYCLE-001 repaired. |
+| A8 | Major external effects are audited for intent/effect/identity persistence ordering. | Current-control-plane intent/effect/result review; provider receipt/persistence tests and readiness durable attempt regression. |
+| A9 | Successful effect plus persistence failure cannot silently erase effect identity. | Existing process launch receipts, application/UI/browser running rows and save-failure tests; new readiness safety tests. |
+| A10 | Cleanup paths are audited for actual absence proof, not command success alone. | Destroy/GC running-row quarantine regressions, empty-ID public Down rejection and real lease sibling cleanup. |
+| A11 | PID/port/project/connection/serial/page/node reuse is audited for identity confusion. | Provider identity/reuse matrices; source registration, process birth/Job, Compose engine/project, AVD serial, helper digest, Browser target/node. |
+| A12 | Lock loss/cancellation cannot authorize unintended later effects. | Readiness typed cancellation regression and existing lock-loss/command-tree/UI/Browser fencing tests; candidate race passes. |
+| A13 | Cross-process claims use independent process/connection tests where needed. | SQLite independent-connection/process reservations, execx native process helpers, real concurrent Docker/Android/UI leases; Podman99.951s PASS. |
+| A14 | Android/Browser stale actions revalidate exact targets and reject ambiguous/truncated evidence. | UI editable positive and secret/stale refusal tests, exact helper build and recovery; CDP post-predicate navigation regression. |
+| A15 | `gone`/absence waits do not treat truncated evidence as complete absence. | Existing partial/truncated Android wait and Browser AX/frame absence negatives retained; reviewed in mobile/Browser matrices. |
+| A16 | Redaction/truncation covers multibyte and chunk/limit boundaries. | Evidence cross-chunk/multibyte tests plus final post-redaction UI/DOM artifact byte tests; configured secret-derived hashes removed. |
+| A17 | Path review covers symlink/traversal/case/space/non-ASCII/Windows paths. | Source/paths/assets/release matrices and platform path tests; private release smoke uses Unicode state root. |
+| A18 | Native process semantics are separately verified on Windows/macOS/Linux where different. | Verify34295144985 native Go1.26/1.27 ×3OS PASS; Browser34295144958 real3OS PASS on final f2ec634. |
+| A19 | Release tooling is audited for source identity, deterministic bytes and validated-byte publication. | Clean final f2ec634 private-clone release-verify PASS: six targets twice, eight byte-identical files, Linux smoke; release regression suite PASS. |
+| A20 | Durable mechanical claims have implementation/negative tests or corrected prose. | Fragment full docsCheck negatives/positives; UI/DOM bounds and readiness durable claims corrected in both languages; docs-check PASS. |
+| A21 | Every completed review/follow-up ExecPlan is inventoried or explicitly marked not applicable to the frozen target. | historical-corpus.md inventories all20 completed English plans and PR5 external24 comments. |
+| A22 | Historical review regressions are mapped to current tests/entry points and checked for stale or weakened coverage. | 186 material rows map current production/regression entry and oracle limits; historical annexes distinguish replay from source inspection. |
+| A23 | Each historical defect pattern is searched across other subsystems for recurrence. | Historical/current annex recurrence searches produce19 present findings; disproven hypotheses retained. |
+| A24 | Historical “why tests missed it” lessons are incorporated into the current audit method/fixtures where still relevant. | Full entry callbacks, durable run/artifact assertions, independent negative/positive fixture pairs and actual encoded boundaries added. |
+| A25 | Every material historical finding has a detected stage and earliest realistic preventable stage (S0-S9). | Historical annexes classify detected/earliest stages per material row; historical-corpus aggregation. |
+| A26 | Every material historical finding records concrete pre-discovery detection opportunities and why they failed. | Historical annexes record earlier opportunities, weak oracles and guardrails; no reviewer intent invented. |
+| A27 | Every ACCEPT current finding has escape-reason classification and earliest preventable stage. | matrix.md maps19/19 ACCEPT findings: audit replay S9; original S9=15/S8=4; earliest S2=9, S3=7, S4=3. |
+| A28 | Every recurring defect class has a preventive guardrail with evidence, or an explicit reason broader prevention is impractical. | matrix.md recurring-class table: nine controls/reuse decisions with evidence and explicit limits on generic prevention. |
+| A29 | Every finding has ACCEPT/REJECT/DEFER/DUPLICATE disposition with rationale. | findings.md: ACCEPT19, REJECT0, DEFER0, DUPLICATE0; per-finding contract rationale. |
+| A30 | Every ACCEPT finding has regression evidence before/with fix. | Linked Phase C annexes retain failing frozen overlays and permanent focused regressions; readiness ordinary cancellation discovered/repaired in independent review. |
+| A31 | Every accepted Critical/High finding is resolved. | All seven accepted High findings repaired and independently reviewed; no Critical finding. |
+| A32 | Unresolved Critical count is zero. | Zero; no Critical finding accepted or deferred. |
+| A33 | Unresolved High count is zero. | Zero; High7/7 resolved. |
+| A34 | Every DEFER finding has explicit risk, reason and follow-up. | No DEFER finding. Explicit non-defect coverage follow-ups and rationale remain in findings.md. |
+| A35 | Repeated defect classes are promoted into reusable harness/check/test mechanisms where justified. | Shared documentProse target extraction, readiness CommandRun/runWithCancellation, opened bounded release reader, UI raw/normalized/result bound; domain-specific exact boundary oracles. |
+| A36 | Independent final read-only re-review finds no unresolved accepted defect in changed/adjacent code. | Separate author/reviewer checks cover readiness/docs, Compose/release, mobile, Browser and CLI; final supplemental CDP race×5 PASS2.039s, no remaining defect. |
+| A37 | Final repoctl/docs/translation/race/native/integration matrix passes. | Final repoctl/check/docs/race PASS; Verify34295144985 and Browser34295144958 PASS; real Docker/Podman/Android/Flutter/UI/release evidence and applicability in audit index. |
+| A38 | Both language plans contain final statistics/evidence/retrospective before archival. | Bilingual Outcomes contain19 findings,186 corpus rows, stage/category counts, controls, exact final CI and limits; docs-check and archive links verified. |
 
 Existing green CI alone does not satisfy the audit.
 
@@ -660,17 +737,17 @@ evidence instead of forcing a code change.
 
 ## Artifacts and Notes
 
-Suggested durable audit artifacts, subject to current docs-index policy:
+Durable audit entry points (annex links and final evidence are in index):
 
     docs/audits/repository-correctness/
       findings.md
       findings.ja.md
       matrix.md
       matrix.ja.md
-      historical-review-corpus.md
-      historical-review-corpus.ja.md
-      defect-escape-summary.md
-      defect-escape-summary.ja.md
+      historical-corpus.md
+      historical-corpus.ja.md
+      index.md
+      index.ja.md
 
 Use stable finding IDs and no secrets. Final summary records target revision,
 areas reviewed, finding statistics, new regressions/checks and final run IDs.
@@ -684,15 +761,17 @@ audit shell scripts.
 
 ## Unresolved Issues to Settle During Milestone 1
 
-1. Final durable path for findings/matrix/historical-review corpus.
-2. Whether findings and historical-review mapping remain durable after completion or are summarized into the completed plan.
-3. Phase-A policy for generated/untracked fixtures.
-4. Medium-finding defer policy.
-5. Low-finding remediation policy.
-6. Required final integration set when infrastructure is temporarily unavailable.
-7. Whether exact-limit semantics becomes an immediate QUALITY.md invariant.
-8. Whether repoctl can detect suspicious limit comparisons without unacceptable noise.
-9. Whether deferred findings are mirrored to GitHub issues.
-10. Whether future major feature merges should trigger a smaller recurring correctness audit.
-11. Whether S0-S9 earliest-preventable-stage and escape-reason fields become mandatory in future review follow-up ExecPlans.
-12. Whether preventive guardrails should be tracked in QUALITY.md or a dedicated review/testing policy document.
+All twelve setup questions are settled for this audit:
+
+1. Reports live under `docs/audits/repository-correctness/`; index, findings, matrix and historical-corpus are bilingual entry points.
+2. Retain those reports after completion; the archived plan links their detailed evidence.
+3. Frozen reproductions use private temporary overlays/clones; only meaningful permanent regressions enter production history.
+4. No Medium finding is deferred: all ten are accepted and repaired.
+5. Both Low findings are accepted and repaired.
+6. Required installed integrations ran: Docker, Podman coexistence, Android, Flutter/UI, native Browser, and release verification. Native OS checks use CI; cross-build alone is insufficient.
+7. No unsolicited QUALITY policy change. Exact-limit semantics are enforced by the existing contract and focused regressions.
+8. No noisy syntax-only limit checker: omission depends on domain eligibility, encoding and skipped records. Matrix controls record positive/negative oracles instead.
+9. No DEFER findings, so no GitHub issues are created for them.
+10. Smaller recurring audits remain a recommendation, not a newly imposed workflow.
+11. S0–S9/escape fields are used here; making them mandatory for future plans needs a separate policy decision.
+12. Concrete controls stay in existing harness/tests and the audit matrix. No new general policy document is created.

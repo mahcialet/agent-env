@@ -3,12 +3,12 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/audits/repository-correctness/current-process-browser.md
-source_sha256: 6c390521c7b9c660a3366cce3263ffebbd260fe071f26a10e593bd205f7853f7
+source_sha256: bea25488ae7519f21cae7d79987872fb176fe1cc20b7a3bc9b56705925e340fd
 ---
 
 # 現在のprocess・browser・executorの正しさレビュー
 
-[English](current-process-browser.md) · [監査Plan](../../exec-plans/active/repository-correctness-audit.ja.md) · [過去レビュー資料](history-process-browser.ja.md)
+[English](current-process-browser.md) · [監査Plan](../../exec-plans/completed/repository-correctness-audit.ja.md) · [過去レビュー資料](history-process-browser.ja.md)
 
 固定対象: `031869c8b9073b8e23bc17fbc55243666a52f557`。
 Phase A再現にはrepository外のGo overlayを用いた。統合担当はPhase B checkpoint

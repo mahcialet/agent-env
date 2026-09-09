@@ -3,13 +3,13 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/audits/repository-correctness/history-compose-release.md
-source_sha256: febd218bf833c424525fd423d50f9d86e5ff4aa5550aa7720987ddccd1134a77
+source_sha256: e0a9505c06b0b35aebbe6787b4b5ae33618c4755b6d0897fd2dc64f7d3536846
 ---
 
 # Compose と standalone release の過去レビュー記録
 
 [English](history-compose-release.md) · [監査索引](index.ja.md) ·
-[作業の実行基準](../../exec-plans/active/repository-correctness-audit.ja.md)
+[作業の実行基準](../../exec-plans/completed/repository-correctness-audit.ja.md)
 
 検査対象の実装は `031869c8b9073b8e23bc17fbc55243666a52f557` に固定する。
 本書は Phase A の証拠であり、修正の採否決定ではない。製品・テストのファイルは

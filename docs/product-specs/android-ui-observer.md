@@ -90,8 +90,9 @@ snapshots can contain noneditable application echoes, and explicitly requested
 logcat can contain values the application logged; configured secret redaction still
 applies. Snapshots cannot guarantee that arbitrary application text is nonsensitive.
 Automatic editable/password suppression preserves fingerprints that exclude those values.
-If configured secrets occur in semantic node or window metadata, derived window
-keys and node fingerprints are removed; the snapshot cannot authorize semantic input.
+If configured secrets occur in semantic node or window metadata, all node
+fingerprints are removed; the snapshot cannot authorize semantic input.
+Secret-bearing window metadata also causes all derived window keys to be removed.
 When the operation has secret matchers, its optional after-action fingerprint is
 omitted because the undisclosed after-tree cannot be checked for secret-derived identity.
 The field and serialized response limits apply again after redaction, including

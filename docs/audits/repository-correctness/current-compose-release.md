@@ -8,7 +8,7 @@ last_verified: 2026-09-09
 
 [日本語](current-compose-release.ja.md) · [Audit index](index.md) ·
 [Historical corpus](history-compose-release.md) ·
-[Execution authority](../../exec-plans/active/repository-correctness-audit.md)
+[Execution authority](../../exec-plans/completed/repository-correctness-audit.md)
 
 Phase A target: `031869c8b9073b8e23bc17fbc55243666a52f557`.
 Phase A used review and temporary Go overlays only. Phase B accepted the three

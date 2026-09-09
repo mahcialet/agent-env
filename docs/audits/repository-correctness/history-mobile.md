@@ -6,7 +6,7 @@ last_verified: 2026-09-09
 
 # Historical mobile correctness review corpus
 
-[日本語](history-mobile.ja.md) · [Audit index](index.md) · [Execution authority](../../exec-plans/active/repository-correctness-audit.md)
+[日本語](history-mobile.ja.md) · [Audit index](index.md) · [Execution authority](../../exec-plans/completed/repository-correctness-audit.md)
 
 Frozen target: `031869c8b9073b8e23bc17fbc55243666a52f557`. This Phase-A report changes no product/test files. It inventories material recorded findings, including implementation reviews and native test-oracle failures. Environment-only missing prerequisites, transient format/hash checks, and unproven historical scheduling causes are recorded separately rather than counted as product defects.
 
@@ -191,7 +191,7 @@ M70's repair reply describes a 1 MiB check after raw remarshal; typed result/sna
 | M64 / 3953839032 / P2 | Invalid/stale recover run references must exit2, not storage exit7. | S4/S8/C | `app/ui_recovery_test.go:TestUIRecoverRefusesUnsafeIntentAndEvidence (no CLI exact classification)` | `app/ui_recovery.go:RecoverUI` | G |
 | M65 / 3953839035 / P1 | Native preflight failure before input must not create unrecoverable uncertainty. | S4/S8/P | `runtime/android/ui_test.go:TestUIOwnershipFailureCannotDispatchInput (does not assert Confirmed)` | `runtime/android/ui.go:ObserveUI native branch` | G |
 | M66 / 3953922442 / P1 | Configured-secret derived node/window hashes must not remain as offline verification oracles. | S2/S8/I | `app/ui_test.go:TestUIEvidenceRedactsEnteredAndEditableText (plaintext only)` | `app/ui.go:sanitizeUIObservation` | G |
-| M67 / 3953922444 / P2 | Wait requires application scope; unrelated/system window must not satisfy predicate. | S3/S8/C | `cli/ui_test.go:TestUIFlagValidationAndExitCodes` | `app/ui.go:UI option validation;cli/ui.go` | C |
+| M67 / 3953922444 / P2 | Wait requires application scope; unrelated/system window must not satisfy predicate. | S3/S8/C | `cli/ui_test.go:TestUIRequiredFlagsRejectBeforeOpeningRegistry` | `app/ui.go:UI option validation;cli/ui.go` | C |
 | M68 / 3953922447 / P2 | Persist redacted wait predicate/timeout/application as intent. | S3/S8/C | `app/ui_test.go:TestUIWaitIsBoundedAndDoesNotInput (no argv assertion)` | `app/ui.go:UI run argv` | G |
 | M69 / 3953922449 / P2 | Missing SDK adb must retain prerequisite exit3 after safe-error sanitization. | S4/S8/C | `app/ui_test.go:TestUIPrerequisiteErrorSurvivesPrivacySanitization (synthetic provider marker)` | `runtime/android/ui.go:uiSafeError` | G |
 | M70 / 3953922453 / P2 | Reapply raw/result response size after sanitization expands strings and omitted fields. | S2/S8/B | `app/ui_test.go:TestUIEvidenceRedactsEnteredAndEditableText (no final size assertion)` | `app/ui.go:sanitizeUIObservation/UI artifacts` | G |

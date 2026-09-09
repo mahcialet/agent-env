@@ -14,7 +14,7 @@ Severity: Medium. Disposition: ACCEPT. Source: [PR10 comment3963154182](https://
 
 Frozen native entry reproduction (Linux Chrome, sandbox enabled) inserted assertions into `TestBrowserNativeCLI` using a temporary test overlay. It created a page via default table output, independently listed pages through JSON to determine the new ID, closed it via table, then verified the original sibling remains. Both table assertions failed: create omitted the new ID; close printed the closed ID as a page inventory row. The original JSON scenario passed. The failure is user-visible output correctness; it does not demonstrate wrong-target lifecycle effects.
 
-Detected stage S9 (postmerge external review); earliest prevention S3 (CLI result model review), with S4 table-format integration as the missed oracle. Categories C8/C10/C11: result model/normalization, missing table negative/positive coverage, and JSON-only happy-path coverage. No command or schema change is needed.
+Original detection S8 (independent PR review, posted after merge); audit replay S9. Earliest prevention S3 (package integration of CLI result formatting), with composed table-format coverage as the missed oracle. Categories COMPOSITION_GAP/NEGATIVE_FIXTURE_GAP/ORACLE_COUPLING: adapter-to-formatter result mismatch, missing table negative/positive coverage, and JSON-only expectations. No command or schema change is needed.
 
 ## Repair and guardrail
 

@@ -6,7 +6,7 @@ last_verified: 2026-09-09
 
 # Current mobile correctness audit
 
-[日本語](current-mobile.ja.md) · [Audit index](index.md) · [Historical mobile corpus](history-mobile.md) · [Execution authority](../../exec-plans/active/repository-correctness-audit.md)
+[日本語](current-mobile.ja.md) · [Audit index](index.md) · [Historical mobile corpus](history-mobile.md) · [Execution authority](../../exec-plans/completed/repository-correctness-audit.md)
 
 Phase A, review only. Target `031869c8b9073b8e23bc17fbc55243666a52f557`; branch `audit/repository-correctness`. No product/test changes, commits, or remote actions. New tests run only through temporary Go overlays. Product contracts: [Android](../../product-specs/android-emulator.md), [Flutter](../../product-specs/flutter-android-runtime.md), [UI](../../product-specs/android-ui-observer.md). Baseline/native matrix belongs to the root audit and is not duplicated here.
 

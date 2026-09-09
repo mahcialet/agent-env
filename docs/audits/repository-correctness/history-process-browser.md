@@ -6,7 +6,7 @@ last_verified: 2026-09-09
 
 # Historical review corpus: process, browser and MVP
 
-[日本語](history-process-browser.ja.md) · [Audit execution authority](../../exec-plans/active/repository-correctness-audit.md)
+[日本語](history-process-browser.ja.md) · [Audit execution authority](../../exec-plans/completed/repository-correctness-audit.md)
 
 Phase A target: `031869c8b9073b8e23bc17fbc55243666a52f557`.
 This is a review-only historical annex, not disposition or remediation.

@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/audits/repository-correctness/historical-corpus.md
-source_sha256: 224e268628160fd7940a4946be1e090f0cd3b0f53c64f07d26613fa0798f068a
+source_sha256: afd5b94b91c9db629ec79dbbed6e3a1330ff4d24d4eb46205eea32e30b4041cc
 ---
 
 # 過去指摘の全体索引と見逃し分析
@@ -52,3 +52,21 @@ source_sha256: 224e268628160fd7940a4946be1e090f0cd3b0f53c64f07d26613fa0798f068a
 | S9 | 監査で残存・再発を発見。 | 修正前に再現を残し、修正後に独立再レビュー。将来の不具合全廃を保証しない。 |
 
 各分類は付録の記録に基づき、資料が足りない検出機会を断定しない。Windows の2回目 PID 読取、Java producer の完全性・fingerprint、process readiness と browser 選択の一部、release の後段永続化失敗には直接回帰の不足があり、製品不具合と区別する。無条件に ACCEPT 指摘へ数えない。広い防止策を今回の修正外に残す場合は Phase B でリスクと後続作業を記録する。共通指示の自動変更は提案しない。
+
+## 遅れて確認した外部commentの追加
+
+上の初回一覧は番号付き182行だった。最終GitHub照合で完了Planにないmerge後PR #10
+commentを4件発見し、外部参照元を明示する以下の行を加えて合計**186**件とする。
+既存Plan別行と過去重要度は変更しない。詳細な不具合・段階・予防策は
+[Browser追加資料](supplemental-browser.ja.md)と[CLI追加資料](supplemental-cli.ja.md)を参照。
+4件全て固定031869c8で再現し、別PR作業ではなく本監査内でACCEPTとした。
+
+| 資料内行 | 元comment | 監査指摘 |
+| --- | --- | --- |
+| EXT-PR10-01 | 3963154175 | AUDIT-BOUNDARY-003 |
+| EXT-PR10-02 | 3963154182 | AUDIT-CLI-001 |
+| EXT-PR10-03 | 3963154186 | AUDIT-STATE-001 |
+| EXT-PR10-04 | 3963154191 | AUDIT-STALE-002 |
+
+追加の過去指摘4件であり、未記録外部commentが従来から全て完了Planに含まれていたとはしない。
+thread照合で資料coverage欠落が判明したため、完了Planを書き換えず参照付き追加で由来を保つ。

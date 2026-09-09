@@ -3,14 +3,14 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/audits/repository-correctness/current-compose-release.md
-source_sha256: 0551a16fcd6a99e3d0715ce38398a1f0646e476f2a2691bc2c1a8d20b85950bd
+source_sha256: cc55711c88472bc0ba1291d5ea2a0b8492f057408eec9a342561f0d9dc282905
 ---
 
 # 現在の Compose・asset・release の正確性レビュー
 
 [English](current-compose-release.md) · [監査索引](index.ja.md) ·
 [過去レビュー記録](history-compose-release.ja.md) ·
-[作業の実行基準](../../exec-plans/active/repository-correctness-audit.ja.md)
+[作業の実行基準](../../exec-plans/completed/repository-correctness-audit.ja.md)
 
 Phase A 対象は `031869c8b9073b8e23bc17fbc55243666a52f557`。
 Phase A はレビューと一時 Go overlay のみを使用した。Phase B の checkpoint

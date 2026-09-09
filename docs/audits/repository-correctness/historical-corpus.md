@@ -50,3 +50,25 @@ A finding can have multiple categories; profile counts are not independent defec
 | S9 | Current audit detects surviving/recurrent variants. | Record repro before remediation and independent re-review after repair. No claim that audit eliminates all future defects. |
 
 All listed categories are represented in the annex classifications except where a source lacks evidence for a specific pre-discovery assertion. Existing direct-regression gaps are distinguished from product defects: Windows second PID read, Java helper producer completeness/fingerprint, selected process readiness and browser selection tests, late release persistence failures. They do not silently become accepted correctness findings. Phase B must record risks and follow-up for any broader controls left outside this repair; no automatic change to global instructions is proposed.
+
+## Late external-comment supplement
+
+The initial inventory above contained 182 numbered rows. Final GitHub
+reconciliation discovered four postmerge PR #10 comments absent from the completed
+plan. Adding these explicit external-source rows brings the reconciled corpus to
+**186**; prior per-plan rows and historical severity are unchanged.
+Detailed defect/stage/control evidence is in the [Browser supplement](supplemental-browser.md)
+and [CLI supplement](supplemental-cli.md). All four reproduced at frozen
+031869c8 and were ACCEPTed within this audit, not a separate PR task.
+
+| Corpus row | Original comment | Audit finding |
+| --- | --- | --- |
+| EXT-PR10-01 | 3963154175 | AUDIT-BOUNDARY-003 |
+| EXT-PR10-02 | 3963154182 | AUDIT-CLI-001 |
+| EXT-PR10-03 | 3963154186 | AUDIT-STATE-001 |
+| EXT-PR10-04 | 3963154191 | AUDIT-STALE-002 |
+
+These four are additional historical review defects, not a claim that every
+unrecorded external comment has always been represented in the archived plans.
+The external-thread reconciliation exposed a corpus-coverage gap; link-based
+supplementation preserves provenance instead of rewriting the completed plan.

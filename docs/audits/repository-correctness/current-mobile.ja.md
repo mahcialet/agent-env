@@ -3,12 +3,12 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/audits/repository-correctness/current-mobile.md
-source_sha256: 6c2148908e1f1ab94b0491da207c7515ed66867f170cdf2824fc0d8fe1e9c2c9
+source_sha256: 2a2434e8ac6888bead4b565ac232ce4c53ef0ac83706398c953270f926763324
 ---
 
 # Mobile領域の現在のcorrectness監査
 
-[English](current-mobile.md) · [監査index](index.ja.md) · [過去mobile資料](history-mobile.ja.md) · [実行基準](../../exec-plans/active/repository-correctness-audit.ja.md)
+[English](current-mobile.md) · [監査index](index.ja.md) · [過去mobile資料](history-mobile.ja.md) · [実行基準](../../exec-plans/completed/repository-correctness-audit.ja.md)
 
 Phase A、reviewのみ。対象`031869c8b9073b8e23bc17fbc55243666a52f557`、branch `audit/repository-correctness`。製品・test変更、commit、remote操作は行わない。追加testは一時Go overlayでのみ実行する。製品contractは[Android](../../product-specs/android-emulator.md)、[Flutter](../../product-specs/flutter-android-runtime.ja.md)、[UI](../../product-specs/android-ui-observer.ja.md)。baseline/native行列はroot監査が管理し、ここで重複実行しない。
 

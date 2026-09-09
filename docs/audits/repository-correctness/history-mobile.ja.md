@@ -3,12 +3,12 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/audits/repository-correctness/history-mobile.md
-source_sha256: cfb0f2cb40920576c6e2f936cfa35267465e5b6383c48e156563bf0502a06c3a
+source_sha256: 83dd22f5e134ea985a3ef2fa4519b675e0230ab5262c09a734d9012dce1d4b50
 ---
 
 # Mobile領域の過去correctnessレビュー資料
 
-[English](history-mobile.md) · [監査index](index.ja.md) · [実行基準](../../exec-plans/active/repository-correctness-audit.ja.md)
+[English](history-mobile.md) · [監査index](index.ja.md) · [実行基準](../../exec-plans/completed/repository-correctness-audit.ja.md)
 
 固定対象: `031869c8b9073b8e23bc17fbc55243666a52f557`。Phase Aとして製品・test fileは変更しない。実装時レビューとnative fixtureの判定基準不備も含め、記録された重要な指摘を整理する。前提環境の不足、一時的なformat/hash検査、原因未確認のscheduling問題は製品不具合と数えず別記する。
 
@@ -190,7 +190,7 @@ M70の修正返信はraw再marshal後の1 MiB確認を述べるが、typed resul
 | M64 / 3953839032 / P2 | 不正・stale recover run参照をstorage exit7でなくexit2にする。 | S4/S8/C | `app/ui_recovery_test.go:TestUIRecoverRefusesUnsafeIntentAndEvidence (no CLI exact classification)` | `app/ui_recovery.go:RecoverUI` | G |
 | M65 / 3953839035 / P1 | 入力前native preflight失敗で復旧不能uncertaintyを作らない。 | S4/S8/P | `runtime/android/ui_test.go:TestUIOwnershipFailureCannotDispatchInput (does not assert Confirmed)` | `runtime/android/ui.go:ObserveUI native branch` | G |
 | M66 / 3953922442 / P1 | 設定secret由来node/window hashをoffline照合oracleとして残さない。 | S2/S8/I | `app/ui_test.go:TestUIEvidenceRedactsEnteredAndEditableText (plaintext only)` | `app/ui.go:sanitizeUIObservation` | G |
-| M67 / 3953922444 / P2 | waitにapplication scopeを要求し、別app・system windowでpredicateを満たさない。 | S3/S8/C | `cli/ui_test.go:TestUIFlagValidationAndExitCodes` | `app/ui.go:UI option validation;cli/ui.go` | C |
+| M67 / 3953922444 / P2 | waitにapplication scopeを要求し、別app・system windowでpredicateを満たさない。 | S3/S8/C | `cli/ui_test.go:TestUIRequiredFlagsRejectBeforeOpeningRegistry` | `app/ui.go:UI option validation;cli/ui.go` | C |
 | M68 / 3953922447 / P2 | wait predicate・timeout・applicationを秘匿化したintentとして保存する。 | S3/S8/C | `app/ui_test.go:TestUIWaitIsBoundedAndDoesNotInput (no argv assertion)` | `app/ui.go:UI run argv` | G |
 | M69 / 3953922449 / P2 | 安全error化後もSDK adb欠落の前提exit3を保持する。 | S4/S8/C | `app/ui_test.go:TestUIPrerequisiteErrorSurvivesPrivacySanitization (synthetic provider marker)` | `runtime/android/ui.go:uiSafeError` | G |
 | M70 / 3953922453 / P2 | 秘匿化で文字列・省略fieldが増えるためraw/result応答上限を再適用する。 | S2/S8/B | `app/ui_test.go:TestUIEvidenceRedactsEnteredAndEditableText (no final size assertion)` | `app/ui.go:sanitizeUIObservation/UI artifacts` | G |
