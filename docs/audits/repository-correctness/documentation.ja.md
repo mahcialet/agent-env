@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/audits/repository-correctness/documentation.md
-source_sha256: 92dcd78c07cf89c16ce9af68423d8359ce77cd9ba6d08a1871c6b0e7f8f38438
+source_sha256: 44ca2530dde5783d3a686c8352443c7bf715e19d4e43b3d21935a7b1f0d80a9b
 ---
 
 # 文書検査の過去指摘再検証と現行監査
@@ -46,3 +46,7 @@ source_sha256: 92dcd78c07cf89c16ce9af68423d8359ce77cd9ba6d08a1871c6b0e7f8f38438
 - 関連: HIST-DOC-04、HIST-DOC-06。
 - 見逃し分析: 検出 S9、最も早い防止段階 S2。既存の非表示見出し fixture を別の全体呼出し経路にも適用できた。S6 は生の行のままで、S7/S8 は参照元リンクと必須節に限定した。COMPOSITION_GAP、NEGATIVE_FIXTURE_GAP、REVIEW_CHECKLIST_GAP。
 - 再発防止案: 表示見出しの共通抽出と全体呼出しのフラグメント負例。今後の検出は S2/S6 を想定。Phase A では未実装。
+
+## Phase C の解決と独立レビュー
+
+AUDIT-DOCS-001 は ACCEPT として修正した。リンク先見出しも `documentProse` を通し、実見出しの重複アンカーを保つ。`TestFragmentsRequireRenderedTargetHeadings` はコード・コメント・インデント内の偽見出しを拒否し、実見出しと実際の重複を順に追加して許可を確認する。修正前はフェンス・コメントの負例が失敗した。インデントの負例は既に拒否できており、その検査も維持した。対象 race は1.071秒で成功。別担当が負例と正常例を race 付き3回実行（1.215秒）し、残る問題はなかった。候補版の全 harness は別途記録する。

@@ -45,3 +45,7 @@ The full-entry tests still fail invalid inputs and retain meaningful expected er
 - Related findings: HIST-DOC-04, HIST-DOC-06.
 - Escape analysis: detected S9; earliest prevention S2. Existing S2 hidden-heading fixtures could have been applied to the other full-entry consumer. S6 still used raw target lines; S7/S8 scoped their check to backlinks/mandatory sections. COMPOSITION_GAP, NEGATIVE_FIXTURE_GAP, REVIEW_CHECKLIST_GAP.
 - Proposed preventive guardrail: shared rendered-heading extraction with full-entry fragment negatives. Expected future detection S2/S6; not implemented during Phase A.
+
+## Phase C resolution and independent review
+
+AUDIT-DOCS-001 is ACCEPT and repaired. Target fragment headings now use `documentProse`, preserving actual duplicate anchors. `TestFragmentsRequireRenderedTargetHeadings` rejects fenced, commented and indented fake targets, then separately adds real and duplicate headings and requires acceptance. The fenced/commented variants failed before repair; the indented variant already rejected the invalid target and remains a retained guard. Focused race passed1.071s; independent reviewer repeated the mixed negative/positive suite3times with race (1.215s) and found no blocker. Full candidate harness remains separate.
