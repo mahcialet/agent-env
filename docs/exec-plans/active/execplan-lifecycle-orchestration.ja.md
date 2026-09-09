@@ -12,7 +12,7 @@ workstreams:
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/exec-plans/active/execplan-lifecycle-orchestration.md
-source_sha256: 6a29dca2ce05af422be065848ec382a7f6bef1f69ab1a0e1951f0bb48c69768f
+source_sha256: c532d3e7db30a981e376bd4e8a51476f4cf87bc3e34714bb555b1a811137dc62
 ---
 
 # ExecPlan lifecycle orchestrationと自動delivery gateを追加する
@@ -62,7 +62,7 @@ M1〜M5を通常実装し、M6で完了済みmulti-hostの履歴を再構成す�
 - [x] 2026-09-09: M1 self-migrate `EP-OPS-001`。
 - [x] 2026-09-09: M2 stable Plan ID / parent / dependency / cycle。
 - [x] 2026-09-09: M2 merged-default / stacked-exception。
-- [ ] M3 repoctl plans list/check/graph/ready。
+- [x] 2026-09-09: M3 repoctl plans list/check/graph/ready。
 - [x] 2026-09-09: M4 deterministic selection / concurrency=1 / workstream。
 - [x] 2026-09-09: M4 branch / `ExecPlan:` trailer / PR provenance。
 - [x] 2026-09-09: M5 automatic/guarded/manual merge policy。
@@ -75,7 +75,9 @@ M1〜M5を通常実装し、M6で完了済みmulti-hostの履歴を再構成す�
 - [ ] M7 multi-host Human Validation checkpoint。
 - [ ] M8 履歴再現＋Human Validation＋次の新規ExecPlanのforward live dogfood。
 - [ ] M8 FINDING/BLOCKED feedback。
-- [ ] bilingual docs/final checks/retrospective/archive。
+- [x] 2026-09-09: 永続ドキュメントの英日更新。
+- [ ] 最終repoctl/docs/translation/race/native検証。
+- [ ] 振り返りを完成させ、英日Planをアーカイブ。
 
 ## 想定外の発見
 
@@ -101,11 +103,11 @@ automationを通すためgateを弱めない。
 
 ## 成果と振り返り
 
-未完了。
+2026-09-09の実装時点では、M1〜M5のツール、M6の履歴再現、M7のHuman Validation基盤をDraft PR #14に実装した。完了済み記録を書き換えず、5状態のメタデータ、不変ID、依存関係による選択、Git上の帰属を検証できる。実環境の原子的な保護と機械判定できる受け入れ証拠が不足しているため、merge adapterは読み取り専用でguarded運用を維持する。自動mergeの実績はない。
 
-M1-M5 checkpointでschema/ID/dependency/repoctl/provenance/merge gate/Codex limitation/first auto-merge evidenceを記録。
+本Planはactiveのままで、未完了である。multi-hostの環境準備、明示的なhuman kickとシナリオの証拠、次の実際に新しい通常ExecPlanによるforward live dogfood、最終native検証、baseへのmergeが残る。履歴再現や合成fixtureではこれらを代替しない。親Planの最終受け入れとアーカイブでは、それぞれの結果を照合する。
 
-最終的にmulti-host child graph、automatic transition/merge、paused blocker、draft promotion、parent finalization、HV結果/evidence、人間finding、残るmanual stepを記録する。
+独立レビューでは、初期fixtureが通っていても検出できなかった祖先関係、ID保持、入力サイズ制限の不具合が見つかった。各失敗条件を切り分けた回帰テストを追加した。受け入れの直接証拠は、実装状況や実環境のレビュー・人間の観察についての推測と区別する。
 
 ## 背景と構成
 
@@ -406,3 +408,8 @@ base側の信頼済み方針不足という理由を添えてBLOCKEDを返し、
 最終のmodel確認では、呼び出し元が古い証拠を渡してもabandonedのstacked依存を拒否する。
 実Gitの回帰テストでmerge済みの模擬branchを削除してもPlan固有のmerge証拠を確認できた。
 両方の関連テストが成功した。
+
+実装commitには`9cca40b`も含む。この時点のローカルの全`repoctl check`と
+`go test -race ./tools/repoctl -count=1`は成功した（race: 9.616秒）。
+英日両方の進捗欄で、実装済みM3コマンドの完了を記録した。
+日本語のチェック欄は、実装の証拠があるにもかかわらず未チェックのまま残っていた。

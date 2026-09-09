@@ -141,11 +141,23 @@ Do not weaken merge/review gates merely to make automation appear complete.
 
 ## Outcomes & Retrospective
 
-Not completed.
+Implementation checkpoint (2026-09-09): M1-M5 tooling, M6 historical replay and
+the M7 Human Validation framework are delivered in Draft PR #14. Five-state
+metadata, immutable IDs, dependency selection and Git provenance are validated
+without rewriting completed records. The merge adapter remains read-only and
+guarded because live atomic enforcement and machine acceptance proof are missing.
+No automatic merge has been demonstrated.
 
-At M1-M5 checkpoint record final schema, migration impact, Plan-ID grammar, dependency semantics, repoctl commands, Git provenance, merge-gate implementation, Codex/latest-HEAD limitations and first automatic-merge evidence.
+The Plan remains active and incomplete. Actual multi-host environment preparation,
+explicit human kick and scenario evidence, the next genuinely new normal
+ExecPlan's forward live dogfood, final native verification and merge into base
+remain outstanding. Historical replay and synthetic fixtures do not replace these
+observations. Final parent acceptance and archival must reconcile their results.
 
-At final completion record multi-host child graph, automatic transitions/merges, blockers represented as paused, draft promotions, parent finalization, human-validation results, validation evidence usefulness, human findings returned to plans and remaining manual steps.
+Independent review found ancestry, identity-preservation and bounded-input defects
+that passing initial fixtures had missed. Regression tests now isolate those
+failure modes. Keep direct acceptance evidence separate from implementation
+status and from assumptions about live review or human observations.
 
 ## Context and Orientation
 
@@ -468,3 +480,8 @@ policy reason; no merge was attempted. The final model check also rejects a
 stacked dependency that is abandoned even if a caller supplies stale proof.
 A real-Git regression deletes the merged fixture branch and still verifies its
 Plan-specific merge evidence. Both focused tests passed.
+
+Delivery commits also include `9cca40b`. Its local full `repoctl check` and
+`go test -race ./tools/repoctl -count=1` passed (race: 9.616s). The English and
+Japanese Progress checkboxes now both record the delivered M3 commands; the
+Japanese checkbox had remained unchecked despite the implementation evidence.
