@@ -2,8 +2,8 @@
 status: active
 owner: maintainers
 last_verified: 2026-09-09
-translation_of: docs/exec-plans/active/multi-host-review-followup.md
-source_sha256: bf636fb74659c9b78d830374fc04819f8b3294e2bb840056efc98830215f37f0
+translation_of: docs/exec-plans/completed/multi-host-review-followup.md
+source_sha256: 04157a380fd1131b9cf143bb3b33b982b24c6c6517ec74bdad5a69018c9845af
 ---
 
 # PR 12のcontrol-planeレビューに対応する
@@ -26,8 +26,8 @@ native runtimeの所有権と保守的なcleanup保証を維持し、PR 12の7�
 - [x] active操作があるhostの削除と、削除後の新規操作を拒否する。
 - [x] worker登録の恒久エラーを再試行し続けない。
 - [x] 作用開始後の全create失敗で不確実性を保持し、安全な後続cleanupを可能にする。
-- [ ] 対象回帰・全harness/race・native CIを実行し、統合差分をレビューする。
-- [ ] 修正をpushし、対応済みthreadへ返信してResolveし、本Planを日英でarchiveする。
+- [x] 対象回帰・全harness/race・native CIを実行し、統合差分をレビューする。
+- [x] 修正をpushし、対応済みthreadへ返信してResolveし、本Planを日英でarchiveする。
 
 ## 想定外の発見
 
@@ -56,7 +56,11 @@ journalへの平文入力受け入れを再現した。独立レビューでは�
 
 ## 成果と振り返り
 
-実装と検証の完了後に記録する。
+7件すべてを`80d031d`で修正し、個別に返信してResolveした。localの全体harness、race、
+Docker統合、2 workerのnative fixture、独立レビュー、4種類のCI workflowが成功した。
+push Verify 34330840976も変更なしの失敗job再実行で成功した。初回のWindows失敗は後述のとおり
+記録した。再発しなかったことだけでSQLiteの具体的な競合原因が確定したとは扱わない。
+非永続の通信経路ができるまでremote text入力は明示的に非対応とする。本レビューPlanを完了し、archiveする。
 
 ## 背景と構成
 
@@ -107,3 +111,19 @@ controllerをapp/provider実装から独立させる。共通protocol検証でCL
 2 workerを使う`TestMultiHostNativeCLI`が成功し、実際のTLS経由のCLI操作を確認した。
 JSONの重複・大文字小文字違いの入力検証とDB/WALのcanary検査で、拒否したtextがjournalに
 残らないことを確認した。native CIとThreadの完了は、検証済みcommitのpush後に確認する。
+
+Docker daemonを使うlocalの`repoctl test-integration`も成功した。`80d031d`を通常pushし、
+7件すべてのレビューThreadへ修正と検証を個別返信してResolveした。native CIは確認中。
+
+`80d031d`のPR Verify 34330844403、Multi-host native 34330844402、Browser native
+34330844436、Release preview 34330844500は成功した。同時実行のpush Verify 34330840976では
+既存Windows検証が失敗した。`TestExitAndTimeout/exit`は100msの期限付近で期待出力前に終了し、
+`TestConcurrentColdOpen`は初期化の期限を超過した。今回の修正では対象のexecx/local SQLite実装と
+テストは変更していない。失敗を成功扱いにせず記録し、期限・assertion・並列数を変更せずに
+失敗jobを再実行した。再実行結果は確認中。
+
+SQLiteの失敗はテスト専用の期限ではなく、本番の初期化上限10秒に達したもの。競合や負荷の
+影響は考えられるが、具体的なlock保持元は未確定である。再発時の調査のため証拠を保持する。
+
+最終確認: Verify 34330840976の再実行が成功した。レビューThreadは7件すべてResolve済み。
+再実行のためにコードやテストの制約を緩める必要はなかった。
