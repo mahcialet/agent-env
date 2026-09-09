@@ -99,7 +99,16 @@ type AndroidEmulator struct {
 
 var ErrResourceIdentity = errors.New("resource ownership is uncertain; quarantine without deleting")
 
+// Management records the immutable controller assignment of a worker-local lease.
+type Management struct {
+	ControllerID    string `json:"controller_id"`
+	HostID          string `json:"host_id"`
+	HostInstanceID  string `json:"host_instance_id"`
+	AssignmentEpoch uint64 `json:"assignment_epoch"`
+}
+
 type Lease struct {
+	Management       *Management     `json:"remote_management,omitempty"`
 	ID               string          `json:"id"`
 	Owner            string          `json:"owner"`
 	Purpose          string          `json:"purpose"`

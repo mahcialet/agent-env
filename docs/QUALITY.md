@@ -1,7 +1,7 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-08
+last_verified: 2026-09-09
 ---
 
 # Quality and verification
@@ -179,3 +179,58 @@ AX/DOM, screenshots, Unicode input and clearing, stale rejection, iframe/shadow
 observation, bounded diagnostics, a lease-hosted backend, durable input redaction
 and safe profile cleanup. The plan records native evidence and CI repair history
 separately from mock tests and cross-builds.
+
+The existing local Browser/CDP matrix passed again on Windows, macOS and Linux at
+`440082b` ([run 34316121411](https://github.com/mahcialet/agent-env/actions/runs/34316121411)).
+This regression evidence is separate from remote Browser operation acceptance.
+
+## Multi-host native verification
+
+```text
+go test -tags=multihostintegration ./internal/cli -run '^TestMultiHostNativeCLI$' -count=1 -v -timeout=12m
+```
+
+This opt-in test needs Go and Git. It builds native agent-env and a committed process
+fixture, generates short-lived test certificates with Go, and launches real
+controller/client/two-worker processes over TLS with separate state roots. It uses
+no shell script, Docker, SDK or browser. It verifies role/enrollment rejection,
+whole-lease placement, drain, two simultaneous leases, distinct ports/worktrees,
+local force refusal, controller outage/restart, worker restart retaining native
+process identity, named tests invoked by relative executable path, retained logs,
+registered artifact downloads with digest verification, renewal, client/worker
+environment isolation, and independent cleanup. Unconfirmed cleanup retains fixture
+state for investigation.
+
+Linux/amd64 passed in 21.406s. The initial run exposed a real plan-digest mismatch
+when transport canonicalized JSON object order; semantic manifest canonicalization
+and a permanent source roundtrip regression fixed it. The expanded fixture passed
+all Windows/macOS/Linux jobs at `440082b` in the
+[native workflow run 34320519252](https://github.com/mahcialet/agent-env/actions/runs/34320519252).
+Each runner used two worker roots on one host. This does not prove physical-machine/VM
+multi-host behavior, and cross-builds do not prove native role execution.
+Final acceptance is complete within the documented scope; exact results belong to the completed
+[ExecPlan](exec-plans/completed/multi-host-control-plane.md).
+
+Additional remote runtime fixtures use the same explicit build tag:
+
+```text
+go test -tags=multihostintegration ./internal/cli -run '^TestMultiHostRemoteBrowser$' -count=1 -v -timeout=12m
+go test -tags=multihostintegration ./internal/cli -run '^TestMultiHostRemoteCompose$' -count=1 -v -timeout=12m
+```
+
+The Browser fixture requires a directly executable compatible `google-chrome` on
+PATH and a usable browser sandbox. The Compose fixture requires both working Docker
+Compose and Podman/podman-compose environments. Selecting either test with missing
+prerequisites fails. They launch real controller/worker/runtime processes, retain
+registered evidence, and perform lease-scoped cleanup; ordinary unit tests do not
+start these external runtimes. These commands are not a claim of remote native
+acceptance on every OS; consult the completed plan for the tested scope and results.
+
+The Windows execution-path tests cover the 240 UTF-16 boundary, supplementary
+characters, canonical paths, derived worktree/runtime directories and refusal
+before reservation/materialization/output creation. Non-Windows deep source
+lifecycle remains a success test. Direct-interop tests reject PE binaries through
+absolute, relative, PATH and symlink lookup while preserving native .exe names.
+WSL state tests inject kernel/filesystem/mount observations and check custom
+mounts, aliases and missing future homes. These tests do not replace a real WSL2
+mount/interop run; that environment has not been exercised.

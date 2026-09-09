@@ -1,9 +1,9 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-08
+last_verified: 2026-09-09
 translation_of: docs/index.md
-source_sha256: ac011a2e4bf26a8404c13b5be5c69cb65ab7392087eb0e9e2ec0ee8d08d2088d
+source_sha256: 6f3686a6b77234e5abb61c47eb9129952133f52e839af3409e24c7a4423120ab
 ---
 
 # リポジトリの知識
@@ -34,3 +34,10 @@ source_sha256: ac011a2e4bf26a8404c13b5be5c69cb65ab7392087eb0e9e2ec0ee8d08d2088d
 - [言語の方針](design-docs/bilingual-documentation.ja.md)：英語版を内容の基準にする方針、日本語訳の保守、明示的な例外。
 
 Browser/CDP: [製品契約](product-specs/browser-cdp-automation.ja.md)、[設計](design-docs/browser-cdp-automation.ja.md)、[完了の検証記録](exec-plans/completed/browser-cdp-automation.ja.md)。
+
+複数 host の調整は、文書化した範囲で受け入れ検証が完了しています。[製品仕様](product-specs/multi-host-control-plane.ja.md)、
+[設計](design-docs/multi-host-control-plane.ja.md)、[ADR 0006](adr/0006-single-authority-multi-host.ja.md)、
+[ExecPlan](exec-plans/completed/multi-host-control-plane.ja.md) を参照してください。
+[README の使用方法](../README.ja.md#明示的な-remote-モード) に登録と各 role の起動方法を記載しています。
+[品質](QUALITY.ja.md#複数-host-の-native-検証) では、Windows・macOS・Linux の native TLS 実行の成功を記録し、
+未実施の物理 host 検証と区別します。

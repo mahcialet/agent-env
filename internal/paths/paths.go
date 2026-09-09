@@ -45,7 +45,13 @@ func For(goos, home string, env func(string) string) (string, error) {
 	if !filepath.IsAbs(root) {
 		return "", fmt.Errorf("state directory must be absolute: %q", root)
 	}
-	return filepath.Clean(root), nil
+	root = filepath.Clean(root)
+	if goos == runtime.GOOS {
+		if err := ValidateStateFilesystem(root); err != nil {
+			return "", err
+		}
+	}
+	return root, nil
 }
 
 // Within also rejects a resolved symlink escaping the allocated source root.

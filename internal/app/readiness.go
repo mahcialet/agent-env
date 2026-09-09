@@ -112,6 +112,9 @@ func (s *Service) runProbe(ctx context.Context, l domain.Lease, component string
 // A retry must never conceal a prior attempt whose descendants or evidence are
 // incomplete, and a later destroy must still see that attempt after Create ends.
 func (s *Service) readinessCommand(ctx context.Context, l domain.Lease, component string, index int, p config.Probe, directory string, timeout time.Duration, secrets []string) error {
+	if err := paths.ValidateExecutionDirectory(directory); err != nil {
+		return err
+	}
 	run := domain.CommandRun{ID: newID(), LeaseID: l.ID, Name: fmt.Sprintf("readiness:%s:%d", component, index), Source: p.Source, Directory: directory, StartedAt: time.Now().UTC(), ExitCode: -1, Status: "running"}
 	for _, arg := range p.Command {
 		run.Argv = append(run.Argv, evidence.RedactString(arg, secrets))

@@ -1,7 +1,7 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-08
+last_verified: 2026-09-09
 ---
 
 # Product specifications
@@ -20,3 +20,5 @@ last_verified: 2026-09-08
 - [persistent-process-runtime](persistent-process-runtime.md) / [日本語](persistent-process-runtime.ja.md)
 
 - [Browser/CDP automation](browser-cdp-automation.md) / [日本語](browser-cdp-automation.ja.md)
+
+- [Multi-host control plane](multi-host-control-plane.md) / [日本語](multi-host-control-plane.ja.md)

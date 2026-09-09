@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -27,7 +28,7 @@ func (s *Service) Test(ctx context.Context, leaseID, name string) (run domain.Co
 	if s.Store == nil || s.Source == nil || s.Runner == nil {
 		return run, errors.New("store, source and command runner are required")
 	}
-	ctx, release, err := s.Store.AcquireContext(ctx, leaseID, newID(), 2*time.Minute)
+	ctx, release, err := s.acquireManagedOperation(ctx, leaseID)
 	if err != nil {
 		return run, err
 	}
@@ -81,6 +82,9 @@ func (s *Service) Test(ctx context.Context, leaseID, name string) (run domain.Co
 	}
 	dir, err := paths.Within(source.WorktreePath, spec.WorkingDirectory)
 	if err != nil {
+		return run, err
+	}
+	if err = paths.ValidateExecutionDirectory(dir); err != nil {
 		return run, err
 	}
 	info, err := os.Stat(dir)
@@ -214,8 +218,18 @@ func (s *Service) Test(ctx context.Context, leaseID, name string) (run domain.Co
 	for _, artifact := range []struct{ kind, path string }{{"test-stdout", run.StdoutPath}, {"test-stderr", run.StderrPath}, {"test-run", filepath.Join(directory, "run.json")}} {
 		finalErrors = append(finalErrors, s.recordRunArtifact(finishCtx, run, artifact.kind, artifact.path))
 	}
+	// A typed executable lookup failure proves no process could produce the
+	// declared outputs. Missing outputs remain reported failures, but must not
+	// leave an otherwise fully recorded run masquerading as an active process.
+	var lookupError *exec.Error
+	lookupFailed := result.ExitCode == -1 && errors.As(commandErr, &lookupError)
 	for index, path := range spec.Artifacts {
-		finalErrors = append(finalErrors, s.collectTestArtifact(finishCtx, run, source.WorktreePath, path, filepath.Join(directory, fmt.Sprintf("artifact-%d", index+1)), secrets))
+		artifactErr := s.collectTestArtifact(finishCtx, run, source.WorktreePath, path, filepath.Join(directory, fmt.Sprintf("artifact-%d", index+1)), secrets)
+		if lookupFailed && errors.Is(artifactErr, os.ErrNotExist) {
+			outcomeErrors = append(outcomeErrors, artifactErr)
+		} else {
+			finalErrors = append(finalErrors, artifactErr)
+		}
 	}
 	finalErrors = append(finalErrors, s.event(finishCtx, lease.ID, "test_finished", name+" "+run.Status+" "+run.ID))
 	// The terminal row is the durable cleanup barrier: publish it only after

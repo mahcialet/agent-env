@@ -13,6 +13,14 @@ import (
 	"github.com/mahcialet/agent-env/internal/domain"
 )
 
+const (
+	androidConsolePortFirst = 5554
+	androidConsolePortLast  = 5682
+	// AndroidSlotCapacity is the fixed pool of console/ADB port pairs allocated
+	// by this registry, shared with worker capacity advertisement.
+	AndroidSlotCapacity = (androidConsolePortLast-androidConsolePortFirst)/2 + 1
+)
+
 var androidName = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
 var androidTemplate = regexp.MustCompile(`^[A-Za-z0-9_.-]+$`)
 
@@ -87,7 +95,7 @@ func allocateAndroid(ctx context.Context, tx *sql.Tx, l domain.Lease) (domain.Le
 		if a.ConsolePort != 0 || a.ADBPort != 0 || a.Serial != "" || a.ProcessID != 0 || a.ProcessStart != "" || (a.State != "" && a.State != "reserved") {
 			return l, errors.New("Android reservation must not supply allocated ports or process identity")
 		}
-		for p := 5554; p <= 5682; p += 2 {
+		for p := androidConsolePortFirst; p <= androidConsolePortLast; p += 2 {
 			if !used[p] {
 				a.ConsolePort = p
 				used[p] = true
@@ -128,7 +136,7 @@ func saveAndroid(ctx context.Context, tx *sql.Tx, l domain.Lease, insert bool) e
 			continue
 		}
 		count++
-		if a.ConsolePort < 5554 || a.ConsolePort > 5682 || a.ConsolePort%2 != 0 || a.ADBPort != a.ConsolePort+1 || a.Serial != fmt.Sprintf("emulator-%d", a.ConsolePort) {
+		if a.ConsolePort < androidConsolePortFirst || a.ConsolePort > androidConsolePortLast || a.ConsolePort%2 != 0 || a.ADBPort != a.ConsolePort+1 || a.Serial != fmt.Sprintf("emulator-%d", a.ConsolePort) {
 			return errors.New("invalid Android port reservation")
 		}
 		active := l.Observed != "released"

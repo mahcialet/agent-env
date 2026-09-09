@@ -182,6 +182,19 @@ func (s *Store) Save(ctx context.Context, lease domain.Lease) error {
 	if err = fence(ctx, tx, lease.ID); err != nil {
 		return err
 	}
+	var previousJSON string
+	if err = tx.QueryRowContext(ctx, "SELECT payload FROM leases WHERE id=?", lease.ID).Scan(&previousJSON); errors.Is(err, sql.ErrNoRows) {
+		return ErrNotFound
+	} else if err != nil {
+		return err
+	}
+	var previous domain.Lease
+	if err = json.Unmarshal([]byte(previousJSON), &previous); err != nil {
+		return err
+	}
+	if (previous.Management == nil) != (lease.Management == nil) || previous.Management != nil && *previous.Management != *lease.Management {
+		return errors.New("lease controller assignment is immutable")
+	}
 	if err = writeLease(ctx, tx, lease, false); err != nil {
 		return err
 	}

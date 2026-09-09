@@ -1,9 +1,9 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-08
+last_verified: 2026-09-09
 translation_of: docs/design-docs/index.md
-source_sha256: f3825b54cfec5f8bb7f5e19555fa0fe40fe7584b32472a146ae81e58790dbda0
+source_sha256: f87f82c01c4fd5c580c47b2cdab0bd8401a486c91bb3bc04b8a0e332352c3bf2
 ---
 
 [English（翻訳元）](index.md)
@@ -24,3 +24,5 @@ source_sha256: f3825b54cfec5f8bb7f5e19555fa0fe40fe7584b32472a146ae81e58790dbda0
 - [persistent-process-runtime](persistent-process-runtime.ja.md) / [English](persistent-process-runtime.md)
 
 - [Browser/CDP自動操作](browser-cdp-automation.ja.md) / [English](browser-cdp-automation.md)
+
+- [一つの管理主体による複数 host の調整](multi-host-control-plane.ja.md)

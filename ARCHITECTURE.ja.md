@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: ARCHITECTURE.md
-source_sha256: 32ce58720ab1b74996c9b2fc6377dbc83b5d69e61ea618f6f122ad35b1d3bb5e
+source_sha256: 1294838d8aa28d02169aa98708f95f783738a841baaac46f7776714d81a154b7
 ---
 
 [英語版（翻訳元）](ARCHITECTURE.md)
@@ -102,3 +102,19 @@ browser adapterはdiscovery、WebSocket target session、CDP identity、古いno
 CLIが具体的な接続を担当します。transportはgorilla/websocketを使い、Node/Python helperは不要です。
 [browser設計](docs/design-docs/browser-cdp-automation.ja.md)と
 [完了の実装証拠](docs/exec-plans/completed/browser-cdp-automation.ja.md)を参照してください。
+
+## 複数ホストのcontrol plane
+
+`internal/controlplane`は全体の配置と通信状態の永続化を担当し、app、worker、
+local store、sourceの展開処理、具体的なruntime adapterをimportしません。
+protocol packageは通信で受け渡す値のみを定義します。`internal/worker`は永続的な
+remote receiptとapp interfaceを組み合わせ、CLIが具体的なproviderを接続します。
+`internal/remotesource`はcontrollerの配置判断とは別に、commit済みGit bundleと
+正規化したplanを検証します。`internal/blobstore`と`internal/instance`は独立した
+storage部品です。repoctlは正常例と違反例のfixtureでこれらのimport境界を検査します。
+
+assignment epochはleaseの配置ごとに固定し、個々のcommandをoperation IDで識別します。
+worker-localの管理metadataは変更できません。controllerの通信状態をlocal cleanupの
+証拠として扱いません。実装とnative環境の受け入れの証拠は、
+[完了したmulti-host control-plane ExecPlan](docs/exec-plans/completed/multi-host-control-plane.ja.md)
+に記録し、文書化した対応範囲と未検証の環境も明示しています。

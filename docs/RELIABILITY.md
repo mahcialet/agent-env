@@ -1,7 +1,7 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-08
+last_verified: 2026-09-09
 ---
 
 # Reliability and recovery
@@ -124,3 +124,25 @@ barrier; inspect the actual outcome and evidence before reviewed recovery.
 Destroy/GC still requires generic process-tree absence before deleting profiles,
 with no browser-specific cleanup or auto-restart. See the
 [browser design](design-docs/browser-cdp-automation.md).
+
+## Controller and worker recovery
+
+The [control plane](design-docs/multi-host-control-plane.md) adds a separate global
+SQLite authority; each worker retains its local resource registry and fences.
+The assignment's controller/host/host-instance/epoch tuple remains fixed across
+operations. Worker and controller journals retain payload identity, possible
+effect start, local result and delivery state. Duplicate delivery may recover or
+upload an existing result; it never blindly repeats an uncertain mutation. Local
+results precede artifact uploads, and global RELEASED requires worker cleanup
+proof. Loss of a heartbeat or controller connection makes observations stale or
+UNKNOWN and never authorizes reassignment, cleanup or a change of host instance.
+
+Workers initially dispatch operations serially; already-created leases continue
+running concurrently. The controller rejects a second active operation on one
+lease, including destroy during a remote test. Remote cancel-active is deferred
+until a separate cancellation protocol can preserve operation identity and fences.
+Wait for or inspect the current operation with `operation <operation-id>` rather
+than assuming another destroy can interrupt it. Controller/worker restart must
+reuse their original state roots; copying a controller DB is not safe failover.
+Drain only blocks new placements. Local GC skips controller-managed expired
+leases; force never overrides assignment ownership or uncertain cleanup.

@@ -30,7 +30,7 @@ func (s *Service) RecoverUI(ctx context.Context, id, runID string) (result UIRes
 		return result, errors.Join(domain.ErrUIInput, errors.New("invalid UI run ID"))
 	}
 	inputCtx := ctx
-	ctx, release, err := s.Store.AcquireContext(ctx, id, newID(), 2*time.Minute)
+	ctx, release, err := s.acquireManagedOperation(ctx, id)
 	if err != nil {
 		if _, lookupErr := s.Store.Get(inputCtx, id); errors.Is(lookupErr, sqlite.ErrNotFound) {
 			return result, lookupErr

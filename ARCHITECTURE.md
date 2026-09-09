@@ -107,3 +107,21 @@ own process/profile/port lifecycle. CLI provides concrete wiring. The transport
 uses gorilla/websocket without a Node/Python helper. See the
 [browser design](docs/design-docs/browser-cdp-automation.md) and
 [completed implementation evidence](docs/exec-plans/completed/browser-cdp-automation.md).
+
+## Multi-host control plane
+
+`internal/controlplane` owns global placement and transport persistence, without
+importing app, worker, local store, source materialization, or concrete runtime
+adapters. Its protocol package contains only serializable wire values.
+`internal/worker` coordinates durable remote receipts and app interfaces; CLI
+wires concrete providers. `internal/remotesource` verifies committed Git bundles
+and normalized plans separately from controller scheduling. `internal/blobstore`
+and `internal/instance` are independent storage primitives. Repoctl checks these
+import boundaries with positive and negative fixtures.
+
+The assignment epoch stays fixed for a lease's placement. Operation IDs fence
+individual commands. Worker-local management metadata is immutable; controller
+transport state never replaces local cleanup evidence. Implementation and native
+acceptance evidence are recorded in the [completed multi-host control-plane
+ExecPlan](docs/exec-plans/completed/multi-host-control-plane.md), including the
+documented support boundaries and unverified environments.

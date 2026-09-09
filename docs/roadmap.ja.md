@@ -1,9 +1,9 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-08
+last_verified: 2026-09-09
 translation_of: docs/roadmap.md
-source_sha256: 1fb1b48b1ffd339f808c1ac18a4b39f2a96dd3b56876d601ecfe4a9f368c1877
+source_sha256: e0bec12d5087ef6e8bf18e11951c6d85f5789ea4c73007c3c5aa19723b653553
 ---
 
 [英語版（翻訳元）](roadmap.md)
@@ -26,18 +26,18 @@ moduleは`github.com/mahcialet/agent-env`で、既存のMITライセンスを保
 
 ## runtimeの拡張
 
-iOS、分散・複数ホストの調整は引き続き延期しています。Android Emulatorリースは専用AVD状態とローカルSDKプロセスを所有し、追加の実機CIにはアクセラレーションを利用できるrunnerが必要です。Browser/CDP観測・操作は汎用process所有の上に独立した[契約](product-specs/browser-cdp-automation.ja.md)を定義し、実装と3 OSでのnative受け入れを完了しました。証拠は[完了browser plan](exec-plans/completed/browser-cdp-automation.ja.md)に記録しています。外部browser接続、headful、download、Firefox/BiDi、Safari/WebKit、Android/Browser共通UI抽象化は今回の対象外です。
+iOSは引き続き延期しています。単一controllerによる複数hostの受け入れ状況は後述します。Android Emulatorリースは専用AVD状態とローカルSDKプロセスを所有し、追加の実機CIにはアクセラレーションを利用できるrunnerが必要です。Browser/CDP観測・操作は汎用process所有の上に独立した[契約](product-specs/browser-cdp-automation.ja.md)を定義し、実装と3 OSでのnative受け入れを完了しました。証拠は[完了browser plan](exec-plans/completed/browser-cdp-automation.ja.md)に記録しています。外部browser接続、headful、download、Firefox/BiDi、Safari/WebKit、Android/Browser共通UI抽象化は今回の対象外です。
 
 [常駐process runtime](product-specs/persistent-process-runtime.ja.md)は、argv直接実行、
 専用可変状態、名前付きloopback TCP port、保守的なnative tree cleanupを実装しています。
 最終native integration受け入れは3 OSで成功し、証拠を[完了process plan](exec-plans/completed/persistent-process-runtime.ja.md)
-に記録しました。自己daemon化、自動再起動、対話terminal、remote実行、service導入は
+に記録しました。自己daemon化、自動再起動、対話terminal、remote processへの直接接続、service導入は
 このruntime契約の対象外です。
 
 [Android UI observer](product-specs/android-ui-observer.ja.md) は、既存の所有 Emulator に対し、
 上限付きの意味情報 snapshot、PNG、Unicode 置換、navigation、現在の PID の log を提供します。
 独立した任意の platform companion を使い、対象アプリへの instrumentation 追加は不要です。
-OCR、visual regression、より豊富な gesture、物理デバイス、remote Emulator host は引き続き延期しています。
+OCR、visual regression、より豊富な gesture、物理デバイス、管理外のremote Emulatorへの接続は引き続き延期しています。
 observer の最終受け入れ確認と platform 別の証拠は[完了した計画](exec-plans/completed/android-ui-observer.ja.md)で管理します。
 
 Compose provider選択とPodman adapterは
@@ -57,3 +57,18 @@ Quadlet/Kubernetes、pod作成、任意のprovider実行ファイルは今回の
 ## CIの拡張
 
 Windows/macOSのネイティブDocker統合には、Dockerが使えるself-hosted runnerが必要になる場合があります。Android統合には適切なhardware accelerationが必要です。`last_verified`からの文書の経過日数は、現在CIが強制する鮮度の期限ではありません。metadataの妥当性と文書を見つけられることは検査で強制します。
+
+## 複数 host の受け入れと後続拡張
+
+[単一 controller の仕様](product-specs/multi-host-control-plane.ja.md) に沿って、明示的な remote 配置、
+commit 済み source 転送、型付き worker 操作を実装しています。
+[ExecPlan](exec-plans/completed/multi-host-control-plane.ja.md) は文書化した対応範囲で完了しました。
+実 TLS の native 検証は、各 runner の二つの worker root を使い、`440082b` の Windows・macOS・Linux で
+成功しました（run 34320519252）。名前付き test、log、artifact download、期限更新、環境変数の分離も含みます。
+物理的な複数 host・VM の証拠はまだありません。
+
+初期の worker は操作を直列に実行し、作成済み lease は並行して稼働できます。
+同じ lease の二つ目の active 操作は、remote test 中の destroy も含めて拒否します。
+remote の実行中操作の cancellation、操作の並行 dispatch、controller HA/合意形成、live migration、
+host をまたぐ lease 分割、透過的 endpoint tunnel、秘密値の準備、緊急 host 引継ぎは別の設計が必要です。
+remote Git bundle によって、一般的な HTTPS/SSH source 認証や自動 fetch を追加したとは扱いません。

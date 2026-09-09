@@ -29,7 +29,7 @@ func (p *fixtureBrowser) Observe(ctx context.Context, r domain.Runtime, b domain
 	}
 	return domain.BrowserObservation{Confirmed: true, Identity: domain.BrowserIdentity{Runtime: r.Name, PID: r.Process.ProcessID, Birth: r.Process.ProcessStart, Port: r.Process.Ports[b.CDPPort], WebSocket: "ws://127.0.0.1/browser", Product: "Chrome/fixture", Protocol: "1.3"}, Snapshot: &domain.BrowserSnapshot{Page: domain.BrowserPage{ID: "page"}, Document: "document", Nodes: []domain.BrowserNode{{Ref: "n1", BackendID: 1, Frame: "frame", Name: "Name", Role: "textbox", Editable: true, Fingerprint: "digest"}}}}, nil
 }
-func browserFixture(t *testing.T) (*Service, domain.Lease, *fixtureBrowser, *lifecycleProcess) {
+func browserFixture(t *testing.T, management ...*domain.Management) (*Service, domain.Lease, *fixtureBrowser, *lifecycleProcess) {
 	t.Helper()
 	s, o, p, _ := processLifecycleFixture(t, false)
 	data, e := os.ReadFile(filepath.Join(o.Repository, ".agent-env.yaml"))
@@ -46,7 +46,14 @@ func browserFixture(t *testing.T) (*Service, domain.Lease, *fixtureBrowser, *lif
 	// browser assertion; retain that setting for all subsequent operations.
 	readinessTimeout := s.ReadinessTimeout
 	s.ReadinessTimeout = 5 * time.Second
-	l, e := s.Create(context.Background(), o, CreateOptions{Owner: "tester"})
+	options := CreateOptions{Owner: "tester"}
+	if len(management) > 0 {
+		s.Management = copyManagement(management[0])
+		options.Management = copyManagement(management[0])
+		options.LeaseID = newID()
+	}
+	l, e := s.Create(context.Background(), o, options)
+	s.Management = nil
 	s.ReadinessTimeout = readinessTimeout
 	if e != nil {
 		t.Fatal(e)

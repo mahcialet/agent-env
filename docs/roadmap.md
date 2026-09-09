@@ -1,7 +1,7 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-08
+last_verified: 2026-09-09
 ---
 
 # Roadmap and unresolved decisions
@@ -24,20 +24,20 @@ Remote mirror/cache management, HTTPS/SSH authentication, provider-specific PR s
 
 ## Runtime extensions
 
-iOS and distributed/multi-host coordination remain deferred. Android Emulator leases own private AVD state and local SDK processes; additional real-device CI needs acceleration-capable runners. Browser/CDP observation and actions now have a separate [contract](product-specs/browser-cdp-automation.md) above generic process ownership; implementation and native acceptance on all three OSes are complete, with evidence in the [completed browser plan](exec-plans/completed/browser-cdp-automation.md). External attachment, headful browsers, downloads, Firefox/BiDi, Safari/WebKit and a shared Android/Browser UI abstraction remain outside this slice.
+iOS remains deferred. Single-controller multi-host acceptance is tracked below. Android Emulator leases own private AVD state and local SDK processes; additional real-device CI needs acceleration-capable runners. Browser/CDP observation and actions now have a separate [contract](product-specs/browser-cdp-automation.md) above generic process ownership; implementation and native acceptance on all three OSes are complete, with evidence in the [completed browser plan](exec-plans/completed/browser-cdp-automation.md). External attachment, headful browsers, downloads, Firefox/BiDi, Safari/WebKit and a shared Android/Browser UI abstraction remain outside this slice.
 
 The [persistent process runtime](product-specs/persistent-process-runtime.md) is
 implemented with direct argv, private mutable state, named loopback TCP ports and
 conservative native tree cleanup. Native integration acceptance passed on all
 three OSes; evidence is in the [completed process plan](exec-plans/completed/persistent-process-runtime.md).
-Self-daemonization, automatic restart, interactive terminals, remote execution and
+Self-daemonization, automatic restart, interactive terminals, direct remote process attachment and
 service installation remain outside this runtime contract.
 
 The [Android UI observer](product-specs/android-ui-observer.md) adds bounded semantic
 snapshots, PNGs, Unicode replacement, navigation and current-PID logs to existing
 owned Emulators. Its separate optional platform companion requires no target-app
-instrumentation. OCR, visual regression, richer gestures, physical devices and remote
-Emulator hosts remain deferred. Final observer acceptance and platform evidence are
+instrumentation. OCR, visual regression, richer gestures, physical devices and unmanaged remote
+Emulator attachment remain deferred. Final observer acceptance and platform evidence are
 tracked in the [completed plan](exec-plans/completed/android-ui-observer.md).
 
 Compose provider selection and the Podman adapter are implemented; evidence is in the
@@ -57,3 +57,20 @@ The initial distribution uses GitHub Release archives under the [standalone cont
 ## CI expansion
 
 Native Docker integration on Windows and macOS may need self-hosted Docker-capable runners. Android integration would require suitable hardware acceleration. Documentation age beyond `last_verified` is not currently a CI freshness deadline; metadata validity and discoverability are enforced.
+
+## Multi-host acceptance and deferred extensions
+
+The [single-controller contract](product-specs/multi-host-control-plane.md) is
+implemented for explicit remote placement, committed source transfer and typed
+worker operations; its [ExecPlan](exec-plans/completed/multi-host-control-plane.md)
+is complete within the documented support scope. Real-TLS native evidence passed on Windows,
+macOS and Linux at `440082b` (run 34320519252), with two worker roots on each runner,
+including named tests, logs, artifact downloads, renewal and environment isolation.
+Physical multi-host/VM evidence remains pending.
+
+Initial worker dispatch is serial, with concurrent live leases. A second active
+operation on the same lease is rejected, including destroy during a remote test.
+Remote cancel-active, concurrent operation dispatch, controller HA/consensus,
+live migration, split-host leases, transparent endpoint tunnels, secret
+provisioning and break-glass host adoption require separate designs. Remote Git
+bundles do not add general HTTPS/SSH source authentication or automatic fetching.

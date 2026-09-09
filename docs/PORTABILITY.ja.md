@@ -1,9 +1,9 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-08
+last_verified: 2026-09-09
 translation_of: docs/PORTABILITY.md
-source_sha256: 5796f99945780d92b107e0317433dcc2181ff072328486bccf2f38de2d23c08d
+source_sha256: 31343c78675a43fe233c5ee8f991e740176cfca4f03045e70dd1f5886d461751
 ---
 
 [英語版（翻訳元）](PORTABILITY.md)
@@ -24,6 +24,17 @@ source_sha256: 5796f99945780d92b107e0317433dcc2181ff072328486bccf2f38de2d23c08d
 
 ソース内のマニフェストパスにはforward slashを使います。ネイティブな絶対ローカルリポジトリパスは、対応するプラットフォームで使用できます。非Windowsホスト上のWindows driveパスや混在したパス形式は、検出できる範囲で拒否します。状態配置にsymbolic linkは必要なく、アプリケーションレベルのPOSIX lock fileの代わりにSQLite操作lockを使います。
 
+## Windowsの実行パスの対応範囲
+
+Windowsの実行ディレクトリは、解決後の絶対パスで **240 UTF-16単位以内** とします。
+これは`MAX_PATH`に余裕を持たせた互換性の保証範囲であり、Windowsの全ファイルAPIの
+最大長ではありません。home文字列だけでなく、算出したsource、worktree、runtime、test、probeの
+ディレクトリを検査します。非対応のパスは予約・展開やprocess起動前に拒否し、短いhomeまたは
+repository配置を案内します。拡張prefix、任意の8.3名、実行用junctionは必須にしません。
+Linux/macOSはnativeのパス動作を維持します。OSの長いパス設定やGitの`core.longpaths`だけでは、
+長い作業ディレクトリから子processを起動できるとは限りません。
+判断と影響は[ADR 0007](adr/0007-native-execution-boundaries.ja.md)を参照してください。
+
 ## ネイティブツールと取消
 
 コマンドは実行ファイルとargv、明示的な作業ディレクトリ、deadline、stream出力を使います。Git検査には機械可読出力を使い、Compose engine検査には構造化出力と記録したprovider/engine識別情報を使います。改行処理はCRLFを許容します。Go製のリポジトリharnessは標準ツールを直接呼び出し、shell script言語を必要としません。
@@ -36,7 +47,22 @@ Windowsの`.cmd`と`.bat`の実行処理はWindowsアダプターに隔離しま
 
 WindowsとmacOSは通常Docker Desktopを使います。LinuxはComposeが動くDocker Engineまたはrootless Dockerを使えます。選択したDocker contextを割り当て前に取得し、その後ユーザーのactive contextが変わっても、観測、ログ、cleanupで使います。contextに接続できるだけでは、daemonがローカルworktreeのbindパスへアクセスできるとは限りません。リモートdaemonからのパス可用性はホストの前提条件です。
 
-WSLはLinuxとして扱います。リポジトリ、Git、Docker接続、パスを一貫してその境界の同じ側に置いてください。Windows/WSL混在リースと、WSLからWindowsホストのAndroid Emulatorを制御するworkflowは対応外です。
+WSLは独立したLinux hostとして扱います。native LinuxツールとLinux側の専用state homeを使い、
+Windowsとhomeを共有しません。DrvFS/9p mount上のWSL stateは、独自mountやaliasも含めて
+作成前に拒否します。これは耐久性についての保守的な対応規則であり、破損を観測したという
+主張ではありません。読み取り専用source配置にはstate homeの規則を適用しません。
+Windows側でも、既知のWSL UNC namespace（`\\wsl$`、`\\wsl.localhost`、拡張UNC表記と
+解決後のaliasを含む）をstate homeや実行ディレクトリに使うことを拒否します。
+
+Linux/macOSではWindows PEツールの直接起動を拒否し、改名したツールやsymlink aliasも検査します。
+Windowsでは`wsl.exe`の直接起動を拒否します。Linuxファイルを`.exe`という拡張子だけで拒否しません。
+Docker Desktop連携はnative Linux CLI経由で利用できます。信頼するscriptも単一OS内で実行してください。
+直接実行ファイルの検査はsandboxでも、wrapperの間接実行を監査するものでもありません。
+Windows/WSL間の自動パス変換、混在leaseの所有権、WSLからWindows hostのAndroid Emulatorを
+制御するworkflowは対応外です。
+
+実WSL2でのmount/interop受け入れは未実施です。検出条件を注入するテストによる拒否の検証を、
+実WSLの実行証拠として扱いません。
 
 ## Podmanの前提条件と検証の限界
 
@@ -139,3 +165,21 @@ cleanup成功とせず、無関係なerrorは再試行しません。通常のre
 filesystemのcleanupとして扱い、browserのlifecycle管理をCDP adapterへ移しません。
 
 2秒の予算は再試行の開始を制限します。実行中の同期filesystem削除を中断するものではありません。
+
+## 複数 host の role と証拠
+
+controller、外向きに接続する worker、remote client は、同じ native 実行ファイルと Go 標準の
+TLS/filesystem API を使います。core の role 起動に shell、Docker、SDK、Python、Node、CGO は不要です。
+worker には選択した runtime が必要とする外部ツールを用意します。
+事前に用意した PEM 証明書と、別々の絶対 path の `AGENT_ENV_HOME` 状態 root が必要です。
+client の絶対 source path の代わりに commit 済み bundle を転送し、worker-local の path と loopback endpoint は
+worker の OS 上の意味を保持します。
+
+実 TLS の native fixture は、各 runner の二つの worker root を使い、`440082b` の Windows・macOS・Linux で
+成功しました（run 34320519252）。空白・Unicode を含む commit 済み path、controller/worker 再起動、
+名前付き test、log、登録済み artifact の download、期限更新、環境変数の分離を検証しています。
+既存の local Browser/CDP native matrix も、同じ revision の 3 OS で成功しました（run 34320519250）。
+物理的な複数マシン・VM の検証は未実施であり、文書化した対応範囲での受け入れは完了しました。
+cross-build や同じ host の worker process で、物理 host の検証を済ませたとは扱いません。
+[品質](QUALITY.ja.md#複数-host-の-native-検証) と
+[完了Plan](exec-plans/completed/multi-host-control-plane.ja.md) を参照してください。

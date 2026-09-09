@@ -34,9 +34,9 @@ func (f *fakeUIProvider) ObserveUI(ctx context.Context, r domain.Runtime, q doma
 	}
 	return domain.UIObservation{Version: 1, Status: "ok", Backend: "test-v1", Confirmed: true, ActionPerformed: true, Snapshot: domain.UITree{Nodes: []domain.UINode{{Ref: "n1", Fingerprint: "fingerprint", Text: "Ready", Clickable: true, Visible: true}}}}, nil
 }
-func uiFixture(t *testing.T) (*Service, *sqlite.Store, domain.Lease, *fakeUIProvider) {
+func uiFixture(t *testing.T, management ...*domain.Management) (*Service, *sqlite.Store, domain.Lease, *fakeUIProvider) {
 	t.Helper()
-	s, db, l := commandFixture(t)
+	s, db, l := commandFixture(t, management...)
 	l.ID = newID()
 	l.Sources = nil
 	avdHome := filepath.Join(s.Home, "leases", l.ID, "avd")

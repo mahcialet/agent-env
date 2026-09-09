@@ -1,9 +1,9 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-08
+last_verified: 2026-09-09
 translation_of: README.md
-source_sha256: 4ae59d3c9b69fe2c48503fb9f438d3c278766230dc6dabae29b855c1dddbd7c1
+source_sha256: d9051df4713ee59e1330ade0827c4b693aed26d91ad3f47f9ce2bf07cf538c44
 ---
 
 [英語版（翻訳元）](README.md)
@@ -35,6 +35,7 @@ GitHub Releases から OS と CPU に合うアーカイブを取得し、バー�
 | Android Emulator リース | Git、Android SDK、Emulator、adb、インストール済み system image/AVD テンプレート、ホストのアクセラレーション |
 | Flutter Android アプリ | Android の前提条件に加え、Flutter と互換性のある Java/Android ビルドツールチェーン |
 | Android UI 観測 | Android リースと別途ビルドした任意の UI companion。そのビルドには SDK/JDK と Go が必要 |
+| 複数 host の controller/client/worker role | 事前に用意した TLS 証明書、source 転送用 Git、選択 runtime 用の worker ツール |
 | リリースの作成 | Git と対応する Go ツールチェーン。リリース CI は Go 1.27.1 に固定 |
 
 機能ごとの外部ツールと任意の UI companion はアーカイブに同梱しません。Pythonはagent-env coreの依存関係ではありません。
@@ -152,3 +153,51 @@ profileとartifactはprivateです。PNG pixelの自動redactionはしません�
 完全なmanifestとコマンドは[browser契約](docs/product-specs/browser-cdp-automation.ja.md)、
 native受け入れ状況は[完了plan](docs/exec-plans/completed/browser-cdp-automation.ja.md)を参照してください。
 Chromeは外部の前提ツールであり、同梱しません。
+
+## 明示的な remote モード
+
+任意の [複数 host control plane](docs/product-specs/multi-host-control-plane.ja.md) は、
+lease 全体を登録済み worker 一つに配置します。既定の local モードに controller は不要です。
+CA、controller の DNS 名に有効な server 証明書、別々の client/worker 証明書を事前に用意します。
+controller、各 worker、client ごとに、host の環境変数設定で別々の絶対 path の `AGENT_ENV_HOME` を
+指定してください。enrollment は controller の状態 root に対する offline の管理コマンドです。
+controller 起動前にその状態 root で実行します。
+
+```text
+agent-env control-plane enroll --certificate client.pem --role client
+agent-env control-plane enroll --certificate worker.pem --role worker --host-id build-a
+agent-env --tls-ca ca.pem --tls-cert controller.pem --tls-key controller.key control-plane serve --listen 0.0.0.0:9443
+```
+
+worker では専用の状態 root と runtime の前提環境を用意して実行します。
+
+```text
+agent-env --controller https://controller.example:9443 --tls-ca ca.pem --tls-cert worker.pem --tls-key worker.key worker serve --host-id build-a --max-leases 2
+```
+
+client では controller URL、証明書、commit 済み repository を自分のものに置き換えます。
+
+```text
+agent-env --controller https://controller.example:9443 --tls-ca ca.pem --tls-cert client.pem --tls-key client.key hosts list
+agent-env --controller https://controller.example:9443 --tls-ca ca.pem --tls-cert client.pem --tls-key client.key create ../trusted-repo --stack api --host build-a
+agent-env --controller https://controller.example:9443 --tls-ca ca.pem --tls-cert client.pem --tls-key client.key artifact-download <digest> --destination evidence.json
+```
+
+list/show、renew、reconcile、destroy、名前付き test、対応する UI/browser 操作にも同じ接続 flag を使います。
+artifact digest は登録済みの remote 証拠から取得します。download 時に digest を検証し、保存先には新しいファイルを
+指定します。`hosts drain <host-id>` は新規配置を止め、`hosts undrain <host-id>` は配置対象に戻します。
+commit 済み source は検証済み Git bundle で転送し、client の path や暗黙の環境変数の秘密値を worker 入力にしません。
+loopback endpoint は worker を指し、client への tunnel はありません。
+
+worker は操作を直列に実行しますが、作成済み lease は並行して稼働できます。
+同じ lease に対する二つ目の active 操作は、remote test 中の destroy も含めて拒否します。
+remote の実行中操作の cancellation は未実装です。local force/GC で controller の管理を回避できません。
+実 TLS の受け入れ検証は、各 runner の二つの worker root を使い、`440082b` の Windows・macOS・Linux で
+成功しました（run 34320519252）。配置・再起動に加え、名前付き test、log、artifact download、
+期限更新、環境変数の分離を検証しています。物理的な複数 host・VM の検証は未実施であり、
+合意した範囲の受け入れ検証は完了しました。[品質](docs/QUALITY.ja.md) と
+[完了Plan](docs/exec-plans/completed/multi-host-control-plane.ja.md) を参照してください。
+
+remote UI/Browserの`set-text`は現在、永続的な送信処理に入る前に拒否します。text入力はlocal
+modeを使用してください。その他のremote操作と期限の規則は
+[multi-hostの製品仕様](docs/product-specs/multi-host-control-plane.ja.md)を参照してください。
