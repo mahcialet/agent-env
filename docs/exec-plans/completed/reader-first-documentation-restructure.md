@@ -618,7 +618,7 @@ that the Japanese structure is identical.
 - [x] 2026-09-09: Perform bilingual semantic parity review.
 - [x] 2026-09-09: Run final repository harness.
 - [x] 2026-09-09: Complete Outcomes & Retrospective with changed-document inventory.
-- [ ] Move both ExecPlans to completed and update links/hashes.
+- [x] 2026-09-09: Move both ExecPlans to completed and update links/hashes.
 
 A checked item means observed completion, not intention.
 
@@ -1413,3 +1413,26 @@ no unresolved acceptance or editorial finding remains.
 
 Post-archive `go run ./tools/repoctl docs-check` and `git diff --check`: PASS
 on 2026-09-09. Translation metadata now names the completed English path.
+
+### PR #13 review follow-up (2026-09-09)
+
+The archival Progress item remained unchecked in both languages even though
+commit `e04eb6d` had moved the pair and post-archive docs-check had passed. The
+previous exact-text replacement did not match either actual checklist label;
+its no-op result was not asserted. The documentation check validates paths,
+metadata and translation freshness, not whether prose completion claims agree
+with checkboxes.
+
+At the maintainer's request, this bounded review correction is recorded in the
+completed Plan on `docs/reader-first-documentation-restructure`. The original
+completion evidence is retained. After verifying that both completed files exist
+and neither active path remains, mark the archival step complete in both Progress
+ledgers. Check the exact replacement count and absence of unchecked items, review
+English/Japanese meaning, refresh the source hash, and rerun docs-check and
+whitespace validation. This corrects the execution record; it adds no runtime
+behavior or validator rule.
+
+Validation: both archival-path assertions and exact-once replacements passed;
+no unchecked items remain in either file. English/Japanese self-review found no
+semantic difference. `go run ./tools/repoctl docs-check` and `git diff --check`
+passed after the correction.

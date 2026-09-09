@@ -3,7 +3,7 @@ status: completed
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/exec-plans/completed/reader-first-documentation-restructure.md
-source_sha256: 5cc45d3be4d4c20541286d962a83d0ffdc6117838115f472fc35d582c466606f
+source_sha256: 5e92d362abe9722f71a063583804694a4810709a114fe358467f14929b3a6856
 ---
 
 # Durable documentation全体をreader-firstな英語・日本語へ再構成する
@@ -440,7 +440,7 @@ source_sha256はsource review acknowledgmentでありstructure同一性の証明
 - [x] 2026-09-09: bilingual parity review
 - [x] 2026-09-09: final repository harness
 - [x] 2026-09-09: retrospective
-- [ ] completed移動
+- [x] 2026-09-09: 日英のExecPlanをcompletedへ移動し、リンクとhashを更新。
 
 ## 想定外の発見
 
@@ -966,3 +966,20 @@ Milestone commit `d8b8b99`に入口・案内6組と製品仕様12組を含め、
 
 移動後の`go run ./tools/repoctl docs-check`と`git diff --check`は2026-09-09に成功した。
 翻訳metadataは完了済みの英語パスを参照する。
+
+### PR #13のレビュー対応（2026-09-09）
+
+commit `e04eb6d`で日英ペアを移動し、その後のdocs-checkも成功していたが、両言語のProgressで
+移動項目が未チェックのままだった。前回の完全一致による文字列置換は、実際のチェック項目の
+文言に一致せず、変更されなかったことも検出していなかった。文書検査はパス、metadata、
+翻訳の鮮度を確認するが、文章による完了宣言とチェック項目の整合性までは判定しない。
+
+maintainerの指定に従い、この限定的な修正は`docs/reader-first-documentation-restructure`上の
+完了済みPlanに追記し、元の完了証拠を保持する。日英の完了ファイルが存在し、active側には
+残っていないことを確認して、両方のProgressの移動項目を完了にする。置換件数と未チェック項目が
+残らないことを検査し、日英の意味を確認してsource hashを更新し、docs-checkと空白検査を再実行する。
+実行記録の訂正であり、runtimeの挙動や検査規則は追加しない。
+
+検証結果: 日英の移動先と移動元、各1件の置換を確認し、どちらにも未チェック項目は残っていない。
+日英の自己点検で意味の差がないことを確認した。修正後の`go run ./tools/repoctl docs-check`と
+`git diff --check`は成功した。
