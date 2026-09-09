@@ -60,6 +60,9 @@ func (s *Service) acquireDestroyAfterCancellation(ctx context.Context, leaseID s
 	targets := map[string]bool{}
 	requested := false
 	for {
+		if err := s.checkManagement(waitCtx, leaseID); err != nil {
+			return nil, nil, err
+		}
 		runs, err := s.Store.Runs(waitCtx, leaseID)
 		if err != nil {
 			return nil, nil, err
@@ -88,10 +91,16 @@ func (s *Service) acquireDestroyAfterCancellation(ctx context.Context, leaseID s
 			}
 			return operation, release, nil
 		}
+		if errors.Is(acquireErr, ErrManagementAuthority) {
+			return nil, nil, acquireErr
+		}
 		if len(targets) == 0 {
 			return nil, nil, acquireErr
 		}
 		if !requested {
+			if err := s.checkManagement(waitCtx, leaseID); err != nil {
+				return nil, nil, err
+			}
 			for runID := range targets {
 				if err := s.Store.RequestRunCancel(waitCtx, runID); err != nil {
 					return nil, nil, err
@@ -116,7 +125,7 @@ func (s *Service) acquireDestroyAfterCancellation(ctx context.Context, leaseID s
 func (s *Service) acquireWithinWait(parent, wait context.Context, leaseID string) (context.Context, func() error, error) {
 	attemptCtx, cancelAttempt := context.WithCancel(parent)
 	stopDeadline := context.AfterFunc(wait, cancelAttempt)
-	operation, release, err := s.Store.AcquireContext(attemptCtx, leaseID, newID(), 2*time.Minute)
+	operation, release, err := s.acquireManagedOperation(attemptCtx, leaseID)
 	stopped := stopDeadline()
 	if err != nil {
 		cancelAttempt()

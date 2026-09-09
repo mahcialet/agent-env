@@ -77,6 +77,8 @@ type SourceDiff interface {
 }
 
 type Service struct {
+	// Management is fixed for one worker operation; nil means ordinary local authority.
+	Management          *domain.Management
 	BrowserProvider     BrowserProvider
 	AndroidUI           AndroidUIProvider
 	Flutter             FlutterProvider
@@ -94,6 +96,8 @@ type Service struct {
 	ReadinessInterval   time.Duration
 }
 type CreateOptions struct {
+	LeaseID              string
+	Management           *domain.Management
 	Owner, Purpose, Mode string
 	TTL                  time.Duration
 }
@@ -116,6 +120,9 @@ func (s *Service) defaults() policy.Policy {
 func (s *Service) Create(ctx context.Context, o PlanOptions, options CreateOptions) (lease domain.Lease, err error) {
 	if s.Store == nil || s.Source == nil {
 		return lease, errors.New("store and source providers are required")
+	}
+	if err = s.validateCreateManagement(options); err != nil {
+		return lease, err
 	}
 	if options.Mode == "" {
 		options.Mode = "review"
@@ -205,8 +212,11 @@ func (s *Service) Create(ctx context.Context, o PlanOptions, options CreateOptio
 		return lease, errors.New("manifest contains inherited credentials; replace literal values with ${env:NAME} references")
 	}
 	now := time.Now().UTC()
-	id := newID()
-	lease = domain.Lease{ID: id, Owner: options.Owner, Purpose: options.Purpose, Mode: options.Mode, Repository: plan.Repository, Stack: plan.Stack, Desired: "active", Observed: "requested", CreatedAt: now, HeartbeatAt: now, ExpiresAt: now.Add(ttl), ManifestDigest: plan.ManifestDigest, ManifestPath: plan.ManifestPath, ManifestCommit: plan.ManifestCommit, ManifestModified: plan.ManifestModified, SourceSetDigest: plan.SourceSetDigest, Manifest: manifest, Sources: plan.Sources, Components: plan.Components, Runtimes: plan.Runtimes, Applications: plan.Applications, Resources: []domain.Resource{}, Diagnostics: append([]string{}, plan.Diagnostics...)}
+	id := options.LeaseID
+	if id == "" {
+		id = newID()
+	}
+	lease = domain.Lease{Management: copyManagement(options.Management), ID: id, Owner: options.Owner, Purpose: options.Purpose, Mode: options.Mode, Repository: plan.Repository, Stack: plan.Stack, Desired: "active", Observed: "requested", CreatedAt: now, HeartbeatAt: now, ExpiresAt: now.Add(ttl), ManifestDigest: plan.ManifestDigest, ManifestPath: plan.ManifestPath, ManifestCommit: plan.ManifestCommit, ManifestModified: plan.ManifestModified, SourceSetDigest: plan.SourceSetDigest, Manifest: manifest, Sources: plan.Sources, Components: plan.Components, Runtimes: plan.Runtimes, Applications: plan.Applications, Resources: []domain.Resource{}, Diagnostics: append([]string{}, plan.Diagnostics...)}
 	roots := map[string]string{}
 	for i := range lease.Sources {
 		source := &lease.Sources[i]
@@ -247,7 +257,7 @@ func (s *Service) Create(ctx context.Context, o PlanOptions, options CreateOptio
 	if err = s.Store.Reserve(ctx, lease, p.MaxActive); err != nil {
 		return lease, err
 	}
-	ctx, release, err := s.Store.AcquireContext(ctx, lease.ID, newID(), 2*time.Minute)
+	ctx, release, err := s.acquireManagedOperation(ctx, lease.ID)
 	if err != nil {
 		return lease, err
 	}
@@ -631,6 +641,10 @@ func (s *Service) Get(ctx context.Context, id string) (domain.Lease, error) {
 	return s.Store.Get(ctx, id)
 }
 func (s *Service) Show(ctx context.Context, id string) (domain.Lease, error) {
+	lease, err := s.Store.Get(ctx, id)
+	if err != nil || s.authorizeManagement(lease) != nil {
+		return lease, err
+	}
 	return s.Reconcile(ctx, id)
 }
 func (s *Service) List(ctx context.Context, cached bool) ([]domain.Lease, error) {
@@ -640,6 +654,9 @@ func (s *Service) List(ctx context.Context, cached bool) ([]domain.Lease, error)
 	}
 	var errs []error
 	for i := range leases {
+		if s.authorizeManagement(leases[i]) != nil {
+			continue
+		}
 		l, err := s.Reconcile(ctx, leases[i].ID)
 		if err != nil {
 			errs = append(errs, err)
@@ -657,7 +674,7 @@ func (s *Service) Renew(ctx context.Context, id string, ttl time.Duration) (leas
 	if err != nil {
 		return lease, err
 	}
-	ctx, release, err := s.Store.AcquireContext(ctx, id, newID(), 2*time.Minute)
+	ctx, release, err := s.acquireManagedOperation(ctx, id)
 	if err != nil {
 		return lease, err
 	}
@@ -680,6 +697,9 @@ func (s *Service) Renew(ctx context.Context, id string, ttl time.Duration) (leas
 }
 
 func (s *Service) Destroy(ctx context.Context, id string, force, dryRun bool) (lease domain.Lease, err error) {
+	if err = s.checkManagement(ctx, id); err != nil {
+		return lease, err
+	}
 	if dryRun {
 		lease, err = s.Store.Get(ctx, id)
 		if err != nil {
@@ -903,7 +923,7 @@ func (s *Service) saveTextArtifact(ctx context.Context, l domain.Lease, kind, na
 }
 
 func (s *Service) Reconcile(ctx context.Context, id string) (lease domain.Lease, err error) {
-	ctx, release, err := s.Store.AcquireContext(ctx, id, newID(), 2*time.Minute)
+	ctx, release, err := s.acquireManagedOperation(ctx, id)
 	if err != nil {
 		return lease, err
 	}
@@ -1085,7 +1105,7 @@ func (s *Service) GC(ctx context.Context, apply bool) ([]domain.Lease, error) {
 }
 
 func (s *Service) gcOne(ctx context.Context, id string) (l domain.Lease, err error) {
-	ctx, release, err := s.Store.AcquireContext(ctx, id, newID(), 2*time.Minute)
+	ctx, release, err := s.acquireManagedOperation(ctx, id)
 	if err != nil {
 		return l, err
 	}
@@ -1117,6 +1137,9 @@ func (s *Service) gcGrace() (time.Duration, time.Duration) {
 }
 
 func (s *Service) gcEligible(ctx context.Context, l domain.Lease, now time.Time) (bool, error) {
+	if s.authorizeManagement(l) != nil {
+		return false, nil
+	}
 	expiryGrace, heartbeatGrace := s.gcGrace()
 	if !domain.GCEligibleWithGrace(l, now, expiryGrace, heartbeatGrace) {
 		return false, nil

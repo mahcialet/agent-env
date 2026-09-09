@@ -27,7 +27,7 @@ func (s *Service) Test(ctx context.Context, leaseID, name string) (run domain.Co
 	if s.Store == nil || s.Source == nil || s.Runner == nil {
 		return run, errors.New("store, source and command runner are required")
 	}
-	ctx, release, err := s.Store.AcquireContext(ctx, leaseID, newID(), 2*time.Minute)
+	ctx, release, err := s.acquireManagedOperation(ctx, leaseID)
 	if err != nil {
 		return run, err
 	}

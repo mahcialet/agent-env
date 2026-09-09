@@ -1,0 +1,727 @@
+---
+status: active
+owner: maintainers
+last_verified: 2026-09-09
+translation_of: docs/exec-plans/active/multi-host-control-plane.md
+source_sha256: 4f8ebb4c149a0003cdcb265b9ff831f84d9d6ec18438ad24eefe59239b638363
+---
+
+# Single-authority multi-host control planeを追加する
+
+[English](multi-host-control-plane.md)
+
+このExecPlanはliving documentであり、`docs/PLANS.md`に従って更新する。
+
+想定ブランチ: `feat/multi-host-control-plane`
+
+開始revision: `dc63308e53f68f8be99f7cbf59cafc78f7296b71`
+（PR #11 repository correctness audit merge済みmaster）。
+
+実装前にmasterをfast-forwardし、baseが変わっていれば正確なrevisionを記録し直して
+baseline harness/race/integrationを実行する。
+
+## 目的 / 全体像
+
+既存local-first lease semanticsを維持したまま、複数machineへenvironment leaseを
+placementできるcontrol planeを追加する。
+
+local modeは今まで通りdaemon不要。
+
+multi-host modeのみ:
+
+```text
+authenticated client
+        |
+        | HTTPS / mTLS
+        v
+single active control plane
+  controller SQLite
+  source/artifact CAS
+        ^
+        | outbound heartbeat / long-poll
+   +----+----+
+   |         |
+worker A   worker B
+local DB   local DB
+local Git  local Git
+local runtimes
+```
+
+初期placement unitは**Lease全体**。
+
+```text
+1 global lease
+  -> exactly 1 worker
+  -> selected source/component/runtimeを全て同じworkerで実行
+```
+
+APIをHost A、AndroidをHost Bのように1 lease内で分割しない。cross-host
+networking、distributed cleanup、multi-authority resource graphは後続。
+
+## 基本原則
+
+### local modeをdaemon architectureへ変えない
+
+controller未指定なら既存local SQLite/local Git/local runtimeだけを使う。
+network/control process不要。
+
+### one lease = one worker
+
+Compose/process/Android/Flutter/Browser等のworker-local endpoint semanticsを維持する。
+
+### OFFLINE != absent
+
+worker heartbeat lossはcommunication lossしか証明しない。
+container/process/Emulator/worktree/portのabsence proofにはならない。
+
+assigned live/uncertain leaseをworker lossだけで別hostへauto reassignしない。
+global observationはstale/UNKNOWNとして保持し、元workerのrelease proofを待つ。
+
+### exactly-onceを仮定しない
+
+network disconnect後にmutationをblind retryしない。
+global operation ID、assignment epoch、worker durable journal、effect前intent persist、
+reconnect recoveryを使う。
+
+### raw remote shellを追加しない
+
+remote APIはexisting typed agent-env operationのみ。manifestが宣言したprocess argvは
+repository executionとして許容するが、control planeの任意shell endpointは作らない。
+
+## 対象範囲
+
+対象:
+
+- same binaryのcontrol-plane serve / worker serve
+- authenticated remote CLI
+- controller専用SQLite
+- persistent controller ID
+- stable host ID + persistent host-instance ID
+- worker enrollment
+- mTLS
+- versioned JSON/HTTP
+- outbound heartbeat/long-poll
+- host registry / ONLINE/OFFLINE/DRAINING
+- capability/capacity reporting
+- deterministic whole-lease scheduler
+- explicit host selection
+- assignment epoch
+- controller/worker operation journal
+- controller-managed local lease marker
+- local GC/mutation protection
+- immutable Git source transport
+- content-addressed source/artifact store
+- multiple source aliases
+- result/artifact retry without effect replay
+- stale/UNKNOWN global observation
+- controller/worker restart recovery
+- drain/undrain
+- duplicate delivery/result-loss recovery
+- two-worker real-socket integration
+- Windows/macOS/Linux native protocol integration
+- worker capabilityが満たすexisting Docker/Podman/Android/process/Browser利用
+- 英日product/design/ADR/docs
+
+対象外:
+
+- active-active HA/consensus
+- automatic controller failover
+- live lease migration
+- one lease split across workers
+- overlay network/endpoint tunnel
+- arbitrary SSH/inbound worker RPC
+- hostile multi-tenant isolation
+- automatic PKI/CA rotation
+- implicit client secret forwarding
+- Vault/KMS
+- automatic remote Git fetch/auth
+- unproven LFS/submodule transport
+- cross-host writable fix lease
+- autoscaling/CPU-memory bin packing
+- service installation
+- malicious-code sandbox
+
+## authority model
+
+### control plane
+
+global lease ID、source identity/digest、stack、required capabilities、placement、
+assignment epoch、global desired state、operation、host registry/liveness、CAS reference、
+last acknowledged worker observation、global historyを所有する。
+
+native PID/container/AVD/CDP cleanup proofは所有しない。
+
+### worker local
+
+existing worker-local DBがworktree、Compose/Podman、Android、Flutter、persistent
+process、Browser/CDP、reservation、local fence、cleanup proofを所有する。
+
+controllerはheartbeat lossからabsenceを推測しない。
+workerはglobal reassignment authorityを推測しない。
+
+### lease identity
+
+controllerがglobal lease IDを生成し、可能ならworker local leaseも同じIDを使う。
+
+workerは少なくとも:
+
+```text
+management_mode=controller
+controller_id
+host_id
+host_instance_id
+assignment_epoch
+```
+
+をdurableに保持する。
+
+## host/controller identity
+
+worker:
+
+- operator-selected stable `host_id`
+- state rootに保存するrandom `host_instance_id`
+- enrolled cert identity/fingerprint
+- worker process/session incarnation
+- agent-env/protocol version
+- OS/arch/capability
+
+`host_id`だけをauthorityにしない。
+active/uncertain assignmentがあるhost IDへdifferent instanceが来たらreject/quarantine。
+
+controllerはpersistent random `controller_id`を持つ。
+different controllerがactive controller-managed leaseをsilent adoptしない。
+
+これはconsensusではなくcloned active controllerを安全にするものではない。
+
+## protocol/auth
+
+初期候補:
+
+```text
+HTTPS + mTLS + versioned JSON
+```
+
+Go標準`net/http`, `crypto/tls`, `crypto/x509`, `encoding/json`を優先。
+
+workerはoutbound only。
+
+```text
+register
+ -> capability
+ -> heartbeat
+ -> long-poll operation
+ -> local journal
+ -> execute/recover
+ -> upload result
+ -> ack
+```
+
+payloadはprotocol/controller/host/instance/global lease/epoch/operation ID/digestを持つ。
+body limit/deadline/typed statusを明示する。
+
+non-loopback production listenerはTLS + enrolled cert必須。
+private keyはSQLiteに保存しない。
+loopback insecure modeが必要ならtest限定。
+
+automatic CA/rotationは後続。
+
+## source transport
+
+client local repository pathをworker pathとして使わない。
+
+```text
+client:
+  manifest validate
+  source alias -> exact commit
+  Git bundle/object package
+  SHA256
+  controller CAS upload
+
+controller:
+  capability scheduling
+
+worker:
+  blob download
+  digest verify
+  git verify/import
+  private mirror/worktree
+  exact commit verify
+  transferred manifest/plan verify
+  existing local lifecycle
+```
+
+untracked/uncommitted fileはtransportしない。
+remote Git credential不要の方式を初期defaultとする。
+
+shallow/LFS/submoduleは暗黙network fetchせず明示検証/制限。
+
+## CAS
+
+controller state root内のprivate content-addressed store。
+
+```text
+sha256/<digest>
+```
+
+atomic write、stream digest/size verify、size limit、duplicate upload safety、reference
+tracking、referenced blob非削除、private permission、caller pathをfilesystem authorityに
+しないことを要求。
+
+source/artifactはsecretを含み得る。encryption at restは未保証。
+
+## scheduler
+
+worker doctor/prerequisiteからsemantic capabilityをreport:
+
+```text
+git
+compose.docker
+compose.podman
+android-emulator
+flutter-android
+persistent-process
+browser-cdp
+```
+
+exact versionはevidence。schedulerはstable capability名を使う。
+
+初期capacityはmax controller leases + truthful named slot（例: Android slots）程度。
+CPU/memory bin packingはしない。
+
+filter:
+
+authenticated / ONLINE / non-draining / protocol compatible / capability /
+constraint / capacity。
+
+その後deterministic least-load + host-id tie break等。
+placement/capacity reservationをcontroller transactionでatomicにする。
+
+`--host`もsafety checkをbypassしない。
+
+## capability derivation/preflight
+
+clientがselected immutable stack closureからrequired capabilityをderive。
+workerがtransferred source/manifest/planを独立verify。
+
+workerがeffect前rejectし`effects_started=false`を証明した場合のみ別host再schedule可。
+effect可能性があればauto reschedule禁止。
+
+## assignment/operation fence
+
+operationは:
+
+```text
+controller_id
+global_lease_id
+host_id
+host_instance_id
+assignment_epoch
+operation_id
+operation_type
+```
+
+を持ち、workerはeffect前persist。
+
+wrong controller/host/instance、old epoch、conflicting duplicate、terminal state不整合をreject。
+
+同じoperation IDのduplicate deliveryはdurable resultを返す/再構築し、mutationをblind
+repeatしない。
+
+## worker/controller journal
+
+worker conceptual state:
+
+```text
+received
+prepared
+effect_started
+result_pending
+completed
+uncertain
+```
+
+existing command/evidence tableを再利用できるならduplicate authorityを作らない。
+
+restart/reconnect後はunfinished opをreportしactual local resourceをreconcileしてから
+resumeする。
+
+controller transport stateはlocal resource truthと分離:
+
+```text
+queued
+assigned
+dispatched
+running
+result_pending
+completed
+uncertain
+```
+
+## liveness / host loss
+
+desired stateとobservation freshnessを分離。
+
+heartbeat expiry時:
+
+```text
+desired=active
+placement=linux-01
+last_known=READY
+observed=UNKNOWN
+```
+
+stored READYをcurrent healthyとして表示しない。
+same worker instanceが戻ったらsame leaseをreconcileし、別workerへplaceしない。
+
+## heartbeat/drain/remove
+
+heartbeatはidentity/version/capability/capacity/controller-managed lease summaryを含む。
+
+drainはnew assignment停止のみ。migration/destroy無し。
+
+active/stale/uncertain/unreleased assignmentがあるhost forget/removeをreject。
+
+## outage semantics
+
+controller outage中workerはexisting workloadを維持する。
+new remote mutation無し。controller heartbeat消失だけでauto GC/destroyしない。
+journal/evidence保持、後でreconnect。
+
+worker restartはexisting local DB/stateを再openしsame identityでcontrollerへ戻り、
+resource/journalをreconcileする。
+
+## local operator
+
+controller-managed leaseを明示表示。
+
+ordinary local destroy/renew/reconcile/GCで変更できないようにする。
+read-only diagnosticsは可。
+
+safe design無しにbreak-glass `--force`を追加しない。
+
+## TTL
+
+global lifetimeはcontroller authority。
+controller outage/TTL expiryだけでworker destroyを許可しない。
+renew/destroyはfenced remote operation。
+
+## remote operation
+
+create/list/show/renew/reconcile/destroy/named test/log/artifact/Android UI/Browser CDPを
+assigned workerで実行。
+
+raw shell無し。
+
+worker-local endpointをclient-local `127.0.0.1`と偽って表示しない。
+endpoint tunnelingは後続。
+
+## result/artifact
+
+local result persist -> blob upload -> controller verify -> result manifest -> ack。
+
+upload failureはresult_pendingとしてuploadだけretry。
+underlying test/UI/browser/lifecycle effectを再実行しない。
+
+## security
+
+controller/client/workerはone trusted administrative domain。
+target repo trustはlocal modeと同等。multi-tenant sandboxではない。
+
+`${env:NAME}`はworker environmentでresolve。
+client env secretを自動forwardしない。
+
+## 進捗
+
+- [x] 2026-09-09: product/design文書とauthority ADR0006を両言語で追加。
+- [x] 2026-09-09: worker host-instance IDとremote-operation journal、commit済みsource bundleとdigest検証を実装。
+- [x] 2026-09-09: global lease IDと管理metadataをlocal Createに接続し、ローカル変更とGCから保護。
+
+- [x] 2026-09-09: base `dc63308e53f68f8be99f7cbf59cafc78f7296b71`を確認し、`feat/multi-host-control-plane`を作成。
+- [ ] 残るnative runtime baseline検証。
+- [ ] 英日product/design + ADR
+- [ ] protocol/auth contract
+- [ ] controller/worker/global state model
+- [ ] controller SQLite/migrations/id
+- [ ] worker instance id/enrollment
+- [ ] mTLS HTTP
+- [ ] registration/heartbeat/long-poll
+- [ ] capability/capacity
+- [ ] hosts list/show/drain
+- [ ] scheduler
+- [ ] Git source package + CAS
+- [ ] worker source verify/materialize
+- [ ] manifest/plan identity verify
+- [ ] global lease ID local create
+- [ ] controller-managed marker/local GC protection
+- [ ] assignment epoch
+- [ ] controller/worker journals
+- [ ] dispatch/reconnect
+- [ ] remote create/list/show
+- [ ] renew/reconcile/destroy
+- [ ] test/log/artifact
+- [ ] artifact CAS/result manifest
+- [ ] Android UI remote
+- [ ] Browser remote
+- [ ] heartbeat stale/UNKNOWN
+- [ ] no auto reassignment
+- [ ] worker/controller restart recovery
+- [ ] same host-id different instance reject
+- [ ] drain/remove safety
+- [ ] auth/body/path/blob negative tests
+- [ ] duplicate delivery / effect-result loss regression
+- [ ] outage with live resource
+- [ ] two-worker real-socket integration
+- [ ] remote process/browser E2E
+- [ ] Docker/Podman remote integration where possible
+- [ ] Windows/macOS/Linux native protocol integration
+- [ ] separate machine/VM evidence where available
+- [ ] bilingual durable docs
+- [ ] final harness/race/native/integration/release
+- [ ] evidence/retrospective/completed
+
+## 想定外の発見
+
+- 2026-09-09: 独立レビューでPrepare中のheartbeat切断後も外部作用を開始できる経路を発見。永続的なeffect-started遷移の直前に検査を追加し、再接続まで作用を開始しない回帰テストが成功。
+- 2026-09-09: remote actionの初期テストはUI/Browserのflagが全action共通と誤って想定していた。実際のactionごとのflag定義に対応させ、local flagを変更せず修正した。初回全harnessは新規テストで失敗し、修正後の個別テストは成功。再実行はcontrollerの編集中に整形検査で失敗したため、安定した変更単位で全検査を再実行する。
+
+- 2026-09-09: baselineのunit/vet、raceテストが成功。実Dockerを使用した`repoctl test-integration`も終了コード0。`repoctl check`は、提供された日本語Planに必須の見出しがなかったためdocs-checkで失敗。両言語に不足する節を追加した。残るnative runtime baselineは未実施。
+
+## 判断の記録
+
+- 2026-09-09、実装担当: assignment epochはleaseの配置ごとに固定し、各commandをoperation IDで識別する。local SQLiteは管理metadataの削除、後付け、変更を、有効なlocal lockがあっても拒否する。
+- 2026-09-09、実装担当: FULL synchronousのSQLiteでworker journalを別管理する。controllerとの恒久的な対応、host-instance ID、processごとのincarnationを保存する。結果upload/ackの再試行は実行開始済みreceiptをリセットしない。native SQLite lockで同じrootのworker二重起動を拒否し、crash後はOSがlockを解放する。
+- 2026-09-09、実装担当: `--controller`と明示的な`--tls-ca`、`--tls-cert`、`--tls-key`、`control-plane serve/enroll`、`worker serve`を採用する。証明書は外部で用意し、leaf fingerprintをclient/worker roleで登録する。controller未指定時のlocal commandは従来の動作を保つ。
+
+- initial placementはone lease = one worker。split-hostは後続。
+- local mode daemon-free維持。
+- single active controller。HA/consensusは後続。
+- heartbeat lossでabsence/reassignmentしない。
+- worker outbound connection。
+- versioned JSON/HTTPS/mTLS + typed operation。
+- controller/global authorityとworker/local resource authorityを分離。
+- sourceはcommit + digest-verified Git object/bundle transport。
+- source/artifactはcontent-addressed。
+- uncertain mutationはblind retryしない。
+- controller-managed leaseをlocal GC/mutationから保護。
+- endpointはworker-localのまま。
+- remote envはworker側resolve、client secret自動forward無し。
+- durable docs/ExecPlan英日。
+
+すべて日付/担当: 2026-09-09 / maintainers.
+
+## 成果と振り返り
+
+未完了。
+
+完了時にCLI、authority split、protocol/auth、source transport、CAS、capability/scheduler、
+assignment/operation fencing、outage/reconnect、evidence delivery、remote operation、
+native OS evidence、real multi-host evidence、limitations、split-host/tunnel/HA/secretの
+次段階をまとめる。
+
+## 背景と構成
+
+読む:
+
+- AGENTS/ARCHITECTURE/PLANS英日
+- QUALITY/RELIABILITY/SECURITY/PORTABILITY/roadmap英日
+- repository correctness audit/review follow-up
+- source/worktree
+- Compose/Podman
+- Android/Flutter/UI
+- persistent process
+- Browser/CDP
+- standalone distribution
+- SQLite migrations/store
+- operation fencing
+
+現行architectureはSQLite/operation lockをlocal authorityとしている。本Planはその上に
+global authorityを追加し、local SQLiteをdistributed DBとして再解釈しない。
+
+## 作業計画
+
+### Milestone 1 — contract/ADR
+multi-host product/design/ADR、single controller、whole-lease placement、authority split、
+outbound worker、no heartbeat failover、source/CASを確定。
+
+### Milestone 2 — controller persistence
+controller専用store/migration。controller_meta/clients/hosts/capabilities/global_leases/
+assignments/operations/blobs/events等。persistent controller ID。
+
+### Milestone 3 — worker identity/mTLS
+host-instance ID、enrollment、protocol、registration、heartbeat、long-poll、blob transfer。
+
+### Milestone 4 — scheduler
+capability/capacity、ONLINE/DRAINING、deterministic placement、explicit host。
+
+### Milestone 5 — source transport
+multi-source Git package/CAS、digest/commit verify、absolute path non-leakage、
+shallow/LFS/submodule explicit policy。
+
+### Milestone 6 — global lease/local create
+controller lease ID、assignment epoch、worker independent preflight、controller-managed lease。
+pre-effect rejectだけreschedule可。
+
+### Milestone 7 — journals/reconnect
+dispatch loss、duplicate、effect後disconnect、upload failure、controller/worker restart、late
+responseをfailure injection。
+
+### Milestone 8 — host loss
+OFFLINE -> UNKNOWN、auto reassign無し、same instance reconnect。
+
+### Milestone 9 — lifecycle remote surface
+show/list/renew/reconcile/destroy/test/log/artifact。global RELEASEDはworker cleanup proof後。
+
+### Milestone 10 — artifact transport
+local result first、digest upload、upload-only retry。
+
+### Milestone 11 — Android UI/Browser
+controller fence + worker local fence。existing stale/identity safety維持。
+
+### Milestone 12 — local protection
+controller-managed leaseをordinary local mutation/GCから保護。
+
+### Milestone 13 — two-worker integration
+real TLS socket、separate state/DB、placement/load-balance/drain/offline/reconnect/cleanup。
+
+### Milestone 14 — native OS
+Windows/macOS/Linuxでcontroller+worker+client processをnative実行。
+
+### Milestone 15 — real multi-host
+可能ならseparate machine/VM。same-host workerをphysical evidenceと呼ばない。
+
+### Milestone 16 — docs/completion
+README/Architecture/Portability/Security/Reliability/Quality/Roadmap/standalone/index英日。
+PR #11のescaped-defect guardrailをprotocol/state boundary testへ適用。
+
+## 具体的な手順
+
+対応するGo toolchainをPATHに設定する。意味のある変更単位で`go run ./tools/repoctl check`、`go test -race ./...`、`go run ./tools/repoctl test-integration`を実行する。journal、transport、source、processの個別テストを追加し、その後native OSの証拠を収集する。実測結果を進捗と検証と受け入れに記録する。
+
+## 検証と受け入れ
+
+| ID | 必須動作 | 証拠 |
+| --- | --- | --- |
+| M1 | local mode daemon-free/non-regression | Pending |
+| M2 | persistent controller identity + single authority | Pending |
+| M3 | host ID + host-instance identityでreplacement誤adopt防止 | Pending |
+| M4 | production mTLS/auth、unenrolled拒否 | Pending |
+| M5 | worker outbound only | Pending |
+| M6 | protocol mismatchをeffect前reject | Pending |
+| M7 | controller/globalとworker/local authority分離 | Pending |
+| M8 | whole lease exactly one worker | Pending |
+| M9 | scheduler capability/capacity/host state検証 | Pending |
+| M10 | explicit hostでもsafety bypass無し | Pending |
+| M11 | source aliasはcommit+bundle digest、client absolute path非使用 | Pending |
+| M12 | corrupt/wrong source effect前fail | Pending |
+| M13 | worker source/manifest/stack独立verify | Pending |
+| M14 | global lease ID/epoch effect前persist | Pending |
+| M15 | duplicate operationでmutation再実行無し | Pending |
+| M16 | effect後result lossをjournalからrecover | Pending |
+| M17 | artifact failureはuploadのみretry | Pending |
+| M18 | heartbeat expiryはUNKNOWN、absence扱い無し | Pending |
+| M19 | offline lease auto reassignment無し | Pending |
+| M20 | same worker reconnectでsame lease reconcile | Pending |
+| M21 | same host-id/different instance active時reject | Pending |
+| M22 | controller restart duplicate effect無し | Pending |
+| M23 | worker restart existing resource/journal recover | Pending |
+| M24 | controller outageでworker auto GC無し | Pending |
+| M25 | local mutation/GCでcontroller-managed lease変更不可 | Pending |
+| M26 | remote destroyはworker cleanup proof後のみglobal RELEASED | Pending |
+| M27 | worker local endpointをclient localと偽らない | Pending |
+| M28 | test/log/artifact remote、raw shell無し | Pending |
+| M29 | Android UI既存stale/device/fence維持 | Pending |
+| M30 | Browser既存process/page/snapshot/focus/stale維持 | Pending |
+| M31 | two worker concurrent lease isolation | Pending |
+| M32 | drainはnew placement停止のみ | Pending |
+| M33 | active/stale/uncertain host remove拒否 | Pending |
+| M34 | CAS content-addressed/atomic/digest/concurrent safe | Pending |
+| M35 | caller pathをCAS authorityにしない | Pending |
+| M36 | client secret implicit forwarding無し | Pending |
+| M37 | Windows native protocol integration | Pending |
+| M38 | macOS native protocol integration | Pending |
+| M39 | Linux native protocol integration | Pending |
+| M40 | real socket two-worker scheduling/outage/recovery/cleanup | Pending |
+| M41 | physical/VM evidenceをhonestに区別 | Pending |
+| M42 | existing local runtime integration非回帰 | Pending |
+| M43 | HA/live migration/split lease/tunnelをimplementedと宣伝しない | Pending |
+| M44 | 英日docs authority/trust/failure/recovery | Pending |
+| M45 | final repoctl/docs/race/native/integration/release | Pending |
+| M46 | 英日ExecPlan evidence/retrospective後archive | Pending |
+
+## 冪等性と復旧
+
+readはretry可能。
+mutationはoperation ID/epochでfenceし、transport uncertainty時はnew mutationを発行せず
+worker journal query/reconcile/result resume。
+
+source/artifact transferはdigestでretry。
+host OFFLINEはcleanup eventではない。
+
+## 成果物と注記
+
+2026-09-09の検証証拠: `go test -race ./internal/worker`成功（1.073s）。receipt再送、upload/ack失敗、結果喪失時の不確実状態、作用直前のheartbeat検査を含む。`go test -race ./internal/instance`成功（1.035s）。nativeの別process排他とcrash後の解放を含む。管理境界のapp/local-store/domain raceは50.167s/16.235s/1.030sで成功。修正前のStore.Saveをoverlayで使用し、6件の不正上書きを再現した。source/CASの反復raceは5.380s/1.011sで成功。architecture境界fixtureは0.028sで成功。native Windows/macOSと実TLSの2-worker受け入れは未完了。
+
+controller候補:
+
+```text
+<AGENT_ENV_HOME>/control-plane/
+  controller.db
+  controller-id
+  blobs/sha256/
+  logs/
+```
+
+workerはexisting state + host-instance/controller binding/journal。
+
+central evidenceはcontroller/protocol/global lease/host instance/epoch/operation/source
+ digest/worker version/local observed state/artifact digest/ackを記録。
+
+TLS private keyをSQLiteへ保存しない。
+
+## インターフェースと依存
+
+候補package:
+
+```text
+internal/controlplane/
+internal/controlplane/store/
+internal/controlplane/protocol/
+internal/worker/
+internal/remotesource/
+internal/blobstore/
+```
+
+control-plane schedulerからconcrete runtime adapterをimportしない。
+worker wiringがexisting app/runtimeを再利用。
+
+標準library HTTP/TLS/JSONを優先し、実要件不足の証拠がない限りgRPC/protobufを追加しない。
+
+multi-host modeはlong-running controller/worker processを導入するが、local modeはdaemon不要。
+
+## 未解決事項
+
+1. CLI naming (`control-plane`/`controller`, global `--controller`/remote subcommand)
+2. protocol/product compatibility rule
+3. cert enrollment/rotation UX
+4. client/worker role authorization
+5. long-poll details
+6. controller single-instance lock
+7. shallow Git bundle
+8. LFS/submodule policy
+9. blob size/resume
+10. CAS GC
+11. capability names/version
+12. capacity model
+13. scheduler tie-break/labels
+14. plan digest final authority
+15. controller-managed metadata persistence shape
+16. remote operation envelope
+17. DEGRADED read-only UI/Browser policy
+18. stale global state presentation
+19. permanent controller loss break-glass
+20. controller backup/restore
+21. physical two-host acceptance mandatoryか
+22. future endpoint tunnel topology
+23. later split-host global resource graph
+24. PR #11 escaped-defect guardrailをprotocol/state boundary testへどう適用するか

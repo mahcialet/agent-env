@@ -58,7 +58,7 @@ func (*commandSource) Remove(context.Context, domain.Source, bool) error {
 	return errors.New("not expected")
 }
 
-func commandFixture(t *testing.T) (*Service, *sqlite.Store, domain.Lease) {
+func commandFixture(t *testing.T, management ...*domain.Management) (*Service, *sqlite.Store, domain.Lease) {
 	t.Helper()
 	home := t.TempDir()
 	root := filepath.Join(home, "source 日本語 with spaces")
@@ -81,6 +81,9 @@ func commandFixture(t *testing.T) (*Service, *sqlite.Store, domain.Lease) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
+	if len(management) > 0 {
+		lease.Management = copyManagement(management[0])
+	}
 	if err := db.Reserve(context.Background(), lease, 0); err != nil {
 		t.Fatal(err)
 	}

@@ -175,7 +175,7 @@ func (s *Service) Browser(ctx context.Context, id string, o BrowserOptions) (res
 	if s.Store == nil || s.Process == nil || s.BrowserProvider == nil {
 		return result, errors.New("browser store/process/provider unavailable")
 	}
-	ctx, release, err := s.Store.AcquireContext(ctx, id, newID(), 2*time.Minute)
+	ctx, release, err := s.acquireManagedOperation(ctx, id)
 	if err != nil {
 		return result, err
 	}
