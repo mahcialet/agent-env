@@ -19,6 +19,9 @@ import (
 )
 
 type Client struct{}
+
+const maxBrowserPages = 128
+
 type target struct {
 	TargetID string `json:"targetId"`
 	Type     string `json:"type"`
@@ -176,7 +179,7 @@ func pages(ctx context.Context, c *connection) ([]domain.BrowserPage, error) {
 		}
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
-	if len(out) > 128 {
+	if len(out) > maxBrowserPages {
 		return nil, errors.New("browser page limit exceeded")
 	}
 	return out, nil
@@ -208,6 +211,9 @@ func (Client) Observe(ctx context.Context, r domain.Runtime, b domain.BrowserBin
 	}
 	mutate := func() error { return verify(ctx) }
 	if q.Operation == "page-create" {
+		if len(o.Pages) >= maxBrowserPages {
+			return o, errors.New("browser page limit reached")
+		}
 		if !safeURL(q.URL) {
 			return o, errors.New("unsupported navigation URL")
 		}
@@ -324,6 +330,9 @@ func wait(ctx context.Context, c *connection, s string, id domain.BrowserIdentit
 			matched = documentIdentity(current) == sn.Document && strings.Contains(current.Frame.URL+current.Frame.URLFragment, q.Contains)
 		case "text", "gone":
 			for _, n := range sn.Nodes {
+				if n.Ignored {
+					continue
+				}
 				if (q.Role == "" || n.Role == q.Role) && strings.Contains(n.Name, q.Contains) {
 					matched = true
 				}

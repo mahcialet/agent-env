@@ -212,7 +212,7 @@ frameNodes:
 			n := domain.BrowserNode{BackendID: a.BackendDOMNodeID, Frame: f.Frame.ID, Role: valueString(a.Role), Name: valueString(a.Name), Ignored: a.Ignored}
 			for _, v := range a.Properties {
 				switch v.Name {
-				case "checked", "selected", "expanded", "readonly", "required", "focusable", "focused", "multiselectable":
+				case "checked", "pressed", "selected", "expanded", "readonly", "required", "focusable", "focused", "multiselectable":
 					if state, ok := axState(v.Value.Value); ok {
 						if n.States == nil {
 							n.States = map[string]string{}
