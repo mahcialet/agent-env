@@ -167,23 +167,39 @@ func validateFlags(args []string, state string, port int) error {
 	}
 	return nil
 }
-func pages(ctx context.Context, c *connection) ([]domain.BrowserPage, error) {
-	var x struct{ TargetInfos []target }
-	if e := c.call(ctx, "", "Target.getTargets", nil, &x); e != nil {
-		return nil, e
+
+// targetCensus retains every target identity for creation and rollback proofs;
+// only presentation filters it down to pages. Transport still bounds the bytes.
+func targetCensus(ctx context.Context, c *connection) ([]target, error) {
+	var x struct {
+		TargetInfos []target `json:"targetInfos"`
 	}
-	out := []domain.BrowserPage{}
+	if err := c.call(ctx, "", "Target.getTargets", nil, &x); err != nil {
+		return nil, err
+	}
+	if x.TargetInfos == nil {
+		return nil, errors.New("browser returned no target census")
+	}
+	seen := map[string]bool{}
 	for _, t := range x.TargetInfos {
+		if t.TargetID == "" || t.Type == "" || seen[t.TargetID] {
+			return nil, errors.New("browser returned ambiguous target identities")
+		}
+		seen[t.TargetID] = true
+	}
+	return x.TargetInfos, nil
+}
+func pagesFromTargets(targets []target) []domain.BrowserPage {
+	out := []domain.BrowserPage{}
+	for _, t := range targets {
 		if t.Type == "page" {
 			out = append(out, domain.BrowserPage{ID: t.TargetID, URL: scrubURL(t.URL), Title: t.Title})
 		}
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
-	if len(out) > maxBrowserPages {
-		return nil, errors.New("browser page limit exceeded")
-	}
-	return out, nil
+	return out
 }
+
 func (Client) Observe(ctx context.Context, r domain.Runtime, b domain.BrowserBinding, q domain.BrowserRequest, verify func(context.Context) error) (o domain.BrowserObservation, err error) {
 	defer func() {
 		var known confirmedError
@@ -198,9 +214,13 @@ func (Client) Observe(ctx context.Context, r domain.Runtime, b domain.BrowserBin
 	if q.Prior != nil && q.Prior.Identity != id {
 		return o, errors.New("stale browser identity")
 	}
-	o.Pages, e = pages(ctx, c)
+	initialTargets, e := targetCensus(ctx, c)
 	if e != nil {
 		return o, e
+	}
+	o.Pages = pagesFromTargets(initialTargets)
+	if len(o.Pages) > maxBrowserPages {
+		return o, errors.New("browser page limit exceeded")
 	}
 	if q.Operation == "capabilities" || q.Operation == "pages" {
 		if q.Operation == "capabilities" {
@@ -226,8 +246,69 @@ func (Client) Observe(ctx context.Context, r domain.Runtime, b domain.BrowserBin
 		o.ActionPerformed = true
 		e = c.call(ctx, "", "Target.createTarget", map[string]any{"url": q.URL}, &x)
 		o.Page = domain.BrowserPage{ID: x.TargetID, URL: scrubURL(q.URL)}
-		o.Confirmed = e == nil
-		return o, e
+		if e != nil {
+			return o, e
+		}
+		if x.TargetID == "" {
+			return o, errors.New("browser returned no created target identity")
+		}
+		for _, prior := range initialTargets {
+			if prior.TargetID == x.TargetID {
+				return o, errors.New("created target identity was already present")
+			}
+		}
+		currentTargets, err := targetCensus(ctx, c)
+		current := pagesFromTargets(currentTargets)
+		if err == nil && len(current) <= maxBrowserPages {
+			for _, page := range current {
+				if page.ID == x.TargetID {
+					o.Page = page
+					o.Pages = current
+					o.Confirmed = true
+					return o, nil
+				}
+			}
+			for _, target := range currentTargets {
+				if target.TargetID == x.TargetID {
+					return o, errors.New("created target is not a page")
+				}
+			}
+			o.Confirmed = true // The acknowledged target is proven absent.
+			return o, confirmedError{errors.New("created browser page disappeared")}
+		}
+		cause := errors.New("browser page limit exceeded after creation")
+		if err != nil {
+			cause = fmt.Errorf("cannot verify created page census: %w", err)
+		}
+		// Compensate only the newly acknowledged identity. Siblings, including
+		// independent popups, never become rollback targets.
+		if err = mutate(); err != nil {
+			return o, errors.Join(cause, err)
+		}
+		var closed struct {
+			Success bool `json:"success"`
+		}
+		if err = c.call(ctx, "", "Target.closeTarget", map[string]any{"targetId": x.TargetID}, &closed); err != nil {
+			return o, errors.Join(cause, fmt.Errorf("created page rollback failed: %w", err))
+		}
+		if !closed.Success {
+			return o, errors.Join(cause, errors.New("created page rollback was not acknowledged"))
+		}
+		remainingTargets, err := targetCensus(ctx, c)
+		if err != nil {
+			return o, errors.Join(cause, fmt.Errorf("created page rollback absence is unverified: %w", err))
+		}
+		for _, target := range remainingTargets {
+			if target.TargetID == x.TargetID {
+				return o, errors.Join(cause, errors.New("created page remains after rollback"))
+			}
+		}
+		remaining := pagesFromTargets(remainingTargets)
+		if len(remaining) <= maxBrowserPages {
+			o.Pages = remaining
+		}
+		o.Confirmed = true
+		return o, confirmedError{cause}
 	}
 	selected := q.Page
 	if q.Prior != nil {

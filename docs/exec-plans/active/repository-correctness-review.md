@@ -22,14 +22,14 @@ valid links. Reply to and resolve both review threads after verified fixes are p
 ## Progress
 
 - [x] (2026-09-09) Confirm clean PR branch at6b13cd4 and read both unresolved threads.
-- [ ] Reproduce both defects with meaningful regressions, then repair them.
+- [x] (2026-09-09) Reproduced and repaired both defects; added malformed/missing-type and all-target absence regressions.
 - [ ] Independently review changes and run harness, race and relevant native CI.
 - [ ] Push verified fixes, reply to both threads and resolve them.
 - [ ] Record outcomes and archive this bilingual plan.
 
 ## Surprises & Discoveries
 
-- 2026-09-09 independent review: initial popup-race repair passed full harness/race and Linux Browser9.312s, but a malformed census item with the created ID and missing type was filtered out and falsely proved absence. A private negative failed0.024s. Require complete target identity/type and compare exact absence against all targets, not only page-filtered results. Revalidate this repair before push. Markdown independent race×5 passes2.663s; existing visible-source-link filtering remains unchanged. Command lock-probe race×10 passes4.390s with all original assertions.
+- 2026-09-09 independent review: initial popup-race repair passed full harness/race and Linux Browser integration, but a malformed census item with the created ID and missing type was filtered out and falsely proved absence. A private negative failed0.024s. Require complete target identity/type and compare exact absence against all targets, not only page-filtered results. Revalidate this repair before push. Markdown independent race×5 passes2.663s; existing visible-source-link filtering remains unchanged. Command lock-probe race×10 passes4.390s with all original assertions.
 
 - 2026-09-09: inline-code anchor regression failed four fixtures before repair; full repoctl package race passes8.915s after splitting block/inline filtering. An early full harness attempt overlapped unfinished CDP test formatting and stopped at format-check; rerun after files stabilize. PR Verify34296197727 Windows Go1.26 failed only the final fresh-lock release probe in TestNamedCommandFailuresRetainEvidence/sleep, after timed-out command/run/artifact assertions passed. The probe used1s TTL while the real command uses2min. Same-head push CI passed. Adjust only probe TTL to1min to avoid making lock availability verification depend on subsecond DB/scheduler latency; keep every assertion and production fence unchanged. Recheck native CI.
 
@@ -37,6 +37,8 @@ The current inline-span sanitizer replaces code contents with `code`, rather tha
 simply deleting them; the review correctly identifies a rendered-anchor mismatch.
 
 ## Decision Log
+
+- 2026-09-09, implementation coordinator: post-create validation uses complete target census. Compensate only a returned identity absent from every original target (including workers), reverify native ownership before close, require close acknowledgement and exact absence among all targets. Only then return a confirmed failure through the existing confirmedError; failed ownership/identity/protocol/absence evidence remains unconfirmed. External popup pages are never cleanup targets. Full final harness and full race PASS; CDP8.233s, CLI5.624s. Real Linux Browser native race10.362s PASS. The original Windows job also passed unchanged on rerun attempt2, supporting the narrow probe-latency diagnosis; candidate Windows CI remains required.
 
 - 2026-09-09, implementation coordinator: accept comments3963647055 and3963647059.
   Retain the existing CDP lifecycle ownership boundary and hidden-heading checks.
