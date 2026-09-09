@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/QUALITY.md
-source_sha256: 61cb7850b905459226011b3f6f1bd1f0ea8fe6697c03ac8dfe42e135ab27b518
+source_sha256: e2736d1a4d2f6330d753b5fde31e592b8ea592d7bccbd94677a19141bbed8ce7
 ---
 
 # 品質と検証
@@ -207,3 +207,10 @@ Compose fixture には、動作する Docker Compose と Podman/podman-compose �
 登録済みの証拠を保持して、lease 単位で cleanup します。通常の単体 test はこれらの外部 runtime を起動しません。
 この実行方法の記載は、全 OS で remote の native 受け入れが成功したという主張ではありません。
 検証した範囲と結果は active Plan を参照してください。
+
+Windowsの実行パステストでは240 UTF-16単位の境界、補助文字、解決済みパス、派生する
+worktree/runtimeディレクトリと、予約・展開・出力作成前の拒否を検査します。
+Windows以外の深いsource lifecycleは成功テストを維持します。直接interopのテストは
+絶対・相対・PATH・symlink経由のPEを拒否し、nativeの.exe名は維持します。
+WSL stateテストではkernel/filesystem/mountの観測を注入し、独自mount、alias、未作成homeを検査します。
+実WSL2のmount/interop実行に代わる証拠ではなく、その環境は未検証です。

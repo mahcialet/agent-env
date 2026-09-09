@@ -258,6 +258,9 @@ func (s *Service) Create(ctx context.Context, o PlanOptions, options CreateOptio
 	if err = validateAndroidInputPaths(lease); err != nil {
 		return domain.Lease{}, err
 	}
+	if err = validateCreateExecutionDirectories(lease, plan.Manifest, paths.ValidateExecutionDirectory); err != nil {
+		return lease, err
+	}
 	if options.BeforeReserve != nil {
 		if err = options.BeforeReserve(ctx); err != nil {
 			return lease, err

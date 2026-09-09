@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/exec-plans/active/multi-host-control-plane.md
-source_sha256: 6336ebabcb10c529dc58fc5b19d9f36cf11c157e156ee286dd2a9ad69969f728
+source_sha256: d789c888ad6d1683ea6f47f6907809692169996d2aa1408ae570909a3bd11555
 ---
 
 # Single-authority multi-host control planeを追加する
@@ -433,6 +433,9 @@ client env secretを自動forwardしない。
 
 ## 進捗
 
+- [x] 2026-09-09: ユーザーが合意したWindows実行パスの範囲とWSLのstate・直接実行ファイルの境界を実装し、ローカル全harnessが成功した。UTF-16境界、派生パス、予約・出力を作らない拒否、改名PE、解決後のWSL mountの回帰を追加した。実WSL2でのmount/interop検証環境はなく、実行したとは扱わない。
+- [ ] 合意したWindowsの対応範囲をnative CIで検証し、最終受け入れを反映してからarchiveする。
+
 - [x] 2026-09-09: product/design文書とauthority ADR0006を両言語で追加。
 - [x] 2026-09-09: worker host-instance IDとremote-operation journal、commit済みsource bundleとdigest検証を実装。
 - [x] 2026-09-09: global lease IDと管理metadataをlocal Createに接続し、ローカル変更とGCから保護。
@@ -481,6 +484,8 @@ client env secretを自動forwardしない。
 - [ ] evidence/retrospective/completed
 
 ## 想定外の発見
+
+- 2026-09-09: WSLの境界は従来、文書だけの規則だった。Linuxのprocess所有権だけではinterop先のWindows子孫が消えたことを証明できないが、実際の孤児processやfilesystem破損を再現したわけではない。直接実行ファイルの形式による拒否と、WSL state filesystemの事前検証を追加した。unit fixtureでWSL検出・mount選択・aliasを検査し、実WSL実行の証拠とは扱わない。通常の実行ファイル不在のエラー分類を維持し、native Linux実行ファイルを.exeという名前だけで拒否しない。
 
 - 2026-09-09: `452bf4d`のWindows native診断（Verify 34318026189、Go 1.26 job 102358285418）で、333文字のcwdが通常パスでも拡張prefixでもCreateProcessに拒否されることを確認した。Go helper、`git --version`、Git configの全probeが子processの実行前に失敗する。Git source cloneだけの問題ではなく、runtimeにも起動可能なcwdが必要である。一時junctionだけでは、削除後もGit worktree metadataにaliasが残り得るため十分ではない。永続的な実行用aliasには、source/runtimeのパス統合、所有権・target検証、再起動時の復元、cleanup方針が必要であり、PORTABILITYの「symbolic linkを必須にしない」という境界との調整も要る。別案として、短いWindows worker homeを要件として合意し、作用開始前に検証する方法がある。どちらの対応範囲の変更も実装せず、承認済みとも扱わない。300文字超で成功する既存の回帰テストは変更せず失敗を残し、ユーザーの判断を待つ。
 
@@ -532,7 +537,7 @@ client env secretを自動forwardしない。
 
 ## 成果と振り返り
 
-実装とローカルの受け入れ検証は完了した。最終native受け入れは下記のWindows実行ディレクトリの対応範囲の判断待ちであり、本Planはactiveのままとする。
+ユーザーはWindows/WSLの安全な互換性範囲に合意した。その範囲の実装とローカル検証は完了し、native検証が残っているため本Planをactiveに保つ。
 
 永続的なcontroller管理主体、相互認証するclient/workerの役割、host identity、
 capability/capacityによる配置と、lease全体を一つのworkerへ置く仕組みを実装した。
@@ -677,7 +682,7 @@ PR #11のescaped-defect guardrailをprotocol/state boundary testへ適用。
 | M34 | CAS content-addressed/atomic/digest/concurrent safe | CASの同時重複writer、digest/size、原子的directory公開、破損負例が成功。 |
 | M35 | caller pathをCAS authorityにしない | digestだけをCAS pathの入力とし、登録artifactの所有/path/symlink検査が成功。 |
 | M36 | client secret implicit forwarding無し | 実TLSでclient専用token不在とworker env解決を確認。helper負例も成功（Linux18.394s）。 |
-| M37 | Windows native protocol integration | 拡張native role fixtureは34317327009でWindowsも成功。全harnessは452bf4dのnative診断で確認した300文字超のCreateProcess cwd制限により未完了で、対応範囲の判断待ち。 |
+| M37 | Windows native protocol integration | native Windows role fixtureはe46f807で成功。ユーザーが合意した240 UTF-16単位の範囲について作用前拒否の回帰を追加し、最終native再検証を待つ。 |
 | M38 | macOS native protocol integration | native multi-host CI 34314956327と拡張fixtureの34315479224がmacOSで成功。 |
 | M39 | Linux native protocol integration | native Linux CI、拡張local TLS fixture、実remote runtime統合が成功。 |
 | M40 | real socket two-worker scheduling/outage/recovery/cleanup | 実TLSのcontroller/client/2-worker fixtureで配置、outage、再起動、復旧、cleanupを検証。 |
@@ -685,8 +690,8 @@ PR #11のescaped-defect guardrailをprotocol/state boundary testへ適用。
 | M42 | existing local runtime integration非回帰 | 実local Docker、Podman共存、Android Emulator、Flutter/Android UI、Browser統合が成功。 |
 | M43 | HA/live migration/split lease/tunnelをimplementedと宣伝しない | product/design/READMEはHA、移動、split-host lease、tunnel、remote cancel-activeを将来課題と明記。 |
 | M44 | 英日docs authority/trust/failure/recovery | product/design/ADR、architecture、README、運用文書を日英で更新しdocs/translation検査が成功。 |
-| M45 | final repoctl/docs/race/native/integration/release | ローカルharness/race、実Docker/Podman/Android/Flutter/Browser baseline、3 OSのnative role/Browser fixtureは成功。最終Windows全harnessは実行ディレクトリの対応範囲の判断待ち。 |
-| M46 | 英日ExecPlan evidence/retrospective後archive | 実装の証拠と振り返りは反映済み。Windowsの対応範囲の判断と最終harness成功が必要であり、Planをactiveに保つ。 |
+| M45 | final repoctl/docs/race/native/integration/release | ローカルharness/raceと対象のpath/interopテストは成功。以前の実runtimeと6ターゲットrelease受け入れも成功し、合意した範囲の最終native検証を待つ。 |
+| M46 | 英日ExecPlan evidence/retrospective後archive | 対応範囲の判断は解決し、証拠と振り返りを更新済み。最終native harness成功後にarchiveする。 |
 
 ## 冪等性と復旧
 

@@ -67,6 +67,23 @@ host name. Reconnect and worker restart reconcile the same local resources;
 controller restart reloads its original authority and journal. Drain blocks new
 placements, and removal refuses hosts with unreleased assignments.
 
+## Native execution and WSL boundaries
+
+A worker owns processes in its native OS only. Windows computed execution
+locations use the 240-UTF-16-unit compatibility envelope before effects. On WSL,
+state homes on DrvFS or 9p mounts are rejected before directory/database creation;
+filesystem/mount checks include canonical aliases and custom locations. This is
+a conservative support boundary, not a claim of observed corruption. The guard
+applies to CLI state roots, not arbitrary internal database openers or read-only
+source locations.
+
+Direct PE executables are refused on non-Windows hosts, and Windows refuses the
+`wsl.exe` entry point. Checks precede process start and detached output creation;
+Git bundle commands use the same check. These guards prevent accidental direct
+interop, not transitive execution by trusted scripts. Run separate native workers
+for Windows and WSL; never share their state roots. See PORTABILITY for evidence
+limits and path requirements.
+
 ## Journal and delivery ordering
 
 For create, the worker records `effect_started` immediately before the app reserves

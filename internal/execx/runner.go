@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/mahcialet/agent-env/internal/paths"
 	"io"
 	"os"
 	"os/exec"
@@ -62,7 +63,14 @@ func (OSRunner) Run(ctx context.Context, spec Command) (Result, error) {
 		ctx, cancel = context.WithTimeout(ctx, spec.Timeout)
 		defer cancel()
 	}
-	cmd, err := platformCommand(ctx, spec)
+	var cmd *exec.Cmd
+	err := paths.ValidateExecutionDirectory(spec.Dir)
+	if err == nil {
+		cmd, err = platformCommand(ctx, spec)
+	}
+	if err == nil {
+		err = ValidateNativeExecutable(cmd.Path, spec.Dir)
+	}
 	if err == nil {
 		cmd.Dir = spec.Dir
 		base := cmd.Environ()

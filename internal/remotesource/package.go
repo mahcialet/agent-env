@@ -13,7 +13,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"sort"
 	"strings"
 
@@ -23,6 +22,7 @@ import (
 	"github.com/mahcialet/agent-env/internal/domain"
 	"github.com/mahcialet/agent-env/internal/evidence"
 	"github.com/mahcialet/agent-env/internal/execx"
+	"github.com/mahcialet/agent-env/internal/paths"
 	"github.com/mahcialet/agent-env/internal/source/gitcli"
 	"github.com/mahcialet/agent-env/internal/stack"
 )
@@ -202,19 +202,15 @@ func equalStrings(a, b []string) bool {
 
 // git runs only local operations, disabling ambient Git transport/config overrides.
 func git(ctx context.Context, dir string, args ...string) (string, error) {
-	base := []string{"-c", "protocol.allow=never", "-c", "protocol.file.allow=always", "-c", "core.hooksPath=" + os.DevNull, "-c", "core.longpaths=true"}
-	if runtime.GOOS == "windows" && dir != "" {
-		// CreateProcess rejects long explicit working directories before Git
-		// starts. Let Git's longpaths-aware chdir select the repository instead.
-		absoluteDir, err := filepath.Abs(dir)
-		if err != nil {
-			return "", err
-		}
-		base = append(base, "-C", absoluteDir)
-		dir = ""
+	if err := paths.ValidateExecutionDirectory(dir); err != nil {
+		return "", err
 	}
+	base := []string{"-c", "protocol.allow=never", "-c", "protocol.file.allow=always", "-c", "core.hooksPath=" + os.DevNull, "-c", "core.longpaths=true"}
 	cmd := exec.CommandContext(ctx, "git", append(base, args...)...)
 	cmd.Dir = dir
+	if err := execx.ValidateNativeExecutable(cmd.Path, dir); err != nil {
+		return "", err
+	}
 	for _, e := range os.Environ() {
 		k, _, _ := strings.Cut(e, "=")
 		if !strings.HasPrefix(strings.ToUpper(k), "GIT_") {
@@ -308,6 +304,9 @@ func supported(ctx context.Context, repo, commit string) error {
 }
 func Build(ctx context.Context, o app.PlanOptions, cas *blobstore.Store) (Package, error) {
 	var p Package
+	if err := paths.ValidateExecutionDirectory(o.Repository); err != nil {
+		return p, err
+	}
 	plan, err := app.BuildPlan(ctx, o, &Provider{git: gitcli.Client{Runner: localRunner{}}})
 	if err != nil {
 		return p, err
@@ -325,11 +324,17 @@ func Build(ctx context.Context, o app.PlanOptions, cas *blobstore.Store) (Packag
 		s.Repository = "sources/" + alias
 		m.Sources[alias] = s
 	}
+	if err = paths.ValidateExecutionDirectory(filepath.Join(os.TempDir(), "agent-env-bundles-4294967295")); err != nil {
+		return p, err
+	}
 	temp, err := os.MkdirTemp("", "agent-env-bundles-")
 	if err != nil {
 		return p, err
 	}
 	defer os.RemoveAll(temp)
+	if err = paths.ValidateExecutionDirectory(temp); err != nil {
+		return p, err
+	}
 	for i, s := range plan.Sources {
 		if err = supported(ctx, s.RepositoryPath, s.Commit); err != nil {
 			return p, err
@@ -409,6 +414,22 @@ func Materialize(ctx context.Context, p Package, home string, cas *blobstore.Sto
 	if err != nil {
 		return options, nil, err
 	}
+	// Validate all future Git working directories before creating any source
+	// state. MkdirTemp currently uses a uint32 suffix; the final digest directory
+	// is longer, but both layouts are checked explicitly and the actual temp
+	// directory is checked again below.
+	root := filepath.Join(home, "remote-sources")
+	for _, layout := range []string{filepath.Join(root, ".incoming-4294967295"), filepath.Join(root, p.PlanDigest)} {
+		candidates := []string{layout, filepath.Join(layout, "control")}
+		for _, source := range p.Sources {
+			candidates = append(candidates, filepath.Join(layout, "sources", source.Alias))
+		}
+		for _, candidate := range candidates {
+			if err = paths.ValidateExecutionDirectory(candidate); err != nil {
+				return options, nil, err
+			}
+		}
+	}
 	if err = privateDirectory(home); err != nil {
 		return options, nil, err
 	}
@@ -419,7 +440,7 @@ func Materialize(ctx context.Context, p Package, home string, cas *blobstore.Sto
 	if err != nil {
 		return options, nil, err
 	}
-	root := filepath.Join(home, "remote-sources")
+	root = filepath.Join(home, "remote-sources")
 	if err = privateDirectory(root); err != nil {
 		return options, nil, err
 	}
@@ -428,6 +449,9 @@ func Materialize(ctx context.Context, p Package, home string, cas *blobstore.Sto
 		return options, nil, err
 	}
 	defer os.RemoveAll(temp)
+	if err = paths.ValidateExecutionDirectory(temp); err != nil {
+		return options, nil, err
+	}
 	control := filepath.Join(temp, "control")
 	if err = cloneBundle(ctx, p.ManifestBlobDigest, p.ManifestCommit, temp, "control", control, cas); err != nil {
 		return options, nil, err
@@ -538,6 +562,9 @@ func (p *Provider) native(ctx context.Context, s domain.Source) (gitcli.Worktree
 	return gitcli.Worktree{Resolved: r, Path: s.WorktreePath}, nil
 }
 func (p *Provider) Materialize(ctx context.Context, s domain.Source) error {
+	if err := paths.ValidateExecutionDirectory(s.WorktreePath); err != nil {
+		return err
+	}
 	w, err := p.native(ctx, s)
 	if err != nil {
 		return err
@@ -577,6 +604,9 @@ func makeBundle(ctx context.Context, source, commit, temp, name string, cas *blo
 		return "", err
 	}
 	repo := filepath.Join(temp, name+"-git")
+	if err := paths.ValidateExecutionDirectory(repo); err != nil {
+		return "", err
+	}
 	if _, err := git(ctx, "", "init", "--bare", repo); err != nil {
 		return "", err
 	}
@@ -599,6 +629,11 @@ func makeBundle(ctx context.Context, source, commit, temp, name string, cas *blo
 	return b.Digest, err
 }
 func cloneBundle(ctx context.Context, digest, commit, temp, name, repo string, cas *blobstore.Store) error {
+	for _, directory := range []string{temp, repo} {
+		if err := paths.ValidateExecutionDirectory(directory); err != nil {
+			return err
+		}
+	}
 	f, _, err := cas.Open(ctx, digest, blobstore.SourceLimit)
 	if err != nil {
 		return err
@@ -619,8 +654,8 @@ func cloneBundle(ctx context.Context, digest, commit, temp, name, repo string, c
 	}
 	// Git for Windows forwards the clone destination to index-pack as
 	// GIT_DIR, whose parser still has a legacy path limit even with longpaths
-	// enabled. Use paths relative to the already-private extraction directory;
-	// the underlying repository may remain beyond that limit on disk.
+	// enabled. Use paths relative to the already-private extraction directory,
+	// in addition to validating the supported native execution-directory scope.
 	relativeRepo, err := filepath.Rel(temp, repo)
 	if err != nil || !safeRelative(filepath.ToSlash(relativeRepo)) {
 		return errors.New("bundle repository is outside extraction directory")

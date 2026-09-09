@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/design-docs/multi-host-control-plane.md
-source_sha256: d394bf42c05e632f7c6ebb349d916f63b05770b385b2fc1f6aa91851e07eab26
+source_sha256: 902491f22aa21bd9b0846b2540fe6caddaa25cfd5627b46a16adc0d805e8968b
 ---
 
 # 一つの管理主体による複数 host の調整
@@ -61,6 +61,20 @@ dispatch の曖昧さ、upload 失敗、worker からの無応答では許可し
 別 instance は割当中の host 名を引き継げません。再接続と worker 再起動では同じ local resource を照合し、
 controller 再起動では元の管理主体と journal を再読込します。drain は新規配置を止め、未解放 assignment のある
 host の削除は拒否します。
+
+## Native実行とWSLの境界
+
+workerは自身と同じOSのprocessだけを管理します。Windowsでは、算出した実行先を作用開始前に
+240 UTF-16単位の互換性範囲で検査します。WSLでは、DrvFSまたは9p mount上のstate homeを
+ディレクトリ・DB作成前に拒否します。filesystem/mountの検査は、解決したaliasや独自mount先も
+扱います。これは保守的な対応範囲であり、破損を観測したという主張ではありません。
+検査対象はCLIのstate rootであり、内部の任意のDB open関数や読み取り専用source配置ではありません。
+
+Windows以外ではPE実行ファイルの直接起動を拒否し、Windowsでは`wsl.exe`の起動を拒否します。
+process起動とdetached出力作成の前に検査し、Git bundleコマンドにも同じ検査を適用します。
+意図しない直接interopを防ぐものであり、信頼するscriptの間接実行を制限するものではありません。
+WindowsとWSLには個別のnative workerを置き、state rootを共有しません。
+検証の限界とパスの要件はPORTABILITYを参照してください。
 
 ## Journal と配送順序
 

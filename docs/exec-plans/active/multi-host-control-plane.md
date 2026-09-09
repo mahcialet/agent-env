@@ -599,6 +599,9 @@ A future secret-provider design may add explicit secret delivery.
 
 ## Progress
 
+- [x] 2026-09-09: Implement the user-authorized Windows execution-path envelope and WSL state/direct-executable boundaries; local full harness passed. Add UTF-16 boundary, derived-path, no-reservation/output, renamed-PE and canonical WSL mount regressions. Actual WSL2 mount/interop validation is unavailable and is not claimed.
+- [ ] Validate the agreed Windows support boundary in native CI and reconcile final acceptance before archival.
+
 - [x] 2026-09-09: Confirmed base `dc63308e53f68f8be99f7cbf59cafc78f7296b71`; created `feat/multi-host-control-plane`.
 - [x] 2026-09-09: Run baseline repoctl/docs/race/current integrations.
 - [x] 2026-09-09: Write bilingual product/design docs and authority ADR.
@@ -656,6 +659,8 @@ A future secret-provider design may add explicit secret delivery.
 
 ## Surprises & Discoveries
 
+- 2026-09-09: The WSL boundary was previously documentation-only. Linux process ownership cannot establish Windows descendant absence through interop; no actual orphan or filesystem corruption was reproduced. Added direct executable-format refusal and WSL state-filesystem preflight. Unit fixtures exercise WSL detection/mount selection/aliases without claiming a real WSL run. The helper preserves normal missing-executable error classification and does not reject native Linux executables merely named .exe.
+
 - 2026-09-09: Native Windows diagnostics at `452bf4d` (Verify 34318026189, Windows Go 1.26 job 102358285418) show CreateProcess rejects a 333-character cwd for both ordinary and extended-prefix paths. The Go helper, `git --version`, and Git config probes all fail before child execution. This is broader than Git source cloning: runtime processes also need a usable cwd. A transient junction is not sufficient because Git worktree metadata can retain the alias after it is removed. A persistent execution alias would require source/runtime path integration, ownership/target validation, restart reconstruction and cleanup policy, and must reconcile PORTABILITY's “No symbolic links are required” boundary. Alternatively, an explicitly accepted shorter Windows worker-home requirement could be enforced before effects. Neither support-boundary change is implemented or presumed approved. The >300-character success regression remains unchanged and failing; a user decision is pending.
 
 - 2026-09-09: Verify 34317326990 still failed the Windows deep source lifecycle: Git rejects the long `-C` directory. Upstream Git for Windows `are_long_paths_enabled` returns false before repository configuration initialization, so command-line `core.longpaths` cannot fix the early chdir. Native multi-host 34317327009 and Browser 34317326997 both passed all three OSes. Investigating Windows extended-prefix process cwd; no reliance on optional 8.3 names or reduced-depth tests is introduced.
@@ -698,6 +703,8 @@ Record at minimum:
 Preserve failed approaches that affect authority/recovery design.
 
 ## Decision Log
+
+- 2026-09-09, user-authorized support boundary: After reviewing Windows long-path behavior, the user requested a safe compatibility scope including WSL2. Windows resolved execution directories are limited to 240 UTF-16 code units, with computed source/worktree/runtime/test/probe paths checked before effects. This replaces the former unconditional deep-Windows-path success expectation with explicit preflight refusal and absence-of-effects evidence; Linux/macOS keep the successful deep-path regression. No permanent aliases, 8.3 prerequisite or global OS configuration change is introduced. WSL state on DrvFS/9p is refused before creation; direct PE execution on non-Windows and direct wsl.exe execution on Windows are refused. Trusted wrappers are not sandboxed. This decision resolves the preceding policy question; native validation of the agreed behavior remains required.
 
 - 2026-09-09, pending user decision: Do not replace the deep-path success regression with a rejection test or introduce persistent Windows execution aliases without agreeing the support boundary. Native diagnostics establish an external CreateProcess cwd limitation. Keep this plan active and retain the failed validation evidence; implementation of either proposed policy is paused pending that decision.
 
@@ -749,7 +756,7 @@ Preserve failed approaches that affect authority/recovery design.
 
 ## Outcomes & Retrospective
 
-Implementation and local acceptance are complete. Final native acceptance is blocked on the Windows execution-directory support decision below; this plan remains active.
+The user has approved a safe Windows/WSL compatibility scope. Implementation and local validation of that scope are complete; native validation remains pending, so this plan stays active.
 
 Delivered one persistent controller authority, mutually authenticated client/worker
 roles, durable host identity, capability/capacity scheduling and one-worker lease
@@ -957,7 +964,7 @@ Use the supported Go toolchain on PATH. Run `go run ./tools/repoctl check`, `go 
 | M34 | CAS is atomic, content-addressed, digest-verified and duplicate-upload safe. | CAS concurrent duplicate writers, digest/size validation, atomic directory publication and corruption negatives passed. |
 | M35 | Caller paths never become CAS filesystem authority. | CAS digest-only path validation and registered-artifact ownership/path/symlink tests passed. |
 | M36 | Client secrets are not implicitly forwarded; remote env resolves on worker. | Native TLS fixture verifies client-only token absence and worker env resolution; negative helper controls passed (18.394s Linux). |
-| M37 | Native controller/worker/client integration passes on Windows. | Expanded native role fixture passed on Windows in 34317327009. Full harness remains blocked by the >300-character CreateProcess cwd limitation confirmed by 452bf4d native diagnostics; support-boundary decision pending. |
+| M37 | Native controller/worker/client integration passes on Windows. | Native Windows role fixture passed at e46f807. The user-approved 240-UTF-16-unit path envelope now has pre-effect refusal regressions; final native revalidation is pending. |
 | M38 | Native controller/worker/client integration passes on macOS. | Expanded native role fixture passed on macOS in 34316121492. |
 | M39 | Native controller/worker/client integration passes on Linux. | Native multi-host Linux CI passed; extended local TLS fixture and real remote runtime tests passed. |
 | M40 | Real-socket two-worker integration proves scheduling/outage/reconnect/recovery/cleanup. | Native real TLS controller/client/two-worker fixture covers placement, outage, restart, recovery and cleanup. |
@@ -965,8 +972,8 @@ Use the supported Go toolchain on PATH. Run `go run ./tools/repoctl check`, `go 
 | M42 | Existing Docker/Podman/Android/process/Browser local integrations remain non-regressed. | Real local Docker, Podman coexistence, Android Emulator, Flutter/Android UI and Browser integrations passed. |
 | M43 | HA/live migration/split-host leases/tunnels are not advertised as implemented. | Product/design/README explicitly defer HA, migration, split-host leases, tunnels and remote cancel-active. |
 | M44 | Bilingual durable docs describe authority/trust/failure/recovery boundaries. | Paired product/design/ADR, architecture, README and operational docs passed docs/translation checks. |
-| M45 | Final repoctl/docs/translation/race/native/integration/release verification passes. | Local harness/race, real six-target release candidate, Docker/Podman/Android/Flutter/Browser baselines and all3 native role/Browser fixtures pass. Final Windows full harness is blocked on the execution-directory support decision. |
-| M46 | Both ExecPlans contain direct evidence and retrospective before archival. | Implementation evidence and retrospective reconciled. Windows support-boundary decision and successful final harness are still required; plan remains active. |
+| M45 | Final repoctl/docs/translation/race/native/integration/release verification passes. | Local harness/race and focused path/interop tests pass. Prior real runtime and six-target release acceptance passed; final native validation of the agreed scope is pending. |
+| M46 | Both ExecPlans contain direct evidence and retrospective before archival. | Support-boundary decision is resolved and evidence/retrospective updated. Archive after successful final native harness. |
 
 ## Idempotence and Recovery
 

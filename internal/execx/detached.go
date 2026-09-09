@@ -3,6 +3,7 @@ package execx
 import (
 	"context"
 	"errors"
+	"github.com/mahcialet/agent-env/internal/paths"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -37,6 +38,9 @@ func (NativeDetached) Start(ctx context.Context, spec Command, stdoutPath, stder
 	if err := ctx.Err(); err != nil {
 		return ProcessIdentity{}, errors.Join(ErrProcessNotStarted, err)
 	}
+	if err := paths.ValidateExecutionDirectory(spec.Dir); err != nil {
+		return ProcessIdentity{}, errors.Join(ErrProcessNotStarted, err)
+	}
 	if spec.Timeout != 0 || spec.Stdout != nil || spec.Stderr != nil {
 		return ProcessIdentity{}, errors.Join(ErrProcessNotStarted, errors.New("detached processes require file output and no command timeout"))
 	}
@@ -45,6 +49,11 @@ func (NativeDetached) Start(ctx context.Context, spec Command, stdoutPath, stder
 		if ext == ".bat" || ext == ".cmd" {
 			return ProcessIdentity{}, errors.Join(ErrProcessNotStarted, errors.New("detached processes require a native executable"))
 		}
+	}
+	cmd := exec.Command(spec.Name, spec.Args...)
+	cmd.Dir = spec.Dir
+	if err := ValidateNativeExecutable(cmd.Path, spec.Dir); err != nil {
+		return ProcessIdentity{}, errors.Join(ErrProcessNotStarted, err)
 	}
 	out, err := os.OpenFile(stdoutPath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0600)
 	if err != nil {
@@ -56,8 +65,6 @@ func (NativeDetached) Start(ctx context.Context, spec Command, stdoutPath, stder
 		return ProcessIdentity{}, errors.Join(ErrProcessNotStarted, err)
 	}
 	defer errout.Close()
-	cmd := exec.Command(spec.Name, spec.Args...)
-	cmd.Dir = spec.Dir
 	base := cmd.Environ()
 	for _, key := range spec.UnsetEnv {
 		filtered := base[:0]

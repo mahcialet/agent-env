@@ -84,6 +84,9 @@ func (s *Service) Test(ctx context.Context, leaseID, name string) (run domain.Co
 	if err != nil {
 		return run, err
 	}
+	if err = paths.ValidateExecutionDirectory(dir); err != nil {
+		return run, err
+	}
 	info, err := os.Stat(dir)
 	if err != nil {
 		return run, err

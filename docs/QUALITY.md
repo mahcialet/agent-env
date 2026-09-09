@@ -225,3 +225,12 @@ prerequisites fails. They launch real controller/worker/runtime processes, retai
 registered evidence, and perform lease-scoped cleanup; ordinary unit tests do not
 start these external runtimes. These commands are not a claim of remote native
 acceptance on every OS; consult the active plan for the tested scope and results.
+
+The Windows execution-path tests cover the 240 UTF-16 boundary, supplementary
+characters, canonical paths, derived worktree/runtime directories and refusal
+before reservation/materialization/output creation. Non-Windows deep source
+lifecycle remains a success test. Direct-interop tests reject PE binaries through
+absolute, relative, PATH and symlink lookup while preserving native .exe names.
+WSL state tests inject kernel/filesystem/mount observations and check custom
+mounts, aliases and missing future homes. These tests do not replace a real WSL2
+mount/interop run; that environment has not been exercised.

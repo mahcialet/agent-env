@@ -22,6 +22,18 @@ The module targets Go 1.26.x and 1.27.x, native Windows, macOS, and Linux, with 
 
 Manifest paths within a source use forward slashes. Native absolute local repository paths are permitted on their matching platform. Windows drive paths on non-Windows hosts and mixed path styles are rejected where detectable. No symbolic links are required for the state layout, and SQLite operation locks replace application-level POSIX lock files.
 
+## Windows execution path scope
+
+Windows execution directories must resolve to at most **240 UTF-16 code units**.
+This is the supported compatibility envelope, with headroom below `MAX_PATH`,
+not the maximum length of all Windows file APIs. Validation covers computed
+source, worktree, runtime, test and probe directories, not just the home string.
+Unsupported paths fail before reservation/materialization or process startup;
+use a shorter home or repository location. Extended prefixes, optional 8.3 names
+and execution-path junctions are not required. Linux/macOS retain native path
+behavior. OS long-path settings and Git `core.longpaths` alone do not guarantee
+that a child can start from a long working directory.
+
 ## Native tools and cancellation
 
 Commands use executable-plus-argv, explicit working directories, deadlines, and streamed output. Git inspection uses machine-readable output; Compose engine inspection uses structured output and recorded provider/engine identity. Newline handling tolerates CRLF. The Go repository harness invokes standard tools directly and requires no shell scripting language.
@@ -34,7 +46,22 @@ Windows `.cmd` and `.bat` execution is isolated in the Windows adapter. Wrapper 
 
 Windows and macOS normally use Docker Desktop. Linux may use Docker Engine or rootless Docker where Compose works. The chosen Docker context is captured before allocation and used during observation, logs, and cleanup, even if the user's active context later changes. A reachable context alone does not guarantee that its daemon can access local worktree bind paths; remote-daemon path availability is a host prerequisite.
 
-WSL is treated as Linux. Keep repositories, Git, Docker connectivity, and paths consistently on that side of the boundary. Mixed Windows/WSL leases and Windows-host Android Emulator control from WSL are not supported workflows.
+WSL is a separate Linux host. Use native Linux tools and a distinct Linux-side
+state home; never share a home with Windows. WSL state on DrvFS/9p mounts,
+including custom mounts and aliases, is rejected before creation. This is a
+conservative durability support rule, not a claim of observed corruption.
+Read-only source locations are not subject to the state-home rule.
+
+Direct Windows PE tools are rejected on Linux/macOS, including renamed tools and
+symlink aliases. Windows rejects direct `wsl.exe` invocation. A Linux file named
+`.exe` is not rejected merely for its suffix. Docker Desktop integration remains
+possible through a native Linux CLI. Trusted scripts must also remain in one OS:
+the direct-executable guard is not a sandbox or transitive wrapper audit. There
+is no automatic Windows/WSL path conversion, mixed-OS lease ownership, or
+Windows-host Android Emulator control from WSL.
+
+Actual WSL2 mount/interop acceptance has not been run. Injected detection tests
+verify refusal logic without claiming real WSL execution evidence.
 
 ## Podman prerequisites and evidence limits
 
