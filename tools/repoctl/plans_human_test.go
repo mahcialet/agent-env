@@ -2,7 +2,9 @@ package main
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/json"
+	"fmt"
 	"net"
 	"os"
 	"path/filepath"
@@ -26,8 +28,18 @@ func humanFixture(t *testing.T) (string, string) {
 	if err := os.WriteFile(path, raw, 0600); err != nil {
 		t.Fatal(err)
 	}
+	planTestGit(t, root, "init")
+	planTestGit(t, root, "config", "user.name", "Test")
+	planTestGit(t, root, "config", "user.email", "test@example.invalid")
+	commitHumanContract(t, root)
 	return root, path
 }
+func commitHumanContract(t *testing.T, root string) {
+	t.Helper()
+	planTestGit(t, root, "add", "docs/exec-plans/validation")
+	planTestGit(t, root, "commit", "-m", "scenario contract")
+}
+
 func TestHumanNoKickDoesNotReadOrWrite(t *testing.T) {
 	root := t.TempDir()
 	dir := filepath.Join(root, "bundle")
@@ -49,6 +61,7 @@ func TestHumanPreflightBlockedEvidence(t *testing.T) {
 	c.Endpoints = []string{"worker"}
 	raw, _ := json.Marshal(c)
 	os.WriteFile(path, raw, 0600)
+	commitHumanContract(t, root)
 	cfg := filepath.Join(root, "config.json")
 	os.WriteFile(cfg, []byte(`{"endpoints":{}}`), 0600)
 	dir := filepath.Join(root, "bundle")
@@ -79,6 +92,7 @@ func TestHumanReadyIsNotScenarioPass(t *testing.T) {
 	c.Endpoints = []string{"worker"}
 	raw, _ := json.Marshal(c)
 	os.WriteFile(path, raw, 0600)
+	commitHumanContract(t, root)
 	cfg := filepath.Join(root, "config.json")
 	raw, _ = json.Marshal(humanConfig{Endpoints: map[string]string{"worker": listener.Addr().String()}})
 	os.WriteFile(cfg, raw, 0600)
@@ -265,6 +279,7 @@ func TestHumanDuplicateInputHasNoEffects(t *testing.T) {
 			if err := os.WriteFile(contractPath, raw, 0600); err != nil {
 				t.Fatal(err)
 			}
+			commitHumanContract(t, root)
 			configPath := filepath.Join(root, "config.json")
 			address, _ := json.Marshal(listener.Addr().String())
 			config := `{"endpoints":{"worker":` + string(address) + `}}`
@@ -305,5 +320,182 @@ func TestHumanDuplicateInputHasNoEffects(t *testing.T) {
 				t.Fatalf("unexpected accept error: %v", err)
 			}
 		})
+	}
+}
+
+func TestHumanContractRequiresCommittedIdentity(t *testing.T) {
+	for _, kind := range []string{"dirty", "staged", "untracked", "committed"} {
+		t.Run(kind, func(t *testing.T) {
+			root, path := humanFixture(t)
+			original, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			changed := bytes.Replace(original, []byte(`"expected":"isolated"`), []byte(`"expected":"changed"`), 1)
+			if kind != "committed" {
+				if err := os.WriteFile(path, changed, 0600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if kind == "staged" {
+				planTestGit(t, root, "add", path)
+			}
+			if kind == "untracked" {
+				planTestGit(t, root, "rm", "--cached", path)
+				planTestGit(t, root, "commit", "-m", "remove contract")
+			}
+			observation := filepath.Join(root, "observation.json")
+			if err := os.WriteFile(observation, []byte(`{"observation":"checked","evidence_refs":["receipt"]}`), 0600); err != nil {
+				t.Fatal(err)
+			}
+			dir := filepath.Join(root, "bundle")
+			var out bytes.Buffer
+			err = executePlanHuman(root, []string{"record", "--plan", "EP-TEST-001", "--kick", "--scenario", "EP-TEST-001-01", "--result", "PASS", "--evidence", observation, "--evidence-dir", dir}, &out)
+			if kind != "committed" {
+				if err == nil {
+					t.Fatal("mutable contract accepted")
+				}
+				if out.Len() != 0 {
+					t.Fatal("mutable contract emitted evidence")
+				}
+				if _, err := os.Stat(dir); !os.IsNotExist(err) {
+					t.Fatal("mutable contract created bundle")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			var e humanEvidence
+			if err := readHumanJSON(filepath.Join(dir, "evidence.json"), &e); err != nil {
+				t.Fatal(err)
+			}
+			revision := planTestGit(t, root, "rev-parse", "HEAD")
+			digest := fmt.Sprintf("%x", sha256.Sum256(original))
+			if e.ContractRevision != revision || e.ContractSHA256 != digest {
+				t.Fatalf("unbound evidence: %+v", e)
+			}
+			if err := os.WriteFile(path, changed, 0600); err != nil {
+				t.Fatal(err)
+			}
+			commitHumanContract(t, root)
+			archived, err := os.ReadFile(filepath.Join(dir, "evidence.md"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !strings.Contains(string(archived), revision) || !strings.Contains(string(archived), digest) {
+				t.Fatal("Markdown lost original contract identity")
+			}
+			committed, err := planGit(root, "show", e.ContractRevision+":docs/exec-plans/validation/EP-TEST-001.json")
+			if err != nil || committed != string(original) {
+				t.Fatalf("cannot recover original contract: %v", err)
+			}
+		})
+	}
+}
+
+func TestHumanInvalidEvidenceDestinationNeverProbes(t *testing.T) {
+	for _, kind := range []string{"existing", "missing-parent", "parent-file"} {
+		t.Run(kind, func(t *testing.T) {
+			root, path := humanFixture(t)
+			listener, err := net.ListenTCP("tcp", &net.TCPAddr{IP: net.ParseIP("127.0.0.1")})
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer listener.Close()
+			var c humanContract
+			if err := readHumanJSON(path, &c); err != nil {
+				t.Fatal(err)
+			}
+			c.Endpoints = []string{"worker"}
+			raw, _ := json.Marshal(c)
+			if err := os.WriteFile(path, raw, 0600); err != nil {
+				t.Fatal(err)
+			}
+			commitHumanContract(t, root)
+			cfg := filepath.Join(root, "config.json")
+			raw, _ = json.Marshal(humanConfig{Endpoints: map[string]string{"worker": listener.Addr().String()}})
+			if err := os.WriteFile(cfg, raw, 0600); err != nil {
+				t.Fatal(err)
+			}
+			dir := filepath.Join(root, "bundle")
+			if kind == "existing" {
+				if err := os.Mkdir(dir, 0700); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(filepath.Join(dir, "evidence.json"), []byte("retained"), 0600); err != nil {
+					t.Fatal(err)
+				}
+			} else {
+				parent := filepath.Join(root, "parent")
+				if kind == "parent-file" {
+					if err := os.WriteFile(parent, []byte("file"), 0600); err != nil {
+						t.Fatal(err)
+					}
+				}
+				dir = filepath.Join(parent, "bundle")
+			}
+			var out bytes.Buffer
+			err = executePlanHuman(root, []string{"preflight", "--plan", "EP-TEST-001", "--kick", "--config", cfg, "--evidence-dir", dir}, &out)
+			if err == nil || !strings.Contains(err.Error(), "evidence directory") {
+				t.Fatalf("destination not rejected: %v", err)
+			}
+			if out.Len() != 0 {
+				t.Fatal("invalid destination emitted evidence")
+			}
+			if kind == "existing" {
+				raw, err := os.ReadFile(filepath.Join(dir, "evidence.json"))
+				if err != nil || string(raw) != "retained" {
+					t.Fatal("previous evidence changed")
+				}
+			}
+			if err := listener.SetDeadline(time.Now().Add(20 * time.Millisecond)); err != nil {
+				t.Fatal(err)
+			}
+			conn, err := listener.Accept()
+			if err == nil {
+				conn.Close()
+				t.Fatal("invalid destination probed endpoint")
+			}
+			if timeout, ok := err.(net.Error); !ok || !timeout.Timeout() {
+				t.Fatalf("unexpected accept error: %v", err)
+			}
+		})
+	}
+}
+
+func TestHumanContractAcceptsCleanCRLFCheckout(t *testing.T) {
+	root, path := humanFixture(t)
+	var c humanContract
+	if err := readHumanJSON(path, &c); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := json.MarshalIndent(c, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw = append(raw, '\n')
+	if err := os.WriteFile(path, raw, 0600); err != nil {
+		t.Fatal(err)
+	}
+	commitHumanContract(t, root)
+	planTestGit(t, root, "config", "core.autocrlf", "true")
+	if err := os.Remove(path); err != nil {
+		t.Fatal(err)
+	}
+	planTestGit(t, root, "checkout", "--", path)
+	checkout, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Contains(checkout, []byte("\r\n")) {
+		t.Fatal("fixture did not produce CRLF checkout")
+	}
+	contract, err := loadHumanContract(root, "EP-TEST-001")
+	if err != nil {
+		t.Fatalf("clean converted checkout rejected: %v", err)
+	}
+	if contract.SHA256 != fmt.Sprintf("%x", sha256.Sum256(raw)) {
+		t.Fatal("digest did not use committed LF bytes")
 	}
 }

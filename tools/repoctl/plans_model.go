@@ -209,8 +209,8 @@ func parsePlanMetadata(data []byte, path string) (planMetadata, bool, error) {
 	if !planContains([]string{"automatic", "guarded", "manual"}, p.MergePolicy) {
 		return fail("invalid or missing merge_policy")
 	}
-	if strings.TrimSpace(p.BaseBranch) == "" || strings.HasPrefix(p.BaseBranch, "-") || strings.ContainsAny(p.BaseBranch, " \t\r\n") {
-		return fail("base_branch is required and must be a ref name")
+	if !validPlanBaseBranch(p.BaseBranch) {
+		return fail("base_branch is required and must be a Git branch name")
 	}
 	if p.Parent != "" && !planIDPattern.MatchString(p.Parent) {
 		return fail("invalid parent ID")

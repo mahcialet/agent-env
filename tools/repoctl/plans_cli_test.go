@@ -29,6 +29,7 @@ func TestPlanProvenanceRejectsWrongTrailerBranchAndPR(t *testing.T) {
 	p := planMetadata{PlanID: "EP-TEST-001", PlanType: "implementation", BaseBranch: "master"}
 	planTestGit(t, root, "switch", "-c", expectedPlanBranch(p))
 	planTestGit(t, root, "commit", "--allow-empty", "-m", "implementation", "-m", "ExecPlan: EP-TEST-001")
+	p = commitProvenancePlan(t, root, "a", p.PlanID, "")
 	if err := planProvenance(root, p, "ExecPlan: EP-TEST-001"); err != nil {
 		t.Fatal(err)
 	}
@@ -271,6 +272,7 @@ func TestStackedProvenanceValidatesSeparateHistories(t *testing.T) {
 						}
 					}
 				}
+				b = commitProvenancePlan(t, root, "b", b.PlanID, "depends_on:\n  - plan_id: EP-TEST-001\n    satisfaction: stacked\n")
 				if err := planProvenance(root, b, "ExecPlan: "+b.PlanID); err != nil {
 					t.Fatal(err)
 				}
@@ -362,5 +364,50 @@ func TestSHA256PlanAncestry(t *testing.T) {
 	head := planTestGit(t, root, "rev-parse", "HEAD")
 	if len(base) != 64 || !planAncestor(root, base, head) || planAncestor(root, head, base) {
 		t.Fatal("SHA-256 ancestry incorrect")
+	}
+}
+
+func commitProvenancePlan(t *testing.T, root, name, id, extra string) planMetadata {
+	t.Helper()
+	path := "docs/exec-plans/active/" + name + ".md"
+	data := modelPlanYAML(id, "active", extra)
+	for _, suffix := range []string{".md", ".ja.md"} {
+		dest := filepath.Join(root, "docs", "exec-plans", "active", name+suffix)
+		if err := os.MkdirAll(filepath.Dir(dest), 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(dest, data, 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	planTestGit(t, root, "add", "docs")
+	planTestGit(t, root, "commit", "-m", "commit Plan", "-m", "ExecPlan: "+id)
+	p, _, err := parsePlanMetadata(data, path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return p
+}
+
+func TestProvenanceRequiresCommittedMetadata(t *testing.T) {
+	root := planTestRepo(t)
+	planTestGit(t, root, "switch", "-c", "feat/ep-test-001")
+	p := commitProvenancePlan(t, root, "a", "EP-TEST-001", "")
+	if err := planProvenance(root, p, ""); err != nil {
+		t.Fatal(err)
+	}
+	for _, mode := range []string{"untracked", "dirty base", "dirty dependencies"} {
+		q := p
+		switch mode {
+		case "untracked":
+			q.Path = "docs/exec-plans/active/untracked.md"
+		case "dirty base":
+			q.BaseBranch = "other"
+		case "dirty dependencies":
+			q.DependsOn = []planDependency{{PlanID: "EP-TEST-002", Satisfaction: "stacked"}}
+		}
+		if err := planProvenance(root, q, ""); err == nil {
+			t.Fatalf("accepted %s", mode)
+		}
 	}
 }

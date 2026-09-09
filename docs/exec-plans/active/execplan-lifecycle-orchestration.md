@@ -543,3 +543,23 @@ is therefore limited to active candidates; draft/paused/completed/abandoned
 records with absent bases are covered by regression tests. The actual PR #12
 historical replay still passes. Integrated full harness and repoctl race passed
 before this final scope correction; final validation is recorded in PR replies.
+
+### PR #14 committed execution evidence follow-up (2026-09-10)
+
+Addressed five additional review threads (two concern the same base-branch defect).
+Provenance now compares English/Japanese lifecycle metadata and graph participants
+with the certified HEAD before inspecting commit ranges. Uncommitted or modified
+execution metadata cannot redefine the certified history. Base branches follow
+Git branch-name syntax and resolve only local heads or matching origin branches;
+revision expressions and tag-only names cannot select the base.
+
+Human Validation contracts are pinned to the committed HEAD blob, with revision
+and SHA-256 recorded in JSON and Markdown evidence. Untracked/dirty contracts
+are rejected. Fresh evidence directories are reserved before executable lookup
+or TCP probes, so unusable destinations do not cause unrecorded external probes.
+Independent review identified that raw LF/CRLF comparison would incorrectly reject
+clean Windows checkouts; compare strict decoded contract values while retaining
+the committed blob as digest authority. Regression coverage includes committed
+metadata, explicit branch resolution, contract modification/reconstruction, clean
+CRLF checkout and invalid evidence destinations without network probes.
+Final harness/race results and delivery commit are recorded in the review replies.

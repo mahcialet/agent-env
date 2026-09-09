@@ -12,7 +12,7 @@ workstreams:
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/exec-plans/active/execplan-lifecycle-orchestration.md
-source_sha256: ed384579013b45ab70d13eed4b70c5ebe0f4f63b012ce88d0f6a8e3ede3d310d
+source_sha256: fce7af5aa3b022c5daf236cfefd3c82f20dee0e457dc0491e78b0d65aeb8bf67
 ---
 
 # ExecPlan lifecycle orchestrationと自動delivery gateを追加する
@@ -469,3 +469,22 @@ escape表記のJSON重複キー拒否、実際のSHA-256 Git祖先関係、メ�
 activeな候補に限定し、baseがないdraft/paused/completed/abandonedも回帰テストに含めた。
 実際のPR #12の履歴replayは引き続き成功している。この最後の適用範囲修正前には
 統合した全harnessとrepoctl raceが成功した。最終検証はPR返信に記録する。
+
+### PR #14のcommit済み実行証拠に関する追加対応（2026-09-10）
+
+追加の5件のレビューThreadに対応した（2件は同じbase branch不具合）。
+provenanceはcommit範囲を検査する前に、英日lifecycle metadataとgraphの参加Planを
+検証対象HEADと照合する。未commitまたは変更された実行metadataによって、
+検証する履歴を再定義できない。base branchはGitのbranch名構文に従い、
+local headまたは対応するorigin branchだけを解決する。revision式やtagだけの
+名前ではbaseを選択できない。
+
+Human Validation契約はHEADのcommit済みblobに固定し、revisionとSHA-256を
+JSON・Markdownの証拠に記録する。未追跡・変更済み契約は拒否する。
+実行ファイルの検索やTCP probeの前に新規証拠ディレクトリを確保し、
+使用不能な保存先への出力失敗に先立って未記録の外部probeを行わない。
+独立レビューで、LF/CRLFのバイト比較ではcleanなWindows checkoutを誤拒否すると
+判明した。厳密にdecodeした契約値を比較し、digestの算出元はcommit済みblobを維持する。
+回帰テストには、commit済みmetadata、明示的branch解決、契約の変更・復元、
+clean CRLF checkout、通信を伴わない不正な証拠保存先の拒否を含める。
+最終harness・race結果と実装commitはレビュー返信に記録する。

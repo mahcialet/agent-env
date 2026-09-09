@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strings"
 )
@@ -104,7 +105,7 @@ func planGitReadiness(root string, g *planGraph) (planReadinessContext, error) {
 		if p.Status == "active" && strings.Contains("\n"+worktrees+"\n", "\nbranch refs/heads/"+expectedPlanBranch(p)+"\n") {
 			ctx.Running = append(ctx.Running, p.PlanID)
 		}
-		base, err := planRevision(root, p.BaseBranch)
+		base, err := planBaseRevision(root, p.BaseBranch)
 		if err != nil {
 			if p.Status == "active" {
 				return ctx, fmt.Errorf("%s: unavailable base_branch %q: %w", p.PlanID, p.BaseBranch, err)
@@ -167,6 +168,28 @@ func planIdentityAt(root, revision, id string) (bool, error) {
 	return count == 1, nil
 }
 
+// Certify committed lifecycle metadata, never a working-tree-only execution range.
+func planMetadataMatchesRevision(root, revision string, p planMetadata) error {
+	if p.Path == "" {
+		return errors.New("Plan path is required for committed provenance")
+	}
+	for _, path := range []string{p.Path, strings.TrimSuffix(p.Path, ".md") + ".ja.md"} {
+		body, err := planGit(root, "show", revision+":"+path)
+		if err != nil {
+			return fmt.Errorf("%s: Plan is not committed at %s: %w", p.PlanID, revision, err)
+		}
+		committed, legacy, err := parsePlanMetadata([]byte(body), path)
+		if err != nil {
+			return err
+		}
+		committed.Path = p.Path
+		if legacy || !reflect.DeepEqual(committed, p) {
+			return fmt.Errorf("%s: working Plan metadata differs from %s (%s)", p.PlanID, revision, path)
+		}
+	}
+	return nil
+}
+
 func planProvenance(root string, p planMetadata, prBody string) error {
 	branch, err := planGit(root, "branch", "--show-current")
 	if err != nil {
@@ -188,6 +211,14 @@ func planProvenance(root string, p planMetadata, prBody string) error {
 	head, err := planRevision(root, "HEAD")
 	if err != nil {
 		return err
+	}
+	if err := planMetadataMatchesRevision(root, head, p); err != nil {
+		return err
+	}
+	for _, dep := range g.Plans {
+		if err := planMetadataMatchesRevision(root, head, dep); err != nil {
+			return err
+		}
 	}
 	if err := planCommitProvenance(root, p, head, g, map[string]bool{}, true); err != nil {
 		return err
@@ -218,7 +249,7 @@ func planStackedHead(root string, p planMetadata) (string, error) {
 	if p.Status != "completed" {
 		return "", errors.New("stacked dependency is not active or completed")
 	}
-	base, err := planRevision(root, p.BaseBranch)
+	base, err := planBaseRevision(root, p.BaseBranch)
 	if err != nil {
 		return "", err
 	}
@@ -241,7 +272,7 @@ func planCommitProvenance(root string, p planMetadata, head string, g *planGraph
 	}
 	visiting[p.PlanID] = true
 	defer delete(visiting, p.PlanID)
-	base, err := planRevision(root, p.BaseBranch)
+	base, err := planBaseRevision(root, p.BaseBranch)
 	if err != nil {
 		return err
 	}
@@ -358,7 +389,7 @@ func executePlans(root string, args []string, out io.Writer) error {
 				return fmt.Errorf("%s branch mismatch", p.PlanID)
 			}
 			if p.Status == "completed" {
-				base, err := planRevision(root, p.BaseBranch)
+				base, err := planBaseRevision(root, p.BaseBranch)
 				if err != nil {
 					return err
 				}

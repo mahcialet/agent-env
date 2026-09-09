@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -24,6 +25,8 @@ type humanScenario struct {
 	PassCriteria string   `json:"pass_criteria"`
 }
 type humanContract struct {
+	Revision    string          `json:"-"`
+	SHA256      string          `json:"-"`
 	PlanID      string          `json:"plan_id"`
 	Executables []string        `json:"executables"`
 	Endpoints   []string        `json:"endpoints"`
@@ -37,15 +40,17 @@ type humanObservation struct {
 	EvidenceRefs []string `json:"evidence_refs"`
 }
 type humanEvidence struct {
-	PlanID         string   `json:"plan_id"`
-	Kind           string   `json:"kind"`
-	Result         string   `json:"result"`
-	Scenario       string   `json:"scenario,omitempty"`
-	Timestamp      string   `json:"timestamp"`
-	Blockers       []string `json:"blockers,omitempty"`
-	EvidenceSHA256 string   `json:"evidence_sha256,omitempty"`
-	ActionRequired string   `json:"action_required,omitempty"`
-	FollowUpPlan   string   `json:"follow_up_plan,omitempty"`
+	ContractRevision string   `json:"contract_revision"`
+	ContractSHA256   string   `json:"contract_sha256"`
+	PlanID           string   `json:"plan_id"`
+	Kind             string   `json:"kind"`
+	Result           string   `json:"result"`
+	Scenario         string   `json:"scenario,omitempty"`
+	Timestamp        string   `json:"timestamp"`
+	Blockers         []string `json:"blockers,omitempty"`
+	EvidenceSHA256   string   `json:"evidence_sha256,omitempty"`
+	ActionRequired   string   `json:"action_required,omitempty"`
+	FollowUpPlan     string   `json:"follow_up_plan,omitempty"`
 }
 
 const humanJSONLimit = 1024 * 1024
@@ -66,6 +71,10 @@ func readHumanJSONSnapshot(path string, target any) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("cannot read JSON input")
 	}
+	return decodeHumanJSONSnapshot(raw, target)
+}
+
+func decodeHumanJSONSnapshot(raw []byte, target any) ([]byte, error) {
 	if len(raw) > humanJSONLimit {
 		return nil, fmt.Errorf("JSON input exceeds size limit")
 	}
@@ -78,7 +87,7 @@ func readHumanJSONSnapshot(path string, target any) ([]byte, error) {
 	}
 	d := json.NewDecoder(bytes.NewReader(raw))
 	d.DisallowUnknownFields()
-	if err = d.Decode(target); err != nil {
+	if err := d.Decode(target); err != nil {
 		return nil, fmt.Errorf("invalid JSON input")
 	}
 	var extra any
@@ -130,9 +139,44 @@ func loadHumanContract(root, id string) (humanContract, error) {
 	if !planIDPattern.MatchString(id) {
 		return c, fmt.Errorf("invalid plan ID")
 	}
-	if err := readHumanJSON(filepath.Join(root, "docs", "exec-plans", "validation", id+".json"), &c); err != nil {
+	path := "docs/exec-plans/validation/" + id + ".json"
+	revision, err := planGit(root, "rev-parse", "--verify", "HEAD^{commit}")
+	if err != nil {
+		return c, fmt.Errorf("human contract requires a committed HEAD")
+	}
+	blob, err := planGit(root, "rev-parse", "--verify", revision+":"+path)
+	if err != nil {
+		return c, fmt.Errorf("human contract must be tracked at HEAD")
+	}
+	sizeText, err := planGit(root, "cat-file", "-s", blob)
+	size, parseErr := strconv.Atoi(sizeText)
+	if err != nil || parseErr != nil || size > humanJSONLimit {
+		return c, fmt.Errorf("invalid committed human contract size")
+	}
+	cmd := exec.Command("git", "-C", root, "cat-file", "blob", blob)
+	raw, err := cmd.Output()
+	if err != nil {
+		return c, fmt.Errorf("cannot read committed human contract")
+	}
+	if _, err := decodeHumanJSONSnapshot(raw, &c); err != nil {
 		return c, err
 	}
+	status, err := planGit(root, "status", "--porcelain", "--untracked-files=all", "--", path)
+	if err != nil || status != "" {
+		return c, fmt.Errorf("human contract must match committed HEAD; dirty contract rejected")
+	}
+	var working humanContract
+	_, err = readHumanJSONSnapshot(filepath.Join(root, filepath.FromSlash(path)), &working)
+	// Git may convert checkout line endings; compare the strictly decoded contract
+	// while retaining committed bytes as the evidence digest authority.
+	workingCanonical, workingErr := json.Marshal(working)
+	committedCanonical, committedErr := json.Marshal(c)
+	if err != nil || workingErr != nil || committedErr != nil || !bytes.Equal(workingCanonical, committedCanonical) {
+		return c, fmt.Errorf("human contract must match committed HEAD")
+	}
+	sum := sha256.Sum256(raw)
+	c.Revision = revision
+	c.SHA256 = hex.EncodeToString(sum[:])
 	if c.PlanID != id || len(c.Scenarios) == 0 {
 		return c, fmt.Errorf("invalid human contract identity or scenarios")
 	}
@@ -200,7 +244,7 @@ func executePlanHuman(root string, args []string, out io.Writer) error {
 	if err != nil {
 		return err
 	}
-	e := humanEvidence{PlanID: *id, Kind: mode, Timestamp: time.Now().UTC().Format(time.RFC3339)}
+	e := humanEvidence{PlanID: *id, ContractRevision: c.Revision, ContractSHA256: c.SHA256, Kind: mode, Timestamp: time.Now().UTC().Format(time.RFC3339)}
 	if mode == "preflight" {
 		if *config == "" {
 			return fmt.Errorf("explicit --config required")
@@ -213,6 +257,9 @@ func executePlanHuman(root string, args []string, out io.Writer) error {
 			if !planContains(c.Endpoints, name) {
 				return fmt.Errorf("config contains an unapproved endpoint name")
 			}
+		}
+		if err := reserveHumanEvidence(*dir); err != nil {
+			return err
 		}
 		for _, name := range c.Executables {
 			if _, err := exec.LookPath(name); err != nil {
@@ -283,8 +330,11 @@ func executePlanHuman(root string, args []string, out io.Writer) error {
 			e.ActionRequired = "paused-plan-update"
 			e.FollowUpPlan = *id
 		}
+		if err := reserveHumanEvidence(*dir); err != nil {
+			return err
+		}
 	}
-	if err := writeHumanEvidence(*dir, e); err != nil {
+	if err := writeReservedHumanEvidence(*dir, e); err != nil {
 		return err
 	}
 	fmt.Fprintf(out, "%s: %s (preflight is not scenario acceptance; recorded results are operator attestations)\n", e.PlanID, e.Result)
@@ -293,11 +343,22 @@ func executePlanHuman(root string, args []string, out io.Writer) error {
 	}
 	return nil
 }
-func writeHumanEvidence(dir string, e humanEvidence) error {
+func reserveHumanEvidence(dir string) error {
 	// Require a fresh directory: previous evidence is immutable and never overwritten.
 	if err := os.Mkdir(dir, 0700); err != nil {
 		return fmt.Errorf("evidence directory must be new with an existing parent")
 	}
+	return nil
+}
+
+func writeHumanEvidence(dir string, e humanEvidence) error {
+	if err := reserveHumanEvidence(dir); err != nil {
+		return err
+	}
+	return writeReservedHumanEvidence(dir, e)
+}
+
+func writeReservedHumanEvidence(dir string, e humanEvidence) error {
 	raw, err := json.MarshalIndent(e, "", "  ")
 	if err != nil {
 		return err
@@ -306,6 +367,7 @@ func writeHumanEvidence(dir string, e humanEvidence) error {
 		return err
 	}
 	text := fmt.Sprintf("# Human validation evidence\n\nPlan: `%s`\n\nKind: %s\n\nResult: %s\n\nPreflight does not prove scenario acceptance. Scenario results are explicit operator attestations; the evidence digest identifies the separately retained observation.\n", e.PlanID, e.Kind, e.Result)
+	text += "\nContract revision: `" + e.ContractRevision + "`\n\nContract SHA-256: `" + e.ContractSHA256 + "`\n"
 	if e.Scenario != "" {
 		text += "\nScenario: `" + e.Scenario + "`\n\nObservation SHA-256: `" + e.EvidenceSHA256 + "`\n"
 	}
