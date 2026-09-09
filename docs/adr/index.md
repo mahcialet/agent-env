@@ -1,7 +1,7 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-08
+last_verified: 2026-09-09
 ---
 
 # Architecture decisions
@@ -13,3 +13,5 @@ last_verified: 2026-09-08
 - [0003-compose-first-runtime](0003-compose-first-runtime.md) / [日本語](0003-compose-first-runtime.ja.md)
 - [0004-repository-native-harness](0004-repository-native-harness.md) / [日本語](0004-repository-native-harness.ja.md)
 - [0005-separate-flutter-applications](0005-separate-flutter-applications.md) / [日本語](0005-separate-flutter-applications.ja.md)
+
+- [0006 — Single-authority multi-host assignments](0006-single-authority-multi-host.md) / [日本語](0006-single-authority-multi-host.ja.md)

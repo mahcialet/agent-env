@@ -495,26 +495,37 @@ func archCheck(root string) error {
 			dependency, _ := strconv.Unquote(imp.Path.Value)
 			local := strings.TrimPrefix(dependency, module+"/")
 			bad := false
+			inside := func(base string) bool { return local == base || strings.HasPrefix(local, base+"/") }
 			switch {
+			case rel == "internal/controlplane/protocol" || strings.HasPrefix(rel, "internal/controlplane/protocol/"):
+				bad = strings.HasPrefix(local, "internal/") && !inside("internal/controlplane/protocol")
+			case rel == "internal/controlplane" || strings.HasPrefix(rel, "internal/controlplane/"):
+				bad = inside("internal/app") || inside("internal/worker") || inside("internal/cli") || inside("internal/runtime") || inside("internal/browser") || inside("internal/store") || inside("internal/remotesource") || dependency == "os/exec"
+			case rel == "internal/worker" || strings.HasPrefix(rel, "internal/worker/"):
+				bad = inside("internal/cli") || inside("internal/runtime") || inside("internal/browser") || inside("internal/controlplane/store") || dependency == "os/exec"
+			case rel == "internal/remotesource" || strings.HasPrefix(rel, "internal/remotesource/"):
+				bad = inside("internal/cli") || inside("internal/runtime") || inside("internal/browser") || inside("internal/worker") || inside("internal/controlplane")
+			case rel == "internal/blobstore" || strings.HasPrefix(rel, "internal/blobstore/") || rel == "internal/instance" || strings.HasPrefix(rel, "internal/instance/"):
+				bad = strings.HasPrefix(local, "internal/") && local != rel
 			case rel == "internal/domain" || strings.HasPrefix(rel, "internal/domain/"):
 				inDomain := local == "internal/domain" || strings.HasPrefix(local, "internal/domain/")
 				first, _, _ := strings.Cut(dependency, "/")
 				external := strings.Contains(first, ".") && !strings.HasPrefix(dependency, module+"/")
 				bad = strings.HasPrefix(local, "internal/") && !inDomain || dependency == "database/sql" || external
 			case rel == "internal/app" || strings.HasPrefix(rel, "internal/app/"):
-				bad = local == "internal/cli" || strings.HasPrefix(local, "internal/cli/") || strings.HasPrefix(local, "internal/browser/")
+				bad = inside("internal/controlplane") || inside("internal/worker") || inside("internal/remotesource") || local == "internal/cli" || strings.HasPrefix(local, "internal/cli/") || strings.HasPrefix(local, "internal/browser/")
 			case strings.HasPrefix(rel, "internal/browser/"):
 				bad = dependency == "os/exec" || strings.HasPrefix(local, "internal/") && local != "internal/domain" && local != "internal/evidence" && !strings.HasPrefix(local, "internal/browser/")
 			case strings.HasPrefix(rel, "internal/runtime/"):
 				// Each adapter (including Flutter builds) is independent; app coordinates them.
-				bad = strings.HasPrefix(local, "internal/browser/") || local == "internal/cli" || strings.HasPrefix(local, "internal/cli/")
+				bad = inside("internal/controlplane") || inside("internal/worker") || strings.HasPrefix(local, "internal/browser/") || local == "internal/cli" || strings.HasPrefix(local, "internal/cli/")
 				if strings.HasPrefix(local, "internal/runtime/") {
 					own := strings.Split(rel, "/")[2]
 					other := strings.Split(local, "/")[2]
 					bad = bad || own != other
 				}
 			case strings.HasPrefix(rel, "internal/store/"):
-				bad = strings.HasPrefix(local, "internal/browser/") || local == "internal/app" || strings.HasPrefix(local, "internal/app/") || local == "internal/cli" || strings.HasPrefix(local, "internal/cli/") || strings.HasPrefix(local, "internal/runtime/")
+				bad = inside("internal/controlplane") || inside("internal/worker") || strings.HasPrefix(local, "internal/browser/") || local == "internal/app" || strings.HasPrefix(local, "internal/app/") || local == "internal/cli" || strings.HasPrefix(local, "internal/cli/") || strings.HasPrefix(local, "internal/runtime/")
 			}
 			if bad {
 				return fmt.Errorf("AGENTENV-ARCH-002: %s imports %s; move orchestration to app and external dependencies behind domain/app interfaces", rel, dependency)

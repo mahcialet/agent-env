@@ -1,0 +1,110 @@
+---
+status: active
+owner: maintainers
+last_verified: 2026-09-09
+translation_of: docs/design-docs/multi-host-control-plane.md
+source_sha256: 3a58ee92b6e78ffa7d29fc2e0e7f79c5b2cf99eb32c5c28e6dca0963c44f1e44
+---
+
+# 一つの管理主体による複数 host の調整
+
+[English](multi-host-control-plane.md)
+
+[製品仕様](../product-specs/multi-host-control-plane.ja.md) が必須の挙動を定めます。
+[ExecPlan](../exec-plans/active/multi-host-control-plane.ja.md) では実装と受け入れ検証を進めています。
+この設計をもって、未実行の protocol、統合、native の検査に成功したとは扱いません。
+
+## 管理主体と依存関係
+
+専用の controller SQLite DB は、controller 識別情報、登録済み client/host、生存状況、capability、
+容量、global lease、assignment、operation journal、blob 参照を管理します。
+worker の既存 registry は source/worktree の識別情報、予約、具体的な runtime、local operation fence、
+証拠、cleanup を管理します。controller の scheduling は具体的な runtime adapter を import しません。
+worker の構成では app と既存 provider を再利用し、Android、Flutter、Browser/CDP の独立した責務を維持します。
+
+同じ状態 root の process lock で有効な controller を一つに制限します。これは合意形成ではありません。
+別々に複製した controller DB を同時稼働させてはいけません。stable host ID は運用者が指定する名前です。
+永続 host-instance ID と登録済み証明書が実際の worker を結び付けます。
+process incarnation は接続 session を区別しますが、host instance やその assignment を置き換えません。
+
+## 通信と要求の権限
+
+標準ライブラリの HTTP/TLS で、version を持つ型付き JSON を運びます。
+相互 TLS で明示的に登録した client/worker 証明書の role を認証し、payload の識別情報も登録内容と一致させます。
+protocol/product version に互換性がない場合は、作用が始まる前に配置対象から除外します。
+秘密鍵はファイル設定であり、DB payload にはしません。
+登録、heartbeat、long-poll、source download、result upload はすべて worker から開始します。
+worker 側の受信用 RPC listener や汎用 shell endpoint は不要です。
+
+各操作は controller ID、global lease ID、host ID、host-instance ID、assignment epoch、operation ID を
+持ちます。epoch は assignment を識別し、各操作を通じて固定します。
+worker はこの tuple をそのまま app の権限として使い、別 controller の採用や assignment の更新を暗黙に行いません。
+同じ global ULID を local lease と resource/evidence path に使います。
+管理 metadata は作用前の予約時に保存し、通常の registry Save では削除・変更できず、
+既存 local lease に後から追加することもできません。
+
+local app は作用前と既存 operation fence の取得後に、権限の欠落・不一致を拒否します。
+destroy は cleanup に加え、実行中 command の cancellation 前にも検査します。
+通常の GC は期限切れも含めて管理下の lease を除外します。読み取りでは reconcile せず記録済み metadata を
+公開できます。
+
+## Scheduling と不確実性
+
+登録時に実態に合った semantic capability（`git`、`compose.docker`、`compose.podman`、
+`android-emulator`、`flutter-android`、`persistent-process`、`browser-cdp`）と単純な容量を報告します。
+scheduling は互換性のある ONLINE、登録済み、drain 中ではない worker 一つに lease 全体の容量を原子的に予約します。
+host を明示指定しても適格性の全検査を維持し、順位付けは決定的にします。
+
+heartbeat が途絶えた場合は観測を古い状態・UNKNOWN、host を OFFLINE に変えますが、配置は永続的に保持します。
+作用前に拒否し、作用を開始していない証拠がある場合だけ、再配置を許可できます。
+dispatch の曖昧さ、upload 失敗、worker からの無応答では許可しません。
+別 instance は割当中の host 名を引き継げません。再接続と worker 再起動では同じ local resource を照合し、
+controller 再起動では元の管理主体と journal を再読込します。drain は新規配置を止め、未解放 assignment のある
+host の削除は拒否します。
+
+## Journal と配送順序
+
+operation の受領と payload の識別情報を dispatch/作用の前に永続化します。
+worker は準備、作用開始の可能性、local 結果、配送状態を記録します。
+同一要求の再配送では journal を参照し、同じ ID で payload が異なる場合は失敗にします。
+作用開始の可能性がある時点以降の crash は不確実な状態として照合を要求し、
+create、test、UI/browser 入力を無条件に再実行しません。
+
+artifact upload より先に local 結果を永続化し、配送の確認応答より先に central の結果と blob 参照を commit します。
+未転送の upload や結果配送は永続識別情報を使って再試行し、artifact を作り直すために操作を再実行しません。
+global RELEASED には worker による明確な cleanup/不在の証明が必要で、HTTP 成功や controller TTL の失効では
+代用しません。controller の停止中も workload と journal を保持します。
+
+### 初期の操作 dispatch 方針
+
+worker は操作を一つずつ実行しますが、作成済み lease は並行して稼働します。
+controller は同じ lease の二つ目の active 操作を、実行中の remote test に対する destroy も含めて拒否します。
+remote の実行中操作の cancellation と操作の並行 dispatch は専用 protocol を必要とし、未実装です。
+この方針により、live lease の並行稼働を維持しながら、operation の識別情報と local fence の競合を避けます。
+別の操作を送信する前に `operation <operation-id>` で現在の要求を確認するか、結果を待ってください。
+
+## Source と artifact の CAS
+
+client は各 source alias を不変 commit に解決し、SHA-256 識別情報を持つ検証可能な Git bundle を用意します。
+worker は local runtime の起動前に digest、commit、manifest、選択した依存範囲を独立に検証します。
+client の絶対 path を CAS key や remote filesystem 操作の根拠にはしません。
+未 commit ファイルは含めず、未対応 shallow/LFS/submodule は暗黙の network fetch で補わず明示的に拒否します。
+worker の環境変数 placeholder は local で解決し、client の秘密値を暗黙に転送しません。
+
+CAS key は `sha256/<digest>` です。非公開の一時ファイルに streaming し、size と hash を検査してから原子的に公開します。
+同じ内容の同時 upload を安全に扱い、既存 object は検証後に限って再利用します。
+参照を永続化し、参照中 object を回収しません。source object は一つあたり 1 GiB、artifact は一つあたり
+64 MiB に制限します。転送再試行と mutation 再実行を分けます。
+保存時の暗号化は保証せず、source と証拠は信頼された管理用データの境界内で扱います。
+
+## 証拠と制限
+
+型付き remote test/UI/browser の経路でも worker-local の lease fence、process/device 所有権、
+古い参照の検査、秘密値の redaction、証拠の上限を維持します。返す loopback endpoint は worker を指し、
+client への暗黙の tunnel はありません。HA、migration、host をまたぐ resource graph、remote shell、
+秘密値配布、緊急時の管理引継ぎは別の設計課題です。
+
+受け入れでは、決定的な状態機械 test、二つの worker 状態 root を使う実際の TLS socket 統合、
+Windows/macOS/Linux の native role 実行、物理マシン・VM の複数 host 証拠を区別します。
+同じ host の test や cross-build で最後の二分類を代用できません。
+ExecPlan が正確な結果と不足を記録します。実装の検証は現在進行中です。
