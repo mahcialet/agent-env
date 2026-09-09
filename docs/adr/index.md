@@ -15,3 +15,4 @@ last_verified: 2026-09-09
 - [0005-separate-flutter-applications](0005-separate-flutter-applications.md) / [日本語](0005-separate-flutter-applications.ja.md)
 
 - [0006 — Single-authority multi-host assignments](0006-single-authority-multi-host.md) / [日本語](0006-single-authority-multi-host.ja.md)
+- [0007 — Native execution boundaries](0007-native-execution-boundaries.md) / [日本語](0007-native-execution-boundaries.ja.md)

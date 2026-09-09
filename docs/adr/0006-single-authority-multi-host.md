@@ -14,8 +14,8 @@ The local registry already owns conservative resource lifecycle, operation fence
 and evidence. Remote placement needs global scheduling and transport recovery
 without treating missed heartbeats as resource absence or weakening those local
 rules. Local mode must remain daemon-free. The
-[ExecPlan](../exec-plans/active/multi-host-control-plane.md) is implementing this
-contract; acceptance and native verification remain in progress.
+[ExecPlan](../exec-plans/completed/multi-host-control-plane.md) records this
+contract and the completed acceptance evidence within its documented scope.
 
 ## Decision
 

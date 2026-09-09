@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/design-docs/multi-host-control-plane.md
-source_sha256: 17affb219152255a4afb3e5e36d5c6762fdaf2dec21a8c18bc0dc94a929d8d53
+source_sha256: ace044b032196cd935ab2bfe4771a642e2115fbe6b479598946b26f6d1ad547f
 ---
 
 # 一つの管理主体による複数 host の調整
@@ -11,7 +11,7 @@ source_sha256: 17affb219152255a4afb3e5e36d5c6762fdaf2dec21a8c18bc0dc94a929d8d53
 [English](multi-host-control-plane.md)
 
 [製品仕様](../product-specs/multi-host-control-plane.ja.md) が必須の挙動を定めます。
-[ExecPlan](../exec-plans/active/multi-host-control-plane.ja.md) では実装と受け入れ検証を進めています。
+[ExecPlan](../exec-plans/completed/multi-host-control-plane.ja.md) には文書化した範囲で完了した実装と受け入れ検証を記録しています。
 この設計をもって、未実行の protocol、統合、native の検査に成功したとは扱いません。
 
 ## 管理主体と依存関係
@@ -127,4 +127,4 @@ client への暗黙の tunnel はありません。HA、migration、host をま�
 受け入れでは、決定的な状態機械 test、二つの worker 状態 root を使う実際の TLS socket 統合、
 Windows/macOS/Linux の native role 実行、物理マシン・VM の複数 host 証拠を区別します。
 同じ host の test や cross-build で最後の二分類を代用できません。
-ExecPlan が正確な結果と不足を記録します。実装の検証は現在進行中です。
+ExecPlan が正確な結果と不足を記録します。文書化した範囲で実装の受け入れは完了しています。

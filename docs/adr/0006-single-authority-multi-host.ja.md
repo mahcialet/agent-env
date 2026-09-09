@@ -3,7 +3,7 @@ status: accepted
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/adr/0006-single-authority-multi-host.md
-source_sha256: d7d4aec78430200879f51c0d6d03dfb9d8b0a57f56af3cc618298d27cdde7f6d
+source_sha256: c4bbb16fda1c1f364819c7c7c9bb130e603e7e4afb219ab6e2167a0514a1de5e
 ---
 
 # 一つの controller 管理主体と lease 全体の worker 割当
@@ -15,8 +15,8 @@ source_sha256: d7d4aec78430200879f51c0d6d03dfb9d8b0a57f56af3cc618298d27cdde7f6d
 local registry は既に、保守的な resource lifecycle、operation fence、証拠を管理しています。
 remote の配置には global scheduling と通信の復旧が必要ですが、heartbeat の途絶を resource 不在と見なしたり、
 既存の local 規則を緩めたりしてはいけません。local モードは daemon 不要のまま維持します。
-[ExecPlan](../exec-plans/active/multi-host-control-plane.ja.md) でこの仕様を実装中であり、
-受け入れと native 検証は進行中です。
+[ExecPlan](../exec-plans/completed/multi-host-control-plane.ja.md) にこの仕様と、
+文書化した範囲で完了した受け入れの証拠を記録しています。
 
 ## 決定
 

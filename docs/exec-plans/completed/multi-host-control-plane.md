@@ -1,5 +1,5 @@
 ---
-status: active
+status: completed
 owner: maintainers
 last_verified: 2026-09-09
 ---
@@ -600,7 +600,7 @@ A future secret-provider design may add explicit secret delivery.
 ## Progress
 
 - [x] 2026-09-09: Implement the user-authorized Windows execution-path envelope and WSL state/direct-executable boundaries; local full harness passed. Add UTF-16 boundary, derived-path, no-reservation/output, renamed-PE and canonical WSL mount regressions. Actual WSL2 mount/interop validation is unavailable and is not claimed.
-- [ ] Validate the agreed Windows support boundary in native CI and reconcile final acceptance before archival.
+- [x] 2026-09-09: Validate the agreed Windows support boundary in native CI and reconcile final acceptance before archival.
 
 - [x] 2026-09-09: Confirmed base `dc63308e53f68f8be99f7cbf59cafc78f7296b71`; created `feat/multi-host-control-plane`.
 - [x] 2026-09-09: Run baseline repoctl/docs/race/current integrations.
@@ -653,9 +653,9 @@ A future secret-provider design may add explicit secret delivery.
 - [x] 2026-09-09: Record physical/VM multi-host evidence separately if available.
 - [x] 2026-09-09: Update bilingual architecture/portability/security/reliability/quality/roadmap.
 - [x] 2026-09-09: Update standalone docs for controller/worker modes.
-- [ ] Run final harness/race/native/integration/release checks.
-- [ ] Complete acceptance evidence and bilingual retrospective.
-- [ ] Move both plans to `docs/exec-plans/completed/`.
+- [x] 2026-09-09: Run final harness/race/native/integration/release checks.
+- [x] 2026-09-09: Complete acceptance evidence and bilingual retrospective.
+- [x] 2026-09-09: Move both plans to `docs/exec-plans/completed/`.
 
 ## Surprises & Discoveries
 
@@ -704,7 +704,7 @@ Preserve failed approaches that affect authority/recovery design.
 
 ## Decision Log
 
-- 2026-09-09, user-authorized support boundary: After reviewing Windows long-path behavior, the user requested a safe compatibility scope including WSL2. Windows resolved execution directories are limited to 240 UTF-16 code units, with computed source/worktree/runtime/test/probe paths checked before effects. This replaces the former unconditional deep-Windows-path success expectation with explicit preflight refusal and absence-of-effects evidence; Linux/macOS keep the successful deep-path regression. No permanent aliases, 8.3 prerequisite or global OS configuration change is introduced. WSL state on DrvFS/9p is refused before creation; direct PE execution on non-Windows and direct wsl.exe execution on Windows are refused. Trusted wrappers are not sandboxed. This decision resolves the preceding policy question; native validation of the agreed behavior remains required.
+- 2026-09-09, user-authorized support boundary: After reviewing Windows long-path behavior, the user requested a safe compatibility scope including WSL2. Windows resolved execution directories are limited to 240 UTF-16 code units, with computed source/worktree/runtime/test/probe paths checked before effects. This replaces the former unconditional deep-Windows-path success expectation with explicit preflight refusal and absence-of-effects evidence; Linux/macOS keep the successful deep-path regression. No permanent aliases, 8.3 prerequisite or global OS configuration change is introduced. WSL state on DrvFS/9p is refused before creation; direct PE execution on non-Windows and direct wsl.exe execution on Windows are refused. Trusted wrappers are not sandboxed. This decision resolves the preceding policy question; native validation of the agreed behavior remains required. Durable rationale is recorded in [ADR 0007](../../adr/0007-native-execution-boundaries.md).
 
 - 2026-09-09, historical decision checkpoint, now resolved above: Native diagnostics established an external CreateProcess cwd limitation. At that checkpoint no support-boundary change had been authorized, so the success regression was retained and implementation paused. The subsequent user-authorized compatibility envelope replaces that temporary pause.
 
@@ -756,7 +756,7 @@ Preserve failed approaches that affect authority/recovery design.
 
 ## Outcomes & Retrospective
 
-The user has approved a safe Windows/WSL compatibility scope. Implementation and local validation of that scope are complete; native validation remains pending, so this plan stays active.
+Implementation and acceptance are complete within the user-approved Windows/WSL compatibility scope. Final source revision `440082b` passed all three CI workflows; both language versions are archived together. The physical-host and real-WSL evidence limits below remain explicit.
 
 Delivered one persistent controller authority, mutually authenticated client/worker
 roles, durable host identity, capability/capacity scheduling and one-worker lease
@@ -771,6 +771,15 @@ Lost heartbeats retain UNKNOWN assignments and capacity; lost acknowledgments
 retry evidence delivery, and ambiguous effects are never blindly repeated. A
 create failure before reservation has durable no-effect proof; once reservation
 is attempted, a missing row alone never proves cleanup.
+
+The agreed compatibility envelope rejects Windows execution directories above
+240 UTF-16 code units before resource effects. WSL and Windows keep separate
+native state/process domains: WSL DrvFS/9p state, Windows WSL-UNC state/cwd, and
+direct cross-OS executable bridges are refused. Existing state is not migrated
+or rewritten. WSL2 filesystem/interop behavior has not been exercised directly;
+injected tests prove the guard logic, not a real WSL deployment. Trusted wrappers
+remain outside this direct-execution check. ADR 0007 records the user-authorized
+support boundary and the failed alternatives that led to it.
 
 Local mode remains daemon-free. Worker endpoints remain worker-local; one worker
 executes remote operations serially while multiple leases can remain live. Remote
@@ -964,16 +973,16 @@ Use the supported Go toolchain on PATH. Run `go run ./tools/repoctl check`, `go 
 | M34 | CAS is atomic, content-addressed, digest-verified and duplicate-upload safe. | CAS concurrent duplicate writers, digest/size validation, atomic directory publication and corruption negatives passed. |
 | M35 | Caller paths never become CAS filesystem authority. | CAS digest-only path validation and registered-artifact ownership/path/symlink tests passed. |
 | M36 | Client secrets are not implicitly forwarded; remote env resolves on worker. | Native TLS fixture verifies client-only token absence and worker env resolution; negative helper controls passed (18.394s Linux). |
-| M37 | Native controller/worker/client integration passes on Windows. | Native Windows role fixture passed at e46f807. The user-approved 240-UTF-16-unit path envelope now has pre-effect refusal regressions; final native revalidation is pending. |
-| M38 | Native controller/worker/client integration passes on macOS. | Expanded native role fixture passed on macOS in 34316121492. |
-| M39 | Native controller/worker/client integration passes on Linux. | Native multi-host Linux CI passed; extended local TLS fixture and real remote runtime tests passed. |
+| M37 | Native controller/worker/client integration passes on Windows. | Windows Go 1.26/1.27 full harness passed in 34320519317, including derived-path/no-effect and WSL-UNC refusal; real native role fixture passed in 34320519252. |
+| M38 | Native controller/worker/client integration passes on macOS. | macOS Go 1.26/1.27 harness and native role/Browser fixtures passed in final 440082b CI. |
+| M39 | Native controller/worker/client integration passes on Linux. | Linux Go 1.26/1.27 harness, race/Docker integration and native role/Browser fixtures passed in final 440082b CI. WSL is separately documented as unverified. |
 | M40 | Real-socket two-worker integration proves scheduling/outage/reconnect/recovery/cleanup. | Native real TLS controller/client/two-worker fixture covers placement, outage, restart, recovery and cleanup. |
 | M41 | Physical/VM evidence is distinguished honestly from same-host worker tests. | All multi-role fixtures use one physical host; no separate-machine/VM evidence available or claimed. |
 | M42 | Existing Docker/Podman/Android/process/Browser local integrations remain non-regressed. | Real local Docker, Podman coexistence, Android Emulator, Flutter/Android UI and Browser integrations passed. |
 | M43 | HA/live migration/split-host leases/tunnels are not advertised as implemented. | Product/design/README explicitly defer HA, migration, split-host leases, tunnels and remote cancel-active. |
 | M44 | Bilingual durable docs describe authority/trust/failure/recovery boundaries. | Paired product/design/ADR, architecture, README and operational docs passed docs/translation checks. |
-| M45 | Final repoctl/docs/translation/race/native/integration/release verification passes. | Local harness/race and focused path/interop tests pass. Prior real runtime and six-target release acceptance passed; final native validation of the agreed scope is pending. |
-| M46 | Both ExecPlans contain direct evidence and retrospective before archival. | Support-boundary decision is resolved and evidence/retrospective updated. Archive after successful final native harness. |
+| M45 | Final repoctl/docs/translation/race/native/integration/release verification passes. | All final 440082b CI workflows passed (34320519317 / 34320519252 / 34320519250); local full harness/race, real runtime baselines and six-target packaging evidence are recorded above. |
+| M46 | Both ExecPlans contain direct evidence and retrospective before archival. | Acceptance reconciled, bilingual outcomes/retrospective completed, both plans archived with links updated. |
 
 ## Idempotence and Recovery
 
@@ -993,6 +1002,18 @@ Source/artifact transfers are retryable by digest. Host OFFLINE is never a
 cleanup event.
 
 ## Artifacts and Notes
+
+Final acceptance: `440082b`, Verify **34320519317**, Multi-host native
+**34320519252**, and Browser native **34320519250** all succeeded. Verify includes
+Windows/macOS/Linux Go 1.26/1.27 harnesses, race, real Docker integration and five
+cross-build jobs. Native role and Browser fixtures passed each OS. This includes
+the final Windows WSL-UNC refusal tests. Prior `cf5a0e7` real six-target archive
+verification and local native/remote Browser/Docker/Podman E2E provide packaging
+and runtime evidence; source changes since then only add the tested UNC boundary.
+Documentation-only archival is validated with docs-check and the repository
+harness. Independent review results and explicit real-WSL/physical-host evidence
+limits are retained above. No release, tag, merge or PR creation is part of this
+completion.
 
 Verify 34319889785 completed successfully on `cf5a0e7`: Windows/macOS/Linux
 harnesses on both Go 1.26 and 1.27, all five cross-build jobs, race and real Docker

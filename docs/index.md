@@ -33,10 +33,10 @@ Design, product, ADR and plan documents carry status, owner and last_verified me
 
 Browser/CDP: [product contract](product-specs/browser-cdp-automation.md) / [日本語](product-specs/browser-cdp-automation.ja.md), [design](design-docs/browser-cdp-automation.md) / [日本語](design-docs/browser-cdp-automation.ja.md), and [completed execution evidence](exec-plans/completed/browser-cdp-automation.md) / [日本語](exec-plans/completed/browser-cdp-automation.ja.md).
 
-Multi-host coordination is under active acceptance: [product contract](product-specs/multi-host-control-plane.md),
+Multi-host coordination acceptance is complete within the documented scope: [product contract](product-specs/multi-host-control-plane.md),
 [design](design-docs/multi-host-control-plane.md), [ADR 0006](adr/0006-single-authority-multi-host.md),
-and [ExecPlan](exec-plans/active/multi-host-control-plane.md).
+and [ExecPlan](exec-plans/completed/multi-host-control-plane.md).
 [README usage](../README.md#explicit-remote-mode) describes enrollment and role startup;
 [quality](QUALITY.md#multi-host-native-verification) records successful native
 Windows/macOS/Linux TLS execution and distinguishes it from pending physical-host
-coverage and final acceptance.
+coverage.

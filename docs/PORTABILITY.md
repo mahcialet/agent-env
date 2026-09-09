@@ -32,7 +32,8 @@ Unsupported paths fail before reservation/materialization or process startup;
 use a shorter home or repository location. Extended prefixes, optional 8.3 names
 and execution-path junctions are not required. Linux/macOS retain native path
 behavior. OS long-path settings and Git `core.longpaths` alone do not guarantee
-that a child can start from a long working directory.
+that a child can start from a long working directory. See
+[ADR 0007](adr/0007-native-execution-boundaries.md) for the decision and tradeoffs.
 
 ## Native tools and cancellation
 
@@ -187,12 +188,12 @@ runtime. Pre-provisioned PEM certificates and separate absolute `AGENT_ENV_HOME`
 state roots are required. Committed bundles replace client absolute source paths;
 worker-local paths and loopback endpoints retain worker OS semantics.
 
-The actual-TLS native fixture passed on Windows, macOS and Linux at `53fe81a`
-(run 34316121492), with two worker roots on each runner. It covers committed paths
+The actual-TLS native fixture passed on Windows, macOS and Linux at `440082b`
+(run 34320519252), with two worker roots on each runner. It covers committed paths
 containing spaces/Unicode, controller/worker restart, named tests, logs, registered
 artifact downloads, renewal and environment isolation. The existing local Browser/CDP
-native matrix also passed on all three OSes at that revision (run 34316121411).
-Physical multi-machine/VM coverage remains unverified, and final acceptance is
-still in progress. Neither cross-builds nor same-host worker processes establish
+native matrix also passed on all three OSes at that revision (run 34320519250).
+Physical multi-machine/VM coverage remains unverified; acceptance within the
+documented support scope is complete. Neither cross-builds nor same-host worker processes establish
 physical-host coverage. See [quality](QUALITY.md#multi-host-native-verification)
-and the [active plan](exec-plans/active/multi-host-control-plane.md).
+and the [completed plan](exec-plans/completed/multi-host-control-plane.md).

@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/QUALITY.md
-source_sha256: e2736d1a4d2f6330d753b5fde31e592b8ea592d7bccbd94677a19141bbed8ce7
+source_sha256: 687bac3576c2d0013301a2e156e7e82514e9336fdf7d848ad89827833a2e3c62
 ---
 
 # 品質と検証
@@ -167,7 +167,7 @@ screenshot、Unicode入力と消去、古い参照の拒否、iframe/shadow観�
 lease所有backend、永続的な入力redaction、安全なprofile cleanupを検証しました。
 Planにはnativeの証拠とCI修正履歴を、mock testやcross-buildと分けて記録しています。
 
-既存の local Browser/CDP matrix は、`53fe81a` の Windows・macOS・Linux で再び成功しました
+既存の local Browser/CDP matrix は、`440082b` の Windows・macOS・Linux で再び成功しました
 （[run 34316121411](https://github.com/mahcialet/agent-env/actions/runs/34316121411)）。
 この回帰検証の証拠は、remote Browser 操作の受け入れ検証とは区別します。
 
@@ -188,11 +188,11 @@ cleanup を確認できなければ調査用に fixture 状態を保持します
 
 Linux/amd64 では 21.406s で成功しました。初回実行では、通信時の JSON object 順序の正規化によって
 実際に plan digest が不一致になる問題を検出し、manifest の意味に基づく正規化と恒久的な source 往復回帰 test で修正しました。
-拡張した fixture は、`53fe81a` の Windows・macOS・Linux の全 job で成功しました
-（[native workflow run 34316121492](https://github.com/mahcialet/agent-env/actions/runs/34316121492)）。
+拡張した fixture は、`440082b` の Windows・macOS・Linux の全 job で成功しました
+（[native workflow run 34320519252](https://github.com/mahcialet/agent-env/actions/runs/34320519252)）。
 各 runner は同じ host 上の二つの worker root を使っています。これを物理マシン・VM の複数 host 動作の証明とは扱わず、
-cross-build も native role 実行の証明にはしません。最終的な受け入れ検証は継続中であり、
-最新の正確な結果は [ExecPlan](exec-plans/active/multi-host-control-plane.ja.md) に記録します。
+cross-build も native role 実行の証明にはしません。文書化した範囲で最終受け入れは完了し、
+正確な結果は [ExecPlan](exec-plans/completed/multi-host-control-plane.ja.md) に記録します。
 
 追加の remote runtime fixture も、同じ build tag を指定して明示的に実行します。
 
@@ -206,7 +206,7 @@ Compose fixture には、動作する Docker Compose と Podman/podman-compose �
 前提条件がない状態でこれらの test を選ぶと失敗します。実際の controller/worker/runtime process を起動し、
 登録済みの証拠を保持して、lease 単位で cleanup します。通常の単体 test はこれらの外部 runtime を起動しません。
 この実行方法の記載は、全 OS で remote の native 受け入れが成功したという主張ではありません。
-検証した範囲と結果は active Plan を参照してください。
+検証した範囲と結果は 完了Plan を参照してください。
 
 Windowsの実行パステストでは240 UTF-16単位の境界、補助文字、解決済みパス、派生する
 worktree/runtimeディレクトリと、予約・展開・出力作成前の拒否を検査します。

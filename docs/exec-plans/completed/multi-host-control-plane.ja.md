@@ -1,9 +1,9 @@
 ---
-status: active
+status: completed
 owner: maintainers
 last_verified: 2026-09-09
-translation_of: docs/exec-plans/active/multi-host-control-plane.md
-source_sha256: eab17a47c7c3f5f2357934967e550dc4eacf21ed941b90d853641410c572964d
+translation_of: docs/exec-plans/completed/multi-host-control-plane.md
+source_sha256: afe7173efa1abbc6be8de866b6a4fae0fc39e621af00d0e0a76741e836521be6
 ---
 
 # Single-authority multi-host control planeを追加する
@@ -434,7 +434,7 @@ client env secretを自動forwardしない。
 ## 進捗
 
 - [x] 2026-09-09: ユーザーが合意したWindows実行パスの範囲とWSLのstate・直接実行ファイルの境界を実装し、ローカル全harnessが成功した。UTF-16境界、派生パス、予約・出力を作らない拒否、改名PE、解決後のWSL mountの回帰を追加した。実WSL2でのmount/interop検証環境はなく、実行したとは扱わない。
-- [ ] 合意したWindowsの対応範囲をnative CIで検証し、最終受け入れを反映してからarchiveする。
+- [x] 2026-09-09: 合意したWindowsの対応範囲をnative CIで検証し、最終受け入れを反映してからarchiveする。
 
 - [x] 2026-09-09: product/design文書とauthority ADR0006を両言語で追加。
 - [x] 2026-09-09: worker host-instance IDとremote-operation journal、commit済みsource bundleとdigest検証を実装。
@@ -480,8 +480,8 @@ client env secretを自動forwardしない。
 - [x] 2026-09-09: Windows/macOS/Linux native protocol integration
 - [x] 2026-09-09: separate machine/VM evidence where available
 - [x] 2026-09-09: bilingual durable docs
-- [ ] final harness/race/native/integration/release
-- [ ] evidence/retrospective/completed
+- [x] 2026-09-09: final harness/race/native/integration/release
+- [x] 2026-09-09: evidence/retrospective/completed
 
 ## 想定外の発見
 
@@ -511,7 +511,7 @@ client env secretを自動forwardしない。
 
 ## 判断の記録
 
-- 2026-09-09、ユーザー合意による対応範囲: Windowsの長いパスの挙動を確認した後、ユーザーはWSL2も含めて安全な互換性範囲に収めることを求めた。Windowsの解決後の実行ディレクトリを240 UTF-16単位以内とし、算出したsource/worktree/runtime/test/probeのパスを作用開始前に検査する。従来のWindowsの深いパスで無条件に成功する期待を、明示的な事前拒否と作用がない証拠の検査へ置き換え、Linux/macOSの深いパスの成功回帰は維持する。恒久alias、8.3名の必須化、OSのglobal設定変更は導入しない。WSLのDrvFS/9p上のstateを作成前に拒否し、Windows以外でのPE直接実行とWindowsでのwsl.exe直接実行を拒否する。信頼するwrapperをsandbox化するものではない。この決定で以前の方針の確認事項は解決し、合意した挙動のnative検証を引き続き行う。
+- 2026-09-09、ユーザー合意による対応範囲: Windowsの長いパスの挙動を確認した後、ユーザーはWSL2も含めて安全な互換性範囲に収めることを求めた。Windowsの解決後の実行ディレクトリを240 UTF-16単位以内とし、算出したsource/worktree/runtime/test/probeのパスを作用開始前に検査する。従来のWindowsの深いパスで無条件に成功する期待を、明示的な事前拒否と作用がない証拠の検査へ置き換え、Linux/macOSの深いパスの成功回帰は維持する。恒久alias、8.3名の必須化、OSのglobal設定変更は導入しない。WSLのDrvFS/9p上のstateを作成前に拒否し、Windows以外でのPE直接実行とWindowsでのwsl.exe直接実行を拒否する。信頼するwrapperをsandbox化するものではない。この決定で以前の方針の確認事項は解決し、合意した挙動のnative検証を引き続き行う。継続的に参照する判断理由を[ADR 0007](../../adr/0007-native-execution-boundaries.ja.md)に記録した。
 - 2026-09-09、過去の判断時点（上記で解決済み）: native診断で外部のCreateProcess cwd制限を確認した。その時点では対応範囲の変更に合意がなかったため、成功を求める回帰テストを残して実装を一時停止した。その後ユーザーが合意した互換性範囲により、この一時停止は解消した。
 - 2026-09-09、実装判断: createのjournalによる作用開始の記録をappの予約境界に置く。読み取り専用の事前確認で失敗した場合は作用未開始の証拠を保持でき、予約を試行した後の失敗は不確実な状態として扱える。独立レビューでlease/runtimeの確保がcallbackより後に始まることを確認した。
 
@@ -541,7 +541,7 @@ client env secretを自動forwardしない。
 
 ## 成果と振り返り
 
-ユーザーはWindows/WSLの安全な互換性範囲に合意した。その範囲の実装とローカル検証は完了し、native検証が残っているため本Planをactiveに保つ。
+ユーザーが合意したWindows/WSLの互換性範囲で実装と受け入れが完了した。最終source revision `440082b`は3種類すべてのCI workflowで成功し、日英両版を同時にarchiveする。以下の物理hostと実WSLの証拠の限界は引き続き明示する。
 
 永続的なcontroller管理主体、相互認証するclient/workerの役割、host identity、
 capability/capacityによる配置と、lease全体を一つのworkerへ置く仕組みを実装した。
@@ -554,6 +554,14 @@ controllerは配置を、workerのstate/journalはlocal所有権と結果配送�
 ack喪失時は証拠の配送を再試行する。作用が不確実な操作は無条件に再実行しない。
 予約前のcreate失敗には作用未開始の永続証拠があるが、予約を試行した後は、
 行がないという理由だけでcleanup完了とは判断しない。
+
+合意した互換性範囲では、Windowsの実行ディレクトリが240 UTF-16単位を超える場合に、
+リソースへの作用前に拒否する。WSLとWindowsはnativeのstate/processの管理範囲を分け、
+WSLのDrvFS/9p上のstate、WindowsのWSL UNC上のstate/cwd、直接のOS混在起動を拒否する。
+既存stateの移行や書き換えは行わない。WSL2 filesystem/interopの実環境検証は未実施であり、
+観測を注入するテストは検査ロジックの証拠であって、実WSL配置の証拠ではない。
+信頼するwrapperは直接実行の検査の範囲外である。ユーザーが合意した対応範囲と、そこに至った
+失敗した代案をADR 0007に記録した。
 
 local modeはdaemon不要のままである。endpointはworker-localであり、複数leaseを
 稼働させられるが、各workerのremote操作は直列に実行する。実行中remote testのcancel、
@@ -686,16 +694,16 @@ PR #11のescaped-defect guardrailをprotocol/state boundary testへ適用。
 | M34 | CAS content-addressed/atomic/digest/concurrent safe | CASの同時重複writer、digest/size、原子的directory公開、破損負例が成功。 |
 | M35 | caller pathをCAS authorityにしない | digestだけをCAS pathの入力とし、登録artifactの所有/path/symlink検査が成功。 |
 | M36 | client secret implicit forwarding無し | 実TLSでclient専用token不在とworker env解決を確認。helper負例も成功（Linux18.394s）。 |
-| M37 | Windows native protocol integration | native Windows role fixtureはe46f807で成功。ユーザーが合意した240 UTF-16単位の範囲について作用前拒否の回帰を追加し、最終native再検証を待つ。 |
-| M38 | macOS native protocol integration | native multi-host CI 34314956327と拡張fixtureの34315479224がmacOSで成功。 |
-| M39 | Linux native protocol integration | native Linux CI、拡張local TLS fixture、実remote runtime統合が成功。 |
+| M37 | Windows native protocol integration | Windows Go 1.26/1.27の全harnessが34320519317で成功し、派生パス・作用前拒否・WSL-UNC拒否を含む。実native role fixtureも34320519252で成功。 |
+| M38 | macOS native protocol integration | macOS Go 1.26/1.27 harnessとnative role/Browser fixtureが最終440082bのCIで成功。 |
+| M39 | Linux native protocol integration | Linux Go 1.26/1.27 harness、race/Docker integration、native role/Browser fixtureが最終440082bのCIで成功。WSLは別途未検証と明記。 |
 | M40 | real socket two-worker scheduling/outage/recovery/cleanup | 実TLSのcontroller/client/2-worker fixtureで配置、outage、再起動、復旧、cleanupを検証。 |
 | M41 | physical/VM evidenceをhonestに区別 | 同一物理host上の複数role processを使用。別machine/VMの証拠はなく、主張しない。 |
 | M42 | existing local runtime integration非回帰 | 実local Docker、Podman共存、Android Emulator、Flutter/Android UI、Browser統合が成功。 |
 | M43 | HA/live migration/split lease/tunnelをimplementedと宣伝しない | product/design/READMEはHA、移動、split-host lease、tunnel、remote cancel-activeを将来課題と明記。 |
 | M44 | 英日docs authority/trust/failure/recovery | product/design/ADR、architecture、README、運用文書を日英で更新しdocs/translation検査が成功。 |
-| M45 | final repoctl/docs/race/native/integration/release | ローカルharness/raceと対象のpath/interopテストは成功。以前の実runtimeと6ターゲットrelease受け入れも成功し、合意した範囲の最終native検証を待つ。 |
-| M46 | 英日ExecPlan evidence/retrospective後archive | 対応範囲の判断は解決し、証拠と振り返りを更新済み。最終native harness成功後にarchiveする。 |
+| M45 | final repoctl/docs/race/native/integration/release | 最終440082bの全CI workflowが成功（34320519317 / 34320519252 / 34320519250）。ローカル全harness/race、実runtime baseline、6ターゲットpackagingの証拠は上に記録。 |
+| M46 | 英日ExecPlan evidence/retrospective後archive | 受け入れの証拠を照合し、日英の成果・振り返りを完了。両Planをarchiveし、リンクを更新。 |
 
 ## 冪等性と復旧
 
@@ -707,6 +715,16 @@ source/artifact transferはdigestでretry。
 host OFFLINEはcleanup eventではない。
 
 ## 成果物と注記
+
+最終受け入れ: `440082b`のVerify **34320519317**、Multi-host native **34320519252**、
+Browser native **34320519250**がすべて成功した。VerifyにはWindows/macOS/Linuxの
+Go 1.26/1.27 harness、race、実Docker integration、5件のcross-buildが含まれる。
+native roleとBrowser fixtureも各OSで成功し、最終のWindows WSL-UNC拒否テストを含む。
+以前の`cf5a0e7`に対する実6ターゲットarchive検証と、ローカルのnative/remote
+Browser/Docker/Podman E2Eをpackaging/runtimeの証拠とする。それ以降のsource変更は、
+検証済みのUNC境界の追加だけである。文書のみのarchive変更はdocs-checkとrepository
+harnessで検証する。独立レビュー結果と、実WSL/物理hostの証拠の限界は上に保持する。
+この完了作業にはrelease、tag、merge、PR作成を含めない。
 
 `cf5a0e7`のVerify 34319889785が成功した。Windows/macOS/LinuxのharnessをGo 1.26と1.27の
 両方で実行し、5件すべてのcross-build、race、実Docker integrationも成功した。

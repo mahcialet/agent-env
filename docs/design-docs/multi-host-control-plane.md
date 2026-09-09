@@ -9,8 +9,8 @@ last_verified: 2026-09-09
 [日本語](multi-host-control-plane.ja.md)
 
 The [product contract](../product-specs/multi-host-control-plane.md) defines
-required behavior. The [ExecPlan](../exec-plans/active/multi-host-control-plane.md)
-tracks implementation and acceptance still in progress. This design does not
+required behavior. The [ExecPlan](../exec-plans/completed/multi-host-control-plane.md)
+records completed implementation and acceptance within the documented scope. This design does not
 claim unexecuted protocol, integration or native checks have passed.
 
 ## Authorities and dependencies
@@ -144,4 +144,4 @@ Acceptance must distinguish deterministic state-machine tests, actual TLS socket
 integration with two worker state roots, native Windows/macOS/Linux role execution,
 and physical-machine/VM multi-host evidence. A same-host test or cross-build cannot
 substitute for those last two categories. The ExecPlan records exact results and
-remaining gaps; implementation verification is currently pending.
+remaining evidence limits; implementation acceptance is complete within that scope.

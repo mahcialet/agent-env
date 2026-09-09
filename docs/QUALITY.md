@@ -181,7 +181,7 @@ and safe profile cleanup. The plan records native evidence and CI repair history
 separately from mock tests and cross-builds.
 
 The existing local Browser/CDP matrix passed again on Windows, macOS and Linux at
-`53fe81a` ([run 34316121411](https://github.com/mahcialet/agent-env/actions/runs/34316121411)).
+`440082b` ([run 34316121411](https://github.com/mahcialet/agent-env/actions/runs/34316121411)).
 This regression evidence is separate from remote Browser operation acceptance.
 
 ## Multi-host native verification
@@ -204,12 +204,12 @@ state for investigation.
 Linux/amd64 passed in 21.406s. The initial run exposed a real plan-digest mismatch
 when transport canonicalized JSON object order; semantic manifest canonicalization
 and a permanent source roundtrip regression fixed it. The expanded fixture passed
-all Windows/macOS/Linux jobs at `53fe81a` in the
-[native workflow run 34316121492](https://github.com/mahcialet/agent-env/actions/runs/34316121492).
+all Windows/macOS/Linux jobs at `440082b` in the
+[native workflow run 34320519252](https://github.com/mahcialet/agent-env/actions/runs/34320519252).
 Each runner used two worker roots on one host. This does not prove physical-machine/VM
 multi-host behavior, and cross-builds do not prove native role execution.
-Final acceptance remains in progress; exact evolving results belong to the
-[ExecPlan](exec-plans/active/multi-host-control-plane.md).
+Final acceptance is complete within the documented scope; exact results belong to the completed
+[ExecPlan](exec-plans/completed/multi-host-control-plane.md).
 
 Additional remote runtime fixtures use the same explicit build tag:
 
@@ -224,7 +224,7 @@ Compose and Podman/podman-compose environments. Selecting either test with missi
 prerequisites fails. They launch real controller/worker/runtime processes, retain
 registered evidence, and perform lease-scoped cleanup; ordinary unit tests do not
 start these external runtimes. These commands are not a claim of remote native
-acceptance on every OS; consult the active plan for the tested scope and results.
+acceptance on every OS; consult the completed plan for the tested scope and results.
 
 The Windows execution-path tests cover the 240 UTF-16 boundary, supplementary
 characters, canonical paths, derived worktree/runtime directories and refusal

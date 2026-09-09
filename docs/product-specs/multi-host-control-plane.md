@@ -9,8 +9,8 @@ last_verified: 2026-09-09
 [日本語](multi-host-control-plane.ja.md)
 
 This document defines the required multi-host contract. Implementation and final
-acceptance verification are in progress in the
-[ExecPlan](../exec-plans/active/multi-host-control-plane.md). A requirement here
+acceptance evidence within the documented scope are recorded in the completed
+[ExecPlan](../exec-plans/completed/multi-host-control-plane.md). A requirement here
 is not a claim that its integration or native acceptance test has passed.
 
 ## Modes and placement

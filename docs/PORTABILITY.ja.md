@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/PORTABILITY.md
-source_sha256: 2fb805afd1f8551eba031cf45b4f7f177bda354d15c3d6b2d4daab707e696378
+source_sha256: 31343c78675a43fe233c5ee8f991e740176cfca4f03045e70dd1f5886d461751
 ---
 
 [英語版（翻訳元）](PORTABILITY.md)
@@ -33,6 +33,7 @@ Windowsの実行ディレクトリは、解決後の絶対パスで **240 UTF-16
 repository配置を案内します。拡張prefix、任意の8.3名、実行用junctionは必須にしません。
 Linux/macOSはnativeのパス動作を維持します。OSの長いパス設定やGitの`core.longpaths`だけでは、
 長い作業ディレクトリから子processを起動できるとは限りません。
+判断と影響は[ADR 0007](adr/0007-native-execution-boundaries.ja.md)を参照してください。
 
 ## ネイティブツールと取消
 
@@ -174,11 +175,11 @@ worker には選択した runtime が必要とする外部ツールを用意し�
 client の絶対 source path の代わりに commit 済み bundle を転送し、worker-local の path と loopback endpoint は
 worker の OS 上の意味を保持します。
 
-実 TLS の native fixture は、各 runner の二つの worker root を使い、`53fe81a` の Windows・macOS・Linux で
-成功しました（run 34316121492）。空白・Unicode を含む commit 済み path、controller/worker 再起動、
+実 TLS の native fixture は、各 runner の二つの worker root を使い、`440082b` の Windows・macOS・Linux で
+成功しました（run 34320519252）。空白・Unicode を含む commit 済み path、controller/worker 再起動、
 名前付き test、log、登録済み artifact の download、期限更新、環境変数の分離を検証しています。
-既存の local Browser/CDP native matrix も、同じ revision の 3 OS で成功しました（run 34316121411）。
-物理的な複数マシン・VM の検証は未実施であり、最終的な受け入れ検証は継続中です。
+既存の local Browser/CDP native matrix も、同じ revision の 3 OS で成功しました（run 34320519250）。
+物理的な複数マシン・VM の検証は未実施であり、文書化した対応範囲での受け入れは完了しました。
 cross-build や同じ host の worker process で、物理 host の検証を済ませたとは扱いません。
 [品質](QUALITY.ja.md#複数-host-の-native-検証) と
-[active Plan](exec-plans/active/multi-host-control-plane.ja.md) を参照してください。
+[完了Plan](exec-plans/completed/multi-host-control-plane.ja.md) を参照してください。

@@ -190,8 +190,8 @@ Workers dispatch operations serially while already-created leases run concurrent
 A second active operation on one lease is rejected, including destroy during a
 remote test; remote cancel-active is not implemented. Local force/GC cannot bypass
 controller management. Real-TLS acceptance passed on Windows, macOS and Linux at
-`53fe81a` (run 34316121492), with two worker roots on each runner. The fixture covers
+`440082b` (run 34320519252), with two worker roots on each runner. The fixture covers
 named tests, logs, artifact downloads, renewal and environment isolation as well
 as placement and restart. Physical multi-host/VM coverage remains unverified;
-final acceptance is still in progress. See [quality](docs/QUALITY.md) and the
-[active plan](docs/exec-plans/active/multi-host-control-plane.md).
+the agreed acceptance is complete. See [quality](docs/QUALITY.md) and the
+[completed plan](docs/exec-plans/completed/multi-host-control-plane.md).

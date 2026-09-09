@@ -3,15 +3,15 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/product-specs/multi-host-control-plane.md
-source_sha256: e337f0f273de4aa40d0d327fdafa49246f0778b989948f2cf3e683f3b8dd9cfa
+source_sha256: 0ad195c33c79d1f96bf491bd01bf15005fcdb46f8fe853e2fa86814f6f668ef9
 ---
 
 # 複数 host の control plane
 
 [English](multi-host-control-plane.md)
 
-この文書は複数 host に対応するための必須仕様を定めます。実装と最終受け入れ検証は
-[ExecPlan](../exec-plans/active/multi-host-control-plane.ja.md) で進行中です。
+この文書は複数 host に対応するための必須仕様を定めます。文書化した範囲での実装と最終受け入れの証拠は、
+[完了ExecPlan](../exec-plans/completed/multi-host-control-plane.ja.md) に記録しています。
 ここに要件があるだけで、統合 test や native の受け入れ検証に成功したとは扱いません。
 
 ## モードと配置

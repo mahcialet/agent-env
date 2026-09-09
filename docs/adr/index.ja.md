@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/adr/index.md
-source_sha256: fec0b874cd80c37f7838730bd8cea96afaf62977c82ad645aa04129c3bfa475b
+source_sha256: 33c8df137db75ea24dffc280afc1ef13a46ebd9ed0a673459276d306dd6431b4
 ---
 
 [英語版（翻訳元）](index.md)
@@ -17,3 +17,4 @@ source_sha256: fec0b874cd80c37f7838730bd8cea96afaf62977c82ad645aa04129c3bfa475b
 - [0005-separate-flutter-applications](0005-separate-flutter-applications.ja.md)
 
 - [0006 — 一つの管理主体による複数 host 割当](0006-single-authority-multi-host.ja.md)
+- [0007 — Native実行の境界](0007-native-execution-boundaries.ja.md) / [English](0007-native-execution-boundaries.md)

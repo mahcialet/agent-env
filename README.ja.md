@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: README.md
-source_sha256: e1367dd5190410893eec9f512247ed352a15923d343315900195801bac357e33
+source_sha256: b76b06723bbcc9532cb0508b05c5b92098c7872ce7d94f985c6fd6e6c302cea3
 ---
 
 [英語版（翻訳元）](README.md)
@@ -192,8 +192,8 @@ loopback endpoint は worker を指し、client への tunnel はありません
 worker は操作を直列に実行しますが、作成済み lease は並行して稼働できます。
 同じ lease に対する二つ目の active 操作は、remote test 中の destroy も含めて拒否します。
 remote の実行中操作の cancellation は未実装です。local force/GC で controller の管理を回避できません。
-実 TLS の受け入れ検証は、各 runner の二つの worker root を使い、`53fe81a` の Windows・macOS・Linux で
-成功しました（run 34316121492）。配置・再起動に加え、名前付き test、log、artifact download、
+実 TLS の受け入れ検証は、各 runner の二つの worker root を使い、`440082b` の Windows・macOS・Linux で
+成功しました（run 34320519252）。配置・再起動に加え、名前付き test、log、artifact download、
 期限更新、環境変数の分離を検証しています。物理的な複数 host・VM の検証は未実施であり、
-最終的な受け入れ検証は継続中です。[品質](docs/QUALITY.ja.md) と
-[active Plan](docs/exec-plans/active/multi-host-control-plane.ja.md) を参照してください。
+合意した範囲の受け入れ検証は完了しました。[品質](docs/QUALITY.ja.md) と
+[完了Plan](docs/exec-plans/completed/multi-host-control-plane.ja.md) を参照してください。
