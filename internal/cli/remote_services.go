@@ -8,6 +8,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"os"
 	"path/filepath"
 	"runtime"
 	"sort"
@@ -121,6 +122,15 @@ func addServices(root *cobra.Command, f *remoteFlags, emit func(any) error, errO
 			return e
 		}
 		home, e := paths.Resolve()
+		if e != nil {
+			return e
+		}
+		// Canonicalize only the explicitly selected private root. Managed child
+		// paths still undergo their own no-symlink and ownership checks.
+		if e = os.MkdirAll(home, 0700); e != nil {
+			return e
+		}
+		home, e = filepath.EvalSymlinks(home)
 		if e != nil {
 			return e
 		}

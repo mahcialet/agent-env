@@ -381,6 +381,13 @@ func Materialize(ctx context.Context, p Package, home string, cas *blobstore.Sto
 	if err = privateDirectory(home); err != nil {
 		return options, nil, err
 	}
+	// Host-provided ancestors may be aliases (for example macOS /var).
+	// Resolve this trusted root once so provider identities match Git's
+	// canonical paths; managed descendants still reject symlinks below.
+	home, err = filepath.EvalSymlinks(home)
+	if err != nil {
+		return options, nil, err
+	}
 	root := filepath.Join(home, "remote-sources")
 	if err = privateDirectory(root); err != nil {
 		return options, nil, err
