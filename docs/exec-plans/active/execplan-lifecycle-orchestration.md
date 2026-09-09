@@ -485,3 +485,25 @@ Delivery commits also include `9cca40b`. Its local full `repoctl check` and
 `go test -race ./tools/repoctl -count=1` passed (race: 9.616s). The English and
 Japanese Progress checkboxes now both record the delivered M3 commands; the
 Japanese checkbox had remained unchecked despite the implementation evidence.
+
+### PR #14 CI readiness fixture repair (2026-09-10)
+
+PR Verify run 34356431558 at `03b656d` failed in `go test -race ./...`:
+`TestLifecycleCreatePersistedIntentAndUniqueIsolation` returned
+`context deadline exceeded` on its second Create. Docker integration was skipped.
+The push run 34356426394 at the same HEAD passed. The shared fixture gave healthy
+creation only 50ms for readiness, including SQLite persistence. Use the existing
+5s convention for healthy fixtures and explicitly retain 50ms in
+`TestLifecycleReadinessTimeoutRollsBack`; production timeouts and rollback/isolation
+assertions are unchanged.
+
+An attempted `errors.Is(context.DeadlineExceeded)` assertion failed during the
+50-repeat race run because SQLite can report `sql: transaction has already been
+committed or rolled back` when cancellation races persistence. Removed that new
+assertion rather than imposing a new production error contract; the original
+non-nil error and complete resource cleanup assertions remain. Full local harness
+and full race checks passed during repair; final repeat evidence follows below.
+
+Final focused validation: `go test -race ./internal/app -run
+'^TestLifecycle(CreatePersistedIntentAndUniqueIsolation|ReadinessTimeoutRollsBack)$'
+-count=50 -timeout=3m` passed (22.606s), exercising both success and rollback.

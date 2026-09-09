@@ -12,7 +12,7 @@ workstreams:
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/exec-plans/active/execplan-lifecycle-orchestration.md
-source_sha256: c532d3e7db30a981e376bd4e8a51476f4cf87bc3e34714bb555b1a811137dc62
+source_sha256: a682e35e05f4fbeb397ebd27b60d3c67e89731e9b164d652302d1b0d165cef64
 ---
 
 # ExecPlan lifecycle orchestrationと自動delivery gateを追加する
@@ -413,3 +413,25 @@ base側の信頼済み方針不足という理由を添えてBLOCKEDを返し、
 `go test -race ./tools/repoctl -count=1`は成功した（race: 9.616秒）。
 英日両方の進捗欄で、実装済みM3コマンドの完了を記録した。
 日本語のチェック欄は、実装の証拠があるにもかかわらず未チェックのまま残っていた。
+
+### PR #14 CIのreadiness fixture修正（2026-09-10）
+
+`03b656d`のPR Verify run 34356431558では、`go test -race ./...`中に
+`TestLifecycleCreatePersistedIntentAndUniqueIsolation`の2件目のCreateが
+`context deadline exceeded`で失敗し、Docker integrationはスキップされた。
+同じHEADのpush run 34356426394は成功した。共通fixtureは正常な作成でも、
+SQLiteへの保存を含むreadiness処理に50msしか割り当てていなかった。
+正常系fixtureには既存の慣例である5秒を使い、
+`TestLifecycleReadinessTimeoutRollsBack`では50msを明示して維持する。
+製品の期限と、rollback・分離に関するassertionは変更しない。
+
+`errors.Is(context.DeadlineExceeded)`のassertion追加も試したが、
+race付き50回反復で失敗した。キャンセルと永続化が競合すると、SQLiteが
+`sql: transaction has already been committed or rolled back`を返す場合がある。
+製品のエラー契約を新たに変更せず、この追加assertionを取り下げた。
+元のエラー発生と全資源解放のassertionは維持している。
+修正過程の全ローカルharnessと全race検査は成功した。最終反復結果は以下に追記する。
+
+最終の対象検証：`go test -race ./internal/app -run
+'^TestLifecycle(CreatePersistedIntentAndUniqueIsolation|ReadinessTimeoutRollsBack)$'
+-count=50 -timeout=3m`は成功（22.606秒）。正常系とrollbackを両方検証した。
