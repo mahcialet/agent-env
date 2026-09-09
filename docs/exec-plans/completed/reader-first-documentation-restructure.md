@@ -1,5 +1,5 @@
 ---
-status: active
+status: completed
 owner: maintainers
 last_verified: 2026-09-09
 ---
@@ -617,7 +617,7 @@ that the Japanese structure is identical.
 - [x] 2026-09-09: Perform independent Japanese reader-first review.
 - [x] 2026-09-09: Perform bilingual semantic parity review.
 - [x] 2026-09-09: Run final repository harness.
-- [ ] Complete Outcomes & Retrospective with changed-document inventory.
+- [x] 2026-09-09: Complete Outcomes & Retrospective with changed-document inventory.
 - [ ] Move both ExecPlans to completed and update links/hashes.
 
 A checked item means observed completion, not intention.
@@ -736,27 +736,63 @@ The twelve questions below are settled as follows, in the same order:
 
 ## Outcomes & Retrospective
 
-Not completed.
+Completed on 2026-09-09. Starting revision:
+`084da57de177c0a09bc3cb61ae99faff8bd79a94`; final document-content revision:
+`6622a4e` on `docs/reader-first-documentation-restructure`. The following completion
+commit records this retrospective and archival, without changing runtime behavior.
 
-At completion summarize:
+All 46 current document pairs were reviewed and edited, together with this Plan
+pair. The inventory below enumerates each current path. Substantial restructuring
+covers README, Architecture, navigation/status pages, policy explanation and dense
+product/design contracts. Already concise ADRs and short designs received only
+purpose/next-read clarification and targeted Japanese improvements; their accepted
+decisions were not reopened. There are no unreviewed current pairs in the scope.
 
-- starting/final revision;
-- document pairs reviewed;
-- document pairs materially restructured;
-- documents intentionally left unchanged;
-- duplicated guidance consolidated;
-- stale facts corrected;
-- current authority moves;
-- reader-first conventions added to policy;
-- terminology decisions;
-- English review findings;
-- Japanese review findings;
-- bilingual parity findings;
-- docs-check/harness evidence;
-- remaining documentation debt.
+Preserved without prose changes: 26 pre-existing completed English Plans and their
+existing Japanese siblings, 13 raw audit report pairs, the generated schema and
+original handoff. The audit index is current navigation and was edited; its
+historical evidence tables were preserved. Six explicit language exceptions and
+all generated/check mechanisms remain unchanged.
 
-Also record which document structures became recommended templates for future
-work.
+README now guides installation and common lease use, then links to capabilities.
+Its detailed remote startup and Android helper recipes moved into the relevant
+product contracts. Architecture maps responsibilities and lifecycle boundaries;
+roadmap groups current capabilities and separates deferred work, open decisions
+and evidence limits. Exact historical CI evidence stays in completed Plans.
+Editorial rules have one home in bilingual-documentation, linked from AGENTS,
+PLANS and QUALITY. These moves reduce repeated guidance without removing commands
+or safety constraints.
+
+The recommended future structures are reader-question openings, capability-grouped
+orientation, purpose/configuration/behavior/failure/limits for contracts, and
+context/boundaries/mechanism/recovery/evidence for designs. ADRs remain concise
+context/decision/consequences records. These are recommendations, not mandatory
+identical headings. English is edited before Japanese; each language can reorder
+sentences and paragraphs while preserving meaning. Japanese uses established
+technical terms and may omit unambiguous subjects; exact code identifiers remain
+unchanged. Hash freshness acknowledges source review, not identical structure.
+
+Stale facts and their implementation evidence are itemized in Surprises &
+Discoveries: Browser support and process consumption, Android UI status, initial
+MVP scope, lease creation order, built-in TTL policy, CAS layout, all-provider
+reconciliation, TCP-only probing and the corrected local Browser CI reference.
+Independent English review improved dense lists and authority routes; Japanese
+review removed noun chains and ambiguous subjects/status; parity review repaired
+active-operation and native-Emulator qualifiers. Final independent review evidence
+below identifies the separate author/reviewer roles. All reported findings were
+resolved and rechecked.
+
+D1-D32 have concrete evidence in the acceptance table. Baseline, intermediate and
+final full harness runs passed; docs-check also passed after the three content
+commits. No test, architecture rule, translation check or portability requirement
+was weakened. The archive move receives a further docs-check before its commit.
+
+Remaining debt is bounded: historical wording is intentionally retained, prose
+quality continues to need language and parity review, and existing native/physical
+host/platform evidence gaps remain as documented in QUALITY and the roadmap.
+This documentation-only task neither closes those runtime gaps nor claims new
+Windows/macOS/native smoke results. No unresolved editorial finding blocks this
+Plan. No additional audit or glossary document was introduced.
 
 ## Context and Orientation
 
@@ -1030,7 +1066,7 @@ Complete the retrospective before archival.
 | D29 | All affected Japanese `source_sha256` values match reviewed English sources. | Final repoctl check docs stage passed after semantic review and affected-pair hash refresh. |
 | D30 | `repoctl docs-check` passes. | Baseline and repeated repoctl docs-check passed; final full check also passed its docs-check stage. |
 | D31 | Full repository harness/documentation checks pass. | 2026-09-09 final go run ./tools/repoctl check exit 0: format, unit tests, vet, docs, generated output and architecture checks. |
-| D32 | Outcomes & Retrospective records changed/unchanged documents, authority moves, stale facts and remaining debt before archival. | Pending |
+| D32 | Outcomes & Retrospective records changed/unchanged documents, authority moves, stale facts and remaining debt before archival. | Outcomes above records revisions, reviewed/changed/unchanged inventory, authority moves, fact repairs, review findings, validation and remaining debt. |
 
 A green translation hash alone is not semantic acceptance.
 
@@ -1248,7 +1284,7 @@ Before editing, the agreed preservation maps are:
 | `docs/product-specs/standalone-distribution.md` — Standalone distribution | 3 / what behavior can I rely on? | contract; current | high; configuration / behavior / failure / limits |
 | `docs/references/index.md` — References | 6 / where is historical reference material? | navigation; current | medium; current/deferred/evidence distinction |
 | `docs/roadmap.md` — Roadmap and unresolved decisions | 1 / what exists and what is deferred? | capability status and open decisions; current | high; capability groups and evidence limits |
-| `docs/exec-plans/active/reader-first-documentation-restructure.md` | 5 / how is this change delivered and verified? | execution authority; active until archival | high; preserve requirements, decisions, failures and evidence |
+| `docs/exec-plans/completed/reader-first-documentation-restructure.md` | 5 / how is this change delivered and verified? | execution authority; active until archival | high; preserve requirements, decisions, failures and evidence |
 
 The per-family maps above are the before-edit contract. Detailed contributor maps
 and independent review dispositions are recorded in the execution notes below as
@@ -1370,3 +1406,10 @@ contracts so that README recipe moves land atomically.
 Milestone commit `d8b8b99` records six entry/navigation pairs and twelve product
 contract pairs, including the atomic README recipe moves. The design/ADR milestone
 retains accepted decisions while clarifying mechanisms and boundaries.
+
+The completion record also passed independent English, standalone Japanese and
+semantic-parity review. Both Plan files were moved to `completed/` on 2026-09-09;
+no unresolved acceptance or editorial finding remains.
+
+Post-archive `go run ./tools/repoctl docs-check` and `git diff --check`: PASS
+on 2026-09-09. Translation metadata now names the completed English path.

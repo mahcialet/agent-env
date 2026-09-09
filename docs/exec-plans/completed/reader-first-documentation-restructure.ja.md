@@ -1,9 +1,9 @@
 ---
-status: active
+status: completed
 owner: maintainers
 last_verified: 2026-09-09
-translation_of: docs/exec-plans/active/reader-first-documentation-restructure.md
-source_sha256: d2083cbf6038de9f37cc6bcf431594323f977a912fab72ad85dd65ecdfc2c5a6
+translation_of: docs/exec-plans/completed/reader-first-documentation-restructure.md
+source_sha256: 5cc45d3be4d4c20541286d962a83d0ffdc6117838115f472fc35d582c466606f
 ---
 
 # Durable documentation全体をreader-firstな英語・日本語へ再構成する
@@ -439,7 +439,7 @@ source_sha256はsource review acknowledgmentでありstructure同一性の証明
 - [x] 2026-09-09: independent Japanese review
 - [x] 2026-09-09: bilingual parity review
 - [x] 2026-09-09: final repository harness
-- [ ] retrospective
+- [x] 2026-09-09: retrospective
 - [ ] completed移動
 
 ## 想定外の発見
@@ -508,13 +508,46 @@ source_sha256はsource review acknowledgmentでありstructure同一性の証明
 
 ## 成果と振り返り
 
-未完了。
+2026-09-09に完了。開始revisionは`084da57de177c0a09bc3cb61ae99faff8bd79a94`、
+文書本文の最終revisionは`docs/reader-first-documentation-restructure`の`6622a4e`である。
+続く完了commitには振り返りと完了済みへの移動を記録し、runtimeの挙動は変えない。
 
-完了時にstart/final revision、reviewed/restructured/unchanged pairs、duplicate consolidation、
-stale fact、authority move、reader-first policy、terminology、英語review、日本語review、
-parity review、docs-check、remaining debtを記録。
+現行文書46組と本Planの日英ペアを確認・編集した。各パスは後掲の棚卸しに記録した。
+README、Architecture、入口と状態の案内、方針の説明、密な製品仕様・設計を主に再構成した。
+すでに簡潔なADRや短い設計は目的・次に読む文書の案内と必要な日本語の改善にとどめ、
+採用済み判断を変更していない。対象範囲に未確認の現行ペアはない。
 
-future docs向けrecommended structureもまとめる。
+既存の完了Planの英語26件と対応する日本語版、監査報告本文13組、生成schema、元の引き継ぎ記録は
+文体を変えずに保持した。監査indexは現行の案内として編集したが、過去の証拠表は維持した。
+明示的な翻訳例外6件と生成・検査の仕組みも変更していない。
+
+READMEは導入と共通のlease操作から機能別の仕様へ案内する。詳細なremote起動とAndroid helperの
+手順は各製品仕様へ移した。Architectureは責務とlifecycleの境界を示し、roadmapは機能別に
+実装済み、先送り、未決定、証拠の制限を区別する。過去のCIの詳細は完了Planに残す。
+編集規則はbilingual-documentationに集約し、AGENTS、PLANS、QUALITYから案内する。
+コマンドや安全条件を失わずに、説明の重複を減らした。
+
+今後は読者の質問を示す冒頭、機能別の入口、仕様の目的・設定・挙動・失敗・制限、
+設計の背景・境界・仕組み・復旧・証拠という構成を推奨する。ADRは背景・判断・結果を簡潔に保つ。
+見出しの完全な一致は強制しない。英語を先に編集し、日本語は意味を保持しながら文や段落を
+組み替えられる。定着した日本語の専門用語を使い、曖昧でなければ主語を省略できる。
+コードの識別子は厳密に維持する。hashは原文を確認した記録であり、構造の一致を証明しない。
+
+古い記述の修正と実装上の根拠は「想定外の発見」に記録した。Browserの対応とprocess利用、
+Android UIの状態、MVPの当初の範囲、leaseの作成順序、組み込みTTL方針、CASの配置、
+全providerのreconcile、TCPだけの検査、ローカルBrowser CIの参照が該当する。
+英語の独立レビューでは密な列挙と参照先、日本語では名詞の連結や曖昧な主語・状態を改善した。
+意味の一致の確認では実行中の操作という条件とnative Emulatorの限定を修正した。
+後掲の独立レビュー証拠に執筆担当と確認担当の分離を記録し、すべての指摘を修正・再確認した。
+
+D1〜D32の具体的な証拠は受け入れ表に記録した。開始時・途中・最終の全体harnessが成功し、
+本文の3commit後のdocs-checkも成功した。テスト、構成規則、翻訳検査、移植性要件は弱めていない。
+完了済みへの移動後も、commit前にdocs-checkを実行する。
+
+残る課題は、意図して保持した過去文書の文体、継続して必要な言語・意味のレビュー、
+QUALITYとroadmapに記載されたnative環境・実機・platformの検証範囲である。
+今回の文書作業でruntimeの検証不足を解消したとはせず、Windows、macOS、native smokeの
+新たな成功も主張しない。本Planを妨げる未解決の編集指摘はない。監査文書や用語集は増やさなかった。
 
 ## 背景と構成
 
@@ -653,7 +686,7 @@ hash/pair/link/history/status/safety constraint確認。
 | D29 | affected source_sha256 fresh | 意味の確認と対象ペアのhash更新後、最終repoctl check内のdocs検査が成功。 |
 | D30 | repoctl docs-check pass | 開始時と途中のdocs-checkが成功し、最終の全体checkでもdocs検査が成功。 |
 | D31 | full repository documentation/harness checks pass | 2026-09-09の最終go run ./tools/repoctl checkは終了コード0。整形、単体テスト、vet、文書、生成物、構成の検査が成功。 |
-| D32 | retrospectiveにchanged/unchanged/authority/stale/debt記録 | Pending |
+| D32 | retrospectiveにchanged/unchanged/authority/stale/debt記録 | 成果と振り返りにrevision、確認・変更・保持した対象、参照先の集約、事実の修正、レビュー、検証、残る課題を記録。 |
 
 green hashだけではsemantic acceptanceではない。
 
@@ -927,3 +960,9 @@ Milestone commit `b733c73`に日英の編集方針、方針文書7組、本実�
 
 Milestone commit `d8b8b99`に入口・案内6組と製品仕様12組を含め、READMEの手順も同時に移した。
 設計・ADRのcommitでは採用済み判断を保持し、仕組みと境界を明確にする。
+
+完了記録も別担当が英語、日本語単独での理解、意味の一致を確認し、問題がないと判断した。
+2026-09-09に日英のPlanを`completed/`へ移動した。未解決の受け入れ条件や編集指摘はない。
+
+移動後の`go run ./tools/repoctl docs-check`と`git diff --check`は2026-09-09に成功した。
+翻訳metadataは完了済みの英語パスを参照する。
