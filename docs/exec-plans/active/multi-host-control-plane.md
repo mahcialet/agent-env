@@ -656,6 +656,8 @@ A future secret-provider design may add explicit secret delivery.
 
 ## Surprises & Discoveries
 
+- 2026-09-09: Native Windows diagnostics at `452bf4d` (Verify 34318026189, Windows Go 1.26 job 102358285418) show CreateProcess rejects a 333-character cwd for both ordinary and extended-prefix paths. The Go helper, `git --version`, and Git config probes all fail before child execution. This is broader than Git source cloning: runtime processes also need a usable cwd. A transient junction is not sufficient because Git worktree metadata can retain the alias after it is removed. A persistent execution alias would require source/runtime path integration, ownership/target validation, restart reconstruction and cleanup policy, and must reconcile PORTABILITY's “No symbolic links are required” boundary. Alternatively, an explicitly accepted shorter Windows worker-home requirement could be enforced before effects. Neither support-boundary change is implemented or presumed approved. The >300-character success regression remains unchanged and failing; a user decision is pending.
+
 - 2026-09-09: Verify 34317326990 still failed the Windows deep source lifecycle: Git rejects the long `-C` directory. Upstream Git for Windows `are_long_paths_enabled` returns false before repository configuration initialization, so command-line `core.longpaths` cannot fix the early chdir. Native multi-host 34317327009 and Browser 34317326997 both passed all three OSes. Investigating Windows extended-prefix process cwd; no reliance on optional 8.3 names or reduced-depth tests is introduced.
 
 - 2026-09-09: Windows Git now selects its working directory with `-C`, avoiding CreateProcess long-cwd rejection without changing source layout or the regression. Browser CI exposed asynchronous `Target.closeTarget` inventory: the test now waits up to five seconds for exactly the original sibling page, rejecting sibling loss or unexpected targets immediately. Three real Linux Chrome runs passed (28.929s). Full local harness/race and updated worker UI tests passed; remote Browser/Docker/Podman E2E passed again (33.142s). Native CI revalidation is required.
@@ -696,6 +698,8 @@ Record at minimum:
 Preserve failed approaches that affect authority/recovery design.
 
 ## Decision Log
+
+- 2026-09-09, pending user decision: Do not replace the deep-path success regression with a rejection test or introduce persistent Windows execution aliases without agreeing the support boundary. Native diagnostics establish an external CreateProcess cwd limitation. Keep this plan active and retain the failed validation evidence; implementation of either proposed policy is paused pending that decision.
 
 - 2026-09-09, implementation: Put create journal effect fencing at the app reservation boundary. Read-only preflight failures can then retain journal-proven no-effect evidence, while every reservation attempt remains conservatively uncertain on failure. Independent review confirmed that lease/runtime allocation starts only after this callback.
 
@@ -745,7 +749,7 @@ Preserve failed approaches that affect authority/recovery design.
 
 ## Outcomes & Retrospective
 
-Implementation and local acceptance are complete; final native CI is in progress.
+Implementation and local acceptance are complete. Final native acceptance is blocked on the Windows execution-directory support decision below; this plan remains active.
 
 Delivered one persistent controller authority, mutually authenticated client/worker
 roles, durable host identity, capability/capacity scheduling and one-worker lease
@@ -953,7 +957,7 @@ Use the supported Go toolchain on PATH. Run `go run ./tools/repoctl check`, `go 
 | M34 | CAS is atomic, content-addressed, digest-verified and duplicate-upload safe. | CAS concurrent duplicate writers, digest/size validation, atomic directory publication and corruption negatives passed. |
 | M35 | Caller paths never become CAS filesystem authority. | CAS digest-only path validation and registered-artifact ownership/path/symlink tests passed. |
 | M36 | Client secrets are not implicitly forwarded; remote env resolves on worker. | Native TLS fixture verifies client-only token absence and worker env resolution; negative helper controls passed (18.394s Linux). |
-| M37 | Native controller/worker/client integration passes on Windows. | Expanded native role fixture passed on Windows in 34316121492; the separate deep Git path harness regression is under final validation. |
+| M37 | Native controller/worker/client integration passes on Windows. | Expanded native role fixture passed on Windows in 34317327009. Full harness remains blocked by the >300-character CreateProcess cwd limitation confirmed by 452bf4d native diagnostics; support-boundary decision pending. |
 | M38 | Native controller/worker/client integration passes on macOS. | Expanded native role fixture passed on macOS in 34316121492. |
 | M39 | Native controller/worker/client integration passes on Linux. | Native multi-host Linux CI passed; extended local TLS fixture and real remote runtime tests passed. |
 | M40 | Real-socket two-worker integration proves scheduling/outage/reconnect/recovery/cleanup. | Native real TLS controller/client/two-worker fixture covers placement, outage, restart, recovery and cleanup. |
@@ -961,8 +965,8 @@ Use the supported Go toolchain on PATH. Run `go run ./tools/repoctl check`, `go 
 | M42 | Existing Docker/Podman/Android/process/Browser local integrations remain non-regressed. | Real local Docker, Podman coexistence, Android Emulator, Flutter/Android UI and Browser integrations passed. |
 | M43 | HA/live migration/split-host leases/tunnels are not advertised as implemented. | Product/design/README explicitly defer HA, migration, split-host leases, tunnels and remote cancel-active. |
 | M44 | Bilingual durable docs describe authority/trust/failure/recovery boundaries. | Paired product/design/ADR, architecture, README and operational docs passed docs/translation checks. |
-| M45 | Final repoctl/docs/translation/race/native/integration/release verification passes. | Local harness/race and real six-target release candidate build/check/native smoke/negative tests passed; final native CI pending. |
-| M46 | Both ExecPlans contain direct evidence and retrospective before archival. | Pending final native evidence, retrospective reconciliation and bilingual archive. |
+| M45 | Final repoctl/docs/translation/race/native/integration/release verification passes. | Local harness/race, real six-target release candidate, Docker/Podman/Android/Flutter/Browser baselines and all3 native role/Browser fixtures pass. Final Windows full harness is blocked on the execution-directory support decision. |
+| M46 | Both ExecPlans contain direct evidence and retrospective before archival. | Implementation evidence and retrospective reconciled. Windows support-boundary decision and successful final harness are still required; plan remains active. |
 
 ## Idempotence and Recovery
 
@@ -983,7 +987,7 @@ cleanup event.
 
 ## Artifacts and Notes
 
-Final implementation checkpoint `e46f807`: local `repoctl check` and `go test -race ./...` passed. The real release-candidate fixture passed in 20.385s, building/checking all six archives and running native smoke plus tamper negatives. Updated remote Browser/Docker/Podman E2E passed in 33.142s. Native multi-host 34317327009 and Browser 34317326997 passed Windows, macOS and Linux. Verify 34317326990 is being checked before archival.
+Final implementation checkpoint `e46f807`: local `repoctl check` and `go test -race ./...` passed. The real release-candidate fixture passed in 20.385s, building/checking all six archives and running native smoke plus tamper negatives. Updated remote Browser/Docker/Podman E2E passed in 33.142s. Native multi-host 34317327009 and Browser 34317326997 passed Windows, macOS and Linux. Verify 34317326990 passed all non-Windows jobs but failed both Windows versions on the deep-path source lifecycle. Diagnostics at 452bf4d establish the execution-directory blocker below; archival is deferred.
 
 Additional acceptance evidence: real remote Browser/Docker/Podman fixture passed in 35.659s; expanded two-worker named-test/log/artifact/renew fixture passed in 18.907s, and client/worker environment isolation in 18.394s. `AGENT_ENV_RELEASE_CANDIDATE=build go test ./tools/repoctl -run '^TestReleaseCandidate$' -count=1 -v -timeout=20m` passed on `b1a7df6`: six real target archives, verification, native smoke and negative tamper tests used an isolated private source/tag fixture; no public tag or release was created. Native multi-host CI 34314956327 passed all three OSes on `d993965`. The expanded fixture passed Linux/macOS on 34315479224; Windows revealed relative executable lookup before child cwd. Full Windows harness additionally exposed a >300-character Git path case. Both failures remain recorded until their targeted native checks pass.
 

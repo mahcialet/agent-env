@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/exec-plans/active/multi-host-control-plane.md
-source_sha256: dcf432ee024d6fccb5aef29058bbe0939797b28e6507afd217f26dfe9ae63a4c
+source_sha256: 6336ebabcb10c529dc58fc5b19d9f36cf11c157e156ee286dd2a9ad69969f728
 ---
 
 # Single-authority multi-host control planeを追加する
@@ -482,6 +482,8 @@ client env secretを自動forwardしない。
 
 ## 想定外の発見
 
+- 2026-09-09: `452bf4d`のWindows native診断（Verify 34318026189、Go 1.26 job 102358285418）で、333文字のcwdが通常パスでも拡張prefixでもCreateProcessに拒否されることを確認した。Go helper、`git --version`、Git configの全probeが子processの実行前に失敗する。Git source cloneだけの問題ではなく、runtimeにも起動可能なcwdが必要である。一時junctionだけでは、削除後もGit worktree metadataにaliasが残り得るため十分ではない。永続的な実行用aliasには、source/runtimeのパス統合、所有権・target検証、再起動時の復元、cleanup方針が必要であり、PORTABILITYの「symbolic linkを必須にしない」という境界との調整も要る。別案として、短いWindows worker homeを要件として合意し、作用開始前に検証する方法がある。どちらの対応範囲の変更も実装せず、承認済みとも扱わない。300文字超で成功する既存の回帰テストは変更せず失敗を残し、ユーザーの判断を待つ。
+
 - 2026-09-09: Verify 34317326990でもWindowsの深いsource lifecycleが失敗し、Gitが長い`-C`ディレクトリを拒否した。Git for Windowsの実装ではrepository config初期化前の`are_long_paths_enabled`がfalseとなるため、command-lineの`core.longpaths`では早期chdirを解決できない。native multi-host 34317327009とBrowser 34317326997は3 OSすべて成功した。Windowsの拡張prefix付きprocess cwdを調査し、任意の8.3名への依存やテストの深さ削減は導入しない。
 
 - 2026-09-09: WindowsのGitは`-C`で作業ディレクトリを選び、source配置と回帰テストを維持したままCreateProcessの長いcwd制限を回避する。Browser CIでは`Target.closeTarget`後の一覧反映が非同期だったため、元のページだけになるまで最大5秒待つ検査に変更した。元のページの消失や未知のtargetは即失敗とする。Linuxの実Chromeを3回実行して成功（28.929s）。ローカル全harness/raceとworker UIテストが成功し、remote Browser/Docker/Podman E2Eも再成功した（33.142s）。native CIで再検証する。
@@ -530,7 +532,7 @@ client env secretを自動forwardしない。
 
 ## 成果と振り返り
 
-実装とローカルの受け入れ検証は完了し、最終native CIを実行中である。
+実装とローカルの受け入れ検証は完了した。最終native受け入れは下記のWindows実行ディレクトリの対応範囲の判断待ちであり、本Planはactiveのままとする。
 
 永続的なcontroller管理主体、相互認証するclient/workerの役割、host identity、
 capability/capacityによる配置と、lease全体を一つのworkerへ置く仕組みを実装した。
@@ -675,7 +677,7 @@ PR #11のescaped-defect guardrailをprotocol/state boundary testへ適用。
 | M34 | CAS content-addressed/atomic/digest/concurrent safe | CASの同時重複writer、digest/size、原子的directory公開、破損負例が成功。 |
 | M35 | caller pathをCAS authorityにしない | digestだけをCAS pathの入力とし、登録artifactの所有/path/symlink検査が成功。 |
 | M36 | client secret implicit forwarding無し | 実TLSでclient専用token不在とworker env解決を確認。helper負例も成功（Linux18.394s）。 |
-| M37 | Windows native protocol integration | CI 34314956327の初期lifecycleはWindowsで成功。拡張named testと長いpathは修正検証中。 |
+| M37 | Windows native protocol integration | 拡張native role fixtureは34317327009でWindowsも成功。全harnessは452bf4dのnative診断で確認した300文字超のCreateProcess cwd制限により未完了で、対応範囲の判断待ち。 |
 | M38 | macOS native protocol integration | native multi-host CI 34314956327と拡張fixtureの34315479224がmacOSで成功。 |
 | M39 | Linux native protocol integration | native Linux CI、拡張local TLS fixture、実remote runtime統合が成功。 |
 | M40 | real socket two-worker scheduling/outage/recovery/cleanup | 実TLSのcontroller/client/2-worker fixtureで配置、outage、再起動、復旧、cleanupを検証。 |
@@ -683,8 +685,8 @@ PR #11のescaped-defect guardrailをprotocol/state boundary testへ適用。
 | M42 | existing local runtime integration非回帰 | 実local Docker、Podman共存、Android Emulator、Flutter/Android UI、Browser統合が成功。 |
 | M43 | HA/live migration/split lease/tunnelをimplementedと宣伝しない | product/design/READMEはHA、移動、split-host lease、tunnel、remote cancel-activeを将来課題と明記。 |
 | M44 | 英日docs authority/trust/failure/recovery | product/design/ADR、architecture、README、運用文書を日英で更新しdocs/translation検査が成功。 |
-| M45 | final repoctl/docs/race/native/integration/release | local harness/raceと実6target release candidate build/check/native smoke/改変負例が成功。最終native CIは未完了。 |
-| M46 | 英日ExecPlan evidence/retrospective後archive | 最終native証拠、振り返りの照合、両言語archiveが未完了。 |
+| M45 | final repoctl/docs/race/native/integration/release | ローカルharness/race、実Docker/Podman/Android/Flutter/Browser baseline、3 OSのnative role/Browser fixtureは成功。最終Windows全harnessは実行ディレクトリの対応範囲の判断待ち。 |
+| M46 | 英日ExecPlan evidence/retrospective後archive | 実装の証拠と振り返りは反映済み。Windowsの対応範囲の判断と最終harness成功が必要であり、Planをactiveに保つ。 |
 
 ## 冪等性と復旧
 
@@ -697,7 +699,7 @@ host OFFLINEはcleanup eventではない。
 
 ## 成果物と注記
 
-最終実装のチェックポイント`e46f807`で、ローカルの`repoctl check`と`go test -race ./...`が成功した。実release-candidate fixtureは20.385sで成功し、6種類すべてのarchiveを生成・検証してnative smokeと改変拒否の検査を行った。更新後のremote Browser/Docker/Podman E2Eは33.142sで成功した。native multi-host 34317327009とBrowser 34317326997はWindows、macOS、Linuxすべてで成功した。archive前にVerify 34317326990を確認している。
+最終実装のチェックポイント`e46f807`で、ローカルの`repoctl check`と`go test -race ./...`が成功した。実release-candidate fixtureは20.385sで成功し、6種類すべてのarchiveを生成・検証してnative smokeと改変拒否の検査を行った。更新後のremote Browser/Docker/Podman E2Eは33.142sで成功した。native multi-host 34317327009とBrowser 34317326997はWindows、macOS、Linuxすべてで成功した。Verify 34317326990のWindows以外の全jobは成功したが、Windowsは両Go versionとも深いパスのsource lifecycleで失敗した。452bf4dの診断で下記の実行ディレクトリの障害を確認したため、archiveは保留する。
 
 追加証拠: 実remote Browser/Docker/Podmanが35.659s、拡張2-worker named-test/log/artifact/renewが18.907s、client/worker環境分離が18.394sで成功。`b1a7df6`で`AGENT_ENV_RELEASE_CANDIDATE=build go test ./tools/repoctl -run '^TestReleaseCandidate$' -count=1 -v -timeout=20m`が成功し、隔離したprivate source/tag fixtureを使って実6target archive、検査、native smoke、改変負例を検証した。公開tag/releaseは作成していない。`d993965`のnative multi-host CI 34314956327は3OSすべて成功。拡張fixtureの34315479224はLinux/macOSで成功し、Windowsでは子processのcwd適用前の相対実行path検索が失敗した。Windows全harnessでは300文字を超えるGit pathの追加ケースも失敗した。どちらも対応するnative検証が成功するまで失敗記録を維持する。
 
