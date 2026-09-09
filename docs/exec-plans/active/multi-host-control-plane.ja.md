@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/exec-plans/active/multi-host-control-plane.md
-source_sha256: 8807ad114297c7ace328679c4153bbf47449c1eab18b17f116bf7f5e2f703914
+source_sha256: 79282cac76aa4c66d8f48d612d4fab46945dec91700e3acf695b1fe92c832f62
 ---
 
 # Single-authority multi-host control planeを追加する
@@ -610,52 +610,52 @@ PR #11のescaped-defect guardrailをprotocol/state boundary testへ適用。
 
 | ID | 必須動作 | 証拠 |
 | --- | --- | --- |
-| M1 | local mode daemon-free/non-regression | Pending |
-| M2 | persistent controller identity + single authority | Pending |
-| M3 | host ID + host-instance identityでreplacement誤adopt防止 | Pending |
-| M4 | production mTLS/auth、unenrolled拒否 | Pending |
-| M5 | worker outbound only | Pending |
-| M6 | protocol mismatchをeffect前reject | Pending |
-| M7 | controller/globalとworker/local authority分離 | Pending |
-| M8 | whole lease exactly one worker | Pending |
-| M9 | scheduler capability/capacity/host state検証 | Pending |
-| M10 | explicit hostでもsafety bypass無し | Pending |
-| M11 | source aliasはcommit+bundle digest、client absolute path非使用 | Pending |
-| M12 | corrupt/wrong source effect前fail | Pending |
-| M13 | worker source/manifest/stack独立verify | Pending |
-| M14 | global lease ID/epoch effect前persist | Pending |
-| M15 | duplicate operationでmutation再実行無し | Pending |
-| M16 | effect後result lossをjournalからrecover | Pending |
-| M17 | artifact failureはuploadのみretry | Pending |
-| M18 | heartbeat expiryはUNKNOWN、absence扱い無し | Pending |
-| M19 | offline lease auto reassignment無し | Pending |
-| M20 | same worker reconnectでsame lease reconcile | Pending |
-| M21 | same host-id/different instance active時reject | Pending |
-| M22 | controller restart duplicate effect無し | Pending |
-| M23 | worker restart existing resource/journal recover | Pending |
-| M24 | controller outageでworker auto GC無し | Pending |
-| M25 | local mutation/GCでcontroller-managed lease変更不可 | Pending |
-| M26 | remote destroyはworker cleanup proof後のみglobal RELEASED | Pending |
-| M27 | worker local endpointをclient localと偽らない | Pending |
-| M28 | test/log/artifact remote、raw shell無し | Pending |
-| M29 | Android UI既存stale/device/fence維持 | Pending |
-| M30 | Browser既存process/page/snapshot/focus/stale維持 | Pending |
-| M31 | two worker concurrent lease isolation | Pending |
-| M32 | drainはnew placement停止のみ | Pending |
-| M33 | active/stale/uncertain host remove拒否 | Pending |
-| M34 | CAS content-addressed/atomic/digest/concurrent safe | Pending |
-| M35 | caller pathをCAS authorityにしない | Pending |
-| M36 | client secret implicit forwarding無し | Pending |
-| M37 | Windows native protocol integration | Pending |
-| M38 | macOS native protocol integration | Pending |
-| M39 | Linux native protocol integration | Pending |
-| M40 | real socket two-worker scheduling/outage/recovery/cleanup | Pending |
-| M41 | physical/VM evidenceをhonestに区別 | Pending |
-| M42 | existing local runtime integration非回帰 | Pending |
-| M43 | HA/live migration/split lease/tunnelをimplementedと宣伝しない | Pending |
-| M44 | 英日docs authority/trust/failure/recovery | Pending |
-| M45 | final repoctl/docs/race/native/integration/release | Pending |
-| M46 | 英日ExecPlan evidence/retrospective後archive | Pending |
+| M1 | local mode daemon-free/non-regression | localの全harness/raceとDocker、Podman、Android、Flutter/UI、Browser統合が成功。最終native harnessは未完了。 |
+| M2 | persistent controller identity + single authority | controller永続化・再起動、native process lock/crash解放、実TLSでのidentity保持を検証。 |
+| M3 | host ID + host-instance identityでreplacement誤adopt防止 | host-instance拒否テストとnative worker再起動時のidentity保持が成功。 |
+| M4 | production mTLS/auth、unenrolled拒否 | 実TLSで未登録証明書とworkerによるclient操作を拒否。role/host/blob ACLの負例が成功。 |
+| M5 | worker outbound only | native fixtureはoutbound接続のworkerを2process使用し、worker管理用listenerを持たない。 |
+| M6 | protocol mismatchをeffect前reject | 非互換inventory、upgrade、配置/poll拒否とworkerの実行前停止テストが成功。 |
+| M7 | controller/globalとworker/local authority分離 | controller DB、worker journal、local state DBを分離。local管理metadataの不変性を検証。 |
+| M8 | whole lease exactly one worker | native 2-worker fixtureでlease内の2つのprocess runtimeを同一workerへ配置。 |
+| M9 | scheduler capability/capacity/host state検証 | 容量の原子的な予約、Android slot、ONLINE/capability、決定的schedulerのテストが成功。 |
+| M10 | explicit hostでもsafety bypass無し | 未登録hostとdraining hostへの明示要求を実TLSで拒否。 |
+| M11 | source aliasはcommit+bundle digest、client absolute path非使用 | commit済み複数alias bundleと固定commitのworktree lifecycleを検証。pathはsource aliasへ正規化。 |
+| M12 | corrupt/wrong source effect前fail | 不正digest/bundle、shallow/LFS/submodule、CASのsize/path負例を作用開始前に拒否。 |
+| M13 | worker source/manifest/stack独立verify | commit済みcontrol fileの変換証明、整合した偽造metadataの拒否、JSON順序変更を検証。 |
+| M14 | global lease ID/epoch effect前persist | global IDと管理tupleがsource materialization前に予約されることをテスト。 |
+| M15 | duplicate operationでmutation再実行無し | journalの競合/重複検査と実TLSの同一ID再試行で、証明fileへの追記は1回。 |
+| M16 | effect後result lossをjournalからrecover | 結果喪失時はlocal状態を不確実として回復し、作用を再実行しない。結果再送も検証。 |
+| M17 | artifact failureはuploadのみretry | upload/ack喪失後は再実行せずpublicationだけを再試行するテストが成功。 |
+| M18 | heartbeat expiryはUNKNOWN、absence扱い無し | offline時はUNKNOWNとlast-known stateを表示し、予約容量を維持。 |
+| M19 | offline lease auto reassignment無し | offline時の再配置拒否と保守的なhost削除テストが成功。 |
+| M20 | same worker reconnectでsame lease reconcile | native worker再起動でinstance、lease、workload PID/start identityを保持。 |
+| M21 | same host-id/different instance active時reject | 別instanceによる既存assignmentの引き継ぎを拒否するテストが成功。 |
+| M22 | controller restart duplicate effect無し | store再openでoperation ID/result/epochを保持し、実controller再起動でも配置を保持。 |
+| M23 | worker restart existing resource/journal recover | journalの再起動/結果喪失と、nativeの稼働processを保持した再起動が成功。 |
+| M24 | controller outageでworker auto GC無し | controller outageでもendpointが稼働し、managed leaseをGC対象から除外。 |
+| M25 | local mutation/GCでcontroller-managed lease変更不可 | managed mutation/GC/UI/Browser/cancel fenceとSQLite Saveの不変性テストが成功。 |
+| M26 | remote destroyはworker cleanup proof後のみglobal RELEASED | controllerの解放証拠負例と、作用前journal証明のrestart/dry-run/不正入力テストが成功。 |
+| M27 | worker local endpointをclient localと偽らない | worker応答はendpoint_scope=worker-localを表示し、native fixtureでも所有情報を検査。 |
+| M28 | test/log/artifact remote、raw shell無し | 実TLSのnamed test、冪等再試行、run/live log、artifact digest取得・上書き拒否がLinux/macOSで成功。Windows相対実行pathは修正検証中。 |
+| M29 | Android UI既存stale/device/fence維持 | 型付きremote UI入力から既存app UI境界を呼ぶ。managed stale/device/fence回帰と実local Android UI統合が成功。 |
+| M30 | Browser既存process/page/snapshot/focus/stale維持 | 実remote Chrome/CDP snapshot/pagesとartifact取得が成功。既存Browserのstale/focus/process検査も維持。 |
+| M31 | two worker concurrent lease isolation | 実2-workerで別worktree/portを使用し、片方を破棄しても他方が応答。 |
+| M32 | drainはnew placement停止のみ | 実TLS drain/undrainと安全性テストが成功し、移動・破棄を行わない。 |
+| M33 | active/stale/uncertain host remove拒否 | active/stale/uncertain assignmentがあるhostの削除を拒否し、解放証明後のみ許可。 |
+| M34 | CAS content-addressed/atomic/digest/concurrent safe | CASの同時重複writer、digest/size、原子的directory公開、破損負例が成功。 |
+| M35 | caller pathをCAS authorityにしない | digestだけをCAS pathの入力とし、登録artifactの所有/path/symlink検査が成功。 |
+| M36 | client secret implicit forwarding無し | 実TLSでclient専用token不在とworker env解決を確認。helper負例も成功（Linux18.394s）。 |
+| M37 | Windows native protocol integration | CI 34314956327の初期lifecycleはWindowsで成功。拡張named testと長いpathは修正検証中。 |
+| M38 | macOS native protocol integration | native multi-host CI 34314956327と拡張fixtureの34315479224がmacOSで成功。 |
+| M39 | Linux native protocol integration | native Linux CI、拡張local TLS fixture、実remote runtime統合が成功。 |
+| M40 | real socket two-worker scheduling/outage/recovery/cleanup | 実TLSのcontroller/client/2-worker fixtureで配置、outage、再起動、復旧、cleanupを検証。 |
+| M41 | physical/VM evidenceをhonestに区別 | 同一物理host上の複数role processを使用。別machine/VMの証拠はなく、主張しない。 |
+| M42 | existing local runtime integration非回帰 | 実local Docker、Podman共存、Android Emulator、Flutter/Android UI、Browser統合が成功。 |
+| M43 | HA/live migration/split lease/tunnelをimplementedと宣伝しない | product/design/READMEはHA、移動、split-host lease、tunnel、remote cancel-activeを将来課題と明記。 |
+| M44 | 英日docs authority/trust/failure/recovery | product/design/ADR、architecture、README、運用文書を日英で更新しdocs/translation検査が成功。 |
+| M45 | final repoctl/docs/race/native/integration/release | local harness/raceと実6target release candidate build/check/native smoke/改変負例が成功。最終native CIは未完了。 |
+| M46 | 英日ExecPlan evidence/retrospective後archive | 最終native証拠、振り返りの照合、両言語archiveが未完了。 |
 
 ## 冪等性と復旧
 
@@ -667,6 +667,8 @@ source/artifact transferはdigestでretry。
 host OFFLINEはcleanup eventではない。
 
 ## 成果物と注記
+
+追加証拠: 実remote Browser/Docker/Podmanが35.659s、拡張2-worker named-test/log/artifact/renewが18.907s、client/worker環境分離が18.394sで成功。`b1a7df6`で`AGENT_ENV_RELEASE_CANDIDATE=build go test ./tools/repoctl -run '^TestReleaseCandidate$' -count=1 -v -timeout=20m`が成功し、隔離したprivate source/tag fixtureを使って実6target archive、検査、native smoke、改変負例を検証した。公開tag/releaseは作成していない。`d993965`のnative multi-host CI 34314956327は3OSすべて成功。拡張fixtureの34315479224はLinux/macOSで成功し、Windowsでは子processのcwd適用前の相対実行path検索が失敗した。Windows全harnessでは300文字を超えるGit pathの追加ケースも失敗した。どちらも対応するnative検証が成功するまで失敗記録を維持する。
 
 2026-09-09の統合milestone: `6d9dd7a`（local管理境界）と`0f05d09`（controller/worker/source/CLI）を`origin/feat/multi-host-control-plane`へpush。localの全`repoctl check`と`go test -race ./...`が成功。`TestMultiHostNativeCLI`は実TLSとbuild済みbinaryで21.406sで成功し、配置、role拒否、drain、隔離、outage、controller/worker再起動、cleanupを検証した。既存Browser native/secret、Podman共存（107.695s）、実Android Emulator、実Flutter/Android UI、Docker `repoctl test-integration`も成功。Androidの初回はtemplate指定不足で失敗し、導入済みの停止中templateを明示して再実行した。host固有の前提pathは記録しない。native CIは進行中で、macOSでは上記path alias不具合を検出した。追加remote runtime E2Eの証拠を収集中。
 

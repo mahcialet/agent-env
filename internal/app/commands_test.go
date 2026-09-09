@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -317,5 +318,69 @@ func TestNamedCommandRejectsArtifactEscape(t *testing.T) {
 		if bytes.Contains(data, []byte("external private content")) {
 			t.Fatal("outside file copied")
 		}
+	}
+}
+
+func TestNamedCommandLookupFailureFinalizesWithoutUnproducedArtifact(t *testing.T) {
+	s, db, lease := commandFixture(t)
+	setCommandSpec(t, db, &lease, func(spec *config.Test) { spec.Command = []string{"agent-env-fixture-nonexistent-executable-817eb93"} })
+	run, err := s.Test(context.Background(), lease.ID, "check")
+	if !errors.Is(err, ErrTestFailed) || run.Status != "failed" || run.ExitCode != -1 {
+		t.Fatalf("lookup failure: %+v %v", run, err)
+	}
+	if !strings.Contains(err.Error(), "test artifact reports") {
+		t.Fatalf("unproduced output not reported: %v", err)
+	}
+	runs, e := db.Runs(context.Background(), lease.ID)
+	if e != nil || len(runs) != 1 || runs[0].Status != "failed" {
+		t.Fatalf("no-process launch must finalize failed run: %+v %v", runs, e)
+	}
+	artifacts, e := db.Artifacts(context.Background(), lease.ID)
+	if e != nil || len(artifacts) != 3 {
+		t.Fatalf("retained stdout/stderr/run evidence: %+v %v", artifacts, e)
+	}
+	counts := map[string]int{}
+	for _, artifact := range artifacts {
+		counts[artifact.Kind]++
+		if _, err := os.Stat(artifact.Path); err != nil {
+			t.Fatalf("registered failure evidence missing: %s %v", artifact.Kind, err)
+		}
+	}
+	for _, kind := range []string{"test-stdout", "test-stderr", "test-run"} {
+		if counts[kind] != 1 {
+			t.Fatalf("failure evidence kinds: %+v", counts)
+		}
+	}
+	_, release, e := s.acquireDestroyAfterCancellation(context.Background(), lease.ID)
+	if e != nil {
+		t.Fatalf("proven no-process failure blocked cleanup: %v", e)
+	}
+	if e = release(); e != nil {
+		t.Fatal(e)
+	}
+}
+
+type lookupBarrierRunner struct{ marker error }
+
+func (r lookupBarrierRunner) Run(context.Context, execx.Command) (execx.Result, error) {
+	return execx.Result{ExitCode: -1}, errors.Join(&exec.Error{Name: "missing", Err: exec.ErrNotFound}, r.marker)
+}
+func TestNamedCommandLookupFailureDoesNotBypassUnconfirmedEvidence(t *testing.T) {
+	for _, marker := range []error{execx.ErrProcessTreeUnconfirmed, execx.ErrOutputIncomplete} {
+		t.Run(marker.Error(), func(t *testing.T) {
+			s, db, lease := commandFixture(t)
+			s.Runner = lookupBarrierRunner{marker}
+			if _, err := s.Test(context.Background(), lease.ID, "check"); err == nil {
+				t.Fatal("unsafe execution accepted")
+			}
+			runs, err := db.Runs(context.Background(), lease.ID)
+			if err != nil || len(runs) != 1 || runs[0].Status != "running" {
+				t.Fatalf("unsafe cleanup barrier lost: %+v %v", runs, err)
+			}
+			if _, release, err := s.acquireDestroyAfterCancellation(context.Background(), lease.ID); err == nil {
+				release()
+				t.Fatal("unconfirmed run allowed cleanup")
+			}
+		})
 	}
 }

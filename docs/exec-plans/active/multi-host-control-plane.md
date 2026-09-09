@@ -882,52 +882,52 @@ Use the supported Go toolchain on PATH. Run `go run ./tools/repoctl check`, `go 
 
 | ID | Required behavior | Evidence |
 | --- | --- | --- |
-| M1 | Local mode remains daemon-free and behaviorally compatible. | Pending |
-| M2 | Multi-host uses one persistent controller identity and one active controller authority. | Pending |
-| M3 | Host ID + persistent host-instance identity prevents friendly-name adoption. | Pending |
-| M4 | Production transport uses mTLS and rejects unenrolled clients/workers. | Pending |
-| M5 | Worker connects outbound; no inbound worker listener is required. | Pending |
-| M6 | Protocol is versioned and incompatible workers are unschedulable before effects. | Pending |
-| M7 | Controller/global and worker/local persistence authorities remain distinct. | Pending |
-| M8 | One global lease is placed on exactly one worker. | Pending |
-| M9 | Scheduler requires ONLINE/non-draining/capable/capacity-available host. | Pending |
-| M10 | Explicit host selection cannot bypass safety checks. | Pending |
-| M11 | Source aliases use exact commit + verified bundle/blob digest, not client paths. | Pending |
-| M12 | Corrupt/wrong source blobs fail before runtime effects. | Pending |
-| M13 | Worker independently verifies source/manifest/stack identity. | Pending |
-| M14 | Lease ID and assignment epoch are durable before worker runtime effects. | Pending |
-| M15 | Duplicate operation delivery cannot repeat a mutating effect. | Pending |
-| M16 | Effect success + result loss recovers from worker journal without replay. | Pending |
-| M17 | Artifact upload failure retries upload only. | Pending |
-| M18 | Heartbeat expiry yields stale/UNKNOWN, never resource absence. | Pending |
-| M19 | Offline live/uncertain lease is never auto-reassigned. | Pending |
-| M20 | Same worker reconnect reconciles original local lease. | Pending |
-| M21 | Same host ID with different instance is rejected while assignments remain. | Pending |
-| M22 | Controller restart preserves assignment/operation recovery. | Pending |
-| M23 | Worker restart recovers local resources and unfinished operations. | Pending |
-| M24 | Controller outage does not trigger worker auto-GC. | Pending |
-| M25 | Ordinary local mutation/GC cannot alter controller-managed leases. | Pending |
-| M26 | Global RELEASED requires worker-local cleanup/absence proof. | Pending |
-| M27 | Worker-local endpoints are not mislabeled as client-local. | Pending |
-| M28 | Test/log/artifact remote operations work without raw shell. | Pending |
-| M29 | Android UI remote actions preserve existing local stale/device/fence checks. | Pending |
-| M30 | Browser remote actions preserve existing process/page/snapshot/focus/stale checks. | Pending |
-| M31 | Two workers can run isolated concurrent leases; destroying one preserves the other. | Pending |
-| M32 | Drain prevents new placements without migration/destruction. | Pending |
-| M33 | Removing host with active/stale/uncertain assignments is rejected. | Pending |
-| M34 | CAS is atomic, content-addressed, digest-verified and duplicate-upload safe. | Pending |
-| M35 | Caller paths never become CAS filesystem authority. | Pending |
-| M36 | Client secrets are not implicitly forwarded; remote env resolves on worker. | Pending |
-| M37 | Native controller/worker/client integration passes on Windows. | Pending |
-| M38 | Native controller/worker/client integration passes on macOS. | Pending |
-| M39 | Native controller/worker/client integration passes on Linux. | Pending |
-| M40 | Real-socket two-worker integration proves scheduling/outage/reconnect/recovery/cleanup. | Pending |
-| M41 | Physical/VM evidence is distinguished honestly from same-host worker tests. | Pending |
-| M42 | Existing Docker/Podman/Android/process/Browser local integrations remain non-regressed. | Pending |
-| M43 | HA/live migration/split-host leases/tunnels are not advertised as implemented. | Pending |
-| M44 | Bilingual durable docs describe authority/trust/failure/recovery boundaries. | Pending |
-| M45 | Final repoctl/docs/translation/race/native/integration/release verification passes. | Pending |
-| M46 | Both ExecPlans contain direct evidence and retrospective before archival. | Pending |
+| M1 | Local mode remains daemon-free and behaviorally compatible. | Local full harness/race and existing Docker, Podman, Android, Flutter/UI and Browser integrations passed; final native harness pending. |
+| M2 | Multi-host uses one persistent controller identity and one active controller authority. | Controller persistence/restart and native process-lock/crash-release tests passed; real TLS controller restart retained identity. |
+| M3 | Host ID + persistent host-instance identity prevents friendly-name adoption. | Controller host-instance rejection tests and native worker restart retained the original identity. |
+| M4 | Production transport uses mTLS and rejects unenrolled clients/workers. | Real TLS tests reject unenrolled certificates and worker-as-client calls; role/host/blob ACL negatives passed. |
+| M5 | Worker connects outbound; no inbound worker listener is required. | Native fixture runs two outbound worker processes; only controller and workload listeners are needed. |
+| M6 | Protocol is versioned and incompatible workers are unschedulable before effects. | Compatibility inventory, upgrade, scheduling/poll denial tests and worker no-effect registration test passed. |
+| M7 | Controller/global and worker/local persistence authorities remain distinct. | Separate controller DB, worker journal and local state DB; immutable local management tests passed. |
+| M8 | One global lease is placed on exactly one worker. | Native two-worker fixture places both process runtimes of each lease on exactly one worker. |
+| M9 | Scheduler requires ONLINE/non-draining/capable/capacity-available host. | Atomic capacity, Android slot, online/capability and deterministic scheduler tests passed. |
+| M10 | Explicit host selection cannot bypass safety checks. | Native missing-host/draining-host requests rejected; scheduler negative tests passed. |
+| M11 | Source aliases use exact commit + verified bundle/blob digest, not client paths. | Committed multi-alias bundle roundtrip and exact worktree lifecycle passed; paths normalized to source aliases. |
+| M12 | Corrupt/wrong source blobs fail before runtime effects. | Wrong digest, corrupt bundle, shallow/LFS/submodule and CAS size/path negative tests passed before effects. |
+| M13 | Worker independently verifies source/manifest/stack identity. | Committed control-file normalization proof, self-consistent tamper rejection and reordered-JSON tests passed. |
+| M14 | Lease ID and assignment epoch are durable before worker runtime effects. | Managed Create tests prove global ID/authority are reserved before source materialization. |
+| M15 | Duplicate operation delivery cannot repeat a mutating effect. | Journal conflict/duplicate tests plus native same-ID named-test retry produce one proof append. |
+| M16 | Effect success + result loss recovers from worker journal without replay. | Lost-result receipt recovers uncertain local state without replay; persisted-result retry tests passed. |
+| M17 | Artifact upload failure retries upload only. | Runner upload/ack-loss regression retries publication without another execution. |
+| M18 | Heartbeat expiry yields stale/UNKNOWN, never resource absence. | Controller offline views report UNKNOWN with last-known state; capacity remains reserved. |
+| M19 | Offline live/uncertain lease is never auto-reassigned. | Offline/no-reassignment and conservative host-removal tests passed. |
+| M20 | Same worker reconnect reconciles original local lease. | Native worker restart preserves instance, lease, workload PID and process start identity. |
+| M21 | Same host ID with different instance is rejected while assignments remain. | Controller foreign-instance registration cannot adopt retained assignments; tests passed. |
+| M22 | Controller restart preserves assignment/operation recovery. | Store reopen retains operation IDs/results/epochs; native controller restart retains placement. |
+| M23 | Worker restart recovers local resources and unfinished operations. | Worker journal restart/lost-effect tests and native surviving-process restart passed. |
+| M24 | Controller outage does not trigger worker auto-GC. | Native controller outage preserves live endpoints; managed GC tests exclude worker leases. |
+| M25 | Ordinary local mutation/GC cannot alter controller-managed leases. | Managed mutation/GC/UI/Browser/cancel fencing and immutable SQLite Save regressions passed. |
+| M26 | Global RELEASED requires worker-local cleanup/absence proof. | Controller release-proof negatives and journal pre-effect destroy proof (restart/dry-run/invalid input) passed. |
+| M27 | Worker-local endpoints are not mislabeled as client-local. | Worker responses mark endpoint_scope=worker-local; native tests inspect worker-owned endpoint metadata. |
+| M28 | Test/log/artifact remote operations work without raw shell. | Extended native TLS named-test, idempotency, run/live logs, artifact digest download and no-overwrite passed on Linux/macOS; Windows relative lookup repair under validation. |
+| M29 | Android UI remote actions preserve existing local stale/device/fence checks. | Typed remote UI option tests invoke existing app UI boundary; managed stale/device/fence regressions and real local Android UI integration passed. |
+| M30 | Browser remote actions preserve existing process/page/snapshot/focus/stale checks. | Real remote Chrome/CDP snapshot/pages and artifact download passed; existing Browser stale/focus/process tests and native integration passed. |
+| M31 | Two workers can run isolated concurrent leases; destroying one preserves the other. | Real two-worker fixture proves distinct worktrees/ports and that destroying one lease leaves the other responding. |
+| M32 | Drain prevents new placements without migration/destruction. | Real TLS drain/undrain and unit safety tests passed without migration/destruction. |
+| M33 | Removing host with active/stale/uncertain assignments is rejected. | Store remove tests reject active/stale/uncertain assignments; confirmed release enables removal. |
+| M34 | CAS is atomic, content-addressed, digest-verified and duplicate-upload safe. | CAS concurrent duplicate writers, digest/size validation, atomic directory publication and corruption negatives passed. |
+| M35 | Caller paths never become CAS filesystem authority. | CAS digest-only path validation and registered-artifact ownership/path/symlink tests passed. |
+| M36 | Client secrets are not implicitly forwarded; remote env resolves on worker. | Native TLS fixture verifies client-only token absence and worker env resolution; negative helper controls passed (18.394s Linux). |
+| M37 | Native controller/worker/client integration passes on Windows. | Initial two-worker lifecycle passed in CI 34314956327; expanded named-test and long-path Windows checks remain pending fixes. |
+| M38 | Native controller/worker/client integration passes on macOS. | Native multi-host CI 34314956327 and expanded fixture on 34315479224 passed macOS. |
+| M39 | Native controller/worker/client integration passes on Linux. | Native multi-host Linux CI passed; extended local TLS fixture and real remote runtime tests passed. |
+| M40 | Real-socket two-worker integration proves scheduling/outage/reconnect/recovery/cleanup. | Native real TLS controller/client/two-worker fixture covers placement, outage, restart, recovery and cleanup. |
+| M41 | Physical/VM evidence is distinguished honestly from same-host worker tests. | All multi-role fixtures use one physical host; no separate-machine/VM evidence available or claimed. |
+| M42 | Existing Docker/Podman/Android/process/Browser local integrations remain non-regressed. | Real local Docker, Podman coexistence, Android Emulator, Flutter/Android UI and Browser integrations passed. |
+| M43 | HA/live migration/split-host leases/tunnels are not advertised as implemented. | Product/design/README explicitly defer HA, migration, split-host leases, tunnels and remote cancel-active. |
+| M44 | Bilingual durable docs describe authority/trust/failure/recovery boundaries. | Paired product/design/ADR, architecture, README and operational docs passed docs/translation checks. |
+| M45 | Final repoctl/docs/translation/race/native/integration/release verification passes. | Local harness/race and real six-target release candidate build/check/native smoke/negative tests passed; final native CI pending. |
+| M46 | Both ExecPlans contain direct evidence and retrospective before archival. | Pending final native evidence, retrospective reconciliation and bilingual archive. |
 
 ## Idempotence and Recovery
 
@@ -947,6 +947,8 @@ Source/artifact transfers are retryable by digest. Host OFFLINE is never a
 cleanup event.
 
 ## Artifacts and Notes
+
+Additional acceptance evidence: real remote Browser/Docker/Podman fixture passed in 35.659s; expanded two-worker named-test/log/artifact/renew fixture passed in 18.907s, and client/worker environment isolation in 18.394s. `AGENT_ENV_RELEASE_CANDIDATE=build go test ./tools/repoctl -run '^TestReleaseCandidate$' -count=1 -v -timeout=20m` passed on `b1a7df6`: six real target archives, verification, native smoke and negative tamper tests used an isolated private source/tag fixture; no public tag or release was created. Native multi-host CI 34314956327 passed all three OSes on `d993965`. The expanded fixture passed Linux/macOS on 34315479224; Windows revealed relative executable lookup before child cwd. Full Windows harness additionally exposed a >300-character Git path case. Both failures remain recorded until their targeted native checks pass.
 
 2026-09-09 integrated milestone: commits `6d9dd7a` (managed local authority) and `0f05d09` (controller/worker/source/CLI) pushed to `origin/feat/multi-host-control-plane`. Full `repoctl check` and `go test -race ./...` passed locally. `TestMultiHostNativeCLI` passed in 21.406s with real TLS and built binaries, including placement, role denial, drain, isolation, outage, controller/worker restart and cleanup. Existing Browser native/secret tests, Podman coexistence integration (107.695s), real Android Emulator integration, real Flutter/Android UI integration and Docker `repoctl test-integration` all passed. The first Android invocation failed for missing explicit template configuration; rerunning with the installed stopped template passed. No host-specific prerequisite paths are stored here. Native CI is running; macOS revealed the path alias defect above. Additional remote runtime E2E evidence is still being collected.
 

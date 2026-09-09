@@ -20,6 +20,7 @@ import (
 	"github.com/mahcialet/agent-env/internal/blobstore"
 	"github.com/mahcialet/agent-env/internal/config"
 	"github.com/mahcialet/agent-env/internal/domain"
+	"github.com/mahcialet/agent-env/internal/evidence"
 	"github.com/mahcialet/agent-env/internal/execx"
 	"github.com/mahcialet/agent-env/internal/source/gitcli"
 	"github.com/mahcialet/agent-env/internal/stack"
@@ -218,7 +219,26 @@ func git(ctx context.Context, dir string, args ...string) (string, error) {
 		return "", errors.New("Git metadata output limit exceeded")
 	}
 	if err != nil {
-		return out.String(), fmt.Errorf("local Git operation failed: %w", err)
+		phase := "command"
+		if len(args) > 0 {
+			switch args[0] {
+			case "init", "fetch", "clone", "bundle", "rev-parse", "fsck", "show", "update-ref", "worktree", "status", "config", "grep", "ls-tree":
+				phase = args[0]
+			}
+		}
+		// Keep the failure actionable without logging argv or the environment.
+		// Redact before bounding the text so a truncated credential cannot leak.
+		diagnostic := evidence.RedactString(stderr.String(), evidence.InheritedSecrets())
+		diagnostic = strings.Map(func(r rune) rune {
+			if r < 32 && r != '\n' && r != '\t' || r == 127 {
+				return -1
+			}
+			return r
+		}, diagnostic)
+		if len(diagnostic) > 4096 {
+			diagnostic = diagnostic[:4096] + " [truncated]"
+		}
+		return out.String(), fmt.Errorf("local Git %s failed: %w: %s", phase, err, strings.TrimSpace(diagnostic))
 	}
 	return out.String(), nil
 }

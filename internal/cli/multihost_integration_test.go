@@ -99,11 +99,17 @@ func TestMultiHostNativeCLI(t *testing.T) {
 	env := func(home string) []string {
 		result := []string{}
 		for _, v := range os.Environ() {
-			if !strings.HasPrefix(strings.ToUpper(v), "AGENT_ENV_HOME=") {
+			if key, _, _ := strings.Cut(v, "="); !strings.EqualFold(key, "AGENT_ENV_HOME") && !strings.HasPrefix(strings.ToUpper(key), "AGENT_ENV_FIXTURE_") {
 				result = append(result, v)
 			}
 		}
-		return append(result, "AGENT_ENV_HOME="+home)
+		result = append(result, "AGENT_ENV_HOME="+home)
+		if home == clientHome {
+			result = append(result, "AGENT_ENV_FIXTURE_CLIENT_ONLY=synthetic-client-only-token", "AGENT_ENV_FIXTURE_WORKER_VALUE=synthetic-wrong-client-value")
+		} else if home == workerHomes[0] || home == workerHomes[1] {
+			result = append(result, "AGENT_ENV_FIXTURE_WORKER_VALUE=synthetic-worker-side-value")
+		}
+		return result
 	}
 	invoke := func(home string, args ...string) (json.RawMessage, error) {
 		cctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
@@ -466,7 +472,7 @@ func TestMultiHostNativeCLI(t *testing.T) {
 	if e = json.Unmarshal(remote("show", second.ID), &shown); e != nil || shown.HostID != second.Management.HostID || shown.Epoch != int64(second.Management.AssignmentEpoch) {
 		t.Fatalf("destroy affected other assignment: %+v %v", shown, e)
 	}
-	t.Logf("native %s/%s: real TLS controller/client/two worker processes, committed two-runtime leases, placement/drain/isolation/named test/idempotent retry/logs/artifact download/renew/local refusal/outage/controller+worker restart/cleanup passed; same physical host only", runtime.GOOS, runtime.GOARCH)
+	t.Logf("native %s/%s: real TLS controller/client/two worker processes, committed two-runtime leases, placement/drain/isolation/named test/worker env isolation/idempotent retry/logs/artifact download/renew/local refusal/outage/controller+worker restart/cleanup passed; same physical host only", runtime.GOOS, runtime.GOARCH)
 }
 
 func multiHostProbe(t *testing.T, port int) {
@@ -492,13 +498,37 @@ func multiHostRepository(t *testing.T, base, suffix string, run func(string, str
 	source := filepath.Join(base, "fixture.go")
 	program := `package main
 import("flag";"fmt";"net/http";"os";"path/filepath";"time")
-func main(){port:=flag.Int("port",0,"");label:=flag.String("label","","");named:=flag.Bool("named-test",false,"");flag.Parse();if *named {if e:=os.MkdirAll("reports",0700);e!=nil{panic(e)};f,e:=os.OpenFile(filepath.Join("reports","proof.txt"),os.O_WRONLY|os.O_CREATE|os.O_APPEND,0600);if e!=nil{panic(e)};if _,e=f.WriteString("named test marker\n");e!=nil{panic(e)};if e=f.Close();e!=nil{panic(e)};fmt.Println("named test marker");return};go func(){time.Sleep(8*time.Minute);os.Exit(9)}();fmt.Printf("fixture runtime=%s\n",*label);http.HandleFunc("/",func(w http.ResponseWriter,r *http.Request){fmt.Fprintf(w,"fixture pid=%d",os.Getpid())});if e:=http.ListenAndServe(fmt.Sprintf("127.0.0.1:%d",*port),nil);e!=nil{panic(e)}}
+func main(){port:=flag.Int("port",0,"");label:=flag.String("label","","");named:=flag.Bool("named-test",false,"");flag.Parse();if *named {if _,exists:=os.LookupEnv("AGENT_ENV_FIXTURE_CLIENT_ONLY");exists{fmt.Fprintln(os.Stderr,"client-only environment leaked");os.Exit(21)};if os.Getenv("AGENT_ENV_FIXTURE_RESOLVED")!="synthetic-worker-side-value"{fmt.Fprintln(os.Stderr,"worker environment was not resolved");os.Exit(22)};if e:=os.MkdirAll("reports",0700);e!=nil{panic(e)};f,e:=os.OpenFile(filepath.Join("reports","proof.txt"),os.O_WRONLY|os.O_CREATE|os.O_APPEND,0600);if e!=nil{panic(e)};if _,e=f.WriteString("named test marker\n");e!=nil{panic(e)};if e=f.Close();e!=nil{panic(e)};fmt.Println("named test marker");return};go func(){time.Sleep(8*time.Minute);os.Exit(9)}();fmt.Printf("fixture runtime=%s\n",*label);http.HandleFunc("/",func(w http.ResponseWriter,r *http.Request){fmt.Fprintf(w,"fixture pid=%d",os.Getpid())});if e:=http.ListenAndServe(fmt.Sprintf("127.0.0.1:%d",*port),nil);e!=nil{panic(e)}}
 `
 	if e := os.WriteFile(source, []byte(program), 0600); e != nil {
 		t.Fatal(e)
 	}
 	helper := "fixture" + suffix
 	run(base, "go", "build", "-o", filepath.Join(repo, helper), source)
+	for _, check := range []struct {
+		name   string
+		extras []string
+		code   int
+	}{
+		{"client-leak", []string{"AGENT_ENV_FIXTURE_CLIENT_ONLY=synthetic-client-only-token", "AGENT_ENV_FIXTURE_RESOLVED=synthetic-worker-side-value"}, 21},
+		{"client-resolution", []string{"AGENT_ENV_FIXTURE_RESOLVED=synthetic-wrong-client-value"}, 22},
+	} {
+		cmd := exec.Command(filepath.Join(repo, helper), "--named-test")
+		cmd.Dir = base
+		for _, item := range os.Environ() {
+			key, _, _ := strings.Cut(item, "=")
+			if !strings.HasPrefix(strings.ToUpper(key), "AGENT_ENV_FIXTURE_") {
+				cmd.Env = append(cmd.Env, item)
+			}
+		}
+		cmd.Env = append(cmd.Env, check.extras...)
+		output, err := cmd.CombinedOutput()
+		exit, ok := err.(*exec.ExitError)
+		if !ok || exit.ExitCode() != check.code {
+			t.Fatalf("environment helper negative control %s: %v %s", check.name, err, output)
+		}
+	}
+
 	command, _ := json.Marshal("./" + helper)
 	manifest := fmt.Sprintf(`version: 1
 sources:
@@ -534,6 +564,8 @@ tests:
     stack: review
     source: self
     command: [%s, "--named-test"]
+    env:
+      AGENT_ENV_FIXTURE_RESOLVED: "${env:AGENT_ENV_FIXTURE_WORKER_VALUE}"
     timeout: 10s
     artifacts: [reports]
 `, command, command, command)

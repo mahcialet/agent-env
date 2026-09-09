@@ -11,7 +11,18 @@ import (
 )
 
 func platformCommand(ctx context.Context, spec Command) (*exec.Cmd, error) {
-	path, err := exec.LookPath(spec.Name)
+	name := spec.Name
+	// Windows LookPath probes explicit relative names immediately, before
+	// Cmd.Dir applies. Resolve those names against the requested child cwd;
+	// bare program names retain their existing PATH lookup semantics.
+	if spec.Dir != "" && !filepath.IsAbs(name) && filepath.VolumeName(name) == "" && !strings.HasPrefix(name, `/`) && !strings.HasPrefix(name, `\`) && strings.ContainsAny(name, `/\`) {
+		var err error
+		name, err = filepath.Abs(filepath.Join(spec.Dir, name))
+		if err != nil {
+			return nil, err
+		}
+	}
+	path, err := exec.LookPath(name)
 	if err != nil {
 		return nil, err
 	}
