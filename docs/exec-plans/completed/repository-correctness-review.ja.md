@@ -1,9 +1,9 @@
 ---
-status: active
+status: completed
 owner: maintainers
 last_verified: 2026-09-09
-translation_of: docs/exec-plans/active/repository-correctness-review.md
-source_sha256: 7d7285f44a7257a8ea5d56921156b4e036c7eb90a453c67520ca85f27041768d
+translation_of: docs/exec-plans/completed/repository-correctness-review.md
+source_sha256: 3025d4f0a09fce95c760834ef394fe5f6d645c601180a9ddaf58e2b2230b1a1a
 ---
 
 # PR #11 correctnessレビューへの対応
@@ -24,11 +24,15 @@ heading anchor抽出がinline codeの内容を置換して有効linkを拒否す
 
 - [x] (2026-09-09) 6b13cd4のcleanなPR branchと未解決2Threadを確認した。
 - [x] (2026-09-09) 両不具合を再現して修正。不完全/type欠落列挙と全target不在確認の回帰も追加した。
-- [ ] 独立レビュー、harness、race、関連native CIを実施する。
-- [ ] 検証済み修正をpushし、両Threadへ返信してResolveする。
-- [ ] 成果を記録し、日英Planを完了へ移す。
+- [x] (2026-09-09) 独立レビュー、harness、race、関連native CIを実施する。
+- [x] (2026-09-09) f10ecd4/de6da4f/ab71b64をpush。両Threadへ返信しResolve状態を確認した。
+- [x] (2026-09-09) 成果を記録し、日英Planを完了へ移す。
 
 ## 想定外の発見
+
+- 2026-09-09 完了時点: 下記検証は未変更Windows再実行attempt2を含め全完了。過去の継続中の記述はその時点の記録で、受入残件はない。
+
+- 2026-09-09: ab71b64のPR Verify34298063439全job、Browser native両run、Release preview34298063300は成功。同HEADのpush Verify34298060578 Windows1.27は未変更のTestRunnerReapsOrdinaryDescendants/timeoutで失敗し、helperの起動確認出力より先に300ms timeoutとなった。fixture起動前提の失敗で、子孫がcleanup後に残った証拠ではない。同HEADのPR Windows1.27 jobは成功。製品・テストを変更せず失敗jobを再実行し、両結果を残す。具体的なscheduler遅延原因は確定していない。
 
 - 2026-09-09 独立レビュー: 初期popup修正は全harness/raceとLinux Browser integrationに成功したが、作成IDを持ちtypeが欠落した列挙項目をfilterで落として不在と誤認した。隔離負例は0.024秒で失敗。target identity/typeの完全性を検査し、pageだけでなく全targetに対して正確な不在を確認する。push前に再検証する。Markdown独立race付き5回は2.663秒成功し、既存の表示された出典link処理は維持された。command確認lockのrace付き10回は元のassertionを全保持して4.390秒成功。
 
@@ -47,7 +51,34 @@ heading anchor抽出がinline codeの内容を置換して有効linkを拒否す
 
 ## 成果と振り返り
 
-実装・受入は継続中。
+2026-09-09に完了。PR #11の両指摘を修正し、返信・Resolveまで完了した。
+
+- `f10ecd4`: heading anchorでinline code文字を保持し、既存の非表示blockと
+  出典/link処理は維持した。docsCheckの正常例/負例4件は修正前に失敗し、
+  独立した関連race付き5回は2.663秒成功。
+- `de6da4f`: command後のlock解放確認用TTLだけ1秒から1分へ変更した。
+  状態・証拠・再取得・解放の全assertionを保持。対象race付き10回4.390秒成功。
+  元のWindows失敗jobも未変更の再実行で成功した。
+- `ab71b64`: page作成後に再列挙し、超過または列挙確認不能なら新規targetだけを補償削除する。
+  native所有、close応答、全target種別での正確な不在を必須とする。
+  欠落・曖昧な証拠は未確認のまま保持し、既存targetと並行popupを残す。
+
+元のpopup回帰は修正前に失敗した。独立レビューではtype欠落をfilterで落として
+不在と誤認する問題を発見し、修正後の17ケースと127/128/129境界は
+独立race付き5回2.224秒成功。全 `repoctl check` と全 `go test -race ./...` は成功。
+最終CDP race8.233秒、CLI race5.624秒、実Linux Browser native race10.362秒。
+
+製品revision `ab71b64f3867ccced2a304640ade22db56706adf` でPR Verify34298063439、
+push Verify34298060578（attempt2）、Browser native34298063305/34298060667、
+Release preview34298063300はすべて成功。native Windows/macOS/Linuxと配布archiveの
+3OS smokeを含む。push Windows1.27の初回は未変更の300ms helper起動前提で失敗したが、
+同HEADのPR jobと未変更の再実行は成功した。fixture起動遅延への感度として残し、
+子孫が生存した証拠や、検査を黙って緩めた成功とはしない。
+
+両Threadにcommit・テストを示して返信し、isResolved=trueを確認した。
+採用したレビュー指摘の残件はない。元の監査履歴を保持し、製品dependencyやlifecycle所有者は変えず、
+検証した製品revision以後は文書完了のみを行う。今後の削除証明では表示用filterより前の
+全identity一覧を保持する必要がある。そうしないと種別除外を不在と誤認する。
 
 ## 背景と構成
 
@@ -81,6 +112,8 @@ PR branchをpushしてnative CIを確認する。修正を確認可能にして�
 既存commitを保持しforce pushしない。target削除を証明できなければ不確実性と証拠を残し、作成成功としない。
 
 ## 成果物と注記
+
+返信: [page rollback](https://github.com/mahcialet/agent-env/pull/11#discussion_r3963707422)、[heading anchor](https://github.com/mahcialet/agent-env/pull/11#discussion_r3963707551)。両Resolve応答はtrue。最終独立popup/rollback17ケースと境界テストはrace付き5回2.224秒成功。候補ab71b64のCI: Verify34298060578/34298063439、Browser34298060667/34298063305、Release preview34298063300はすべて成功し、結果を照合済み。
 
 本Planに再現、検証、Thread結果を記録する。開発者固有SDK pathや秘密値を恒久文書へ含めない。
 

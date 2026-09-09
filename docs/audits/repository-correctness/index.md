@@ -90,4 +90,4 @@ this is bounded evidence, not universal absence of defects. Final archive/link
 and translation checks accompany the documentation completion commit. No merge,
 public tag or release was performed.
 
-PR #11 follow-up is tracked in the [review ExecPlan](../../exec-plans/active/repository-correctness-review.md); original audit evidence above is retained.
+PR #11 follow-up is tracked in the [review ExecPlan](../../exec-plans/completed/repository-correctness-review.md); original audit evidence above is retained.

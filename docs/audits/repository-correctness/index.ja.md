@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/audits/repository-correctness/index.md
-source_sha256: 7197182afeff30d4ee371fa43c10eabf4e0bc55907e79fb4307963d4ae825c85
+source_sha256: 2719cd1cf3f51b47e2856b9a0e9e6969033c23da5930c8d0557b342d8733365c
 ---
 
 # リポジトリ正確性監査
@@ -88,4 +88,4 @@ Browser/CDPとBrowser CLIに限定される。cross-buildだけでnative成功�
 未実行の稀な動作順序を明記し、限定した証拠を不具合の完全不存在の証明とはしない。
 完了文書commitで移動・link・翻訳を最終検査する。merge・公開tag・releaseは行っていない。
 
-PR #11追加対応は [レビューExecPlan](../../exec-plans/active/repository-correctness-review.ja.md) に記録する。上記の元の監査証拠は保持する。
+PR #11追加対応は [レビューExecPlan](../../exec-plans/completed/repository-correctness-review.ja.md) に記録する。上記の元の監査証拠は保持する。
