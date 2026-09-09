@@ -175,3 +175,13 @@ artifact operation retries available evidence without repeating the action.
 Retained packages use native publication barriers before effects, including legacy
 duplicates. Physical power-loss behavior is not claimed as experimentally proved.
 All 40 PR checks on `9707fed` passed, including native Windows/macOS/Linux.
+
+CI follow-up: `90ea6c3` push Verify34336686257 macOS Go1.26 failed upload-deadline
+with io.ErrClosedPipe. Unlike the earlier graceful-EOF fixture race, explicit body
+Close can beat transport cancellation bookkeeping in production. A deterministic
+RoundTripper reproduces the lost context error before the fix (0.002s). Join the
+caller context error with the transport error on unsuccessful upload; retain both
+causes rather than weakening cancellation assertions or retrying CI unchanged.
+
+Cancellation correction validation: full repoctl check passed; client race suite
+passed five repetitions (16.897s). Independent read-only review found no blocker.

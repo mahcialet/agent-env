@@ -186,7 +186,9 @@ func (c *Client) Upload(ctx context.Context, r io.Reader, digest, kind string) (
 	}
 	resp, e := c.blobRequest(req)
 	if e != nil {
-		return o, e
+		// Closing a blocked body can win over the transport's context error.
+		// Keep both causes so cancellation remains observable to callers.
+		return o, errors.Join(e, ctx.Err())
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {

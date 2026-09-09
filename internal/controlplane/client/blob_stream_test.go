@@ -187,3 +187,24 @@ func TestBlobTransferPreservesCallerCancellation(t *testing.T) {
 		})
 	}
 }
+
+// Force the body-close path to win over net/http's cancellation bookkeeping.
+type bodyCloseTransport struct{ cancel context.CancelFunc }
+
+func (t bodyCloseTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	t.cancel()
+	_, err := io.ReadAll(req.Body)
+	return nil, err
+}
+func TestUploadBodyClosePreservesContextError(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	reader, writer := io.Pipe()
+	defer reader.Close()
+	defer writer.Close()
+	c := &Client{base: "https://example.invalid", http: &http.Client{Transport: bodyCloseTransport{cancel: cancel}}}
+	_, err := c.Upload(ctx, reader, "fixture", "source")
+	if !errors.Is(err, context.Canceled) || !errors.Is(err, io.ErrClosedPipe) {
+		t.Fatalf("must preserve cancellation and underlying body error: %v", err)
+	}
+}

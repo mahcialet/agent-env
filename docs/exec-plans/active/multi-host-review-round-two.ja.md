@@ -1,6 +1,6 @@
 ---
 translation_of: docs/exec-plans/active/multi-host-review-round-two.md
-source_sha256: d79d5b1552a1233496158429073b5e6cb40fa02c6bc378b2ccc5625144a39c80
+source_sha256: 55b74a2acc94ab09ccbcc14817a89f8c55fffd7e03e64d433351ba894d0ffc1a
 status: active
 owner: maintainers
 last_verified: 2026-09-09
@@ -163,3 +163,12 @@ UI復旧と証拠の回帰テストは旧executorで失敗し、修正後に成�
 保持packageは旧形式の重複も含め、作用前にnativeの公開同期を完了する。物理的な電源断を
 実験で証明したとは主張しない。`9707fed`のPR検査40件はすべて成功した（Windows/macOS/Linuxの
 native検証を含む）。
+
+CI追補: `90ea6c3`のpush Verify34336686257、macOS Go1.26でupload-deadlineが
+io.ErrClosedPipeとなった。前の正常EOF fixture競合とは異なり、実装の明示body Closeが
+transportのcancel処理より先に完了し得る。順序を固定したRoundTripperで修正前のcontext
+エラー欠落を再現した（0.002秒）。uploadのtransport失敗には呼出元contextエラーも結合し、
+両方の原因を保持する。cancelの検証条件を緩めたり、未修正のままCIを再実行したりしない。
+
+cancel修正の検証: repoctl check全体が成功し、client raceの5回反復も成功した
+（16.897秒）。独立した読み取り専用レビューで未対応の問題はなかった。
