@@ -1,14 +1,18 @@
 ---
 status: accepted
 owner: maintainers
-last_verified: 2026-09-08
+last_verified: 2026-09-09
 translation_of: docs/adr/0005-separate-flutter-applications.md
-source_sha256: 25bcdb7fb5c48b12aa19f83a4ad93a935fe0422ce697dcb4f39c89cdaf727298
+source_sha256: 1fa718e9947b21f723adc0aa426cad8629768082a3a0ba9b6c5c62979179bf5e
 ---
 
 # FlutterアプリケーションとAndroidリソースを分離する
 
 [English（翻訳元）](0005-separate-flutter-applications.md)
+
+この判断では、Android リソースの所有権を独立させ、その上で Flutter アプリを扱います。
+実行順序と復旧の詳細は[ライフサイクル設計](../design-docs/flutter-android-runtime.ja.md)
+を参照してください。
 
 ## 背景
 

@@ -8,9 +8,18 @@ last_verified: 2026-09-09
 
 [日本語](lease-control-plane.ja.md)
 
+This document explains the local lease model: recorded state, adapter ownership,
+and recovery across creation and cleanup. The [product specifications](../product-specs/index.md)
+define current public contracts; the [MVP specification](../product-specs/agent-env-mvp.md)
+records the original scope. [Multi-host coordination](multi-host-control-plane.md)
+adds remote assignment and delivery authority without replacing these local rules.
+
 ## Environment
 
-The actual resources that make an application runnable: worktrees, Compose project, containers, networks, volumes, generated configuration, ports, logs, and later emulators or browsers.
+The resources that make an application runnable: worktrees, Compose projects,
+containers, networks, volumes, generated configuration, ports and logs, together
+with selected Emulator and persistent-process resources. Browser automation uses
+an owned persistent process; it does not add another lifecycle owner.
 
 ## Lease
 
@@ -58,7 +67,10 @@ The MVP uses `stack` for startup groups and does not implement profile overlays.
 
 ## Capability
 
-A semantic feature provided by a resolved environment, such as `api`, `web-ui`, `logs`, `browser-e2e`, or later `android-ui`. Capabilities are descriptive in the MVP; capability-based automatic stack selection is a later extension.
+A semantic feature provided by a resolved environment, such as `api`, `web-ui`,
+`logs`, `browser-e2e` or `android-ui`. In the local model, capabilities describe an
+environment; automatic stack selection remains deferred. Remote worker capabilities
+have a separate scheduling role in the multi-host design.
 
 ## Scenario
 
@@ -68,7 +80,8 @@ A repeatable verification workflow that requires capabilities and invokes tests 
 
 ## Persistence and lifecycle
 
-Recommended Go domain types:
+The following vocabulary sketches domain responsibilities, not current Go
+declarations. See [domain types](../../internal/domain/lease.go) for the implemented model.
 
 ```text
 Lease
@@ -94,7 +107,10 @@ Do not let database row structs, YAML structs, and domain structs collapse into 
 
 ## Runtime adapter contract
 
-The exact names may differ, but preserve the responsibilities:
+This conceptual interface separates validation, planning, effects, observation
+and cleanup. The [implemented app interfaces](../../internal/app/lifecycle.go) and
+runtime-specific providers preserve those responsibilities; this sketch is not an
+exact API declaration.
 
 ```go
 type Runtime interface {
@@ -112,6 +128,9 @@ Do not require all adapters to be long-running processes controlled by PID. Comp
 
 ## Source adapter contract
 
+This sketch preserves source resolution, materialization, inspection and removal
+as separate responsibilities. The current interface is in [app/plan.go](../../internal/app/plan.go).
+
 ```go
 type SourceProvider interface {
     Resolve(ctx context.Context, spec SourceSpec, requestedRef string) (ResolvedSource, error)
@@ -127,7 +146,7 @@ The Git implementation should shell out to the installed Git CLI rather than rei
 
 ## `agent-env plan`
 
-`plan` must not mutate Git, Docker, or SQLite lease state.
+`plan` must not mutate Git, runtime resources or SQLite lease state.
 
 It should:
 
@@ -167,12 +186,12 @@ Warnings:
 Conceptual saga:
 
 ```text
-reserve lease ID and resource names
-  -> persist requested lease and event
-  -> resolve and persist complete source set
+resolve the plan and complete immutable source set
+  -> reserve lease ID and resource names
+  -> persist requested lease, sources and event
   -> create all worktrees
   -> render and validate runtime plans
-  -> create/start Compose project
+  -> create/start selected runtime resources
   -> run readiness checks
   -> persist observed resources and evidence
   -> mark ready
@@ -190,7 +209,7 @@ Conceptual saga:
 mark releasing
   -> prevent new commands
   -> collect final logs/config
-  -> stop/down Compose project
+  -> stop/down owned runtime resources
   -> inspect tracked worktree changes
   -> remove safe worktrees
   -> retain artifacts by policy
@@ -201,14 +220,22 @@ mark releasing
 
 ## State paths and ownership
 
+### Storage locations
+
 AGENT_ENV_HOME overrides OS defaults. Linux uses XDG_STATE_HOME/agent-env or ~/.local/state/agent-env; macOS uses ~/Library/Application Support/agent-env; Windows uses LOCALAPPDATA/agent-env. Keep state.db and worktrees, repositories, leases, artifacts, logs, generated, locks beneath this state root. Independently disposable caches use OS cache locations. Local SQLite is required; NFS/SMB state databases are unsupported.
+
+### State and ownership metadata
 
 Desired state is active, stopped, or released. Observed state distinguishes allocating, starting, ready, degraded, stopped, failed, releasing, released, quarantined and unknown. Allocation/start failure becomes failed; missing/unhealthy resources become degraded; unsafe/incomplete release becomes quarantined. Persist timestamps in UTC/RFC3339, requested stack, resolved components, manifest and source-set digests, ownership, creation, heartbeat and expiration.
 
-Ownership is advisory metadata, not authorization. Explicit --owner overrides AGENT_ENV_OWNER; otherwise derive descriptive local owner metadata with a generated unique token rather than PID alone. Lease commands refresh heartbeat. renew changes expiration; default TTL is four hours, configurable by host policy.
+The descriptive lease owner is advisory metadata, not authorization. Explicit --owner overrides AGENT_ENV_OWNER; otherwise derive descriptive local owner metadata with a generated unique token rather than PID alone. Lease commands refresh heartbeat. renew changes expiration; the built-in host policy sets the default TTL to four hours. User-configurable host policy files remain deferred.
+
+### Persistence and source identity
 
 Persist normalized repositories, leases, lease_sources, lease_components, resources, events, command_runs and artifacts, with foreign keys and indexes for owner/state/expiration/repository/resource lookup. Reserve unique resource names transactionally. Keep YAML/domain/database models separate. Enable foreign_keys, busy_timeout at least 5000 milliseconds and verified WAL. Never serialize arbitrary secret-bearing environment maps.
 
 A sorted alias/repository identity/resolved-commit tuple determines source-set digest. Store exact requested refs, resolved commits, checkout mode, writable policy and timestamps for every source before materialization. Review worktrees are detached and writable for generated output; detect staged and unstaged tracked edits before cleanup instead of treating filesystem permissions as review policy.
+
+### Interrupted readiness and cleanup
 
 Command readiness attempts persist a running command record before execution. Only complete process-tree termination and evidence persistence allow a terminal record. Unconfirmed termination or output halts retries, quarantines creation, and leaves the record running so later destroy/GC also retains the source. Ordinary completed probe failures may retry. Durable cancellation requests stop readiness without starting another attempt.

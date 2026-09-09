@@ -30,11 +30,15 @@ locations before reservation/materialization and recheck before process start.
 Reject unsupported paths with actionable errors. Keep native Linux/macOS deep
 path behavior. Do not require global Windows settings, 8.3 names or junctions.
 
+### Separate Windows and WSL ownership
+
 Use distinct native workers and state roots for Windows and WSL. Reject WSL state
 on DrvFS/9p before directory/database creation, using kernel/filesystem/mount
 observations and canonical existing ancestors. Windows rejects known WSL UNC
 state and execution paths, including extended spellings and resolved aliases.
 This policy does not newly reject arbitrary UNC shares or read-only source mounts.
+
+### Reject direct cross-OS execution
 
 Reject directly invoked PE binaries on non-Windows hosts and the `wsl.exe` entry
 point on Windows before process start and detached output creation. Check format,

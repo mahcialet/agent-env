@@ -1,7 +1,7 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-08
+last_verified: 2026-09-09
 ---
 
 # Persistent process lifecycle design
@@ -11,7 +11,9 @@ last_verified: 2026-09-08
 The [product contract](../product-specs/persistent-process-runtime.md) defines
 manifest syntax. The [completed ExecPlan](../exec-plans/completed/persistent-process-runtime.md)
 tracks implementation and validation. This mechanism keeps process management
-independent of Compose, Android Emulator, Flutter, and future browser semantics.
+independent of Compose, Android Emulator, Flutter, and Browser/CDP semantics.
+The [browser adapter](browser-cdp-automation.md) consumes this lifecycle through
+app interfaces; it does not move browser behavior into the process adapter.
 
 ## Responsibilities and persistence
 
@@ -38,6 +40,17 @@ resolved using native paths and confinement checks after symlink resolution.
 PATH tools record host origin, absolute resolution, and readable-file SHA-256;
 this evidence does not promise immutable host software or close a replacement race.
 
+### Launch receipt and private diagnostic redaction
+
+Private `launch.json` retains ownership and native identity. Independent
+`redaction.json` is saved before native Start and retains ownership, format version,
+and secret length/full-digest/prefix-digest fingerprints. This supports bounded
+redaction after host secret variables change or disappear, without plaintext
+secret persistence, even when post-launch receipt writing fails. Invalid/missing
+redaction proof blocks log export after launch. Raw stdout/stderr still require
+private storage; fingerprints are not encryption. Logs retained as cleanup
+artifacts pass through the same bounded redaction path.
+
 ## Observation and termination
 
 The detached primitive proves native tree identity beyond PID. A later independent
@@ -58,6 +71,9 @@ release, and ordinary tracked-change-protected source cleanup.
 
 ## Ports, endpoints, and future consumers
 
+Browser/CDP is an implemented consumer. The same boundary allows future consumers
+to use owned processes without changing generic process management.
+
 SQLite reservations serialize agent-env's named loopback TCP allocation. Native
 availability checks detect external occupancy but cannot eliminate the race until
 the target binds; socket activation and inherited listening sockets are excluded.
@@ -67,17 +83,12 @@ reverse consumers need no process-specific endpoint syntax after resolution.
 
 Private mutable state is isolated per runtime and retained during quarantine.
 Evidence storage retains only intentional diagnostics; browser profiles and local
-databases are not automatically promoted. Future browser observation can consume
-this process lifetime, state directory, logs, and CDP-like endpoint without adding
-browser behavior to the process adapter. Native Windows/macOS/Linux integration,
+databases are not automatically promoted. Browser/CDP observation consumes
+this process lifetime, state directory, logs, and endpoint while keeping
+browser behavior in its separate adapter.
+
+## Validation
+
+Native Windows/macOS/Linux integration,
 crash recovery, sibling survival, and uncertain-root regressions are required;
 cross-compilation is additional evidence only.
-
-Private `launch.json` retains ownership and native identity. Independent
-`redaction.json` is saved before native Start and retains ownership, format version,
-and secret length/full-digest/prefix-digest fingerprints. This supports bounded
-redaction after host secret variables change or disappear, without plaintext
-secret persistence, even when post-launch receipt writing fails. Invalid/missing
-redaction proof blocks log export after launch. Raw stdout/stderr still require
-private storage; fingerprints are not encryption. Logs retained as cleanup
-artifacts pass through the same bounded redaction path.

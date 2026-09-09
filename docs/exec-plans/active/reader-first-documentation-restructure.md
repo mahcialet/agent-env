@@ -1366,3 +1366,7 @@ separately from the document authorship.
 Milestone commit `b733c73` records the bilingual editorial policy, seven policy pairs
 and this active execution record. The next milestone groups entry points and product
 contracts so that README recipe moves land atomically.
+
+Milestone commit `d8b8b99` records six entry/navigation pairs and twelve product
+contract pairs, including the atomic README recipe moves. The design/ADR milestone
+retains accepted decisions while clarifying mechanisms and boundaries.

@@ -1,7 +1,7 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-08
+last_verified: 2026-09-09
 ---
 
 # Flutter Android lifecycle design
@@ -9,15 +9,26 @@ last_verified: 2026-09-08
 [日本語](flutter-android-runtime.ja.md)
 
 The [product contract](../product-specs/flutter-android-runtime.md) defines the
-manifest. Config owns strict decoding; app owns selection, pinned source build,
-evidence, ordering and compensation. A Flutter adapter owns CLI discovery and
-build execution. `app.FlutterProvider.Validate` checks project confinement and
+manifest. This design explains how app coordinates Flutter builds and Android
+application effects while keeping Emulator ownership independent.
+
+## Responsibilities
+
+Config strictly decodes the manifest. App selects applications, builds pinned
+sources, records evidence and coordinates effect ordering and compensation.
+The Flutter adapter discovers the CLI and executes builds. `app.FlutterProvider.Validate` checks project confinement and
 metadata before app records a build intention; the adapter also validates at the
-build boundary. Repository doctor validates all current source checkouts without
-Docker; create validates pinned projects separately. Android application effects
+build boundary.
+
+Repository doctor validates all current source checkouts without
+Docker; create validates pinned projects separately.
+
+Android application effects
 reuse the Android adapter's confirmed
 identity and compatible local ADB-server policy. They do not start an independent
-ADB server or own Emulator allocation. Domain and SQLite retain application/build
+ADB server or own Emulator allocation.
+
+Domain and SQLite retain application/build
 and reverse identity independently of Flutter processes. Application records extend
 the existing serialized lease payload; the existing SQLite lease persistence saves
 them atomically with lease state, without a new SQL table or migration.
@@ -45,6 +56,8 @@ activity launch. Launch intent alone cannot establish READY after a crash.
 Observation requires confirmed build termination and launch, plus executable and
 project working-directory consistency with the recorded build identity.
 
+### Build termination and evidence are separate guards
+
 A build intention persists `build_unconfirmed` before starting the process.
 A crash or unconfirmed process/output termination keeps this guard set across
 restart and blocks source cleanup even with force. Durable-write errors stop
@@ -56,6 +69,8 @@ artifact write keeps this durable guard across store recovery; reconciliation
 quarantines and normal/forced cleanup retains source and APK until evidence is
 investigated and recovered.
 
+### Compensation preserves uncertain resources
+
 On failure, remove proven owned mappings before existing runtime compensation.
 A requested but never-confirmed reverse mapping cannot be removed when present;
 retain it and quarantine. Absence is safe and permits cleanup to continue.
@@ -63,6 +78,8 @@ Confirmed destruction of the private Emulator state removes installed packages;
 no global uninstall step is needed. Ambiguous identity retains reservations,
 source state and evidence in quarantine. Source cleanup retains the existing
 tracked-dirty rules even when a Flutter build modified tracked project files.
+
+### Observation and test provenance
 
 Observation verifies Android ownership, package presence, recorded mappings and
 build identity consistency. It never requires a foreground activity. Named-test

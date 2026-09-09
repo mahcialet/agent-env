@@ -1,16 +1,19 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-08
+last_verified: 2026-09-09
 ---
 
 # Core beliefs
 
 [日本語](core-beliefs.ja.md)
 
+These principles guide design tradeoffs. The [architecture](../../ARCHITECTURE.md)
+maps components; the [lease design](lease-control-plane.md) explains their lifecycle.
+
 Immutable source sets make an environment reproducible. A lease records every requested ref and resolved commit before runtime startup; the lease is never reduced to one commit column.
 
-SQLite owns desired state, reservations, and evidence. Git and Docker own observed resource state. Reconciliation joins those facts without pretending external effects are transactional.
+SQLite owns desired state, reservations, and evidence. Git and runtime adapters observe external resource state. Reconciliation joins those facts without pretending external effects are transactional.
 
 Failures are data: preserve failed allocations, compensations, and quarantine events. Cleanup prioritizes preserving tracked edits and resource identity over optimistic deletion.
 

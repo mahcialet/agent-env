@@ -3,7 +3,7 @@ status: accepted
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/adr/0006-single-authority-multi-host.md
-source_sha256: c4bbb16fda1c1f364819c7c7c9bb130e603e7e4afb219ab6e2167a0514a1de5e
+source_sha256: bb485f70f5336042ce0769535150f2e8a7a93ac84f9aab12224b8b960e8dc763
 ---
 
 # 一つの controller 管理主体と lease 全体の worker 割当
@@ -27,11 +27,15 @@ epoch は一つの assignment の各操作を通じて固定し、通常の regi
 通常の local mutation と GC は、force や期限切れでも controller の管理を回避できません。
 worker 操作は完全一致の assignment tuple を持ち、既存 app/local operation fence を維持します。
 
+### 配送と削除の権限
+
 双方で operation の識別情報と payload を永続化します。重複配送では journal に記録した結果を復旧します。
 作用開始の可能性がある時点以降の不確実性には照合が必要であり、無条件の mutation 再実行を許可しません。
 artifact 配送前に結果を local で永続化します。global RELEASED には worker の cleanup/不在の証明が必要です。
 heartbeat の途絶では OFFLINE・古い観測・UNKNOWN とし、生存中や不確実な resource を再配置しません。
 分かりやすい host 名だけを根拠に、別 instance へ所有権を移せません。
+
+### 検証済みデータの転送と local endpoint
 
 commit 済みで独立に検証できる Git bundle と証拠を、上限付き SHA-256 CAS で転送します。
 source object は 1 GiB、artifact は 64 MiB が上限です。呼出側の path を保存先操作の根拠にしません。

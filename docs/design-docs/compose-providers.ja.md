@@ -1,9 +1,9 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-08
+last_verified: 2026-09-09
 translation_of: docs/design-docs/compose-providers.md
-source_sha256: ad815fb9c913700914e0fbbc9ed3979ebaae5478e946b0abe774f7a2217d25a6
+source_sha256: 0f55afe683c0effb8a8298ad7a013bc82b02364d533fd42e31ef3689388f7dfb
 ---
 
 [English（翻訳元）](compose-providers.md)
@@ -51,6 +51,8 @@ native bridgeが、その子processへ固定したPodmanのglobal引数を渡す
 
 ## 共通configと実観測
 
+### 設定の正規化と provider による再解析
+
 Dockerの正規化済みJSONとpodman-composeの正規化済みYAMLを同じhost-policy modelへ
 入力する。作用の前にpolicyを適用し、選択したservice/resourceの到達可能な依存関係閉包を
 digestとともにcanonical JSONで記録する。podman-composeが変更操作のsnapshotを再解析
@@ -58,8 +60,8 @@ digestとともにcanonical JSONで記録する。podman-composeが変更操作�
 同じprivate copyで、記録portがzeroの場合だけ`published`を省略し、`host_ip`は保持する。
 Podmanは指定したloopback制限のまま動的portを割り当てる。canonical設定とdigestは変えない。
 受け付けるホスト構成はPodman 5.xとpodman-compose >=1.6.0,<2.0.0である。
-5.4.2 / 1.6.0でDocker共存を含む実Linux rootless受け入れが成功した。以前の1.3 providerは
-この条件で拒否した。Windows/macOS/Linuxのnative provider CIは4a5de3d（run 34216579481）で成功で、実機のMachine環境はない。
+
+### ファイルの範囲と明示した環境変数
 
 最初のCompose fileの親を`project_directory`と一致させ、Podmanの基準directoryの
 意味の違いを避ける。`env_file`とconfig/secretのfile参照は、symlink解決後もそのdirectory
@@ -68,6 +70,8 @@ Podmanは指定したloopback制限のまま動的portを割り当てる。canon
 制御する予約済みの`PODMAN_*`、`CONTAINER_*`、`AGENT_ENV_PODMAN_*`、`COMPOSE_*` keyを
 拒否する。
 
+### 対応する Podman のモード
+
 pod作成は無効にする。resource levelや深い階層の拡張も含め、`x-podman*`を再帰的に拒否する。
 model化するmount型は`bind`、`volume`、`tmpfs`のみであり、ホスト参照を展開するPodmanの
 `glob`など、ほかの型は拒否する。`network_mode`は省略・空文字列、`bridge`、`none`を
@@ -75,6 +79,8 @@ model化するmount型は`bind`、`volume`、`tmpfs`のみであり、ホスト�
 ほかのmodeはこの段階で拒否する。
 providerのdetached起動を使っても、providerの`--wait`をreadinessの判断元にはしない。
 appが観測に基づいて時間制限つきのreadiness確認を行う。
+
+### リソースの識別と endpoint
 
 実container、network、volume、health、公開portには、構造化されたPodmanの直接inspectionを
 使う。`io.podman.compose.*`などのPodman固有のproject/service識別情報と、
@@ -89,6 +95,8 @@ service/port/protocol形式でprotocolを含む。追加のホストからのTCP
 mappingだけに適用し、失敗したTCP mappingは削除してreadinessをfalseにする。
 UDPではengineが観測したmappingと既存service/readiness検査を維持し、applicationからの
 応答は主張しない。fakeのinspectionデータでは実機Machineの転送動作は証明できない。
+
+### Inventory の走査
 
 共通inventory走査では、nativeなlabel付きresourceの列挙とDocker Composeのproject一覧を
 分離する。Dockerは両段階を維持する。Podmanは固定済みadapterからnativeの段階を直接
@@ -110,6 +118,8 @@ imageで宣言したnative匿名volumeには、この別の証拠が必要とな
 所有の曖昧さ、識別情報の不一致、観測不足があればquarantineと証拠を維持する。
 global pruneで補償処理を行わない。
 
+## 検証とプラットフォーム別の証拠
+
 testでは、Podmanの2 leaseが独立したlifecycleを維持すること、DockerとPodmanが共存すること、
 既定の接続を変更してもcleanup先が変わらないことを証明する。同じnamed/E2E fixtureを両方の
 providerで実行する。native platform testでは解析、argv、path処理、engine固定を検証し、
@@ -117,3 +127,6 @@ providerで実行する。native platform testでは解析、argv、path処理�
 実機のMachine testは別枠で、環境がある場合に実施する。検証したバージョンと残る不足は
 すべてExecPlanに記録する。Podman 5.xおよびpodman-compose >=1.6.0,<2.0.0以外を
 release受け入れ環境として扱わない。
+
+5.4.2 / 1.6.0でDocker共存を含む実Linux rootless受け入れが成功した。以前の1.3 providerは
+この条件で拒否した。Windows/macOS/Linuxのnative provider CIは4a5de3d（run 34216579481）で成功で、実機のMachine環境はない。

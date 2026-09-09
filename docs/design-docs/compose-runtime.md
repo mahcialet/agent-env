@@ -1,12 +1,18 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-08
+last_verified: 2026-09-09
 ---
 
 # Compose runtime
 
 [日本語](compose-runtime.ja.md)
+
+This document explains the common Compose lifecycle: select services, render a
+configuration, start an isolated project, and observe readiness and endpoints.
+The [provider design](compose-providers.md) specifies Docker/Podman command
+selection, configuration restrictions and cleanup proof. The invocation below
+uses Docker to illustrate the common arguments.
 
 ## Invocation
 
@@ -41,7 +47,7 @@ Use bounded timeouts and include the failing probe in diagnostics.
 
 ## Ports
 
-The MVP should strongly prefer one of:
+The Compose MVP's port-isolation design strongly prefers one of:
 
 - no host publishing, with tests running inside Compose;
 - dynamic host publishing configured in Compose;

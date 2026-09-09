@@ -1,7 +1,7 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-08
+last_verified: 2026-09-09
 ---
 
 # Browser/CDP design
@@ -54,6 +54,26 @@ are explicitly unsupported in this slice.
 Fixed internal node readback is permitted, but unrestricted public evaluation is
 not. No shared Browser/Android UI abstraction is introduced prematurely.
 
+### Navigation and request validation
+
+Explicit navigation invalidates earlier browser snapshots even for hash/history
+changes. Document tokens also include a raw-URL digest (not its query text), and
+node fingerprints include allowlisted nontext AX state flags. Set-text requires
+an explicit `--text`; an explicit empty string clears the field. CLI validates
+required operation arguments and refuses explicit zero durations before opening
+the store.
+
+### Frame origin proof
+
+Frame access uses browser-reported security origins. For inherited `about:blank`
+or `about:srcdoc` where Chrome reports an opaque placeholder, a fixed private
+predicate in an isolated parent world checks Chromium's same-origin access to
+the frame's native `contentDocument` getter. The world has no universal access
+and does not trust page-script overrides. A bounded target census rejects
+selected-page out-of-process iframes that the frame tree omits. An unknown origin
+with an empty, not-yet-committed frame URL can only be retried by wait within its
+existing deadline; it cannot authorize observation or input.
+
 ## Effects, diagnostics and privacy
 
 Every operation holds the lease fence through protocol work and evidence
@@ -71,24 +91,6 @@ Screenshots and unknown page text may contain secrets and remain private evidenc
 This slice does not offer persistent background diagnostics, downloads, browser
 restart, external attachment or public CDP passthrough.
 
-## Validation strategy
-
-Negative config fixtures establish explicit binding and exact switch requirements.
-App tests must cover ownership rechecks, stale/cross-lease references, run/evidence
-failure and destroy fencing. Transport fixtures must reject foreign discovery and
-malformed/oversized responses. Real native tests use pinned Chrome for Testing
-152.0.7977.82 on Windows, macOS and Linux with Go 1.27. All three native jobs
-passed at `391288c` (Browser native 34247636411), reporting CDP 1.3.
-Browser/backend fixtures exercise an endpoint owned by the same lease. The plan
-records direct native evidence separately from cross-build results.
-
-Explicit navigation invalidates earlier browser snapshots even for hash/history
-changes. Document tokens also include a raw-URL digest (not its query text), and
-node fingerprints include allowlisted nontext AX state flags. Set-text requires
-an explicit `--text`; an explicit empty string clears the field. CLI validates
-required operation arguments and refuses explicit zero durations before opening
-the store.
-
 ### Review-hardened evidence and wait boundaries
 
 Semantic input records the validated page ID, source snapshot run ID and node
@@ -105,11 +107,13 @@ Only the active capture's session and required event methods enter its bounded
 queue; unrelated notifications are ignored. Overflow of subscribed events still
 fails closed.
 
-Frame access uses browser-reported security origins. For inherited `about:blank`
-or `about:srcdoc` where Chrome reports an opaque placeholder, a fixed private
-predicate in an isolated parent world checks Chromium's same-origin access to
-the frame's native `contentDocument` getter. The world has no universal access
-and does not trust page-script overrides. A bounded target census rejects
-selected-page out-of-process iframes that the frame tree omits. An unknown origin
-with an empty, not-yet-committed frame URL can only be retried by wait within its
-existing deadline; it cannot authorize observation or input.
+## Validation strategy
+
+Negative config fixtures establish explicit binding and exact switch requirements.
+App tests must cover ownership rechecks, stale/cross-lease references, run/evidence
+failure and destroy fencing. Transport fixtures must reject foreign discovery and
+malformed/oversized responses. Real native tests use pinned Chrome for Testing
+152.0.7977.82 on Windows, macOS and Linux with Go 1.27. All three native jobs
+passed at `391288c` (Browser native 34247636411), reporting CDP 1.3.
+Browser/backend fixtures exercise an endpoint owned by the same lease. The plan
+records direct native evidence separately from cross-build results.

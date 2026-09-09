@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/exec-plans/active/reader-first-documentation-restructure.md
-source_sha256: 95ede9c906c7352ef4c09517fa64aa6694b1d30a789420b8d4614ac9eb1b3cb0
+source_sha256: d2083cbf6038de9f37cc6bcf431594323f977a912fab72ad85dd65ecdfc2c5a6
 ---
 
 # Durable documentation全体をreader-firstな英語・日本語へ再構成する
@@ -924,3 +924,6 @@ Planの棚卸し分類も執筆とは別の担当が確認した。
 
 Milestone commit `b733c73`に日英の編集方針、方針文書7組、本実行記録を含めた。
 次のcommitは入口と製品仕様をまとめ、READMEの手順を同じ変更内で移す。
+
+Milestone commit `d8b8b99`に入口・案内6組と製品仕様12組を含め、READMEの手順も同時に移した。
+設計・ADRのcommitでは採用済み判断を保持し、仕組みと境界を明確にする。

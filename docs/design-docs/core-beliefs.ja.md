@@ -1,18 +1,21 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-08
+last_verified: 2026-09-09
 translation_of: docs/design-docs/core-beliefs.md
-source_sha256: 16cf89f7fcabe1e8b208563cecced20aca8104ba4cf3691fd48a6eb6c1c7bcb8
+source_sha256: 2ca7c26c0b4120d08bd0fc22a8df15432a0a078b78124cb50cba7921a12c90ba
 ---
 
 [English（翻訳元）](core-beliefs.md)
 
 # 基本原則
 
+設計の選択では、以下の原則を守ります。構成と責務の関係は[アーキテクチャ](../../ARCHITECTURE.ja.md)、
+ライフサイクルの仕組みは [lease の設計](lease-control-plane.ja.md)を参照してください。
+
 不変の source set によって環境を再現可能にします。lease はランタイム起動前に、要求された全 ref と解決済み commit を記録します。lease を 1 つの commit 列だけに縮約してはいけません。
 
-SQLite は desired state、予約、証拠を管理します。Git と Docker は観測対象リソースの状態を管理します。Reconciliation は外部への副作用がトランザクションであるかのように扱わず、これらの事実を結び付けます。
+SQLite は desired state、予約、証拠を管理します。Git と各ランタイムアダプターは外部リソースを観測します。Reconciliation は外部への副作用がトランザクションであるかのように扱わず、これらの事実を結び付けます。
 
 失敗はデータです。失敗した割り当て、補償処理、隔離イベントを保持します。削除では、楽観的な削除よりも追跡対象ファイルの編集とリソース識別情報の保護を優先します。
 

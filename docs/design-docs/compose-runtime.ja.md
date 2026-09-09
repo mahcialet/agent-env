@@ -1,14 +1,20 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-08
+last_verified: 2026-09-09
 translation_of: docs/design-docs/compose-runtime.md
-source_sha256: bd2af518c3e30976eca3d78e2262f6911c3a8eb00a2a688ebca25480479b9bbc
+source_sha256: 00a2191e6c895f9a69afac1c09964de607f81404cced38ce51fd8bc710489edd
 ---
 
 [English（翻訳元）](compose-runtime.md)
 
 # Compose ランタイム
+
+この文書では、サービスの選択、設定の展開、独立したプロジェクトの起動、
+readiness と endpoint の観測という Compose 共通の処理を説明します。
+Docker/Podman の選択、設定の制約、削除前に必要な証拠は
+[provider の設計](compose-providers.ja.md)を参照してください。
+以下の呼び出し例では、共通の引数を Docker で示します。
 
 ## 呼び出し
 
@@ -43,7 +49,7 @@ docker compose
 
 ## ポート
 
-MVP では次のいずれかを強く優先します。
+Compose MVP のポート分離設計では、次のいずれかを強く優先します。
 
 - ホストへ公開せず、Compose 内でテストを実行する
 - Compose で設定した動的なホスト公開

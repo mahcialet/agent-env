@@ -1,17 +1,32 @@
 ---
 status: accepted
 owner: maintainers
-last_verified: 2026-09-08
+last_verified: 2026-09-09
 ---
 
 # Compose first runtime
 
 [日本語](0003-compose-first-runtime.ja.md)
 
+## Context
+
+The initial MVP needed a first runtime without reducing the product to a thin
+Compose wrapper. Immutable sources and lease reconciliation are separate
+responsibilities.
+
 ## Decision
 
-Accepted: Compose v2 is the first runtime adapter, with explicit unique project identity, absolute config paths, selected service closure, normalized configuration digest, and observed resources. Reject a thin Compose wrapper as the whole product: immutable sources and lease reconciliation remain separate responsibilities. Defer generic processes and Android until the Compose MVP passes.
+Use Compose v2 as the first runtime adapter. Record an explicit unique project
+identity, absolute configuration paths, selected service closure, normalized
+configuration digest and observed resources.
+
+At that stage, generic processes and Android were deferred until the Compose MVP
+passed. That sequencing decision is historical: their current implementations
+are described in the [design index](../design-docs/index.md).
 
 ## Consequences
 
-This decision requires tests and documented limitations. Changes require an ADR and synchronized implementation/checks.
+Compose orchestration does not replace source management or reconciliation.
+See the [Compose design](../design-docs/compose-runtime.md) for the common runtime
+mechanism. This decision requires tests and documented limitations. Changes
+require an ADR and synchronized implementation/checks.
