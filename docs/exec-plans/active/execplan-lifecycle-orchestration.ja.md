@@ -12,7 +12,7 @@ workstreams:
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/exec-plans/active/execplan-lifecycle-orchestration.md
-source_sha256: 26bae16b8c47b3a09ca041dffb3eb4faf87d1765ff264217dc1c1ecfc2e6a088
+source_sha256: d131a7562558d5499b49b1136863ecad9848a8b53672c4f5f02c60dc122a32a0
 ---
 
 # ExecPlan lifecycle orchestrationと自動delivery gateを追加する
@@ -504,3 +504,17 @@ revisionと一致することも要求する。名前付きの実行ファイル
 回帰テストは、consumerで書き換えた依存base、tag衝突、未充足なcompleted依存、
 変更済み・未追跡Human Plan、空の前提条件一覧を対象にする。
 最終harness・raceの証拠はPR返信に記録する。
+
+### PR #14のbranchとfollow-up証拠の追加検証（2026-09-10）
+
+追加4件のThreadに対応した。activeな依存・consumer branchは明示的なlocal headを
+解決し、同名tagがcommitを代替できない。FINDINGのfollow-up review Planは証拠作成前に
+英日metadataが契約revisionと一致することを要求する。翻訳管理フィールドは日本語Planの
+stringだけを許可し、英語Planでは拒否する。回帰テストはbranch/tag衝突・tagだけのref、
+未追跡・変更済みfollow-up Plan、翻訳フィールドの不正なpath・型を検証する。
+
+multi-host契約からclientローカルADB要求を除いた。AndroidシナリオEP-MHOST-001-04は
+割り当て先remote workerで作成・準備完了・破棄を実行し、worker識別情報とworker側ADBの
+証拠を要求する。workerのAndroidツール不足はBLOCKEDとする。英日Human Validation Planも
+同じ要件を説明する。実際のHuman Validationのkickや完了扱いは行っていない。
+最終全harness・race結果はレビュー返信に記録する。

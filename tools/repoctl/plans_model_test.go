@@ -58,6 +58,29 @@ func TestPlanMetadataStrictValidation(t *testing.T) {
 	}
 }
 
+func TestPlanTranslationMetadataIsJapaneseStringOnly(t *testing.T) {
+	for _, key := range []string{"translation_of", "source_sha256"} {
+		for _, value := range []string{"\"document.md\"", "[document.md]", "{path: document.md}", "123", "true", "null"} {
+			data := strings.Replace(modelPlanFixture, "status: active", "status: active\n"+key+": "+value, 1)
+			if _, _, err := parsePlanMetadata([]byte(data), "active/test.md"); err == nil || !strings.Contains(err.Error(), "unknown lifecycle metadata field "+key) {
+				t.Errorf("English %s: %s: expected forbidden field, got %v", key, value, err)
+			}
+			_, _, err := parsePlanMetadata([]byte(data), "active/test.ja.md")
+			if strings.HasPrefix(value, "\"") {
+				if err != nil {
+					t.Errorf("Japanese string %s rejected: %v", key, err)
+				}
+			} else if err == nil || !strings.Contains(err.Error(), key+" must be a string") {
+				t.Errorf("Japanese %s: %s: expected string type rejection, got %v", key, value, err)
+			}
+		}
+	}
+	data := strings.Replace(modelPlanFixture, "status: active", "status: active\ntranslation_of: docs/exec-plans/active/test.md\nsource_sha256: "+strings.Repeat("a", 64), 1)
+	if _, _, err := parsePlanMetadata([]byte(data), "active/test.ja.md"); err != nil {
+		t.Fatalf("valid Japanese translation metadata rejected: %v", err)
+	}
+}
+
 func TestPlanMetadataLegacyIsBounded(t *testing.T) {
 	data := []byte("---\nstatus: completed\nowner: historical\nlast_verified: 2026-01-01\n---\nOld plan\n")
 	if _, legacy, err := parsePlanMetadata(data, "completed/agent-env-mvp.md"); err != nil || !legacy {

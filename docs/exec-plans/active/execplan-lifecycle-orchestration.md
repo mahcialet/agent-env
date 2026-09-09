@@ -580,3 +580,20 @@ endpoint prerequisite lists must be nonempty; malformed contracts cannot produce
 READY without checks. Regression tests cover consumer-rewritten dependency bases,
 tag collisions, unsatisfied completed dependencies, dirty/untracked Human Plans
 and empty prerequisite lists. Final harness/race evidence accompanies PR replies.
+
+### PR #14 branch and follow-up evidence tightening (2026-09-10)
+
+Four additional threads are addressed. Active prerequisite and consumer branches
+now resolve explicit local heads, so same-named tags cannot substitute their
+commits. FINDING follow-up review Plan metadata must match the contract revision
+in both languages before evidence creation. Translation bookkeeping fields are
+accepted only as strings in Japanese Plan paths; English Plans reject them.
+Regression tests cover branch/tag collisions and tag-only refs, untracked/dirty
+follow-up Plans, and invalid translation-field paths/types.
+
+The multi-host contract no longer requires client-local ADB. Android scenario
+EP-MHOST-001-04 explicitly exercises creation/readiness/destruction on the assigned
+remote worker and requires worker identity and worker-side ADB evidence. Missing
+worker Android tools are BLOCKED. The bilingual Human Validation Plan describes
+the same requirement. No actual Human Validation was kicked or claimed complete.
+Final full harness/race evidence is recorded in the review replies.

@@ -129,3 +129,10 @@ The harness owns preflight and evidence formatting; `agent-env` continues to own
 product behavior. This plan has parent `EP-OPS-001` and no execution dependency on
 it. Graph selection never automatically runs human-validation plans. Completion
 requires this plan's own acceptance, retrospective, merge proof and bilingual move.
+
+For Android scenario `EP-MHOST-001-04`, provision SDK/emulator/ADB on the designated
+worker. The client needs `agent-env` and `git`, not local Android tooling. Create
+the Emulator lease through the client, capture worker/lease identity and
+worker-side ADB boot readiness, then destroy it and verify absence on that worker.
+Missing worker-side Android tools are BLOCKED; client-local ADB presence or TCP
+preflight alone cannot satisfy the scenario.

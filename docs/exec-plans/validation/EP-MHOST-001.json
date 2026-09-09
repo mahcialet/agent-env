@@ -2,8 +2,7 @@
   "plan_id": "EP-MHOST-001",
   "executables": [
     "agent-env",
-    "git",
-    "adb"
+    "git"
   ],
   "endpoints": [
     "controller",
@@ -42,10 +41,10 @@
       "id": "EP-MHOST-001-04",
       "purpose": "Android runtime",
       "actions": [
-        "Allocate an available Emulator lease and observe readiness before destroy."
+        "Create an Emulator lease through the client on the designated remote worker; record worker and lease identity, worker-side ADB boot readiness, then destroy the lease and verify absence on that worker."
       ],
       "expected": "AVD and ports are exclusively reserved, and cleanup records verified absence.",
-      "pass_criteria": "Record the expected observation and bounded evidence; unexpected behavior is FINDING, missing prerequisites are BLOCKED."
+      "pass_criteria": "Record evidence that the emulator starts, becomes ready and stops on the designated worker, with exclusive AVD/port ownership. Missing worker-side Android SDK, emulator or ADB support is BLOCKED. Client-local ADB or TCP connectivity alone is not acceptance evidence."
     },
     {
       "id": "EP-MHOST-001-05",

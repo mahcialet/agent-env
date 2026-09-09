@@ -15,7 +15,7 @@ execution_mode: human-kick
 pause_reason: Awaiting provisioned multi-host environment and explicit human kick
 resume_when: Maintainer provisions the required environment and explicitly authorizes a validation invocation
 translation_of: docs/exec-plans/paused/multi-host-human-validation.md
-source_sha256: 10335cb65d52c71336fee69e7f94483f19a76c7ccd0f8407190115001bf772e6
+source_sha256: 98b6d546348cb03f9ba694b71ac1b891555d7fc26f80b675e240a20d9623d171
 ---
 
 # 提供済みのマルチホスト機能を検証する
@@ -123,3 +123,9 @@ Bundleにはendpointアドレス、認証情報、生の観測、詳細なエラ
 ハーネスは事前確認と証拠形式を担当し、製品動作は引き続き`agent-env`が担当します。
 親は`EP-OPS-001`ですが、親への実行依存はありません。グラフ選出は人による検証を自動実行しません。
 完了には、この計画自身の受け入れ、振り返り、マージ証拠、両言語の移動が必要です。
+
+Androidシナリオ`EP-MHOST-001-04`では、SDK・emulator・ADBを指定workerに用意する。
+clientに必要なのは`agent-env`と`git`であり、ローカルAndroidツールは不要である。
+client経由でEmulator leaseを作成し、worker/lease識別情報とworker側ADBの起動・準備完了を
+記録した後、leaseを破棄してそのworker上での消失を確認する。worker側Androidツールが
+不足する場合はBLOCKEDとする。clientローカルのADBやTCP preflightだけでは合格しない。

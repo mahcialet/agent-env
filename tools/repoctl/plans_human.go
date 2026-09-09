@@ -329,6 +329,9 @@ func executePlanHuman(root string, args []string, out io.Writer) error {
 			if !ok || target.PlanType != "review" || (target.Status != "draft" && target.Status != "active") {
 				return fmt.Errorf("FINDING requires --follow-up-plan naming a tracked draft or active review plan")
 			}
+			if err := planMetadataMatchesRevision(root, c.Revision, target); err != nil {
+				return fmt.Errorf("FINDING follow-up plan must match evidence revision: %w", err)
+			}
 			e.ActionRequired = "review-plan-update"
 			e.FollowUpPlan = *followup
 		}

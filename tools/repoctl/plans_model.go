@@ -131,15 +131,19 @@ func parsePlanMetadata(data []byte, path string) (planMetadata, bool, error) {
 		return p, true, nil
 	}
 	allowed := map[string]bool{}
-	for _, key := range []string{"plan_id", "plan_type", "status", "owner", "last_verified", "parent", "depends_on", "priority", "workstreams", "conflicts", "pause_reason", "resume_when", "promotion_criteria", "abandonment_reason", "merge_policy", "base_branch", "branch", "merge_commit", "execution_mode", "translation_of", "source_sha256", "blockers"} {
+	for _, key := range []string{"plan_id", "plan_type", "status", "owner", "last_verified", "parent", "depends_on", "priority", "workstreams", "conflicts", "pause_reason", "resume_when", "promotion_criteria", "abandonment_reason", "merge_policy", "base_branch", "branch", "merge_commit", "execution_mode", "blockers"} {
 		allowed[key] = true
+	}
+	if strings.HasSuffix(path, ".ja.md") {
+		allowed["translation_of"] = true
+		allowed["source_sha256"] = true
 	}
 	for key := range fields {
 		if !allowed[key] {
 			return fail("unknown lifecycle metadata field " + key)
 		}
 	}
-	scalarFields := []string{"plan_id", "plan_type", "status", "owner", "parent", "pause_reason", "resume_when", "abandonment_reason", "merge_policy", "base_branch", "branch", "merge_commit", "execution_mode"}
+	scalarFields := []string{"plan_id", "plan_type", "status", "owner", "parent", "pause_reason", "resume_when", "abandonment_reason", "merge_policy", "base_branch", "branch", "merge_commit", "execution_mode", "translation_of", "source_sha256"}
 	for _, key := range scalarFields {
 		if n := fields[key]; n != nil && (n.Kind != yaml.ScalarNode || n.Tag != "!!str") {
 			return fail(key + " must be a string")

@@ -160,6 +160,8 @@ func TestHumanFindingRequiresTrackedReviewAndKeepsFollowUp(t *testing.T) {
 	review := strings.Replace(modelPlanFixture, "EP-TEST-001", "EP-TEST-002", 1)
 	review = strings.Replace(review, "plan_type: implementation", "plan_type: review", 1)
 	modelWritePair(t, root, "review", review)
+	planTestGit(t, root, "add", "docs/exec-plans/active")
+	planTestGit(t, root, "commit", "-m", "track review plan")
 	observation := filepath.Join(root, "observation.json")
 	if err := os.WriteFile(observation, []byte(`{"observation":"Unexpected duplicate effect","evidence_refs":["sanitized receipt"]}`), 0600); err != nil {
 		t.Fatal(err)
@@ -558,6 +560,38 @@ func TestHumanRejectsUncommittedPlanAndEmptyPrerequisites(t *testing.T) {
 				if _, err := os.Stat(dir); !os.IsNotExist(err) {
 					t.Fatal("invalid input reserved evidence directory")
 				}
+			}
+		})
+	}
+}
+
+func TestHumanFindingRejectsUncommittedFollowUpPlan(t *testing.T) {
+	for _, kind := range []string{"untracked", "dirty"} {
+		t.Run(kind, func(t *testing.T) {
+			root, _ := humanFixture(t)
+			review := strings.Replace(modelPlanFixture, "EP-TEST-001", "EP-TEST-002", 1)
+			review = strings.Replace(review, "plan_type: implementation", "plan_type: review", 1)
+			modelWritePair(t, root, "review", review)
+			if kind == "dirty" {
+				planTestGit(t, root, "add", "docs/exec-plans/active")
+				planTestGit(t, root, "commit", "-m", "track review plan")
+				modelWritePair(t, root, "review", strings.Replace(review, "priority: 10", "priority: 20", 1))
+			}
+			observation := filepath.Join(root, "observation.json")
+			if err := os.WriteFile(observation, []byte(`{"observation":"unexpected effect","evidence_refs":["receipt"]}`), 0600); err != nil {
+				t.Fatal(err)
+			}
+			dir := filepath.Join(root, "bundle")
+			var out bytes.Buffer
+			err := executePlanHuman(root, []string{"record", "--plan", "EP-TEST-001", "--kick", "--scenario", "EP-TEST-001-01", "--result", "FINDING", "--follow-up-plan", "EP-TEST-002", "--evidence", observation, "--evidence-dir", dir}, &out)
+			if err == nil || !strings.Contains(err.Error(), "follow-up plan must match evidence revision") {
+				t.Fatalf("uncommitted follow-up accepted: %v", err)
+			}
+			if out.Len() != 0 {
+				t.Fatal("invalid follow-up emitted evidence")
+			}
+			if _, err := os.Stat(dir); !os.IsNotExist(err) {
+				t.Fatal("invalid follow-up reserved evidence directory")
 			}
 		})
 	}

@@ -125,7 +125,7 @@ func planGitReadiness(root string, g *planGraph) (planReadinessContext, error) {
 			} else if dep.Status == "active" || dep.Status == "completed" {
 				head, err := planStackedHead(root, dep)
 				if err == nil {
-					consumer, consumerErr := planRevision(root, expectedPlanBranch(p))
+					consumer, consumerErr := planRevision(root, "refs/heads/"+expectedPlanBranch(p))
 					if consumerErr != nil {
 						// Before creation, the declared base is the future branch start point.
 						// An existing but invalid ref must not silently fall back.
@@ -244,7 +244,7 @@ func planProvenance(root string, p planMetadata, prBody string) error {
 // A squash proves only its resulting commit; it cannot prove ancestry of the old tip.
 func planStackedHead(root string, p planMetadata) (string, error) {
 	if p.Status == "active" {
-		return planRevision(root, expectedPlanBranch(p))
+		return planRevision(root, "refs/heads/"+expectedPlanBranch(p))
 	}
 	if p.Status != "completed" {
 		return "", errors.New("stacked dependency is not active or completed")

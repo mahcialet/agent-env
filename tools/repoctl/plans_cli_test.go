@@ -440,3 +440,35 @@ func TestIdentityHistoryUsesBranchNotSameNamedTag(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestActiveStackedRefsIgnoreTags(t *testing.T) {
+	root := planTestRepo(t)
+	initial := planTestGit(t, root, "rev-parse", "HEAD")
+	a := planMetadata{PlanID: "EP-TEST-001", PlanType: "implementation", Status: "active", BaseBranch: "master"}
+	b := planMetadata{PlanID: "EP-TEST-002", PlanType: "implementation", Status: "active", BaseBranch: "master", DependsOn: []planDependency{{PlanID: a.PlanID, Satisfaction: "stacked"}}}
+	planTestGit(t, root, "switch", "-c", expectedPlanBranch(a))
+	planTestGit(t, root, "commit", "--allow-empty", "-m", "dependency")
+	tip := planTestGit(t, root, "rev-parse", "HEAD")
+	planTestGit(t, root, "switch", "-c", expectedPlanBranch(b))
+	planTestGit(t, root, "tag", expectedPlanBranch(a), initial)
+	planTestGit(t, root, "tag", expectedPlanBranch(b), initial)
+	got, err := planStackedHead(root, a)
+	if err != nil || got != tip {
+		t.Fatalf("tag displaced branch: %s %v", got, err)
+	}
+	g := &planGraph{Plans: []planMetadata{a, b}, ByID: map[string]planMetadata{a.PlanID: a, b.PlanID: b}}
+	ctx, err := planGitReadiness(root, g)
+	if err != nil || !ctx.Stacked[b.PlanID+"/"+a.PlanID] {
+		t.Fatalf("consumer tag displaced branch: %+v %v", ctx, err)
+	}
+	planTestGit(t, root, "switch", "master")
+	planTestGit(t, root, "branch", "-D", expectedPlanBranch(b))
+	ctx, err = planGitReadiness(root, g)
+	if err != nil || ctx.Stacked[b.PlanID+"/"+a.PlanID] {
+		t.Fatalf("tag-only consumer counted as branch: %+v %v", ctx, err)
+	}
+	planTestGit(t, root, "branch", "-D", expectedPlanBranch(a))
+	if _, err := planStackedHead(root, a); err == nil {
+		t.Fatal("tag-only prerequisite accepted")
+	}
+}
