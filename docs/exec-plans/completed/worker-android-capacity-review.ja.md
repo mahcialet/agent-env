@@ -1,7 +1,7 @@
 ---
-translation_of: docs/exec-plans/active/worker-android-capacity-review.md
-source_sha256: 5eb023155e1fc1d428b56fbfa378df3b376c4b5e4cd20a8e13d9efaa726daa87
-status: active
+translation_of: docs/exec-plans/completed/worker-android-capacity-review.md
+source_sha256: f3fe9fb88fa12826f7255c27653a6a93de39456861491a949bf4a5ba87dc2ffb
+status: completed
 owner: maintainers
 last_verified: 2026-09-09
 ---
@@ -20,7 +20,7 @@ workerのAndroid容量がallocatorの枠数を超える場合、登録や状態�
 
 - [x] 2026-09-09: 新規Threadと既存allocatorの範囲を確認した。
 - [x] 2026-09-09: 境界値の拒否を実装・検証する。
-- [ ] 2026-09-09: push・返信・Resolveを完了し、このPlanをarchiveする。
+- [x] 2026-09-09: push・返信・Resolveを完了し、このPlanをarchiveする。
 
 ## Surprises & Discoveries
 
@@ -32,7 +32,18 @@ lease数の起動前検査には上限があるが、Android容量は負数し�
 
 ## Outcomes & Retrospective
 
-作業中。
+`07c83b4`で完了した。広告するAndroid容量はallocatorの固定枠数を超えられず、
+不正な値はリソース作成・登録の前に拒否する。追加テストは元の不具合と両境界を検証し、
+既存の枯渇・rollbackテストで実際の枠数も確認した。独立レビューで問題はなかった。
+広告する上限を割当範囲から導出し、別の容量値を独立に管理しないようにした。
+
+検査40件はすべて成功状態になった。PR Verify34341921634、push Verify34341916259のattempt2、
+Multi-host native34341916300/34341921496、Browser native34341916340/34341921586、
+Release preview34341921491である。push側Windows Go1.27の初回タイムアウトは後述のとおり
+記録し、未変更の失敗job再実行が成功した。対象appのraceも手元で5回成功した（4.060秒）。
+初回の一過性タイムアウトの根本原因を立証したとは主張しない。timeoutや検証条件は変更していない。
+最後のarchive commitは文書のみで、repoctl docs-checkで別途検証する。
+nativeの証拠は上記のコードcommitに対するものである。
 
 ## Context and Orientation
 
@@ -67,3 +78,14 @@ CLIは既にSQLiteを参照している。allocatorのポート範囲は維持�
 CLI/SQLiteのraceも成功した（46.073秒/15.922秒）。既存の実65予約による枯渇・rollbackの
 回帰テストも含む。最初のharnessは新規日本語Planの英語版リンク不足を検出した。
 リンクを追加し、検査規則を変更せずharnessが成功した。
+
+独立した読み取り専用レビューで問題はなかった。`07c83b4`をpushし、
+Thread PRRT_kwDOURHsR86gmqDyに修正・検証内容を返信してResolveした。
+PR Verify34341921634はWindows Go1.26/1.27を含む全jobが成功した。
+push Verify34341916259のattempt1ではWindows Go1.27の既存テスト
+TestMobileConcurrentNamedTestsUseOwnedSerialAndPersistWarningがapplications_test.go:585で
+失敗した。既存の10秒context内で2つのfixture leaseを作成中だった（18.74秒）。
+Android allocatorの差分は同値の定数への置換であり、割当動作は変えていない。
+CLIの検査はこのapp fixtureでは実行されない。競合の具体的な原因は立証していない。
+失敗証拠を残し、ソースと検証条件を変えず失敗jobだけを再実行する。成功させるための
+timeout延長は行わない。
