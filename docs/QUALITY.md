@@ -306,11 +306,18 @@ and join owned work before closing databases or removing temporary state. Closin
 a listener does not close accepted connections; closing an HTTP server does not
 join hijacked WebSocket callbacks. A cancellation signal is not a join.
 
+Time-bounded prerequisites such as worker heartbeats must remain valid through
+setup and the exercised operation. Successful registration is not continuing
+availability; force expiry and refresh when validating such fixtures.
+
 Register failure-path cleanup before assertions. Do not discard cleanup failures
 that mean native resources may remain. WaitGroup admission must be ordered before
 Wait; a counter protected by an atomic still needs completion ordering. Avoid
 joining from the worker being joined. Test timeouts bound a failed check; they do
 not establish callback entry, completed cleanup, or a negative side effect.
+Cancellation acknowledgement alone does not show that a cleanup goroutine has
+reached its join. In pure-channel negative scheduling tests, use
+`testing/synctest` quiescence before asserting that cleanup remains blocked.
 Use channels/barriers or `testing/synctest` for schedules where appropriate; real
 sockets/native processes need separately identified composition evidence.
 

@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-10
 translation_of: docs/QUALITY.md
-source_sha256: 830b054dfa0e556c5c699869c627e6f472701cbc52034875e76bb6c8a65dbd46
+source_sha256: 437af2329608893dc91af025ab92238bc1ebe01f5b86e1e880b66298c86e4962
 ---
 
 # 品質と検証
@@ -263,7 +263,9 @@ WSL stateテストではkernel/filesystem/mountの観測を注入し、独自mou
 
 helperごとに所有者、資源、goroutine/callback、共有状態、完了通知、cleanup順序、失敗出口、利用箇所、仮定を記録する。cleanupでは受付を止め、必要に応じてcancelやtransport closeを行い、所有処理をjoinしてからDBや一時状態を破棄する。listenerのcloseは受付済みconnectionを閉じない。HTTP serverのcloseはhijack済みWebSocket callbackをjoinしない。cancel通知はjoinではない。
 
-assertionより先に失敗時cleanupを登録する。native資源が残り得るcleanup失敗を無視しない。WaitGroupへの登録はWaitより前に順序付ける。atomicでcounterを保護しても完了順序は別途必要である。join対象自身からjoinしない。timeoutは失敗検査の時間を制限するだけで、callback開始・cleanup完了・副作用不在を示さない。適切な箇所ではchannel/barrierや`testing/synctest`を使う。実socket/native processの組み合わせを確認した証拠は別途区別する。
+worker heartbeatなど期限のある前提条件は、準備から対象操作まで有効でなければならない。登録成功は継続的な利用可能性を意味しない。この種のfixtureでは期限切れと更新を強制して検証する。
+
+assertionより先に失敗時cleanupを登録する。native資源が残り得るcleanup失敗を無視しない。WaitGroupへの登録はWaitより前に順序付ける。atomicでcounterを保護しても完了順序は別途必要である。join対象自身からjoinしない。timeoutは失敗検査の時間を制限するだけで、callback開始・cleanup完了・副作用不在を示さない。cancelの確認だけではcleanup goroutineがjoinへ到達したとは分からない。channelだけの負の順序検査では、`testing/synctest`で処理が待機状態へ落ち着いたことを確認してからcleanupの未完了をassertする。適切な箇所ではchannel/barrierや`testing/synctest`を使う。実socket/native processの組み合わせを確認した証拠は別途区別する。
 
 ### oracle・指摘・予防検査
 

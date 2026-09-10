@@ -1,6 +1,6 @@
 ---
 translation_of: docs/exec-plans/active/test-architecture-evidence-governance.md
-source_sha256: 32f6c4c3543dd4dab8d6b4ca12b8f3bdcb78b4c08e80dadc56fc429746e055fa
+source_sha256: 641280a53f6ec3bcc4b77702ea4d53cf1e74c44cb70a37c340e3b55d58583746
 status: active
 plan_id: EP-QUAL-001
 plan_type: implementation
@@ -776,3 +776,13 @@ Q06修正を実装した。非同期runnerとaccept済みready/ackを親の継�
 Windows向け修正後の独立technical reviewに追加不具合の指摘はなかった。EOFのみとしていたcommentをremote reset対応へ合わせた。Linux全体のcacheなしraceが再度成功した（`go test -race ./... -count=1`: app 48.064秒、execx 3.926秒、CLI 42.778秒）。対象2 test packageのWindows amd64 cross-compileも成功したが、これはコンパイル証拠に限る。
 
 次のnative CI実行前に、修正後の`repoctl check`は全段階で成功した。
+
+Q13（修正前に調査をACCEPT）: e558891のVerify push run34421905630 integration job102698956780で`TestRemoteCreateNearManifestLimitRoundtrip`が62.02秒後、controller capacity/no online compatible hostで失敗した。新たに観測したCLI fixture失敗であり、manifest転送の回帰を証明したものではない。高コストbundle準備とhost登録の鮮度の関係、同種fixtureを調査する。最初の予防機会は前提資源の有効期間契約とstale hostを強制した対照。TTL延長や再実行で失敗を隠さない。
+
+Q13のソース証拠: 登録後、flags.create内で約4MiBのBuildとblob uploadを再実行する。Onlineはlast_seenから30秒で失効するがfixtureはheartbeatを送らない。PR integration job102698969153/run34421909744でも61.95秒後にcapacity失敗を再現した。CIの正確なheartbeat経過時間は未記録である。controller TTLではなく、所有したheartbeatとoffline/refreshの強制対照でliveness契約を直す。実multi-host fixtureは既にWorker.Runでheartbeatを送る。scheduler直接testはstale hostを意図的に検証しているため変更しない。
+
+Q13実装の証拠: last_seenを強制的に古くしofflineを独立確認した旧fixtureは、同じcapacity拒否で失敗した（race24.57秒）。所有したheartbeatを持つ版は同じstale host条件、全near-limit転送、helper testに成功した（race30.490秒）。独立reviewは停止順序とerror保持を確認したが、cancel通知後のdefault selectによるjoin assertionはQ01/A5と同じ順序の曖昧さがあるとして拒否した。強制証拠に数える前にsynctestの待機状態確認とcancel-only故障対照へ置き換える。Q06のWindows Go1.26/1.27 native jobはPR run34421909744で両方成功した。
+
+Q13のjoin oracleをsynctestの待機状態確認で修正した。cancel-only stopのoverlayは“stop returned before callback completion”で失敗し（0.009秒）、正しい実装のheartbeat対象raceは成功した（1.014秒）。最初の不正overlayはunused variableのcompile errorであり証拠に数えなかった。heartbeat実装を含む全体cacheなしraceは成功した（app50.671秒、CLI43.425秒）。その後の待機状態確認だけのtest修正には上記対象raceを実行した。所有heartbeat helper追加後のcorpusは199 test fileとなる。
+
+Q13の最終独立technical/意味一致の再reviewと修正後`repoctl check`は成功した。heartbeat変更はnative/integration CIへ進める状態であり、先のintegration失敗2件は証拠として残す。
