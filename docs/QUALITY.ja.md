@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-10
 translation_of: docs/QUALITY.md
-source_sha256: 437af2329608893dc91af025ab92238bc1ebe01f5b86e1e880b66298c86e4962
+source_sha256: 28c90fbeb73002a31205b86447a1defa1001be5b2cc734fc8114a8ae62fd2e99
 ---
 
 # 品質と検証
@@ -269,7 +269,7 @@ assertionより先に失敗時cleanupを登録する。native資源が残り得�
 
 ### oracle・指摘・予防検査
 
-負例では、assertionを偶然満たす最も早い拒否経路を特定する。意図した変更・境界への到達を必須とし、特定のerror/stateを確認する。必要に応じて隣接する正常対照を加える。遅延ファイルの不在は独立したprocess完了証拠ではない。期待値を実装と同じロジックで計算せず、保存状態や副作用を独立して比較する。
+負例では、assertionを偶然満たす最も早い拒否経路を特定する。意図した変更・境界への到達を必須とし、特定のerror/stateを確認する。必要に応じて隣接する正常対照を加える。返却errorそのものを確認し、contextの状態だけでoperationの失敗原因を判断しない。遅延ファイルの不在は独立したprocess完了証拠ではない。期待値を実装と同じロジックで計算せず、保存状態や副作用を独立して比較する。
 
 修正前に指摘ID、不変条件、最初の現実的な検出機会、見逃し分類、test/productionの範囲、同種箇所への影響、ACCEPT/REJECT/DEFERと理由を記録する。採用した修正は可能なら同じoracleで修正前失敗・修正後成功を示す。新test API不足のcompile失敗は再現に数えない。native対照を実行できなければ明記する。
 

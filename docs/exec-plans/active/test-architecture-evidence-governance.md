@@ -129,9 +129,11 @@ Out of scope:
 - [x] Independently review the audit corpus, dispositions and repairs; address worker-join, stage-wait and live-container-oracle findings (2026-09-10).
 - [x] Run final focused deterministic regressions.
 - [x] Run final full race/harness checks (2026-09-10).
-- [x] Run required native Windows/macOS/Linux validation.
+- [ ] Run required native Windows/macOS/Linux validation.
 - [x] Complete bilingual reader and semantic parity review; resolve two JA omissions and record the withdrawn M5 finding (2026-09-10).
 - [ ] Complete retrospective and archive only after merge into `master`.
+
+
 
 
 
@@ -177,9 +179,9 @@ Do not repair a finding before recording enough evidence to explain the violated
 
 ## Outcomes & Retrospective
 
-Implementation and validation are delivered; merge/archive acceptance remains
-open. The bounded audit covered 195 baseline test files across 28 package
-directories and recorded Q01–Q13. Twelve findings were accepted and repaired;
+Implementation through Q13 is validated; Q14 PR-review follow-ups below
+require their own final validation. Merge/archive acceptance remains open. The bounded audit covered 195 baseline test files across 28 package
+directories and recorded Q01–Q14. Thirteen ledger entries were accepted and repaired;
 Q09's unproven stream/constructor failure-path concern is explicitly deferred.
 The corpus now has 199 test files, including owned fixture controls.
 
@@ -196,7 +198,7 @@ Do not archive until PR #15 has current-HEAD human review and is merged into
 master. The trusted-base gate policy is absent, so guarded/manual fallback
 continues to apply; no automatic merge authorization is inferred.
 
-Eleven accepted findings are test-only defects; Q08 affects production
+Twelve accepted ledger entries are test-only defects; Q08 affects production
 completion observation and its test oracle. CDP and app/process helpers had the
 largest concentration of lifecycle and reachability gaps. Earlier repeat-pass
 results did not prove callback completion or cross-platform socket semantics.
@@ -958,6 +960,13 @@ Implementation commit `79d4d60498f7a2fdec7441a056f59c59c588f5b6`:
 - [Release preview 34422872253](https://github.com/mahcialet/agent-env/actions/runs/34422872253) passed build and native smoke on all three operating systems.
 - Earlier failed runs remain recorded above. Repetition is not the basis of acceptance; each repair has the named control and its specific evidence class.
 
-Only the evidence/documentation reconciliation follows this implementation SHA.
+At that checkpoint only evidence/documentation reconciliation followed this SHA.
+Subsequent Q14 PR-review fixes below require fresh validation.
 Recheck current-HEAD CI and human review before merge. PR #15 is ready for that
 review; the working Plan stays active until the normal merge/archive procedure.
+
+Q14 (ACCEPT before repair): PR #15 automated review found four remaining test defects after successful CI. CDP canceled-call and continuous-mutation waits checked ctx.Err rather than the returned error, admitting unrelated failures once cancellation occurred (UNREACHED_CAUSE). Android partial-request and app early-exit control rescues ran only after synchronous close/t.Run returned, so a missing connection-close/cancel with join retained could deadlock before rescue (FAILURE_PATH_OWNERSHIP). These are test-only findings; strengthen returned-error oracles and give each broken-helper control an independently owned bounded release path. Record each mutation outcome; green CI was not sufficient review evidence.
+
+Q14 controls: same unrelated returned-error substitutions after observed callback/frame mutation pass four old CDP tests (0.514s) and fail all four strengthened tests (0.515s). Six normal focused CDP tests pass under race (1.563s). App missing-cancel/retained-join mutation fails via independent watchdog (5.013s); omitted cleanup still fails ordering (0.010s). Android missing-connection-close/retained-Wait mutation now fails its explicit bounded rescue assertion (5.017s), while normal focused race passes (1.012s). Independent review and focused race verify app/Android/CDP ownership and error discrimination. An initial malformed CDP overlay failed compilation and was excluded; only corrected runtime mutations count.
+
+Q14 final independent source/English/Japanese review found no remaining issue. Full uncached race passed (app47.446s, CLI41.503s, CDP8.138s, Android2.429s), and final `repoctl check` passed all stages. Native CI must validate this follow-up commit; earlier CI acceptance does not substitute for the current revision.

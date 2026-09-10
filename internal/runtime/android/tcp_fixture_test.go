@@ -76,7 +76,7 @@ func TestTCPFixtureCleanupJoinsPartialRequest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Rescue even a deliberately broken close implementation during fail-before.
+	// Release the partial request on every exit, including failed assertions.
 	defer func() { c.Close(); <-exited }()
 	select {
 	case <-entered:
@@ -86,7 +86,19 @@ func TestTCPFixtureCleanupJoinsPartialRequest(t *testing.T) {
 	if _, err := c.Write([]byte("0")); err != nil {
 		t.Fatal(err)
 	}
-	s.close()
+	closed := make(chan struct{})
+	go func() { defer close(closed); s.close() }()
+	defer func() { c.Close(); <-closed }()
+	select {
+	case <-closed:
+	case <-time.After(5 * time.Second):
+		// The test goroutine must release a broken close that joins handlers
+		// without first closing their accepted connections. A defer after a
+		// synchronous close cannot rescue that failure.
+		c.Close()
+		<-closed
+		t.Fatal("cleanup did not close its accepted connection before joining")
+	}
 	select {
 	case <-exited:
 	default:

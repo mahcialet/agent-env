@@ -118,7 +118,7 @@ func TestTransportCancellationAndDisconnect(t *testing.T) {
 	cancel()
 	select {
 	case err := <-result:
-		if err == nil || ctx.Err() != context.Canceled {
+		if !fixtureCancellationError(ctx, err, context.Canceled) {
 			t.Fatalf("cancellation ignored: %v", err)
 		}
 	case <-time.After(5 * time.Second):
@@ -258,8 +258,8 @@ func TestMockBrowserCancellationJoinsInFlightHandler(t *testing.T) {
 	cancel()
 	select {
 	case err := <-result:
-		if err == nil {
-			t.Fatal("canceled request succeeded")
+		if !fixtureCancellationError(ctx, err, context.Canceled) {
+			t.Fatalf("canceled request returned unexpected error: %v", err)
 		}
 	case <-time.After(5 * time.Second):
 		t.Fatal("client waited for blocked server")

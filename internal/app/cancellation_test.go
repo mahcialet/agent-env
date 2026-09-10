@@ -44,10 +44,34 @@ func startFixtureOperation[T any](t *testing.T, parent context.Context, run func
 
 func TestFixtureOperationJoinsBeforeResourceCleanupOnEarlyExit(t *testing.T) {
 	entered, completed := make(chan struct{}), make(chan struct{})
-	// Fallback also bounds the intentionally broken-helper control: no worker
-	// remains behind if cleanup fails to cancel/join the operation.
 	parent, cancel := context.WithCancel(context.Background())
-	defer func() { cancel(); <-completed }()
+	// Rescue must run independently of t.Run: a broken cleanup can block that
+	// call while joining an operation it forgot to cancel. A deferred rescue
+	// alone cannot run until the blocked cleanup returns.
+	stopRescue, rescueExited := make(chan struct{}), make(chan struct{})
+	var rescued atomic.Bool
+	go func() {
+		defer close(rescueExited)
+		timer := time.NewTimer(5 * time.Second)
+		defer timer.Stop()
+		select {
+		case <-stopRescue:
+		case <-timer.C:
+			rescued.Store(true)
+			cancel()
+		}
+	}()
+	var result <-chan error
+	defer func() {
+		close(stopRescue)
+		<-rescueExited
+		cancel()
+		<-completed
+		<-result
+		if rescued.Load() {
+			t.Error("fixture cleanup required watchdog cancellation before its join could finish")
+		}
+	}()
 	t.Run("early-exit", func(t *testing.T) {
 		t.Cleanup(func() {
 			select {
@@ -56,7 +80,7 @@ func TestFixtureOperationJoinsBeforeResourceCleanupOnEarlyExit(t *testing.T) {
 				t.Error("resource cleanup preceded operation completion")
 			}
 		})
-		startFixtureOperation(t, parent, func(ctx context.Context) error {
+		result = startFixtureOperation(t, parent, func(ctx context.Context) error {
 			close(entered)
 			<-ctx.Done()
 			close(completed)

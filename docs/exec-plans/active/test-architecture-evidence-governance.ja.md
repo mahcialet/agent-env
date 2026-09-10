@@ -1,6 +1,6 @@
 ---
 translation_of: docs/exec-plans/active/test-architecture-evidence-governance.md
-source_sha256: dc9af334897bafe9591d4df85a26bea91f3049b16612df4f2897f5fc09404c3d
+source_sha256: c463b3329b6e167a705586e2cd0ee0b709e39d04b23e87af42d08a123480c3ce
 status: active
 plan_id: EP-QUAL-001
 plan_type: implementation
@@ -135,9 +135,11 @@ Plan ID: `EP-QUAL-001`
 - [x] audit、disposition、修正を独立reviewする。
 - [x] focused deterministic regressionを最終実行する。
 - [x] full race/harnessの最終実行が成功した（2026-09-10）。
-- [x] 必要なWindows/macOS/Linux native validationを完了する。
+- [ ] 必要なWindows/macOS/Linux native validationを完了する。
 - [x] English/Japanese独立reviewとsemantic parity reviewを完了する。
 - [ ] merge後にretrospectiveを完成しarchiveする。
+
+
 
 
 
@@ -183,13 +185,13 @@ findingを十分記録する前に、その場で修正して消してはなら�
 
 ## Outcomes & Retrospective
 
-実装と検証は完了し、merge/archiveの受け入れは未完了である。限定監査はbaselineの28 package directory・195 test fileを対象にQ01〜Q13を記録した。12件を採用して修正し、未実証のstream/constructor失敗経路に関するQ09は理由を明記して保留した。所有fixtureの対照を加え、現在は199 test fileである。
+Q13までの実装は検証済みである。下記Q14のPR review対応は改めて最終検証する。merge/archiveの受け入れは未完了である。限定監査はbaselineの28 package directory・195 test fileを対象にQ01〜Q14を記録した。台帳の13項目を採用して修正し、未実証のstream/constructor失敗経路に関するQ09は理由を明記して保留した。所有fixtureの対照を加え、現在は199 test fileである。
 
 旧oracleの誤成功を実証し、原因を区別する失敗段階とlifecycle完了を明示した。native証拠の限界も維持している。最初の修正ではnative CIがEOFのみを想定した移植性不備を検出し、race CIが一度だけ登録したhost情報の期限切れを検出した。deadline、controller TTL、移植性検査を緩めずに両方を修正した。独立reviewは新testの順序assertionにも2件の不足を指摘し、受け入れ前に修正した。local testとソースreviewは有用だがnative検証や強制故障対照の代用にはならなかった。
 
 PR #15がcurrent-HEADで人間のreviewを受けmasterへmergeされるまでarchiveしない。信頼するbaseにgate policyがないためguarded/manual fallbackを維持し、自動mergeの許可とは解釈しない。
 
-採用した11件はtestのみの不備で、Q08はproductionの完了観測とtest oracleの両方に関わる。lifecycleと到達性の不足はCDPとapp/process helperに集中した。過去の反復成功はcallback完了やOS間のsocketの意味を証明しなかった。対象を絞った不変条件の回帰は実行可能な検査となるが、証拠分類、限定した同種箇所のreview、言語の意味はreviewで判断する。Q09、直接公開されないinline client readerのjoin、強制していない実行順序、未実行の環境は限界として明示し、網羅的な正しさとは主張しない。
+採用した台帳の12項目はtestのみの不備で、Q08はproductionの完了観測とtest oracleの両方に関わる。lifecycleと到達性の不足はCDPとapp/process helperに集中した。過去の反復成功はcallback完了やOS間のsocketの意味を証明しなかった。対象を絞った不変条件の回帰は実行可能な検査となるが、証拠分類、限定した同種箇所のreview、言語の意味はreviewで判断する。Q09、直接公開されないinline client readerのjoin、強制していない実行順序、未実行の環境は限界として明示し、網羅的な正しさとは主張しない。
 
 この新PlanはEP-OPS-001の規定branch、安定Plan ID、commit/PR trailer、provenance、guarded gate確認を実装段階まで実運用した。信頼するpolicyがないためgateは適切にmanual fallbackを維持し、Human Validationも自動開始していない。forward merge/archiveの証拠はmaintainerがPR #15を完了するまで未完了である。
 
@@ -807,4 +809,10 @@ Q13の最終独立technical/意味一致の再reviewと修正後`repoctl check`�
 - [Release preview 34422872253](https://github.com/mahcialet/agent-env/actions/runs/34422872253)はbuildと3 OSのnative smokeが成功した。
 - 先行runの失敗は上記に残す。受け入れの根拠は反復回数ではなく、各修正で記録した対照とその証拠の種類である。
 
-この実装SHAに続く変更は証拠・文書の整合のみである。merge前にcurrent-HEAD CIと人間のreviewを再確認する。PR #15はそのreviewへ進める状態であり、通常のmerge/archive手順まで本Planはactiveを維持する。
+この時点では実装SHAに続く変更は証拠・文書の整合のみだった。その後のQ14のPR review修正には新たな検証が必要である。merge前にcurrent-HEAD CIと人間のreviewを再確認する。PR #15はそのreviewへ進める状態であり、通常のmerge/archive手順まで本Planはactiveを維持する。
+
+Q14（修正前にACCEPT）: CI成功後、PR #15の自動reviewでtestの不足4点が見つかった。CDPのcancel済みcallと連続変更waitは返却errorでなくctx.Errを見ており、cancel後なら無関係な失敗も通せた（UNREACHED_CAUSE）。Android partial-requestとapp早期終了の対照は同期close/t.Runの終了後にしか救済が動かず、connection close/cancelだけが欠落してjoinが残ると救済前にdeadlockし得た（FAILURE_PATH_OWNERSHIP）。いずれもtestのみの指摘であり、返却errorのoracleを強化し、壊れたhelperの各対照に独立して所有する時間上限付き解放経路を設ける。各mutationの結果を記録し、green CIだけでreview済みとはしない。
+
+Q14の対照: callback/frame変更へ到達した後に同じ無関係な返却errorを注入すると、旧CDPの4 testは成功し（0.514秒）、強化後は4つとも失敗する（0.515秒）。通常のCDP対象6 testはrace付きで成功した（1.563秒）。appでcancelのみ除去しjoinを残すmutationは独立watchdogで失敗し（5.013秒）、cleanup全体の除去も順序検査で失敗する（0.010秒）。Androidでconnection closeを除去してWaitを残すmutationは明示した救済assertionで失敗し（5.017秒）、通常の対象raceは成功した（1.012秒）。独立reviewと対象raceでapp/Android/CDPの所有とerror判別を確認した。最初の不正CDP overlayはcompile失敗のため除外し、修正したruntime mutationのみ証拠に数えた。
+
+Q14の最終独立ソース・英日reviewに残る指摘はなかった。全体cacheなしraceは成功し（app47.446秒、CLI41.503秒、CDP8.138秒、Android2.429秒）、最終`repoctl check`も全段階で成功した。この対応commitのnative CIは別途確認し、先行CIの受け入れで最新revisionの検証を代用しない。

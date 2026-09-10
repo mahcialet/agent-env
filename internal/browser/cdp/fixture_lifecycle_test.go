@@ -1,12 +1,66 @@
 package cdp
 
 import (
+	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"sync"
 	"testing"
 	"testing/synctest"
+	"time"
 )
+
+// Cancellation races with c.call's socket-close callback and write deadline.
+// These exact transport errors are valid only with the expected expired context;
+// context state alone must never excuse a different operation failure.
+func fixtureCancellationError(ctx context.Context, err, cause error) bool {
+	if errors.Is(err, cause) {
+		return true
+	}
+	if err == nil || !errors.Is(ctx.Err(), cause) {
+		return false
+	}
+	switch err.Error() {
+	case "CDP disconnected", "CDP disconnected; effect may be uncertain", "CDP write failed; effect may be uncertain":
+		return true
+	}
+	return false
+}
+
+func TestFixtureCancellationErrorDiscriminatesReturnedCause(t *testing.T) {
+	for _, cause := range []error{context.Canceled, context.DeadlineExceeded} {
+		t.Run(cause.Error(), func(t *testing.T) {
+			var ctx context.Context
+			if cause == context.Canceled {
+				c, cancel := context.WithCancel(context.Background())
+				cancel()
+				ctx = c
+			} else {
+				c, cancel := context.WithDeadline(context.Background(), time.Now().Add(-time.Hour))
+				defer cancel()
+				ctx = c
+			}
+			for _, message := range []string{"CDP disconnected", "CDP disconnected; effect may be uncertain", "CDP write failed; effect may be uncertain"} {
+				err := errors.New(message)
+				if !fixtureCancellationError(ctx, err, cause) {
+					t.Fatalf("valid cancellation transport outcome rejected: %v", err)
+				}
+				if fixtureCancellationError(context.Background(), err, cause) {
+					t.Fatalf("transport error without cancellation accepted: %v", err)
+				}
+			}
+			if !fixtureCancellationError(ctx, cause, cause) {
+				t.Fatal("context cause rejected")
+			}
+			for _, err := range []error{nil, errors.New("unrelated fixture failure"), errors.New("CDP Runtime.evaluate failed (-1)"), errors.New("prefix CDP disconnected"), errors.New("CDP disconnected suffix")} {
+				if fixtureCancellationError(ctx, err, cause) {
+					t.Fatalf("unrelated result accepted with canceled context: %v", err)
+				}
+			}
+		})
+	}
+}
 
 // Admission closes before waiting, so late HTTP handlers cannot add work after
 // cleanup has observed an empty group. Hijacking does not transfer ownership.

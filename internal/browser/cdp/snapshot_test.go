@@ -3,7 +3,6 @@ package cdp
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -304,8 +303,8 @@ func TestWaitRetriesFrameChangesButNeverPublishesPartialEvidence(t *testing.T) {
 				t.Fatal("frame-version mutation not reached")
 			}
 			if continuous {
-				if e == nil || ctx.Err() != context.DeadlineExceeded || sn != nil {
-					t.Fatal("continuous navigation produced evidence")
+				if !fixtureCancellationError(ctx, e, context.DeadlineExceeded) || sn != nil {
+					t.Fatalf("continuous navigation returned unrelated error or evidence: snapshot=%+v err=%v", sn, e)
 				}
 			} else if e != nil || sn == nil || sn.Nodes[0].Name != "stable" {
 				t.Fatalf("did not wait for proved stable frame: %v", e)
@@ -489,8 +488,8 @@ func TestLoadWaitRechecksDocumentAfterPredicate(t *testing.T) {
 				t.Fatal("navigation injection not reached")
 			}
 			if keepChanging {
-				if err == nil || sn != nil {
-					t.Fatal("continuously changing document produced load evidence")
+				if !fixtureCancellationError(ctx, err, context.DeadlineExceeded) || sn != nil {
+					t.Fatalf("continuously changing document returned unrelated error or load evidence: %v", err)
 				}
 				return
 			}
@@ -551,7 +550,7 @@ func TestLoadWaitCancellationOverlapsEvaluation(t *testing.T) {
 	cancel()
 	select {
 	case got := <-result:
-		if got.snapshot != nil || !errors.Is(got.err, context.Canceled) {
+		if got.snapshot != nil || !fixtureCancellationError(ctx, got.err, context.Canceled) {
 			t.Fatalf("unexpected canceled load: %+v %v", got.snapshot, got.err)
 		}
 	case <-time.After(5 * time.Second):

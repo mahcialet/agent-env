@@ -326,7 +326,8 @@ sockets/native processes need separately identified composition evidence.
 For every negative fixture, identify the earliest refusal that could accidentally
 satisfy the assertion. Require the intended mutation/boundary to be reached, then
 assert the specific error/state and include a valid neighboring control where
-useful. An absent delayed file is not independent process-completion evidence.
+useful. Inspect the returned error itself: context state alone does not establish
+the operation's failure cause. An absent delayed file is not independent process-completion evidence.
 Compare persisted state/effects independently rather than deriving the expected
 answer through the same logic as the implementation under test.
 
