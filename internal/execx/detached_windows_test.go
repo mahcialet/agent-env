@@ -2,6 +2,7 @@ package execx
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -82,7 +83,10 @@ func TestDetachedGuardianRecordsConfirmedEmptyJob(t *testing.T) {
 	deadline := time.Now().Add(5 * time.Second)
 	for {
 		alive, err := (NativeDetached{}).Alive(context.Background(), id)
-		if err == nil && !alive {
+		if err != nil {
+			t.Fatalf("guardian observation failed before completion: %v", err)
+		}
+		if !alive {
 			break
 		}
 		if time.Now().After(deadline) {
@@ -162,5 +166,71 @@ func TestDetachedEmptyProofPublicationFailurePreservesBarrier(t *testing.T) {
 	}
 	if _, err := os.Stat(proof); !os.IsNotExist(err) {
 		t.Fatalf("failed publication exposed completion: %v", err)
+	}
+}
+
+func TestDetachedEmptyJobRetainsBarrierWhileProofSharingIsBusy(t *testing.T) {
+	var session uint32
+	if err := windows.ProcessIdToSessionId(uint32(os.Getpid()), &session); err != nil {
+		t.Fatal(err)
+	}
+	suffix := fmt.Sprintf("sharing-%d-%d", os.Getpid(), time.Now().UnixNano())
+	name := "Local\\agent-env-" + suffix
+	wide, err := windows.UTF16PtrFromString(name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	job, err := windows.CreateJobObject(nil, wide)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer windows.CloseHandle(job)
+	proof := filepath.Join(t.TempDir(), ".detached-"+suffix+"-empty")
+	if err := publishDetachedEmptyProof(proof, name); err != nil {
+		t.Fatal(err)
+	}
+	id := ProcessIdentity{PID: 2147483647, StartID: fmt.Sprintf("job|%d|%s|1:1|%s", session, name, proof)}
+	proofWide, err := windows.UTF16PtrFromString(proof)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Hold DELETE access as a rename may do. Go's ordinary reader does not
+	// share DELETE, so this forces the Windows publication/read conflict.
+	handle, err := windows.CreateFile(proofWide, windows.DELETE, windows.FILE_SHARE_READ|windows.FILE_SHARE_WRITE|windows.FILE_SHARE_DELETE, nil, windows.OPEN_EXISTING, windows.FILE_ATTRIBUTE_NORMAL, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if handle != windows.InvalidHandle {
+			windows.CloseHandle(handle)
+		}
+	}()
+	if _, err := os.ReadFile(proof); !errors.Is(err, windows.ERROR_SHARING_VIOLATION) {
+		t.Fatalf("sharing fixture not reached: %v", err)
+	}
+	if observed, err := (NativeDetached{}).Observe(context.Background(), id); err != nil || !observed.Alive || observed.RootAlive {
+		t.Fatalf("busy proof must retain completion barrier: %+v %v", observed, err)
+	}
+	if err := windows.CloseHandle(handle); err != nil {
+		t.Fatal(err)
+	}
+	handle = windows.InvalidHandle
+	if observed, err := (NativeDetached{}).Observe(context.Background(), id); err != nil || observed.Alive {
+		t.Fatalf("released proof did not authorize verified absence: %+v %v", observed, err)
+	}
+	if err := os.WriteFile(proof, []byte("foreign-job"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := (NativeDetached{}).Observe(context.Background(), id); !errors.Is(err, ErrProcessTreeUnconfirmed) {
+		t.Fatalf("invalid proof hidden by pending handling: %v", err)
+	}
+	if err := os.Remove(proof); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(proof, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := (NativeDetached{}).Observe(context.Background(), id); !errors.Is(err, ErrProcessTreeUnconfirmed) {
+		t.Fatalf("unreadable proof hidden by pending handling: %v", err)
 	}
 }

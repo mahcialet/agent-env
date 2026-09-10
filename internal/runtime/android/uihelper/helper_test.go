@@ -82,25 +82,51 @@ func TestEmbeddedContract(t *testing.T) {
 }
 
 func TestLoadRejectsSymlinks(t *testing.T) {
-	dir := t.TempDir()
-	target := filepath.Join(dir, "real")
-	if err := os.Mkdir(target, 0700); err != nil {
-		t.Fatal(err)
-	}
-	link := filepath.Join(dir, "link")
-	if err := os.Symlink(target, link); err != nil {
-		t.Skipf("symlink privilege unavailable: %v", err)
-	}
-	if _, err := Load(link); err == nil {
-		t.Fatal("symlink directory accepted")
-	}
-	if err := os.WriteFile(filepath.Join(dir, "metadata"), []byte("{}"), 0600); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Symlink(filepath.Join(dir, "metadata"), filepath.Join(target, "observer.json")); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := Load(target); err == nil {
-		t.Fatal("symlink metadata accepted")
+	for _, mode := range []string{"directory", "metadata", "apk"} {
+		t.Run(mode, func(t *testing.T) {
+			dir := t.TempDir()
+			target := filepath.Join(dir, "real")
+			if err := os.Mkdir(target, 0700); err != nil {
+				t.Fatal(err)
+			}
+			apk := []byte("valid fixture APK bytes")
+			sum := sha256.Sum256(apk)
+			metadata, err := json.Marshal(Metadata{Version: Version, Package: Package, SourceSHA256: SourceDigest(), APKSHA256: hex.EncodeToString(sum[:])})
+			if err != nil {
+				t.Fatal(err)
+			}
+			for name, data := range map[string][]byte{"observer.json": metadata, "observer.apk": apk} {
+				if err := os.WriteFile(filepath.Join(target, name), data, 0600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if _, err := Load(target); err != nil {
+				t.Fatalf("valid companion control: %v", err)
+			}
+			loadPath, want := target, "invalid companion file"
+			if mode == "directory" {
+				loadPath = filepath.Join(dir, "link")
+				want = "invalid companion directory"
+				if err := os.Symlink(target, loadPath); err != nil {
+					t.Skipf("symlink privilege unavailable: %v", err)
+				}
+			} else {
+				name := "observer.json"
+				if mode == "apk" {
+					name = "observer.apk"
+				}
+				original := filepath.Join(target, name)
+				backup := filepath.Join(target, "real-"+name)
+				if err := os.Rename(original, backup); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.Symlink(filepath.Base(backup), original); err != nil {
+					t.Skipf("symlink privilege unavailable: %v", err)
+				}
+			}
+			if _, err := Load(loadPath); err == nil || err.Error() != want {
+				t.Fatalf("symlink refusal: got %v, want %s", err, want)
+			}
+		})
 	}
 }

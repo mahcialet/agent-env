@@ -1,7 +1,7 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-09
+last_verified: 2026-09-10
 ---
 
 # ExecPlan policy
@@ -229,3 +229,14 @@ unused evidence directory. `record` stores an operator's observation, not an
 inferred runtime PASS; FINDING requires a tracked draft/active review Plan.
 BLOCKED records a required paused-Plan update. A human must still perform the
 scenario actions, review evidence and reconcile results into the Plan.
+
+## Test-architecture acceptance evidence
+
+Substantial test or correctness work must classify acceptance evidence using
+[the quality evidence rules](QUALITY.md#evidence-classes-and-test-architecture).
+Record the invariant, intended failure stage, fixture completion contract and
+finding disposition before repairs. Preserve failed approaches and distinguish
+forced fail-before/pass-after controls, native observations, tooling checks and
+repetition. Counts cannot upgrade evidence class. Explain unavailable controls
+and deferred siblings; do not complete a Plan with unfulfilled acceptance or
+substitute compilation for native execution.

@@ -7,7 +7,6 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/mahcialet/agent-env/internal/domain"
 	"net/http"
-	"net/http/httptest"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -19,7 +18,7 @@ func reviewActionFixture(t *testing.T, focus bool, readbackFailure string) (*con
 	var inputs atomic.Int32
 	var activated atomic.Bool
 	up := websocket.Upgrader{}
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := newFixtureServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ws, e := up.Upgrade(w, r, nil)
 		if e != nil {
 			return
@@ -96,7 +95,7 @@ func reviewActionFixture(t *testing.T, focus bool, readbackFailure string) (*con
 		server.Close()
 		t.Fatal(e)
 	}
-	return c, func() { c.close(); server.Close() }, &inputs
+	return c, func() { closeFixtureConnection(c); server.Close() }, &inputs
 }
 
 func TestInputFocusRedirectRefusesKeyboardDispatch(t *testing.T) {

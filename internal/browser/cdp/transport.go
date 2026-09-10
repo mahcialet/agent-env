@@ -40,13 +40,14 @@ type eventSubscription struct {
 }
 
 type connection struct {
-	ws      *websocket.Conn
-	mu      sync.Mutex
-	next    int
-	pending map[int]chan envelope
-	capture *eventSubscription
-	done    chan struct{}
-	once    sync.Once
+	ws         *websocket.Conn
+	mu         sync.Mutex
+	next       int
+	pending    map[int]chan envelope
+	capture    *eventSubscription
+	done       chan struct{}
+	readExited chan struct{}
+	once       sync.Once
 }
 
 func dial(ctx context.Context, endpoint string) (*connection, error) {
@@ -58,13 +59,14 @@ func dial(ctx context.Context, endpoint string) (*connection, error) {
 	if e != nil {
 		return nil, errors.New("browser websocket connection failed")
 	}
-	c := &connection{ws: w, pending: map[int]chan envelope{}, done: make(chan struct{})}
+	c := &connection{ws: w, pending: map[int]chan envelope{}, done: make(chan struct{}), readExited: make(chan struct{})}
 	w.SetReadLimit(maxMessage)
 	go c.read()
 	return c, nil
 }
 func (c *connection) close() { c.once.Do(func() { close(c.done); c.ws.Close() }) }
 func (c *connection) read() {
+	defer close(c.readExited)
 	defer c.close()
 	for {
 		var m envelope

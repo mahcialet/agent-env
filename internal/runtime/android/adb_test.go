@@ -193,27 +193,19 @@ func fakeVersionServer(t *testing.T, response string) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { listener.Close() })
-	go func() {
-		for {
-			c, err := listener.Accept()
-			if err != nil {
-				return
-			}
-			go func() {
-				defer c.Close()
-				request := make([]byte, len("000chost:version"))
-				if _, err := io.ReadFull(c, request); err != nil {
-					return
-				}
-				if string(request) != "000chost:version" {
-					t.Errorf("operational request sent to shared server: %q", request)
-					return
-				}
-				_, _ = io.WriteString(c, response)
-			}()
+	server := ownTestTCP(listener, func(c net.Conn) {
+		defer c.Close()
+		request := make([]byte, len("000chost:version"))
+		if _, err := io.ReadFull(c, request); err != nil {
+			return
 		}
-	}()
+		if string(request) != "000chost:version" {
+			t.Errorf("operational request sent to shared server: %q", request)
+			return
+		}
+		_, _ = io.WriteString(c, response)
+	})
+	t.Cleanup(server.close)
 	return listener.Addr().String()
 }
 

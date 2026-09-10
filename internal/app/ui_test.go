@@ -280,8 +280,10 @@ func TestUIOperationFencePreventsDestroyRace(t *testing.T) {
 			return domain.UIObservation{}, ctx.Err()
 		}
 	}
-	done := make(chan error, 1)
-	go func() { _, err := s.UI(context.Background(), l.ID, UIOptions{Operation: "back"}); done <- err }()
+	done := startFixtureOperation(t, context.Background(), func(ctx context.Context) error {
+		_, err := s.UI(ctx, l.ID, UIOptions{Operation: "back"})
+		return err
+	})
 	select {
 	case <-entered:
 	case <-time.After(5 * time.Second):

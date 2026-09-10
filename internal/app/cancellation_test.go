@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -18,6 +20,50 @@ import (
 	"github.com/mahcialet/agent-env/internal/execx"
 	"github.com/mahcialet/agent-env/internal/store/sqlite"
 )
+
+// startFixtureOperation owns cancellation and completion before the caller can
+// fail an assertion. Register it after the operation's database/temp resources so
+// LIFO cleanup joins their last user before those resources are removed.
+func startFixtureOperation[T any](t *testing.T, parent context.Context, run func(context.Context) T) <-chan T {
+	t.Helper()
+	ctx, cancel := context.WithCancel(parent)
+	result := make(chan T, 1)
+	finished := make(chan struct{})
+	t.Cleanup(func() {
+		cancel()
+		<-finished
+	})
+	go func() {
+		defer close(finished)
+		result <- run(ctx)
+	}()
+	return result
+}
+
+func TestFixtureOperationJoinsBeforeResourceCleanupOnEarlyExit(t *testing.T) {
+	entered, completed := make(chan struct{}), make(chan struct{})
+	// Fallback also bounds the intentionally broken-helper control: no worker
+	// remains behind if cleanup fails to cancel/join the operation.
+	parent, cancel := context.WithCancel(context.Background())
+	defer func() { cancel(); <-completed }()
+	t.Run("early-exit", func(t *testing.T) {
+		t.Cleanup(func() {
+			select {
+			case <-completed:
+			default:
+				t.Error("resource cleanup preceded operation completion")
+			}
+		})
+		startFixtureOperation(t, parent, func(ctx context.Context) error {
+			close(entered)
+			<-ctx.Done()
+			close(completed)
+			return ctx.Err()
+		})
+		<-entered
+		t.Skip("exercise early test exit after the operation has entered")
+	})
+}
 
 // The source refuses deletion unless cancellation evidence was finalized first.
 type cleanupAfterRunSource struct {
@@ -67,12 +113,32 @@ func TestCancellationProcessHelper(t *testing.T) {
 	}
 	marker := os.Getenv("AGENT_ENV_CANCELLATION_MARKER")
 	if mode == "leaf" {
+		conn, err := net.DialTimeout("tcp", os.Getenv("AGENT_ENV_CANCELLATION_OBSERVER"), 5*time.Second)
+		if err != nil {
+			os.Exit(7)
+		}
+		if _, err := conn.Write([]byte{'R'}); err != nil {
+			os.Exit(8)
+		}
 		if err := os.WriteFile(marker+".ready", nil, 0600); err != nil {
 			os.Exit(8)
 		}
-		time.Sleep(time.Second)
-		_ = os.WriteFile(marker, []byte("unsafe surviving descendant"), 0600)
-		os.Exit(0)
+		// The leaf owns this socket for its entire remaining lifetime. Echoes
+		// support an independent live control; EOF follows termination, not a
+		// delayed marker write or production ownership bookkeeping.
+		var b [1]byte
+		for {
+			_, err := io.ReadFull(conn, b[:])
+			if err == io.EOF {
+				os.Exit(0)
+			}
+			if err != nil {
+				os.Exit(8)
+			}
+			if _, err := conn.Write(b[:]); err != nil {
+				os.Exit(8)
+			}
+		}
 	}
 	exe, _ := os.Executable()
 	child := exec.Command(exe, "-test.run=^TestCancellationProcessHelper$")
@@ -112,13 +178,15 @@ func TestDestroyCancelsActualCommandTreeBeforeSourceCleanup(t *testing.T) {
 	s, db, lease := commandFixture(t)
 	source := &cleanupAfterRunSource{SourceProvider: s.Source, store: db, leaseID: lease.ID}
 	s.Source = source
-	marker := filepath.Join(t.TempDir(), "descendant late write 日本語")
+	marker := filepath.Join(t.TempDir(), "descendant startup 日本語")
+	listener := descendantObserver(t)
 	setCommandSpec(t, db, &lease, func(spec *config.Test) {
 		spec.Command = []string{os.Args[0], "-test.run=^TestCancellationProcessHelper$"}
 		spec.Timeout = "15s"
 		spec.Artifacts = nil
 		spec.Env["AGENT_ENV_CANCELLATION_HELPER"] = "parent"
 		spec.Env["AGENT_ENV_CANCELLATION_MARKER"] = marker
+		spec.Env["AGENT_ENV_CANCELLATION_OBSERVER"] = listener.Addr().String()
 		spec.Env["GORACE"] = "atexit_sleep_ms=0"
 	})
 	signal := &readySignalWriter{ready: make(chan struct{})}
@@ -127,13 +195,16 @@ func TestDestroyCancelsActualCommandTreeBeforeSourceCleanup(t *testing.T) {
 		run domain.CommandRun
 		err error
 	}
-	done := make(chan outcome, 1)
-	go func() { run, err := s.Test(context.Background(), lease.ID, "check"); done <- outcome{run, err} }()
+	done := startFixtureOperation(t, context.Background(), func(ctx context.Context) outcome {
+		run, err := s.Test(ctx, lease.ID, "check")
+		return outcome{run, err}
+	})
 	select {
 	case <-signal.ready:
 	case <-time.After(8 * time.Second):
 		t.Fatal("command/descendant did not start")
 	}
+	conn := observeDescendant(t, listener)
 	other, err := sqlite.Open(filepath.Join(s.Home, "registry.sqlite"))
 	if err != nil {
 		t.Fatal(err)
@@ -169,12 +240,7 @@ func TestDestroyCancelsActualCommandTreeBeforeSourceCleanup(t *testing.T) {
 			t.Fatal("canceled evidence leaked a secret")
 		}
 	}
-	select {
-	case <-time.After(1200 * time.Millisecond):
-	}
-	if _, err := os.Stat(marker); !errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("descendant survived cleanup: %v", err)
-	}
+	requireDescendantExit(t, conn)
 }
 
 func TestDestroyRefusesStaleRunningEvidenceEvenForce(t *testing.T) {
@@ -242,8 +308,10 @@ func TestDestroyRetainsSourceWhenCancellationFinalizationFails(t *testing.T) {
 			}
 			runner := &incompleteCancellationRunner{entered: make(chan struct{}), stopErr: stopErr}
 			s.Runner = runner
-			done := make(chan error, 1)
-			go func() { _, err := s.Test(context.Background(), lease.ID, "check"); done <- err }()
+			done := startFixtureOperation(t, context.Background(), func(ctx context.Context) error {
+				_, err := s.Test(ctx, lease.ID, "check")
+				return err
+			})
 			select {
 			case <-runner.entered:
 			case <-time.After(5 * time.Second):
@@ -286,4 +354,91 @@ func (r *incompleteCancellationRunner) Run(ctx context.Context, _ execx.Command)
 	close(r.entered)
 	<-ctx.Done()
 	return execx.Result{ExitCode: -1}, errors.Join(ctx.Err(), r.stopErr)
+}
+
+func descendantObserver(t *testing.T) *net.TCPListener {
+	t.Helper()
+	listener, err := net.ListenTCP("tcp", &net.TCPAddr{IP: net.ParseIP("127.0.0.1")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := listener.Close(); err != nil {
+			t.Errorf("close observer: %v", err)
+		}
+	})
+	return listener
+}
+
+func observeDescendant(t *testing.T, listener *net.TCPListener) net.Conn {
+	t.Helper()
+	if err := listener.SetDeadline(time.Now().Add(5 * time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	conn, err := listener.Accept()
+	if err != nil {
+		t.Fatal("descendant connection missing:", err)
+	}
+	t.Cleanup(func() {
+		if err := conn.Close(); err != nil {
+			t.Errorf("close descendant observer: %v", err)
+		}
+	})
+	if err := conn.SetReadDeadline(time.Now().Add(5 * time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	var b [1]byte
+	if _, err := io.ReadFull(conn, b[:]); err != nil || b[0] != 'R' {
+		t.Fatalf("descendant startup evidence %q: %v", b, err)
+	}
+	return conn
+}
+
+func requireDescendantExit(t *testing.T, conn net.Conn) {
+	t.Helper()
+	if err := conn.SetReadDeadline(time.Now().Add(5 * time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	var b [1]byte
+	if n, err := conn.Read(b[:]); n != 0 || err != io.EOF {
+		t.Fatalf("descendant lifetime connection did not end: n=%d err=%v", n, err)
+	}
+}
+
+func TestDescendantObserverPositiveControl(t *testing.T) {
+	listener := descendantObserver(t)
+	marker := filepath.Join(t.TempDir(), "observer 日本語")
+	ctx, cancel := context.WithCancel(context.Background())
+	child := exec.CommandContext(ctx, os.Args[0], "-test.run=^TestCancellationProcessHelper$")
+	child.Env = append(os.Environ(), "AGENT_ENV_CANCELLATION_HELPER=leaf", "AGENT_ENV_CANCELLATION_MARKER="+marker, "AGENT_ENV_CANCELLATION_OBSERVER="+listener.Addr().String(), "GORACE=atexit_sleep_ms=0")
+	if err := child.Start(); err != nil {
+		cancel()
+		t.Fatal(err)
+	}
+	waited := false
+	t.Cleanup(func() {
+		cancel()
+		if !waited {
+			_ = child.Wait()
+		}
+	})
+	conn := observeDescendant(t, listener)
+	if _, err := conn.Write([]byte{'L'}); err != nil {
+		t.Fatal(err)
+	}
+	var b [1]byte
+	if _, err := io.ReadFull(conn, b[:]); err != nil || b[0] != 'L' {
+		t.Fatalf("live descendant did not answer: %q %v", b, err)
+	}
+	// Closing only our write side explicitly asks the positive-control leaf to
+	// exit. Its read side must then report EOF and native Wait must succeed.
+	if err := conn.(*net.TCPConn).CloseWrite(); err != nil {
+		t.Fatal(err)
+	}
+	requireDescendantExit(t, conn)
+	err := child.Wait()
+	waited = true
+	if err != nil {
+		t.Fatal("positive-control leaf exit:", err)
+	}
 }

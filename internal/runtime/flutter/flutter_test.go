@@ -237,6 +237,7 @@ func TestBuildRejectsSymlinkArtifactsAndLatePathEscape(t *testing.T) {
 			if strings.HasPrefix(mode, "parent") {
 				apk = "build/result.apk"
 			}
+			mutated := false
 			a := Adapter{Runner: runnerFunc(func(_ context.Context, c execx.Command) (execx.Result, error) {
 				if c.Dir == "" {
 					return execx.Result{Stdout: `{"frameworkVersion":"3"}`}, nil
@@ -253,9 +254,17 @@ func TestBuildRejectsSymlinkArtifactsAndLatePathEscape(t *testing.T) {
 				default:
 					err = os.Symlink(filepath.Join(target, "result.apk"), filepath.Join(c.Dir, "result.apk"))
 				}
-				return execx.Result{}, err
+				if err != nil {
+					t.Fatalf("inject late path mutation: %v", err)
+				}
+				mutated = true
+				return execx.Result{Stdout: "build completed"}, nil
 			})}
-			if _, err := a.Build(context.Background(), root, "app space", []string{"flutter", "build", "apk"}, apk, time.Minute); err == nil {
+			result, err := a.Build(context.Background(), root, "app space", []string{"flutter", "build", "apk"}, apk, time.Minute)
+			if !mutated || result.Stdout != "build completed" {
+				t.Fatal("late path rejection did not reach successful build mutation")
+			}
+			if err == nil {
 				t.Fatal("build-created symlink accepted")
 			}
 		})
@@ -311,7 +320,10 @@ func TestBuildRejectsInternalProjectSymlinks(t *testing.T) {
 					if late {
 						replace()
 					}
-					return execx.Result{}, os.WriteFile(filepath.Join(c.Dir, "result.apk"), []byte("valid APK"), 0600)
+					if err := os.WriteFile(filepath.Join(c.Dir, "result.apk"), []byte("valid APK"), 0600); err != nil {
+						t.Fatalf("fixture APK write failed: %v", err)
+					}
+					return execx.Result{}, nil
 				})}
 				result, err := a.Build(context.Background(), root, dir, []string{"flutter", "build", "apk"}, "result.apk", time.Minute)
 				if err == nil || result.Digest != "" {

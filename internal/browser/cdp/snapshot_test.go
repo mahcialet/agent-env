@@ -3,8 +3,10 @@ package cdp
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -111,23 +113,25 @@ func TestDOMNameTruncationIsReported(t *testing.T) {
 }
 
 func TestGoneCannotSucceedWithTruncatedSnapshot(t *testing.T) {
-	for _, kind := range []string{"node-limit", "name-limit"} {
+	for _, kind := range []string{"complete", "node-limit", "name-limit"} {
 		t.Run(kind, func(t *testing.T) {
+			var observed atomic.Bool
 			c, done := mockBrowser(t, func(q envelope) any {
 				switch q.Method {
 				case "Page.getFrameTree":
 					return map[string]any{"frameTree": map[string]any{"frame": map[string]any{"id": "main", "loaderId": "d", "url": "http://localhost/", "securityOrigin": "http://localhost"}}}
 				case "Accessibility.getFullAXTree":
+					observed.Store(true)
 					nodes := []any{}
 					count := 2049
-					if kind == "name-limit" {
+					if kind == "name-limit" || kind == "complete" {
 						count = 1
 					}
 					for i := 0; i < count; i++ {
 						name := "other"
 						if kind == "name-limit" {
 							name = strings.Repeat("x", 4097) + "needle"
-						} else if i == count-1 {
+						} else if kind == "node-limit" && i == count-1 {
 							name = "needle"
 						}
 						nodes = append(nodes, map[string]any{"backendDOMNodeId": i + 1, "role": map[string]any{"value": "button"}, "name": map[string]any{"value": name}})
@@ -138,10 +142,18 @@ func TestGoneCannotSucceedWithTruncatedSnapshot(t *testing.T) {
 				}
 			})
 			defer done()
-			ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
-			if _, e := wait(ctx, c, "s", domain.BrowserIdentity{}, domain.BrowserPage{}, domain.BrowserRequest{WaitFor: "gone", Contains: "needle"}); e == nil {
-				t.Fatal("false absence from incomplete snapshot")
+			sn, err := wait(ctx, c, "s", domain.BrowserIdentity{}, domain.BrowserPage{}, domain.BrowserRequest{WaitFor: "gone", Contains: "needle"})
+			if !observed.Load() {
+				t.Fatal("AX truncation boundary not reached")
+			}
+			if kind == "complete" {
+				if err != nil || sn == nil || sn.Truncated {
+					t.Fatalf("complete absence rejected: %+v %v", sn, err)
+				}
+			} else if err == nil || !strings.Contains(err.Error(), "cannot confirm absence from a truncated semantic snapshot") || sn != nil {
+				t.Fatalf("truncation refusal not observed: %+v %v", sn, err)
 			}
 		})
 	}
@@ -202,6 +214,9 @@ func TestWaitRetriesOnlyUncommittedOriginWithoutPartialEvidence(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 150*time.Millisecond)
 			defer cancel()
 			sn, e := wait(ctx, c, "s", domain.BrowserIdentity{}, domain.BrowserPage{ID: "main"}, domain.BrowserRequest{WaitFor: "text", Contains: "ready"})
+			if frames.Load() == 0 {
+				t.Fatal("frame-origin observation not reached")
+			}
 			if kind == "becomes-known" {
 				if e != nil || sn == nil || frames.Load() < 2 {
 					t.Fatalf("did not reobserve: %v", e)
@@ -249,6 +264,9 @@ func TestSnapshotDiscardsAXWhenFrameProofChanges(t *testing.T) {
 			})
 			defer done()
 			sn, e := snapshot(context.Background(), c, "s", domain.BrowserIdentity{}, domain.BrowserPage{ID: "main"})
+			if !changed.Load() {
+				t.Fatal("frame mutation not reached")
+			}
 			if e == nil || sn != nil {
 				t.Fatal("published AX under stale origin/loader/topology proof")
 			}
@@ -282,8 +300,11 @@ func TestWaitRetriesFrameChangesButNeverPublishesPartialEvidence(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 150*time.Millisecond)
 			defer cancel()
 			sn, e := wait(ctx, c, "s", domain.BrowserIdentity{}, domain.BrowserPage{ID: "main"}, domain.BrowserRequest{WaitFor: "text", Contains: "stable"})
+			if version.Load() == 0 {
+				t.Fatal("frame-version mutation not reached")
+			}
 			if continuous {
-				if e == nil || sn != nil {
+				if e == nil || ctx.Err() != context.DeadlineExceeded || sn != nil {
 					t.Fatal("continuous navigation produced evidence")
 				}
 			} else if e != nil || sn == nil || sn.Nodes[0].Name != "stable" {
@@ -484,5 +505,68 @@ func TestLoadWaitRechecksDocumentAfterPredicate(t *testing.T) {
 				t.Fatalf("load returned wrong document: %+v evaluations=%d", sn, evaluations.Load())
 			}
 		})
+	}
+}
+
+func TestLoadWaitCancellationOverlapsEvaluation(t *testing.T) {
+	entered, release := make(chan struct{}), make(chan struct{})
+	completed := false // Read only after fixture cleanup establishes completion.
+	c, done := mockBrowser(t, func(q envelope) any {
+		switch q.Method {
+		case "Page.getFrameTree":
+			return map[string]any{"frameTree": map[string]any{"frame": map[string]any{"id": "main", "loaderId": "doc", "url": "https://site.test/"}}}
+		case "Accessibility.getFullAXTree":
+			return map[string]any{"nodes": []any{}}
+		case "Runtime.evaluate":
+			close(entered)
+			<-release
+			completed = true
+			return map[string]any{"result": map[string]any{"value": "complete"}}
+		}
+		return map[string]any{}
+	})
+	var releaseOnce sync.Once
+	unblock := func() { releaseOnce.Do(func() { close(release) }) }
+	defer done()
+	defer unblock()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	type outcome struct {
+		snapshot *domain.BrowserSnapshot
+		err      error
+	}
+	result := make(chan outcome, 1)
+	workerExited := make(chan struct{})
+	defer func() { cancel(); unblock(); <-workerExited }()
+	go func() {
+		defer close(workerExited)
+		sn, err := wait(ctx, c, "s", domain.BrowserIdentity{}, domain.BrowserPage{ID: "main"}, domain.BrowserRequest{WaitFor: "load"})
+		result <- outcome{sn, err}
+	}()
+	select {
+	case <-entered:
+	case <-time.After(5 * time.Second):
+		t.Fatal("load evaluation not reached")
+	}
+	cancel()
+	select {
+	case got := <-result:
+		if got.snapshot != nil || !errors.Is(got.err, context.Canceled) {
+			t.Fatalf("unexpected canceled load: %+v %v", got.snapshot, got.err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("load waited for server evaluation completion")
+	}
+	<-workerExited
+	// The callback is necessarily still blocked: this test alone can release it.
+	unblock()
+	done()
+	if !completed {
+		t.Fatal("cleanup did not join evaluation callback")
+	}
+	select {
+	case <-c.readExited:
+	default:
+		t.Fatal("fixture reader still running after cleanup")
 	}
 }

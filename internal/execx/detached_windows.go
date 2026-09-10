@@ -160,7 +160,10 @@ func observeDetachedJob(id ProcessIdentity) (ProcessObservation, error) {
 	// until it publishes its closed, synced proof; otherwise it could create a
 	// file while a caller removes the evidence directory after observed absence.
 	proof, proofErr := os.ReadFile(fields[4])
-	if errors.Is(proofErr, os.ErrNotExist) {
+	// Publication may briefly hold DELETE access while renaming the proof.
+	// A Windows sharing conflict is not corrupted evidence: preserve the exact
+	// empty Job barrier until its immutable proof can actually be read.
+	if errors.Is(proofErr, os.ErrNotExist) || errors.Is(proofErr, windows.ERROR_SHARING_VIOLATION) {
 		return ProcessObservation{Alive: true}, nil
 	}
 	if proofErr != nil || string(proof) != fields[2] {

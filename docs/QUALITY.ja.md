@@ -1,9 +1,9 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-09
+last_verified: 2026-09-10
 translation_of: docs/QUALITY.md
-source_sha256: 46ddedd69d1ba7712435d979814e91b4582e7f8860f878e18da4b3f5c5e865ff
+source_sha256: 830b054dfa0e556c5c699869c627e6f472701cbc52034875e76bb6c8a65dbd46
 ---
 
 # 品質と検証
@@ -244,3 +244,33 @@ Windows以外の深いsource lifecycleは成功テストを維持します。直
 絶対・相対・PATH・symlink経由のPEを拒否し、nativeの.exe名は維持します。
 WSL stateテストではkernel/filesystem/mountの観測を注入し、独自mount、alias、未作成homeを検査します。
 実WSL2のmount/interop実行に代わる証拠ではなく、その環境は未検証です。
+
+## 証拠の種類とテストアーキテクチャ
+
+証拠は何を示すかで分類する。回数を増やしても証拠の種類は変わらず、反復は決定的な再現の代わりにならない。受け入れの主張ごとにrevision・コマンド・環境・結果・限界を記録する。
+
+| 種類 | 示せること | 示せないこと |
+| --- | --- | --- |
+| 不変条件の強制検証 | 明示的barrierや状態遷移で問題の順序・境界へ到達し、原因を区別するoracleで不変条件を確認 | 全スケジューリングや実OSの挙動 |
+| native/integrationの直接観測 | 前提条件を満たした指定hostで実プロセス・プロトコル・engineの挙動を確認 | 別OSや未使用の基盤 |
+| race・静的検査・ツール | 実行した経路や構造規則で問題が報告されなかった | 全実行順序、oracleの正しさ、翻訳の意味一致 |
+| 安定性・反復 | 記録した回数・CPU設定で観測した安定性 | 決定的な再現や回数による証明の強化 |
+| コンパイル・構造 | 型・import・生成物・対象platformのビルド検査への適合 | native実行やruntime受け入れの完了 |
+
+種類は異なる主張を表し、上位の証拠で置換できる順位ではない。一つのテストが複数種類の証拠を持つ場合も、それぞれ区別する。
+
+### fixtureの所有と実行順序
+
+helperごとに所有者、資源、goroutine/callback、共有状態、完了通知、cleanup順序、失敗出口、利用箇所、仮定を記録する。cleanupでは受付を止め、必要に応じてcancelやtransport closeを行い、所有処理をjoinしてからDBや一時状態を破棄する。listenerのcloseは受付済みconnectionを閉じない。HTTP serverのcloseはhijack済みWebSocket callbackをjoinしない。cancel通知はjoinではない。
+
+assertionより先に失敗時cleanupを登録する。native資源が残り得るcleanup失敗を無視しない。WaitGroupへの登録はWaitより前に順序付ける。atomicでcounterを保護しても完了順序は別途必要である。join対象自身からjoinしない。timeoutは失敗検査の時間を制限するだけで、callback開始・cleanup完了・副作用不在を示さない。適切な箇所ではchannel/barrierや`testing/synctest`を使う。実socket/native processの組み合わせを確認した証拠は別途区別する。
+
+### oracle・指摘・予防検査
+
+負例では、assertionを偶然満たす最も早い拒否経路を特定する。意図した変更・境界への到達を必須とし、特定のerror/stateを確認する。必要に応じて隣接する正常対照を加える。遅延ファイルの不在は独立したprocess完了証拠ではない。期待値を実装と同じロジックで計算せず、保存状態や副作用を独立して比較する。
+
+修正前に指摘ID、不変条件、最初の現実的な検出機会、見逃し分類、test/productionの範囲、同種箇所への影響、ACCEPT/REJECT/DEFERと理由を記録する。採用した修正は可能なら同じoracleで修正前失敗・修正後成功を示す。新test API不足のcompile失敗は再現に数えない。native対照を実行できなければ明記する。
+
+安定したlifecycle・境界の不変条件には対象を絞った回帰テストを優先する。既存`check`とnative/race CIで実行し、別policy runnerを増やさない。テスト名・文章・sleep使用・成功回数から証拠品質を機械判定しない。これらは文脈を踏まえてreviewする。独立reviewでは差分、到達性、指摘の判断、実際の証拠を確認する。英日読者reviewと意味一致reviewはsource hash確認と区別する。
+
+固定のnative資源poolを共有するsuiteは、分離を確認できるまで直列実行する。競合後の単独再実行は診断証拠であり、元の失敗を消さない。

@@ -3,8 +3,8 @@ package cdp
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
-	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -17,7 +17,7 @@ import (
 // This exercises reader queueing and dispatch rather than calling internals.
 func eventBrowser(t *testing.T, events func(string) []envelope) *connection {
 	t.Helper()
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := newFixtureServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		up := websocket.Upgrader{}
 		ws, err := up.Upgrade(w, r, nil)
 		if err != nil {
@@ -50,7 +50,7 @@ func eventBrowser(t *testing.T, events func(string) []envelope) *connection {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(c.close)
+	t.Cleanup(func() { closeFixtureConnection(c) })
 	return c
 }
 
@@ -95,7 +95,12 @@ func TestTransportCaptureIgnoresOtherSessionsAndMethods(t *testing.T) {
 }
 
 func TestTransportSubscribedOverflowFailsClosed(t *testing.T) {
-	c := eventBrowser(t, func(string) []envelope {
+	entered := make(chan *eventSubscription, 1)
+	var c *connection
+	c = eventBrowser(t, func(string) []envelope {
+		c.mu.Lock()
+		entered <- c.capture
+		c.mu.Unlock()
 		events := make([]envelope, 600)
 		for i := range events {
 			events[i] = envelope{Session: "s", Method: "Network.requestWillBeSent", Params: json.RawMessage(`{"requestId":"wanted","request":{"url":"http://localhost/","method":"GET"}}`)}
@@ -106,6 +111,48 @@ func TestTransportSubscribedOverflowFailsClosed(t *testing.T) {
 	defer cancel()
 	if err := capture(ctx, c, "s", domain.BrowserRequest{Operation: "network", Duration: time.Second}, &domain.BrowserObservation{}); err == nil {
 		t.Fatal("subscribed overflow silently succeeded")
+	}
+	closeFixtureConnection(c)
+	select {
+	case sub := <-entered:
+		if sub == nil || !sub.overflow {
+			t.Fatal("capture failed without exercising queue overflow")
+		}
+	default:
+		t.Fatal("capture failed before enabling event delivery")
+	}
+}
+
+func TestTransportSubscriptionQueueBoundary(t *testing.T) {
+	for _, count := range []int{512, 513} {
+		t.Run(fmt.Sprint(count), func(t *testing.T) {
+			c := eventBrowser(t, func(string) []envelope {
+				events := make([]envelope, count)
+				for i := range events {
+					events[i] = envelope{Session: "s", Method: "Network.requestWillBeSent", Params: json.RawMessage(`{}`)}
+				}
+				return events
+			})
+			queue, stop, err := c.subscribe("s", "Network.requestWillBeSent")
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer stop()
+			err = c.call(context.Background(), "s", "Network.enable", nil, nil)
+			// No consumer drains the queue before the response: the peer sends
+			// every event first, so crossing its capacity is a forced schedule.
+			if len(queue) != 512 {
+				t.Fatalf("boundary not reached: queued %d", len(queue))
+			}
+			_, stoppedErr := stop()
+			if count == 512 {
+				if err != nil || stoppedErr != nil {
+					t.Fatalf("exact capacity rejected: %v / %v", err, stoppedErr)
+				}
+			} else if err == nil || stoppedErr == nil || !strings.Contains(stoppedErr.Error(), "queue overflow") {
+				t.Fatalf("overflow cause missing: %v / %v", err, stoppedErr)
+			}
+		})
 	}
 }
 

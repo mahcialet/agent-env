@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/http/httptest"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -31,8 +30,8 @@ func TestSupplementPageLimitPreventsIrrecoverableGrowth(t *testing.T) {
 			var created, closed atomic.Int32
 			port := 0
 			up := websocket.Upgrader{}
-			var server *httptest.Server
-			server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			var server *fixtureServer
+			server = newFixtureServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path == "/json/version" {
 					json.NewEncoder(w).Encode(map[string]any{"Browser": "Chrome/123", "Protocol-Version": "1.3", "webSocketDebuggerUrl": "ws" + strings.TrimPrefix(server.URL, "http") + "/devtools/browser/exact"})
 					return

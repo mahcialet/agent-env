@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/http/httptest"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -62,7 +61,7 @@ func mockBrowser(t *testing.T, respond func(envelope) any) (*connection, func())
 	// This fixture dials exactly one WebSocket. HTTP Server.Close does not join
 	// hijacked WebSocket handlers, so track that handler explicitly.
 	handlerDone := make(chan struct{})
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := newFixtureServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer close(handlerDone)
 		ws, e := up.Upgrade(w, r, nil)
 		if e != nil {
@@ -92,23 +91,43 @@ func mockBrowser(t *testing.T, respond func(envelope) any) (*connection, func())
 	var cleanup sync.Once
 	return c, func() {
 		cleanup.Do(func() {
-			c.close()
+			closeFixtureConnection(c)
 			server.Close()
 			<-handlerDone
 		})
 	}
 }
 func TestTransportCancellationAndDisconnect(t *testing.T) {
-	c, done := mockBrowser(t, func(envelope) any { time.Sleep(100 * time.Millisecond); return map[string]any{} })
+	entered, release := make(chan struct{}), make(chan struct{})
+	c, done := mockBrowser(t, func(envelope) any { close(entered); <-release; return map[string]any{} })
 	defer done()
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	var releaseOnce sync.Once
+	unblock := func() { releaseOnce.Do(func() { close(release) }) }
+	defer unblock()
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	if c.call(ctx, "", "Test.wait", nil, nil) == nil {
-		t.Fatal("deadline ignored")
+	result := make(chan error, 1)
+	workerExited := make(chan struct{})
+	defer func() { cancel(); unblock(); <-workerExited }()
+	go func() { defer close(workerExited); result <- c.call(ctx, "", "Test.wait", nil, nil) }()
+	select {
+	case <-entered:
+	case <-time.After(5 * time.Second):
+		t.Fatal("request never reached peer")
 	}
-	c.close()
-	if c.call(context.Background(), "", "Test.closed", nil, nil) == nil {
-		t.Fatal("disconnect ignored")
+	cancel()
+	select {
+	case err := <-result:
+		if err == nil || ctx.Err() != context.Canceled {
+			t.Fatalf("cancellation ignored: %v", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("call waited for peer completion")
+	}
+	<-workerExited
+	closeFixtureConnection(c)
+	if err := c.call(context.Background(), "", "Test.closed", nil, nil); err == nil || !strings.Contains(err.Error(), "disconnected") {
+		t.Fatalf("disconnect ignored: %v", err)
 	}
 }
 func TestDOMSnapshotSuppressesSensitiveStrings(t *testing.T) {
@@ -137,8 +156,8 @@ func TestBrowserPIDAndDiscoveryProof(t *testing.T) {
 			os.Mkdir(filepath.Join(root, "profile"), 0700)
 			port := 0
 			up := websocket.Upgrader{}
-			var server *httptest.Server
-			server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			var server *fixtureServer
+			server = newFixtureServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path == "/json/version" {
 					if bad == "oversize" {
 						fmt.Fprint(w, strings.Repeat("x", 65537))
@@ -228,7 +247,9 @@ func TestMockBrowserCancellationJoinsInFlightHandler(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	result := make(chan error, 1)
-	go func() { result <- c.call(ctx, "", "Test.blocked", nil, nil) }()
+	workerExited := make(chan struct{})
+	defer func() { cancel(); releaseHandler(); <-workerExited }()
+	go func() { defer close(workerExited); result <- c.call(ctx, "", "Test.blocked", nil, nil) }()
 	select {
 	case <-entered:
 	case <-time.After(5 * time.Second):
@@ -243,24 +264,14 @@ func TestMockBrowserCancellationJoinsInFlightHandler(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Fatal("client waited for blocked server")
 	}
+	<-workerExited
 	if completed.Load() != 0 {
 		t.Fatal("handler completed before release")
 	}
-	cleanupStarted := make(chan struct{})
-	cleanupFinished := make(chan struct{})
-	go func() { close(cleanupStarted); done(); close(cleanupFinished) }()
-	<-cleanupStarted
-	select {
-	case <-cleanupFinished:
-		t.Fatal("cleanup returned while handler was blocked")
-	case <-time.After(50 * time.Millisecond):
-	}
+	// The callback/client overlap is forced above. The shared join primitive's
+	// blocked state is verified separately with synctest, without a timed peek.
 	releaseHandler()
-	select {
-	case <-cleanupFinished:
-	case <-time.After(5 * time.Second):
-		t.Fatal("cleanup failed to join handler")
-	}
+	done()
 	if completed.Load() != 1 {
 		t.Fatal("cleanup returned before handler completion")
 	}

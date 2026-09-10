@@ -1,9 +1,9 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-09
+last_verified: 2026-09-10
 translation_of: docs/PLANS.md
-source_sha256: 726b3394a5ff92aea47dbfcb9688330d423acce7774c7ff5542d685f9fc69043
+source_sha256: 1bf358b1a5e673babfb4f3d5b778161f9aa80e6021cb50c36f5831b7cb0973aa
 ---
 
 # ExecPlanの規則
@@ -203,3 +203,7 @@ checkの方針を設定しません。実際のadapterでは原子的なruleset�
 未使用の証拠ディレクトリを必要とします。`record`は操作担当の観測を記録し、runtimeのPASSを推測しません。
 FINDINGには追跡中のdraft/active review Planを求め、BLOCKEDではpaused Planの更新が必要と記録します。
 人間によるscenarioの実施、証拠の確認、Planへの反映は別途必要です。
+
+## テストアーキテクチャの受け入れ証拠
+
+大きなテスト・正しさの変更では、[品質文書の証拠規則](QUALITY.ja.md#証拠の種類とテストアーキテクチャ)に従って受け入れ証拠を分類する。不変条件、意図した失敗段階、fixtureの完了契約、指摘の判断を修正前に記録する。失敗した方法を残し、強制した修正前失敗・修正後成功、native観測、ツール検査、反復を区別する。回数で証拠の種類は変わらない。実施不能な対照や保留した同種箇所を説明し、受け入れ未達のPlanを完了したりnative実行をcompileで代用したりしない。
