@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -160,10 +161,15 @@ func TestCaptureDurationIncludesDomainEnable(t *testing.T) {
 				<-release
 				return nil
 			})
-			defer close(release)
+			var releaseOnce sync.Once
+			unblock := func() { releaseOnce.Do(func() { close(release) }) }
+			ctx, cancel := context.WithCancel(context.Background())
+			workerExited := make(chan struct{})
+			defer func() { cancel(); unblock(); <-workerExited }()
 			result := make(chan error, 1)
 			go func() {
-				result <- capture(context.Background(), c, "s", domain.BrowserRequest{Operation: operation, Duration: 20 * time.Millisecond}, &domain.BrowserObservation{})
+				defer close(workerExited)
+				result <- capture(ctx, c, "s", domain.BrowserRequest{Operation: operation, Duration: 20 * time.Millisecond}, &domain.BrowserObservation{})
 			}()
 			select {
 			case <-entered:
@@ -178,6 +184,7 @@ func TestCaptureDurationIncludesDomainEnable(t *testing.T) {
 			case <-time.After(500 * time.Millisecond):
 				t.Fatal("capture duration did not bound domain enable")
 			}
+			<-workerExited
 			c.mu.Lock()
 			subscribed := c.capture != nil
 			c.mu.Unlock()

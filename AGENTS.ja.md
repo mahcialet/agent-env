@@ -1,9 +1,9 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-09
+last_verified: 2026-09-10
 translation_of: AGENTS.md
-source_sha256: c7f3006d0755e8b5278cd4891c7e52d2673ba48d16b2ec23ee43981ad19de0f2
+source_sha256: 626720fd317fb51de8f2ca9671696230fc40ca05a0579c8a5ddb7ab1af1706b3
 ---
 
 # エージェントの入口
@@ -71,6 +71,14 @@ go run ./tools/repoctl generate
 - ログ、データベースのメタデータ、commitする成果物に秘密情報を残さない。
 - クロスビルドの成功だけでは、ネイティブ実行時の動作を証明できない。
 - 未対応の前提条件と未検証の受け入れ条件を正直に報告する。
+
+## テストの証拠
+
+- 証拠は何を示すかで分類する。反復で実行順序の強制を証明しない。
+- fixtureは失敗経路も含めcancel、資源close、完了joinを所有する。
+- 負例は意図した処理へ到達し、その失敗原因を区別する。
+- 指摘の判断と修正前失敗の対照をactive Planへ記録する。
+- 実行順序・oracle・reviewは[品質の証拠規則](docs/QUALITY.ja.md#証拠の種類とテストアーキテクチャ)に従う。
 
 ## 知識を置く場所
 

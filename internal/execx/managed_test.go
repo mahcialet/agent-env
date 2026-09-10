@@ -28,8 +28,12 @@ func TestManagedTermination(t *testing.T) {
 				t.Fatal(err)
 			}
 			t.Cleanup(func() {
-				_ = os.WriteFile(filepath.Join(dir, "stop"), nil, 0600)
-				_ = p.Terminate(context.Background(), id, time.Second)
+				if err := os.WriteFile(filepath.Join(dir, "stop"), nil, 0600); err != nil {
+					t.Error(err)
+				}
+				if err := p.Terminate(context.Background(), id, time.Second); err != nil {
+					t.Errorf("managed helper cleanup: %v", err)
+				}
 			})
 			deadline := time.Now().Add(5 * time.Second)
 			for {
@@ -81,8 +85,12 @@ func TestManagedRootGoneDescendant(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
-		_ = os.WriteFile(filepath.Join(dir, "stop"), nil, 0600)
-		_ = waitManagedGone(context.Background(), id, 5*time.Second)
+		if err := os.WriteFile(filepath.Join(dir, "stop"), nil, 0600); err != nil {
+			t.Error(err)
+		}
+		if err := waitManagedGone(context.Background(), id, 5*time.Second); err != nil {
+			t.Errorf("managed descendant cleanup did not complete: %v", err)
+		}
 	})
 	deadline := time.Now().Add(5 * time.Second)
 	for {

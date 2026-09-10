@@ -292,12 +292,17 @@ func TestBrowserMutationFenceBlocksDestroy(t *testing.T) {
 			return domain.BrowserObservation{}, ctx.Err()
 		}
 	}
-	done := make(chan error, 1)
-	go func() {
-		_, err := s.Browser(context.Background(), l.ID, BrowserOptions{BrowserRequest: domain.BrowserRequest{Operation: "navigate", URL: "https://example.invalid/"}})
-		done <- err
-	}()
-	<-entered
+	done := startFixtureOperation(t, context.Background(), func(ctx context.Context) error {
+		_, err := s.Browser(ctx, l.ID, BrowserOptions{BrowserRequest: domain.BrowserRequest{Operation: "navigate", URL: "https://example.invalid/"}})
+		return err
+	})
+	select {
+	case <-entered:
+	case err := <-done:
+		t.Fatalf("browser operation returned before entering provider: %v", err)
+	case <-time.After(5 * time.Second):
+		t.Fatal("browser operation did not enter provider")
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	_, err := s.Destroy(ctx, l.ID, true, false)
 	cancel()

@@ -45,6 +45,7 @@ type testProcess struct {
 	mu                 sync.Mutex
 	name               string
 	listener           net.Listener
+	server             *testTCPServer
 	conversations      [][]string
 	command            execx.Command
 	startError         error
@@ -69,20 +70,14 @@ func (p *testProcess) Start(_ context.Context, c execx.Command, stdout, stderr s
 	p.listener = l
 	p.alive.Store(true)
 	if err := os.WriteFile(stdout, []byte("emulator stdout\n"), 0600); err != nil {
+		l.Close()
 		return execx.ProcessIdentity{}, err
 	}
 	if err := os.WriteFile(stderr, []byte("emulator stderr\n"), 0600); err != nil {
+		l.Close()
 		return execx.ProcessIdentity{}, err
 	}
-	go func() {
-		for {
-			conn, err := l.Accept()
-			if err != nil {
-				return
-			}
-			go p.serve(conn)
-		}
-	}()
+	p.server = ownTestTCP(l, p.serve)
 	return execx.ProcessIdentity{PID: 42, StartID: "process-birth"}, nil
 }
 func (p *testProcess) Alive(_ context.Context, id execx.ProcessIdentity) (bool, error) {
@@ -183,7 +178,9 @@ func fixture(t *testing.T) (Adapter, domain.Runtime, *testProcess) {
 	d.AVDPath = filepath.Join(d.AVDHome, d.AVDName+".avd")
 	r.Android = &d
 	t.Cleanup(func() {
-		if p.listener != nil {
+		if p.server != nil {
+			p.server.close()
+		} else if p.listener != nil {
 			p.listener.Close()
 		}
 	})

@@ -95,14 +95,54 @@ func integrationFixture(t *testing.T) (string, string, *config.Manifest) {
 	}
 	integrationCommand(t, "", "docker", "info", "--format", "{{.ServerVersion}}")
 	integrationCommand(t, "", "docker", "compose", "version", "--short")
-	base := t.TempDir()
+	base, err := os.MkdirTemp("", "agent-env-docker-integration-")
+	if err != nil {
+		t.Fatal(err)
+	}
 	home := filepath.Join(base, "state space 日本語")
 	repo := filepath.Join(base, "repository space 日本語")
 	t.Setenv("AGENT_ENV_HOME", home)
 	t.Setenv("FIXTURE_SECRET_TOKEN", "integration-credential-value-7f032")
 	foreignVolume := fmt.Sprintf("agent-env-integration-foreign-%d-%d", os.Getpid(), time.Now().UnixNano())
 	t.Setenv("AGENT_ENV_TEST_FOREIGN_VOLUME", foreignVolume)
-	t.Cleanup(func() { integrationCommand(t, "", "docker", "volume", "rm", foreignVolume) })
+	// Register recovery before any daemon resource exists, independently of the
+	// create response. Keep registry and sources when cleanup cannot be proved.
+	t.Cleanup(func() {
+		if os.Getenv("AGENT_ENV_HOME") != home {
+			t.Errorf("fixture home changed; preserving %s", base)
+			return
+		}
+		err := cleanupIntegrationRegistry(home, func(id string) (domain.Lease, error) {
+			raw, stderr, err := invokeIntegration("destroy", id, "--force")
+			var released domain.Lease
+			if err == nil {
+				err = json.Unmarshal(raw, &released)
+			}
+			if err != nil {
+				return released, fmt.Errorf("destroy fixture lease %s: %w: %s", id, err, stderr)
+			}
+			return released, nil
+		})
+		if err != nil {
+			t.Errorf("fixture recovery failed; preserving %s: %v", base, err)
+			return
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+		defer cancel()
+		// Delete only this explicitly named fixture volume, never daemon-wide data.
+		out, err := exec.CommandContext(ctx, "docker", "volume", "rm", foreignVolume).CombinedOutput()
+		if err != nil {
+			t.Errorf("fixture volume cleanup failed; preserving %s: %v %s", base, err, out)
+			return
+		}
+		if t.Failed() {
+			t.Logf("preserving failed fixture evidence: %s", base)
+			return
+		}
+		if err := os.RemoveAll(base); err != nil {
+			t.Errorf("remove released fixture: %v", err)
+		}
+	})
 	integrationCommand(t, "", "docker", "volume", "create", "--label", "io.agent-env.integration-fixture="+foreignVolume, foreignVolume)
 	for _, p := range []string{repo, filepath.Join(repo, "www")} {
 		if err := os.MkdirAll(p, 0700); err != nil {
@@ -524,5 +564,57 @@ func TestIntegrationReadinessFailureRollsBack(t *testing.T) {
 	show := integrationJSON[integrationShow](t, "show", l.ID)
 	if len(show.Artifacts) == 0 {
 		t.Fatal("failed startup logs not retained")
+	}
+}
+
+func TestIntegrationRegistryRecoversLostCreateResponse(t *testing.T) {
+	repo, home, _ := integrationFixture(t)
+	// Create real resources but intentionally discard its entire response. Only
+	// durable fixture registry state may supply identities for recovery.
+	if _, stderr, err := invokeIntegration("create", repo, "--stack", "api"); err != nil {
+		t.Fatalf("effect setup failed: %v %s", err, stderr)
+	}
+	before := integrationJSON[[]domain.Lease](t, "list", "--cached")
+	if len(before) != 1 || before[0].Observed != "ready" || len(before[0].Resources) == 0 || len(before[0].Runtimes) == 0 {
+		t.Fatalf("lost-response fixture did not create effects: %+v", before)
+	}
+	// Prove daemon-side effects existed independently of cached registry rows,
+	// so an empty runtime list or a never-started project cannot satisfy cleanup.
+	for _, r := range before[0].Runtimes {
+		if r.Project == "" {
+			t.Fatal("fixture runtime has no Compose project identity")
+		}
+		ids := integrationCommand(t, "", "docker", "--context", r.Context, "ps", "-aq", "--filter", "label=com.docker.compose.project="+r.Project)
+		if ids == "" {
+			t.Fatalf("fixture project %s never created daemon containers", r.Project)
+		}
+	}
+	if err := cleanupIntegrationRegistry(home, func(id string) (domain.Lease, error) {
+		raw, stderr, err := invokeIntegration("destroy", id, "--force")
+		var released domain.Lease
+		if err != nil {
+			return released, fmt.Errorf("recovery destroy: %w %s", err, stderr)
+		}
+		err = json.Unmarshal(raw, &released)
+		return released, err
+	}); err != nil {
+		t.Fatal(err)
+	}
+	after := integrationJSON[[]domain.Lease](t, "list", "--cached")
+	if len(after) != 1 || after[0].ID != before[0].ID || after[0].Observed != "released" {
+		t.Fatalf("registry recovery not complete: %+v", after)
+	}
+	for _, r := range before[0].Runtimes {
+		if ids := integrationCommand(t, "", "docker", "--context", r.Context, "ps", "-aq", "--filter", "label=com.docker.compose.project="+r.Project); ids != "" {
+			t.Fatalf("owned containers remain: %s", ids)
+		}
+		for _, kind := range []string{"network", "volume"} {
+			if ids := integrationCommand(t, "", "docker", "--context", r.Context, kind, "ls", "-q", "--filter", "label=com.docker.compose.project="+r.Project); ids != "" {
+				t.Fatalf("owned %s remain: %s", kind, ids)
+			}
+		}
+	}
+	if name := integrationCommand(t, "", "docker", "volume", "inspect", os.Getenv("AGENT_ENV_TEST_FOREIGN_VOLUME"), "--format", "{{.Name}}"); name != os.Getenv("AGENT_ENV_TEST_FOREIGN_VOLUME") {
+		t.Fatal("foreign volume changed")
 	}
 }

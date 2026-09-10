@@ -314,7 +314,11 @@ func TestProcessReadinessUsesRecordedNumericEndpoint(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _, _ = s.Destroy(ctx, l.ID, false, false) })
+	t.Cleanup(func() {
+		if _, err := s.Destroy(ctx, l.ID, false, false); err != nil {
+			t.Errorf("destroy process fixture: %v", err)
+		}
+	})
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/health" {
 			http.NotFound(w, r)

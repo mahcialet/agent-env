@@ -66,6 +66,14 @@ Integration tests explicitly require Docker; missing prerequisites are not passe
 - A passing cross-build does not prove native runtime behavior.
 - Report unsupported prerequisites and unverified acceptance honestly.
 
+## Test evidence
+
+- Classify evidence by what it proves; repetitions do not prove forced ordering.
+- Fixtures own cancellation, resource closure and completion joins, including failure paths.
+- Negative tests must reach the intended effect and distinguish its failure cause.
+- Record finding dispositions and fail-before controls in the active Plan.
+- Follow [quality evidence rules](docs/QUALITY.md#evidence-classes-and-test-architecture) for schedules, oracles and review.
+
 ## Where knowledge belongs
 
 - [Product specifications](docs/product-specs/index.md): user-visible contracts.

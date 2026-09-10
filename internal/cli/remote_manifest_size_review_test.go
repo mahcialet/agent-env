@@ -9,6 +9,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"io"
@@ -145,6 +146,44 @@ stacks:
 	w := protocol.WorkerIdentity{ControllerID: db.ID, HostID: "fixture", HostInstanceID: "home", Incarnation: "boot"}
 	if _, err = workerClient.Register(ctx, protocol.RegisterRequest{WorkerIdentity: w, ProtocolVersion: protocol.Version, ProductVersion: "fixture", OS: "linux", Arch: "amd64", Capabilities: pkg.RequiredCapabilities, Capacity: protocol.Capacity{MaxLeases: 1}}); err != nil {
 		t.Fatal(err)
+	}
+	// Expire the one-shot registration without sleeping. The fixture must own
+	// real worker heartbeats, not depend on packaging/upload completing in 30s.
+	rawDB, err := sql.Open("sqlite", db.Path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := rawDB.Exec("UPDATE hosts SET last_seen=? WHERE id=?", time.Now().Add(-db.OfflineAfter-time.Second).UnixNano(), w.HostID)
+	if err != nil {
+		rawDB.Close()
+		t.Fatal(err)
+	}
+	rows, err := result.RowsAffected()
+	if err != nil || rows != 1 {
+		rawDB.Close()
+		t.Fatalf("expiry injection rows=%d err=%v", rows, err)
+	}
+	if err := rawDB.Close(); err != nil {
+		t.Fatal(err)
+	}
+	host, err := db.GetHost(ctx, w.HostID)
+	if err != nil || host.Online {
+		t.Fatalf("worker did not become stale: %+v %v", host, err)
+	}
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+	ready, stopHeartbeat := startManifestFixtureHeartbeat(ctx, ticker.C, func(ctx context.Context) error { return workerClient.Heartbeat(ctx, w) })
+	defer func() {
+		if err := stopHeartbeat(); err != nil {
+			t.Errorf("fixture worker heartbeat: %v", err)
+		}
+	}()
+	if err := <-ready; err != nil {
+		t.Fatalf("fixture heartbeat startup: %v", err)
+	}
+	host, err = db.GetHost(ctx, w.HostID)
+	if err != nil || !host.Online {
+		t.Fatalf("actual heartbeat did not restore worker liveness: %+v %v", host, err)
 	}
 	root := New(io.Discard, io.Discard)
 	cmd, _, err := root.Find([]string{"create"})

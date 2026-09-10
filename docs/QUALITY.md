@@ -1,7 +1,7 @@
 ---
 status: active
 owner: maintainers
-last_verified: 2026-09-09
+last_verified: 2026-09-10
 ---
 
 # Quality and verification
@@ -279,3 +279,71 @@ absolute, relative, PATH and symlink lookup while preserving native .exe names.
 WSL state tests inject kernel/filesystem/mount observations and check custom
 mounts, aliases and missing future homes. These tests do not replace a real WSL2
 mount/interop run; that environment has not been exercised.
+
+## Evidence classes and test architecture
+
+Evidence must be classified by what it proves. Quantity does not upgrade evidence
+class. Repetition is not a substitute for deterministic reproduction. Record the
+revision, command, environment, result and limits with each acceptance claim.
+
+| Class | What it establishes | What it does not establish |
+| --- | --- | --- |
+| Forced invariant | Explicit barriers/state transitions reach the violating schedule or boundary and a discriminating oracle checks the invariant | Every scheduler interleaving or real OS behavior |
+| Direct native/integration | Actual process, protocol or engine behavior on the named host with prerequisites satisfied | Other operating systems or absent infrastructure |
+| Race/static/tooling | No reported issue in the exercised paths or the checked structural rule | All schedules, correct oracles or semantic translation parity |
+| Stability/repetition | Observed reliability over the recorded repetitions and CPU settings | Deterministic reproduction or stronger proof through test count |
+| Compilation/structural | Types, imports, generated artifacts or target compilation satisfy checks | Native execution or completion of runtime acceptance |
+
+These classes describe different claims, not a ranking that permits substitution.
+A test can supply more than one class, but its components must be identified.
+
+### Fixture ownership and schedules
+
+Inventory each helper's owner, resources, goroutines/callbacks, shared state,
+completion signals, cleanup order, failure exits, consumers and assumptions.
+Cleanup must stop admission, request cancellation or close transports as needed,
+and join owned work before closing databases or removing temporary state. Closing
+a listener does not close accepted connections; closing an HTTP server does not
+join hijacked WebSocket callbacks. A cancellation signal is not a join.
+
+Time-bounded prerequisites such as worker heartbeats must remain valid through
+setup and the exercised operation. Successful registration is not continuing
+availability; force expiry and refresh when validating such fixtures.
+
+Register failure-path cleanup before assertions. Do not discard cleanup failures
+that mean native resources may remain. WaitGroup admission must be ordered before
+Wait; a counter protected by an atomic still needs completion ordering. Avoid
+joining from the worker being joined. Test timeouts bound a failed check; they do
+not establish callback entry, completed cleanup, or a negative side effect.
+Cancellation acknowledgement alone does not show that a cleanup goroutine has
+reached its join. In pure-channel negative scheduling tests, use
+`testing/synctest` quiescence before asserting that cleanup remains blocked.
+Use channels/barriers or `testing/synctest` for schedules where appropriate; real
+sockets/native processes need separately identified composition evidence.
+
+### Oracles, findings and preventive controls
+
+For every negative fixture, identify the earliest refusal that could accidentally
+satisfy the assertion. Require the intended mutation/boundary to be reached, then
+assert the specific error/state and include a valid neighboring control where
+useful. Inspect the returned error itself: context state alone does not establish
+the operation's failure cause. An absent delayed file is not independent process-completion evidence.
+Compare persisted state/effects independently rather than deriving the expected
+answer through the same logic as the implementation under test.
+
+Before repairs, record each finding's ID, violated invariant, earliest feasible
+detection point, escape category, test versus production scope, sibling exposure,
+ACCEPT/REJECT/DEFER disposition and rationale. Accepted repairs should demonstrate
+fail-before/pass-after using the same oracle where practical; compilation failure
+from a new test API does not count. Record unavailable native controls explicitly.
+
+Prefer targeted regressions for stable lifecycle and boundary invariants. Existing
+`check` and native/race CI execute these controls without adding a second policy
+runner. Do not mechanically infer evidence quality from test names, prose, sleep
+usage or pass counts: these need contextual review. Independent review examines
+the diff, test reachability, finding dispositions and actual evidence; bilingual
+reader/parity review remains separate from source-hash checks.
+
+Run suites sharing fixed native resource pools serially unless isolation has been
+verified. An isolated rerun after contention is diagnostic evidence and does not
+erase the original failure.

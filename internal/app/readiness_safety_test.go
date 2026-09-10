@@ -114,15 +114,18 @@ func TestReviewReadinessCancellationDoesNotRetry(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer release()
+	t.Cleanup(func() {
+		if err := release(); err != nil {
+			t.Errorf("release readiness fence: %v", err)
+		}
+	})
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	runner := &reviewCancellationRunner{started: make(chan struct{}, 3)}
 	s.Runner = runner
-	done := make(chan error, 1)
-	go func() {
-		done <- s.runProbe(ctx, l, "database", 0, config.Probe{Type: "command", Source: "self", WorkingDirectory: ".", Command: []string{"probe"}, Timeout: "10s", Interval: "1ms"})
-	}()
+	done := startFixtureOperation(t, ctx, func(ctx context.Context) error {
+		return s.runProbe(ctx, l, "database", 0, config.Probe{Type: "command", Source: "self", WorkingDirectory: ".", Command: []string{"probe"}, Timeout: "10s", Interval: "1ms"})
+	})
 	select {
 	case <-runner.started:
 	case <-time.After(5 * time.Second):

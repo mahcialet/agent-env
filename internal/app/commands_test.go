@@ -251,8 +251,10 @@ func TestNamedCommandSerializesDestroy(t *testing.T) {
 	setCommandSpec(t, db, &lease, func(spec *config.Test) { spec.Artifacts = nil })
 	runner := blockingCommandRunner{make(chan struct{}), make(chan struct{})}
 	s.Runner = runner
-	done := make(chan error, 1)
-	go func() { _, err := s.Test(context.Background(), lease.ID, "check"); done <- err }()
+	done := startFixtureOperation(t, context.Background(), func(ctx context.Context) error {
+		_, err := s.Test(ctx, lease.ID, "check")
+		return err
+	})
 	select {
 	case <-runner.entered:
 	case <-time.After(5 * time.Second):
