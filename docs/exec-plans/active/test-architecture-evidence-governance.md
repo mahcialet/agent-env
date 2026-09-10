@@ -120,7 +120,7 @@ Out of scope:
 - [x] Audit process, worker/controller, Android and integration fixture lifecycles.
 - [x] Audit test oracles for false-positive paths and unreachable intended effects.
 - [x] Classify all findings and record ACCEPT / REJECT / DEFER decisions with rationale.
-- [ ] Repair accepted test-architecture defects with fail-before evidence.
+- [x] Repair accepted test-architecture defects with fail-before evidence.
 - [x] Add deterministic failure schedules for accepted concurrency/order findings where practical.
 - [x] Add or improve lifecycle synchronization for affected helpers.
 - [x] Define repository evidence classes and anti-evidence-laundering rules.
@@ -129,9 +129,10 @@ Out of scope:
 - [x] Independently review the audit corpus, dispositions and repairs; address worker-join, stage-wait and live-container-oracle findings (2026-09-10).
 - [x] Run final focused deterministic regressions.
 - [x] Run final full race/harness checks (2026-09-10).
-- [ ] Run required native Windows/macOS/Linux validation.
+- [x] Run required native Windows/macOS/Linux validation.
 - [x] Complete bilingual reader and semantic parity review; resolve two JA omissions and record the withdrawn M5 finding (2026-09-10).
 - [ ] Complete retrospective and archive only after merge into `master`.
+
 
 
 
@@ -175,6 +176,40 @@ Do not repair a finding before recording enough evidence to explain the violated
 - 2026-09-10 / maintainers: Keep `AGENTS.md` navigational and concise; detailed evidence semantics belong in quality/design documentation and enforceable checks.
 
 ## Outcomes & Retrospective
+
+Implementation and validation are delivered; merge/archive acceptance remains
+open. The bounded audit covered 195 baseline test files across 28 package
+directories and recorded Q01–Q13. Twelve findings were accepted and repaired;
+Q09's unproven stream/constructor failure-path concern is explicitly deferred.
+The corpus now has 199 test files, including owned fixture controls.
+
+The audit demonstrated old-oracle false passes, added discriminating failure
+stages and explicit lifecycle completion, and retained native evidence limits.
+Native CI caught an EOF-only portability assumption in the first repair, and
+race CI exposed an expiring one-shot host registration. Both were corrected
+without weakening deadlines, controller TTLs or portability checks. Independent
+review also rejected two scheduling assertions in new tests before their
+acceptance. Passing local tests and source review were useful but insufficient
+substitutes for these native and forced-fault controls.
+
+Do not archive until PR #15 has current-HEAD human review and is merged into
+master. The trusted-base gate policy is absent, so guarded/manual fallback
+continues to apply; no automatic merge authorization is inferred.
+
+Eleven accepted findings are test-only defects; Q08 affects production
+completion observation and its test oracle. CDP and app/process helpers had the
+largest concentration of lifecycle and reachability gaps. Earlier repeat-pass
+results did not prove callback completion or cross-platform socket semantics.
+Targeted invariant regressions are executable controls; evidence classification,
+bounded sibling review and language meaning remain review disciplines. Q09,
+unexposed inline client-reader joins, unforced schedules and environments not
+executed remain explicit limits rather than claims of exhaustive correctness.
+
+This new Plan exercised EP-OPS-001's deterministic branch, stable Plan ID,
+commit/PR trailers, provenance and guarded gate inspection successfully through
+implementation. The gate correctly retained manual fallback without trusted
+policy; Human Validation was not auto-started. Forward merge/archive evidence
+remains open until the maintainer finishes PR #15.
 
 This section remains incomplete until the Plan has merged.
 
@@ -913,3 +948,16 @@ Q13 implementation evidence: the old fixture with forced stale last_seen and ind
 Q13 join oracle corrected with synctest quiescence. A cancel-only stop overlay fails “stop returned before callback completion” (0.009s); correct focused heartbeat race passes (1.014s). An initial malformed overlay had an unused-variable compile error and was not counted as evidence. Full uncached race with the heartbeat implementation passed (app50.671s, CLI43.425s); the subsequent test-only quiescence correction received the focused race above. Current corpus is199 test files after adding the owned heartbeat helper.
 
 Q13 final independent technical/parity re-review and post-repair `repoctl check` passed. The heartbeat change is ready for native/integration CI; preserve both earlier integration failures as evidence.
+
+### Final implementation acceptance evidence
+
+Implementation commit `79d4d60498f7a2fdec7441a056f59c59c588f5b6`:
+
+- [Verify PR run 34422872234](https://github.com/mahcialet/agent-env/actions/runs/34422872234) completed successfully: native Windows/macOS/Linux on Go1.26 and Go1.27, full race, Docker integration and all cross-build targets.
+- [Browser native 34422872236](https://github.com/mahcialet/agent-env/actions/runs/34422872236) and [Multi-host native 34422872219](https://github.com/mahcialet/agent-env/actions/runs/34422872219) passed on all three operating systems.
+- [Release preview 34422872253](https://github.com/mahcialet/agent-env/actions/runs/34422872253) passed build and native smoke on all three operating systems.
+- Earlier failed runs remain recorded above. Repetition is not the basis of acceptance; each repair has the named control and its specific evidence class.
+
+Only the evidence/documentation reconciliation follows this implementation SHA.
+Recheck current-HEAD CI and human review before merge. PR #15 is ready for that
+review; the working Plan stays active until the normal merge/archive procedure.

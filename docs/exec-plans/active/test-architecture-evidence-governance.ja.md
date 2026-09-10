@@ -1,6 +1,6 @@
 ---
 translation_of: docs/exec-plans/active/test-architecture-evidence-governance.md
-source_sha256: 641280a53f6ec3bcc4b77702ea4d53cf1e74c44cb70a37c340e3b55d58583746
+source_sha256: dc9af334897bafe9591d4df85a26bea91f3049b16612df4f2897f5fc09404c3d
 status: active
 plan_id: EP-QUAL-001
 plan_type: implementation
@@ -126,7 +126,7 @@ Plan ID: `EP-QUAL-001`
 - [x] process、worker/controller、Android、integration fixtureのlifecycleを監査する。
 - [x] false-positive pathとunreached effectを含むoracle監査を行う。
 - [x] 全findingへACCEPT / REJECT / DEFERと理由を記録する。
-- [ ] ACCEPT findingをfail-before付きで修正する。
+- [x] ACCEPT findingをfail-before付きで修正する。
 - [x] concurrency/order findingへ可能な限りdeterministic scheduleを導入する。
 - [x] 必要なhelperに明示的lifecycle synchronizationを追加する。
 - [x] evidence classとevidence laundering防止ルールを定義する。
@@ -135,9 +135,10 @@ Plan ID: `EP-QUAL-001`
 - [x] audit、disposition、修正を独立reviewする。
 - [x] focused deterministic regressionを最終実行する。
 - [x] full race/harnessの最終実行が成功した（2026-09-10）。
-- [ ] 必要なWindows/macOS/Linux native validationを完了する。
+- [x] 必要なWindows/macOS/Linux native validationを完了する。
 - [x] English/Japanese独立reviewとsemantic parity reviewを完了する。
 - [ ] merge後にretrospectiveを完成しarchiveする。
+
 
 
 
@@ -181,6 +182,16 @@ findingを十分記録する前に、その場で修正して消してはなら�
 - 2026-09-10 / maintainers: `AGENTS.md`は簡潔に維持し、詳細なevidence semanticsはquality/design documentationとvalidatorへ置く。
 
 ## Outcomes & Retrospective
+
+実装と検証は完了し、merge/archiveの受け入れは未完了である。限定監査はbaselineの28 package directory・195 test fileを対象にQ01〜Q13を記録した。12件を採用して修正し、未実証のstream/constructor失敗経路に関するQ09は理由を明記して保留した。所有fixtureの対照を加え、現在は199 test fileである。
+
+旧oracleの誤成功を実証し、原因を区別する失敗段階とlifecycle完了を明示した。native証拠の限界も維持している。最初の修正ではnative CIがEOFのみを想定した移植性不備を検出し、race CIが一度だけ登録したhost情報の期限切れを検出した。deadline、controller TTL、移植性検査を緩めずに両方を修正した。独立reviewは新testの順序assertionにも2件の不足を指摘し、受け入れ前に修正した。local testとソースreviewは有用だがnative検証や強制故障対照の代用にはならなかった。
+
+PR #15がcurrent-HEADで人間のreviewを受けmasterへmergeされるまでarchiveしない。信頼するbaseにgate policyがないためguarded/manual fallbackを維持し、自動mergeの許可とは解釈しない。
+
+採用した11件はtestのみの不備で、Q08はproductionの完了観測とtest oracleの両方に関わる。lifecycleと到達性の不足はCDPとapp/process helperに集中した。過去の反復成功はcallback完了やOS間のsocketの意味を証明しなかった。対象を絞った不変条件の回帰は実行可能な検査となるが、証拠分類、限定した同種箇所のreview、言語の意味はreviewで判断する。Q09、直接公開されないinline client readerのjoin、強制していない実行順序、未実行の環境は限界として明示し、網羅的な正しさとは主張しない。
+
+この新PlanはEP-OPS-001の規定branch、安定Plan ID、commit/PR trailer、provenance、guarded gate確認を実装段階まで実運用した。信頼するpolicyがないためgateは適切にmanual fallbackを維持し、Human Validationも自動開始していない。forward merge/archiveの証拠はmaintainerがPR #15を完了するまで未完了である。
 
 mergeまでは未完了とする。
 
@@ -786,3 +797,14 @@ Q13実装の証拠: last_seenを強制的に古くしofflineを独立確認し�
 Q13のjoin oracleをsynctestの待機状態確認で修正した。cancel-only stopのoverlayは“stop returned before callback completion”で失敗し（0.009秒）、正しい実装のheartbeat対象raceは成功した（1.014秒）。最初の不正overlayはunused variableのcompile errorであり証拠に数えなかった。heartbeat実装を含む全体cacheなしraceは成功した（app50.671秒、CLI43.425秒）。その後の待機状態確認だけのtest修正には上記対象raceを実行した。所有heartbeat helper追加後のcorpusは199 test fileとなる。
 
 Q13の最終独立technical/意味一致の再reviewと修正後`repoctl check`は成功した。heartbeat変更はnative/integration CIへ進める状態であり、先のintegration失敗2件は証拠として残す。
+
+### 最終実装の受け入れ証拠
+
+実装commit `79d4d60498f7a2fdec7441a056f59c59c588f5b6`:
+
+- [Verify PR run 34422872234](https://github.com/mahcialet/agent-env/actions/runs/34422872234)は成功した。Go1.26/1.27でのWindows/macOS/Linux native、全体race、Docker integration、全cross-build targetを含む。
+- [Browser native 34422872236](https://github.com/mahcialet/agent-env/actions/runs/34422872236)と[Multi-host native 34422872219](https://github.com/mahcialet/agent-env/actions/runs/34422872219)は3 OSすべて成功した。
+- [Release preview 34422872253](https://github.com/mahcialet/agent-env/actions/runs/34422872253)はbuildと3 OSのnative smokeが成功した。
+- 先行runの失敗は上記に残す。受け入れの根拠は反復回数ではなく、各修正で記録した対照とその証拠の種類である。
+
+この実装SHAに続く変更は証拠・文書の整合のみである。merge前にcurrent-HEAD CIと人間のreviewを再確認する。PR #15はそのreviewへ進める状態であり、通常のmerge/archive手順まで本Planはactiveを維持する。
