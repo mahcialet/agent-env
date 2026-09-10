@@ -93,7 +93,7 @@ blobstore owns CAS file publication.
 
 ## Plan of Work
 
-Repair each boundary with fail-before regression coverage and independent review.
+Repair each boundary with tests detecting the same defects before the fix and independent review.
 Maintain English/Japanese contracts and retain prior failed CI evidence.
 
 ## Concrete Steps
@@ -165,8 +165,8 @@ offline threshold. Actual remote Docker and Podman compose fixture passed
 review caught that missing adapter forwarding and it was repaired before push.
 
 A proposed post-destroy cache concern was disproved: removal deletes lease
-worktrees, not bare cache repositories. The retained lifecycle regression verifies
-logs/artifact/reconcile/repeated destroy after removal using an empty CAS without
+worktrees, not bare cache repositories. The retained test checks post-destroy
+cache reuse through logs/artifact/reconcile/repeated destroy using an empty CAS without
 relaxing validation. Source diff and reuse have fail-before coverage; a17MiB real
 diff fails safely at the enforced capture bound, retaining cleanup safety.
 
@@ -178,7 +178,7 @@ were moved to package_retention.go to keep their durability implementation isola
 
 2026-09-09 final additional-fix evidence: `go run ./tools/repoctl check` and
 `go test -race ./...` passed (worker15.948s, CLI44.877s); actual native two-worker
-CLI restart fixture passed (46.995s). UI recovery/evidence regressions failed
+CLI restart fixture passed (46.995s). Tests detecting UI recovery/evidence defects failed
 against the old executor and pass after correction. Independent review found
 that a legacy duplicate package requires synchronizing its winning file inode,
 not merely the discarded staged copy; the new failure-injection regression and

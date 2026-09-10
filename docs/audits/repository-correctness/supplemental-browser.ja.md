@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/audits/repository-correctness/supplemental-browser.md
-source_sha256: ea9a0b1d4d287697121b11e0b3824f33fc19a972bd6951767c6c57ddbcedc1e6
+source_sha256: a53f7f0f55190c1102697228d30fe15c70487cc6ffb959ec1277cf231fe89bb9
 ---
 
 # Browser追加レビュー: 遅れて確認したPR #10指摘
@@ -21,7 +21,7 @@ source_sha256: ea9a0b1d4d287697121b11e0b3824f33fc19a972bd6951767c6c57ddbcedc1e6
 
 追跡済CDP Go source/testを全て固定Git revisionから一時Go overlayへ読み込んだ。
 追加testは実公開`Client.Observe`またはprotocol componentの`wait`/`act`と
-既存fixtureを使い、Phase A中は監査製品fileを変更しなかった。3回帰全て失敗した。
+既存fixtureを使い、Phase A中は監査製品fileを変更しなかった。page上限、ignored node、pressed状態について期待動作を確認する3テストは、すべて不具合を検出して失敗した。
 恒久testも今回修正前の監査候補版で失敗し、先行監査修正では直っていないことを確認した。
 入力dispatchはmock call記録で証明し、この安全な再現で実browserへ有害clickを送ったとはしない。
 
@@ -64,7 +64,7 @@ source_sha256: ea9a0b1d4d287697121b11e0b3824f33fc19a972bd6951767c6c57ddbcedc1e6
   snapshotは正しい状態を保持しactionもignored入力を拒否したが、別consumerのwaitに
   semantic対象条件を適用していなかった。
 - Phase C: role/name一致前にIgnoredをskipする。goneの完全snapshot条件は変えない。
-- Guardrail: text偽陽性・gone偽陰性の両回帰を追加し、既存visible-text・truncated-gone回帰を維持。
+- Guardrail: ignored nodeだけでtext waitが成功しないこと、gone waitが妨げられないことを確認するテストを追加する。表示されるtextの一致と、切り詰めたsnapshotから不在を確定しないことの既存テストも維持。
   将来期待S3。DOM selectorや任意scriptへのfallbackは追加しない。
 
 ## AUDIT-STALE-002 — Pressed変化がaction fingerprintを無効化しない
@@ -79,10 +79,10 @@ source_sha256: ea9a0b1d4d287697121b11e0b3824f33fc19a972bd6951767c6c57ddbcedc1e6
 - 観測: pressedがStates/fingerprintに含まれずstale clickをdispatchしperformed=true・error nilとなる。
 - 期待: false/true/mixed変化で保存fingerprintを無効化し入力前に拒否する。
   別browserや別nodeへの攻撃を証明したものではない。
-- 再現: `TestSupplementPressedStateRefusesStaleInput`は現行所有mutation回帰をpressed変更へ適用。
+- 再現: `TestSupplementPressedStateRefusesStaleInput`は所有検証の途中で対象を変更する既存テストを、pressedの変更にも適用。
   mutation callback到達と入力回数をassertし固定版で失敗する。
 - 見逃し: 最早S3、NEGATIVE_FIXTURE_GAP + ORACLE_COUPLING + COMPOSITION_GAP。
-  checked回帰だけでは別protocol propertyのpressed保持を証明しない。
+  checkedの変化で入力が拒否されることを確認しても、別のprotocol propertyであるpressedが記録される証明にはならない。
   fingerprintの正しさはhash実装だけでなくproducer property集合に依存する。
 - Phase C: 既存の制限付き`axState`変換へpressedを追加。
   checked・selected・expanded・readonly・required・focusable・focused・multiselectableは
@@ -92,7 +92,7 @@ source_sha256: ea9a0b1d4d287697121b11e0b3824f33fc19a972bd6951767c6c57ddbcedc1e6
 
 ## Phase C検証と残る最終検証
 
-追加protocol回帰のrace検査3回はPASS、1.668s。独立したread-only reviewに阻害指摘はなく、
+追加したpage上限・ignored node・pressed状態のテストをrace付きで3回実行した結果はPASS、1.668s。独立したread-only reviewに阻害指摘はなく、
 そのrace検査5回もPASS、2.039s。
 page127/128/129、ignored text/gone、10状態変化を含む。
 統合担当からCDP全体race PASS 8.446s、sandbox有効実Browser native race

@@ -15,7 +15,7 @@ Address all five PR #3 review threads on `feat/bilingual-documentation`. This ac
 ## Progress
 
 - [x] 2026-09-08: Confirmed clean branch at `41545f1` and read all five unresolved review threads.
-- [x] 2026-09-08: Reproduced all five gaps with failing regression fixtures, implemented the checks and passed the full repoctl test suite and harness.
+- [x] 2026-09-08: Reproduced all five gaps with failing fixtures that detect the defects, implemented the checks and passed the full repoctl test suite and harness.
 - [x] 2026-09-08: Full harness, Go 1.26/1.27 repoctl tests, race tests repeated three times and diff checks passed; committed and pushed `b94a94d` and `cc3b915`.
 - [x] 2026-09-08: Replied to and resolved all five review threads; recorded outcomes and archived both plan languages.
 
@@ -25,9 +25,9 @@ The existing tests explicitly accepted arbitrary Japanese plan headings and any 
 
 Baseline evidence: the source-link, metadata and completed-plan tests failed because invalid inputs returned nil; canonical-index omission and all twelve missing Japanese sections likewise returned nil. After repair all these tests passed. One existing index negative mutated only one of two fixture links and therefore left a valid link; changing it to remove both restored the intended negative case without changing production acceptance.
 
-Independent review found that textual link/heading extraction could accept code examples, escaped syntax, comments, unused reference definitions or a later duplicate reference definition. Added rendered-prose filtering shared by navigation and required-section checks, first-definition reference resolution, and regression cases. The prior implementation missed the policy gaps because positive fixtures and permissive tests shared its assumptions; future acceptance must map each requirement to an independently mutated negative fixture, not only to a passing repository snapshot.
+Independent review found that textual link/heading extraction could accept code examples, escaped syntax, comments, unused reference definitions or a later duplicate reference definition. Added rendered-prose filtering shared by navigation and required-section checks, first-definition reference resolution, and tests detecting the same misclassifications. The prior implementation missed the policy gaps because positive fixtures and permissive tests shared its assumptions; future acceptance must map each requirement to an independently mutated negative fixture, not only to a passing repository snapshot.
 
-A follow-up review caught a parsing-order regression after the main fix: removing comments before code spans misread literal comment markers, while removing comments after fences misread fences inside comments. Replaced ordering-only fixes with explicit comment/code state and retained both regressions as positive fixtures. The initial fix commit is `b94a94d`; threads remain open until the follow-up is verified and pushed.
+A follow-up review caught a parsing-order defect introduced by the main fix: removing comments before code spans misread literal comment markers, while removing comments after fences misread fences inside comments. Replaced ordering-only fixes with explicit comment/code state and retained tests of both expected behaviors as positive fixtures. The initial fix commit is `b94a94d`; threads remain open until the follow-up is verified and pushed.
 
 ## Decision Log
 
@@ -36,7 +36,7 @@ A follow-up review caught a parsing-order regression after the main fix: removin
 
 ## Outcomes & Retrospective
 
-Completed all five requested enforcement fixes. Independent review additionally exercised thirteen known rendering/structure cases in an isolated copy and confirmed their resolution. Regression fixtures now distinguish visible navigation and actual plan sections from examples and comments. Fixed historical exceptions and valid translation metadata remain portable Go checks. Existing unrelated English documentation ambiguities remain outside this follow-up.
+Completed all five requested enforcement fixes. Independent review additionally exercised thirteen known rendering/structure cases in an isolated copy and confirmed their resolution. Fixtures detecting the same misclassifications now distinguish visible navigation and actual plan sections from examples and comments. Fixed historical exceptions and valid translation metadata remain portable Go checks. Existing unrelated English documentation ambiguities remain outside this follow-up.
 
 The original omission was a requirements-to-tests gap: fixture setup and permissive tests encoded implementation assumptions rather than proving each documented obligation. Preserve the failing-before/passing-after evidence and requirement-specific negative cases when extending these checks. Full local validation passed; remote CI for the new commits is tracked on PR #3 and is not claimed as completed by this record.
 
@@ -46,7 +46,7 @@ The original omission was a requirements-to-tests gap: fixture setup and permiss
 
 ## Plan of Work
 
-Add regression fixtures before fixing each check. Update positive fixtures to satisfy the policy without hiding regressions. Document accepted Japanese headings and retain fixed historical paths. Review source/hash synchronization after documentation changes.
+Add fixtures that detect each defect before fixing the check. Update positive fixtures to satisfy the policy without hiding defects introduced by changes. Document accepted Japanese headings and retain fixed historical paths. Review source/hash synchronization after documentation changes.
 
 ## Concrete Steps
 

@@ -3,7 +3,7 @@ status: completed
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/exec-plans/completed/multi-host-control-plane.md
-source_sha256: afe7173efa1abbc6be8de866b6a4fae0fc39e621af00d0e0a76741e836521be6
+source_sha256: 42ffdf54cc017fef8b7d7f50786a3e0f06c8edc1a25be9c221136210f84b4e36
 ---
 
 # Single-authority multi-host control planeを追加する
@@ -433,7 +433,7 @@ client env secretを自動forwardしない。
 
 ## 進捗
 
-- [x] 2026-09-09: ユーザーが合意したWindows実行パスの範囲とWSLのstate・直接実行ファイルの境界を実装し、ローカル全harnessが成功した。UTF-16境界、派生パス、予約・出力を作らない拒否、改名PE、解決後のWSL mountの回帰を追加した。実WSL2でのmount/interop検証環境はなく、実行したとは扱わない。
+- [x] 2026-09-09: ユーザーが合意したWindows実行パスの範囲とWSLのstate・直接実行ファイルの境界を実装し、ローカル全harnessが成功した。UTF-16境界、派生パス、予約・出力を作らない拒否、改名PE、解決後のWSL mountの境界違反を検出するテストを追加した。実WSL2でのmount/interop検証環境はなく、実行したとは扱わない。
 - [x] 2026-09-09: 合意したWindowsの対応範囲をnative CIで検証し、最終受け入れを反映してからarchiveする。
 
 - [x] 2026-09-09: product/design文書とauthority ADR0006を両言語で追加。
@@ -487,32 +487,32 @@ client env secretを自動forwardしない。
 
 - 2026-09-09: WSLの境界は従来、文書だけの規則だった。Linuxのprocess所有権だけではinterop先のWindows子孫が消えたことを証明できないが、実際の孤児processやfilesystem破損を再現したわけではない。直接実行ファイルの形式による拒否と、WSL state filesystemの事前検証を追加した。unit fixtureでWSL検出・mount選択・aliasを検査し、実WSL実行の証拠とは扱わない。通常の実行ファイル不在のエラー分類を維持し、native Linux実行ファイルを.exeという名前だけで拒否しない。
 
-- 2026-09-09: `452bf4d`のWindows native診断（Verify 34318026189、Go 1.26 job 102358285418）で、333文字のcwdが通常パスでも拡張prefixでもCreateProcessに拒否されることを確認した。Go helper、`git --version`、Git configの全probeが子processの実行前に失敗する。Git source cloneだけの問題ではなく、runtimeにも起動可能なcwdが必要である。一時junctionだけでは、削除後もGit worktree metadataにaliasが残り得るため十分ではない。永続的な実行用aliasには、source/runtimeのパス統合、所有権・target検証、再起動時の復元、cleanup方針が必要であり、PORTABILITYの「symbolic linkを必須にしない」という境界との調整も要る。別案として、短いWindows worker homeを要件として合意し、作用開始前に検証する方法がある。どちらの対応範囲の変更も実装せず、承認済みとも扱わない。300文字超で成功する既存の回帰テストは変更せず失敗を残し、ユーザーの判断を待つ。
+- 2026-09-09: `452bf4d`のWindows native診断（Verify 34318026189、Go 1.26 job 102358285418）で、333文字のcwdが通常パスでも拡張prefixでもCreateProcessに拒否されることを確認した。Go helper、`git --version`、Git configの全probeが子processの実行前に失敗する。Git source cloneだけの問題ではなく、runtimeにも起動可能なcwdが必要である。一時junctionだけでは、削除後もGit worktree metadataにaliasが残り得るため十分ではない。永続的な実行用aliasには、source/runtimeのパス統合、所有権・target検証、再起動時の復元、cleanup方針が必要であり、PORTABILITYの「symbolic linkを必須にしない」という境界との調整も要る。別案として、短いWindows worker homeを要件として合意し、作用開始前に検証する方法がある。どちらの対応範囲の変更も実装せず、承認済みとも扱わない。300文字超で成功するという従来の要件を確認するテストは変更せず失敗を残し、ユーザーの判断を待つ。
 
 - 2026-09-09: Verify 34317326990でもWindowsの深いsource lifecycleが失敗し、Gitが長い`-C`ディレクトリを拒否した。Git for Windowsの実装ではrepository config初期化前の`are_long_paths_enabled`がfalseとなるため、command-lineの`core.longpaths`では早期chdirを解決できない。native multi-host 34317327009とBrowser 34317326997は3 OSすべて成功した。Windowsの拡張prefix付きprocess cwdを調査し、任意の8.3名への依存やテストの深さ削減は導入しない。
 
-- 2026-09-09: WindowsのGitは`-C`で作業ディレクトリを選び、source配置と回帰テストを維持したままCreateProcessの長いcwd制限を回避する。Browser CIでは`Target.closeTarget`後の一覧反映が非同期だったため、元のページだけになるまで最大5秒待つ検査に変更した。元のページの消失や未知のtargetは即失敗とする。Linuxの実Chromeを3回実行して成功（28.929s）。ローカル全harness/raceとworker UIテストが成功し、remote Browser/Docker/Podman E2Eも再成功した（33.142s）。native CIで再検証する。
+- 2026-09-09: WindowsのGitは`-C`で作業ディレクトリを選び、source配置と従来の成功要件を確認するテストを維持したままCreateProcessの長いcwd制限を回避する。Browser CIでは`Target.closeTarget`後の一覧反映が非同期だったため、元のページだけになるまで最大5秒待つ検査に変更した。元のページの消失や未知のtargetは即失敗とする。Linuxの実Chromeを3回実行して成功（28.929s）。ローカル全harness/raceとworker UIテストが成功し、remote Browser/Docker/Podman E2Eも再成功した（33.142s）。native CIで再検証する。
 
 - 2026-09-09: 相対cloneパスだけではVerify 34316762287のWindows検査は通らず、Git起動前にCreateProcessが260文字超の作業ディレクトリを拒否した。native multi-host 34316762301は引き続き3 OSすべて成功した。Browser native 34316762319ではmacOSのpage-close後の一覧検査が失敗し、source変更とは別に非同期のtarget反映を調査している。いずれも修正の検証が終わるまでは未解決として扱う。
 
-- 2026-09-09: mode不正、TTL上限超過、process provider不在の3ケースで、local Reserve前のcreate失敗なのにworkerの作用開始を記録する問題を修正前に再現した。Reserve直前のapp callbackでjournalを更新するようにし、予約前の失敗では作用未開始の永続証拠を保持する。Reserveの曖昧な失敗は不在証明にせず、fence失敗はReserveを防ぐ回帰テストも追加した。app/worker全raceテスト成功（47.217s / 4.243s）。
+- 2026-09-09: mode不正、TTL上限超過、process provider不在の3ケースで、local Reserve前のcreate失敗なのにworkerの作用開始を記録する問題を修正前に再現した。Reserve直前のapp callbackでjournalを更新するようにし、予約前の失敗では作用未開始の永続証拠を保持する。Reserveの曖昧な失敗は不在証明にせず、fence失敗はReserveを防ぐことを確認するテストも追加した。app/worker全raceテスト成功（47.217s / 4.243s）。
 
 - 2026-09-09: `53fe81a` の multi-host と Browser の native CI は3 OSすべてで成功した（34316121492 / 34316121411）。Verify 34316121380 では、Windows の300文字超のソースライフサイクル検査がまだ失敗した。`core.longpaths=true` だけでは、Git index-pack が絶対パスの `$GIT_DIR` を拒否する問題を解消できなかった。検証済みの専用展開ディレクトリからの相対パスで clone するよう修正し、深いパスのテストは維持した。ローカルの全 harness と source/worker の race テストは成功し、native の再検証を行う。
 
-- 2026-09-09: 最初の実TLS createはJSON objectのkey順序変更によるpackage digest不一致で失敗した。型付きmanifestをcanonical化してhashを計算し、commit済みcontrol fileからの変換証明は独立して維持する。順序変更回帰テストとLinux native E2Eが成功。controllerのglobal stateも、想定した大文字値ではなく`released`を含む実際のdomainの小文字stateに対応させた。
+- 2026-09-09: 最初の実TLS createはJSON objectのkey順序変更によるpackage digest不一致で失敗した。型付きmanifestをcanonical化してhashを計算し、commit済みcontrol fileからの変換証明は独立して維持する。JSONのkey順序変更でdigestが変わらないことを確認するテストとLinux native E2Eが成功。controllerのglobal stateも、想定した大文字値ではなく`released`を含む実際のdomainの小文字stateに対応させた。
 - 2026-09-09: 独立レビューでpreflight診断の秘密情報漏出を修正前の4ケースで再現。継承secretのredactionとmetadata上限を適用した。controllerが受け付ける可読operation IDをexecutorが拒否する不整合も修正し、lease IDのULID要件は維持した。
-- 2026-09-09: 外部作用前のcreate失敗ではlocal leaseがないためdestroyも失敗し、予約を解放できなかった。journalに作用開始前の境界を原子的に記録し、入力検証済みのnon-dry-run destroyだけが同じassignmentの証明を使えるようにした。local row不在やerror payloadを証明にはしない。再起動、dry-run、不正入力、証拠欠落、作用開始済みの回帰検証が成功。
+- 2026-09-09: 外部作用前のcreate失敗ではlocal leaseがないためdestroyも失敗し、予約を解放できなかった。journalに作用開始前の境界を原子的に記録し、入力検証済みのnon-dry-run destroyだけが同じassignmentの証明を使えるようにした。local row不在やerror payloadを証明にはしない。再起動、dry-run、不正入力、証拠欠落、作用開始済みの各条件で解放証拠の扱いを確認するテストが成功。
 - 2026-09-09: `0f05d09`の初回native macOS CIは、同一の一時directory祖先を示す`/var`と`/private/var`を異なるrepository identityとして比較し失敗。Linuxでは見えなかったOSのpath aliasであり、その後、信頼するrootの正規化で修正し、34314956327のnative検証が成功した。Verify 34314568570、Multi-host native 34314568601。
 
-- 2026-09-09: 独立レビューでPrepare中のheartbeat切断後も外部作用を開始できる経路を発見。永続的なeffect-started遷移の直前に検査を追加し、再接続まで作用を開始しない回帰テストが成功。
+- 2026-09-09: 独立レビューでPrepare中のheartbeat切断後も外部作用を開始できる経路を発見。永続的なeffect-started遷移の直前に検査を追加し、再接続まで作用を開始しないことを確認するテストが成功。
 - 2026-09-09: remote actionの初期テストはUI/Browserのflagが全action共通と誤って想定していた。実際のactionごとのflag定義に対応させ、local flagを変更せず修正した。初回全harnessは新規テストで失敗し、修正後の個別テストは成功。再実行はcontrollerの編集中に整形検査で失敗したため、安定した変更単位で全検査を再実行する。
 
 - 2026-09-09: baselineのunit/vet、raceテストが成功。実Dockerを使用した`repoctl test-integration`も終了コード0。`repoctl check`は、提供された日本語Planに必須の見出しがなかったためdocs-checkで失敗。両言語に不足する節を追加した。この時点では残るnative runtime baselineは未実施で、その後成功した。
 
 ## 判断の記録
 
-- 2026-09-09、ユーザー合意による対応範囲: Windowsの長いパスの挙動を確認した後、ユーザーはWSL2も含めて安全な互換性範囲に収めることを求めた。Windowsの解決後の実行ディレクトリを240 UTF-16単位以内とし、算出したsource/worktree/runtime/test/probeのパスを作用開始前に検査する。従来のWindowsの深いパスで無条件に成功する期待を、明示的な事前拒否と作用がない証拠の検査へ置き換え、Linux/macOSの深いパスの成功回帰は維持する。恒久alias、8.3名の必須化、OSのglobal設定変更は導入しない。WSLのDrvFS/9p上のstateを作成前に拒否し、Windows以外でのPE直接実行とWindowsでのwsl.exe直接実行を拒否する。信頼するwrapperをsandbox化するものではない。この決定で以前の方針の確認事項は解決し、合意した挙動のnative検証を引き続き行う。継続的に参照する判断理由を[ADR 0007](../../adr/0007-native-execution-boundaries.ja.md)に記録した。
-- 2026-09-09、過去の判断時点（上記で解決済み）: native診断で外部のCreateProcess cwd制限を確認した。その時点では対応範囲の変更に合意がなかったため、成功を求める回帰テストを残して実装を一時停止した。その後ユーザーが合意した互換性範囲により、この一時停止は解消した。
+- 2026-09-09、ユーザー合意による対応範囲: Windowsの長いパスの挙動を確認した後、ユーザーはWSL2も含めて安全な互換性範囲に収めることを求めた。Windowsの解決後の実行ディレクトリを240 UTF-16単位以内とし、算出したsource/worktree/runtime/test/probeのパスを作用開始前に検査する。従来のWindowsの深いパスで無条件に成功する期待を、明示的な事前拒否と作用がない証拠の検査へ置き換え、Linux/macOSの深いパスで従来どおり成功することを確認するテストは維持する。恒久alias、8.3名の必須化、OSのglobal設定変更は導入しない。WSLのDrvFS/9p上のstateを作成前に拒否し、Windows以外でのPE直接実行とWindowsでのwsl.exe直接実行を拒否する。信頼するwrapperをsandbox化するものではない。この決定で以前の方針の確認事項は解決し、合意した挙動のnative検証を引き続き行う。継続的に参照する判断理由を[ADR 0007](../../adr/0007-native-execution-boundaries.ja.md)に記録した。
+- 2026-09-09、過去の判断時点（上記で解決済み）: native診断で外部のCreateProcess cwd制限を確認した。その時点では対応範囲の変更に合意がなかったため、従来どおりの成功を求めるテストを残して実装を一時停止した。その後ユーザーが合意した互換性範囲により、この一時停止は解消した。
 - 2026-09-09、実装判断: createのjournalによる作用開始の記録をappの予約境界に置く。読み取り専用の事前確認で失敗した場合は作用未開始の証拠を保持でき、予約を試行した後の失敗は不確実な状態として扱える。独立レビューでlease/runtimeの確保がcallbackより後に始まることを確認した。
 
 - 2026-09-09、実装担当: workerのoperation dispatchは初期仕様では直列とし、同じleaseの2つ目のactive operationを拒否する。長時間稼働するlease自体は同時に動く。remote destroyによるactive remote testのcancelは専用protocolの将来課題とし、assignment fenceを競合させない。
@@ -569,7 +569,7 @@ HA、migration、split-host lease、endpoint tunnel、secret配送、LFS/submodu
 CASの自動GCは後続課題とする。nativeの2-worker検証はすべて、一台の物理host上で
 役割ごとにprocessを分けたものであり、別の物理機やVM間ネットワークの証拠はない。
 
-特に有効だった回帰検証は、JSON転送の正規化、予約前のjournal境界、管理情報の不変性、
+同じ不具合を見逃さないために特に有効だったテストは、JSON転送の正規化、予約前のjournal境界、管理情報の不変性、
 Windowsの実行ファイル検索と長いパス、Browser target削除の非同期反映という境界を扱った。
 クロスコンパイルだけではnative OSの挙動を検出できず、実processと修正前に失敗する
 negative testが必要だった。独立レビューでcontroller/workerの復旧とcreateのfenceを確認した。
@@ -661,7 +661,7 @@ PR #11のescaped-defect guardrailをprotocol/state boundary testへ適用。
 | M1 | local mode daemon-free/non-regression | localの全harness/raceとDocker、Podman、Android、Flutter/UI、Browser統合が成功。最終native harnessは未完了。 |
 | M2 | persistent controller identity + single authority | controller永続化・再起動、native process lock/crash解放、実TLSでのidentity保持を検証。 |
 | M3 | host ID + host-instance identityでreplacement誤adopt防止 | host-instance拒否テストとnative worker再起動時のidentity保持が成功。 |
-| M4 | production mTLS/auth、unenrolled拒否 | 実TLSで未登録証明書とworkerによるclient操作を拒否。role/host/blob ACLの負例が成功。 |
+| M4 | production mTLS/auth、unenrolled拒否 | 実TLSで未登録証明書とworkerによるclient操作を拒否。role・host・blob ACLに反する操作を拒否するテストが成功。 |
 | M5 | worker outbound only | native fixtureはoutbound接続のworkerを2process使用し、worker管理用listenerを持たない。 |
 | M6 | protocol mismatchをeffect前reject | 非互換inventory、upgrade、配置/poll拒否とworkerの実行前停止テストが成功。 |
 | M7 | controller/globalとworker/local authority分離 | controller DB、worker journal、local state DBを分離。local管理metadataの不変性を検証。 |
@@ -669,7 +669,7 @@ PR #11のescaped-defect guardrailをprotocol/state boundary testへ適用。
 | M9 | scheduler capability/capacity/host state検証 | 容量の原子的な予約、Android slot、ONLINE/capability、決定的schedulerのテストが成功。 |
 | M10 | explicit hostでもsafety bypass無し | 未登録hostとdraining hostへの明示要求を実TLSで拒否。 |
 | M11 | source aliasはcommit+bundle digest、client absolute path非使用 | commit済み複数alias bundleと固定commitのworktree lifecycleを検証。pathはsource aliasへ正規化。 |
-| M12 | corrupt/wrong source effect前fail | 不正digest/bundle、shallow/LFS/submodule、CASのsize/path負例を作用開始前に拒否。 |
+| M12 | corrupt/wrong source effect前fail | 不正digest/bundle、shallow/LFS/submodule、およびCASのサイズ上限違反・不正pathを作用開始前に拒否するテストが成功。 |
 | M13 | worker source/manifest/stack独立verify | commit済みcontrol fileの変換証明、整合した偽造metadataの拒否、JSON順序変更を検証。 |
 | M14 | global lease ID/epoch effect前persist | global IDと管理tupleがsource materialization前に予約されることをテスト。 |
 | M15 | duplicate operationでmutation再実行無し | journalの競合/重複検査と実TLSの同一ID再試行で、証明fileへの追記は1回。 |
@@ -683,7 +683,7 @@ PR #11のescaped-defect guardrailをprotocol/state boundary testへ適用。
 | M23 | worker restart existing resource/journal recover | journalの再起動/結果喪失と、nativeの稼働processを保持した再起動が成功。 |
 | M24 | controller outageでworker auto GC無し | controller outageでもendpointが稼働し、managed leaseをGC対象から除外。 |
 | M25 | local mutation/GCでcontroller-managed lease変更不可 | managed mutation/GC/UI/Browser/cancel fenceとSQLite Saveの不変性テストが成功。 |
-| M26 | remote destroyはworker cleanup proof後のみglobal RELEASED | controllerの解放証拠負例と、作用前journal証明のrestart/dry-run/不正入力テストが成功。 |
+| M26 | remote destroyはworker cleanup proof後のみglobal RELEASED | controllerがcleanup証拠や操作種別の要件を満たさない解放結果を拒否するテストと、作用前journal証明のrestart/dry-run/不正入力テストが成功。 |
 | M27 | worker local endpointをclient localと偽らない | worker応答はendpoint_scope=worker-localを表示し、native fixtureでも所有情報を検査。 |
 | M28 | test/log/artifact remote、raw shell無し | 実TLSのnamed test、冪等再試行、run/live log、artifact digest取得・上書き拒否がLinux/macOSで成功。Windows相対実行pathは修正検証中。 |
 | M29 | Android UI既存stale/device/fence維持 | Worker AppExecutorから実appのUI経路をfake Android providerで検証し、stale・digest改変snapshot、device変更、runtime不一致、managed assignmentのfenceを確認した。local実Android UI baselineも成功。 |
@@ -691,15 +691,15 @@ PR #11のescaped-defect guardrailをprotocol/state boundary testへ適用。
 | M31 | two worker concurrent lease isolation | 実2-workerで別worktree/portを使用し、片方を破棄しても他方が応答。 |
 | M32 | drainはnew placement停止のみ | 実TLS drain/undrainと安全性テストが成功し、移動・破棄を行わない。 |
 | M33 | active/stale/uncertain host remove拒否 | active/stale/uncertain assignmentがあるhostの削除を拒否し、解放証明後のみ許可。 |
-| M34 | CAS content-addressed/atomic/digest/concurrent safe | CASの同時重複writer、digest/size、原子的directory公開、破損負例が成功。 |
+| M34 | CAS content-addressed/atomic/digest/concurrent safe | CASの同時重複writer、digest/size検証、原子的directory公開、および破損した保存内容の拒否を確認するテストが成功。 |
 | M35 | caller pathをCAS authorityにしない | digestだけをCAS pathの入力とし、登録artifactの所有/path/symlink検査が成功。 |
-| M36 | client secret implicit forwarding無し | 実TLSでclient専用token不在とworker env解決を確認。helper負例も成功（Linux18.394s）。 |
+| M36 | client secret implicit forwarding無し | 実TLSでclient専用token不在とworker env解決を確認。client変数の漏洩や誤った環境変数の解決値を与え、helperがエラー終了することも確認した（Linux18.394s）。 |
 | M37 | Windows native protocol integration | Windows Go 1.26/1.27の全harnessが34320519317で成功し、派生パス・作用前拒否・WSL-UNC拒否を含む。実native role fixtureも34320519252で成功。 |
 | M38 | macOS native protocol integration | macOS Go 1.26/1.27 harnessとnative role/Browser fixtureが最終440082bのCIで成功。 |
 | M39 | Linux native protocol integration | Linux Go 1.26/1.27 harness、race/Docker integration、native role/Browser fixtureが最終440082bのCIで成功。WSLは別途未検証と明記。 |
 | M40 | real socket two-worker scheduling/outage/recovery/cleanup | 実TLSのcontroller/client/2-worker fixtureで配置、outage、再起動、復旧、cleanupを検証。 |
 | M41 | physical/VM evidenceをhonestに区別 | 同一物理host上の複数role processを使用。別machine/VMの証拠はなく、主張しない。 |
-| M42 | existing local runtime integration非回帰 | 実local Docker、Podman共存、Android Emulator、Flutter/Android UI、Browser統合が成功。 |
+| M42 | 既存local runtime integrationの動作を維持 | 実local Docker、Podman共存、Android Emulator、Flutter/Android UI、Browser統合が成功。 |
 | M43 | HA/live migration/split lease/tunnelをimplementedと宣伝しない | product/design/READMEはHA、移動、split-host lease、tunnel、remote cancel-activeを将来課題と明記。 |
 | M44 | 英日docs authority/trust/failure/recovery | product/design/ADR、architecture、README、運用文書を日英で更新しdocs/translation検査が成功。 |
 | M45 | final repoctl/docs/race/native/integration/release | 最終440082bの全CI workflowが成功（34320519317 / 34320519252 / 34320519250）。ローカル全harness/race、実runtime baseline、6ターゲットpackagingの証拠は上に記録。 |
@@ -735,7 +735,7 @@ Windowsパスの範囲を検証できた。逆方向のWindowsからWSL UNCへ�
 
 最終実装のチェックポイント`e46f807`で、ローカルの`repoctl check`と`go test -race ./...`が成功した。実release-candidate fixtureは20.385sで成功し、6種類すべてのarchiveを生成・検証してnative smokeと改変拒否の検査を行った。更新後のremote Browser/Docker/Podman E2Eは33.142sで成功した。native multi-host 34317327009とBrowser 34317326997はWindows、macOS、Linuxすべてで成功した。Verify 34317326990のWindows以外の全jobは成功したが、Windowsは両Go versionとも深いパスのsource lifecycleで失敗した。452bf4dの診断で下記の実行ディレクトリの障害を確認したため、archiveは保留する。
 
-追加証拠: 実remote Browser/Docker/Podmanが35.659s、拡張2-worker named-test/log/artifact/renewが18.907s、client/worker環境分離が18.394sで成功。`b1a7df6`で`AGENT_ENV_RELEASE_CANDIDATE=build go test ./tools/repoctl -run '^TestReleaseCandidate$' -count=1 -v -timeout=20m`が成功し、隔離したprivate source/tag fixtureを使って実6target archive、検査、native smoke、改変負例を検証した。公開tag/releaseは作成していない。`d993965`のnative multi-host CI 34314956327は3OSすべて成功。拡張fixtureの34315479224はLinux/macOSで成功し、Windowsでは子processのcwd適用前の相対実行path検索が失敗した。Windows全harnessでは300文字を超えるGit pathの追加ケースも失敗した。どちらも対応するnative検証が成功するまで失敗記録を維持する。
+追加証拠: 実remote Browser/Docker/Podmanが35.659s、拡張2-worker named-test/log/artifact/renewが18.907s、client/worker環境分離が18.394sで成功。`b1a7df6`で`AGENT_ENV_RELEASE_CANDIDATE=build go test ./tools/repoctl -run '^TestReleaseCandidate$' -count=1 -v -timeout=20m`が成功し、隔離したprivate source/tag fixtureを使って実6target archive、検査、native smoke、改変した配布物の拒否を検証した。公開tag/releaseは作成していない。`d993965`のnative multi-host CI 34314956327は3OSすべて成功。拡張fixtureの34315479224はLinux/macOSで成功し、Windowsでは子processのcwd適用前の相対実行path検索が失敗した。Windows全harnessでは300文字を超えるGit pathの追加ケースも失敗した。どちらも対応するnative検証が成功するまで失敗記録を維持する。
 
 2026-09-09の統合milestone: `6d9dd7a`（local管理境界）と`0f05d09`（controller/worker/source/CLI）を`origin/feat/multi-host-control-plane`へpush。localの全`repoctl check`と`go test -race ./...`が成功。`TestMultiHostNativeCLI`は実TLSとbuild済みbinaryで21.406sで成功し、配置、role拒否、drain、隔離、outage、controller/worker再起動、cleanupを検証した。既存Browser native/secret、Podman共存（107.695s）、実Android Emulator、実Flutter/Android UI、Docker `repoctl test-integration`も成功。Androidの初回はtemplate指定不足で失敗し、導入済みの停止中templateを明示して再実行した。host固有の前提pathは記録しない。native CIは進行中で、macOSでは上記path alias不具合を検出した。追加remote runtime E2Eの証拠を収集中。
 

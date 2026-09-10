@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/audits/repository-correctness/current-mobile.md
-source_sha256: 2a2434e8ac6888bead4b565ac232ce4c53ef0ac83706398c953270f926763324
+source_sha256: 7e5109a5c83fee72043c89a8e51fe4390ffb00a982141f48166e698ad4deaa10
 ---
 
 # Mobile領域の現在のcorrectness監査
@@ -14,11 +14,11 @@ Phase A、reviewのみ。対象`031869c8b9073b8e23bc17fbc55243666a52f557`、bran
 
 ## Phase C の対応状況
 
-以下の記述は、Phase A の固定対象で得た証拠と当時の検証不足を保存したものです。
-Phase B では mobile の 8 件をすべて採用しました。現在の分類は **ACCEPT** であり、
-後述の「未分類」「未修正」は Phase A 当時を指します。候補実装には次の検査と恒久回帰 test を追加しました。
+以下の記述は、Phase A の固定対象で得た証拠と当時の検証不足を保存したものである。
+Phase B では mobile の 8 件をすべて採用した。現在の分類は **ACCEPT** であり、
+後述の「未分類」「未修正」は Phase A 当時を指す。候補実装には次の検査と、修正した動作を繰り返し確認できるテストを追加した。
 
-| 指摘 | 実装した検査 | 回帰の証拠 |
+| 指摘 | 実装した検査 | 修正を確認するテストと判定内容 |
 | --- | --- | --- |
 | AUDIT-BOUNDARY-001 | デバイスから 2001 件を要求し、時間範囲で絞って最新 2000 件を保持し、実際の省略を明示 | `TestUILogExactTailUsesOverflowProof`: 1999/2000/2001 件と時間範囲外の追加記録 |
 | AUDIT-REDACTION-001 | redaction 後にフィールドと escape 済み snapshot/result の実バイト数を再検査し、node 順序を保持して省略を明示 | `TestUIAuditUIRedactionBounds`、`TestUIFieldBoundaryAndSerializedObservationBoundary`: 登録 artifact、保持識別情報、4096 文字と 1 MiB の直前・一致・直後 |
@@ -29,24 +29,24 @@ Phase B では mobile の 8 件をすべて採用しました。現在の分類�
 | AUDIT-BOUNDARY-002 | provider 実行と永続 run 作成前に小数秒を拒否 | `TestUIAuditFractionalLogLookback` |
 | AUDIT-LIFECYCLE-001 | 型付き preflight 失敗では完了確認状態を維持し、実際の dispatch 後の失敗では不確実性を保持 | `TestUINativePreflightThroughAppDoesNotBlockCleanup`: 失敗 run を記録後に解放成功。`TestUINativeDispatchedFailureRemainsUnconfirmed`: Home/Back/tap/swipe |
 
-ローカル検証では `go test -race ./internal/app ./internal/runtime/android ./internal/runtime/android/uihelper -run 'TestUI|TestVerify|TestLoad' -count=1` が境界・復旧 fixture 修正後に 2 回成功しました（6.122s/1.353s/1.012s と 5.675s/1.340s/1.010s）。
-初版 fixture は JSON の `log` プロパティに必要な 9 bytes と、復旧時の SDK 応答を欠いていました。
-どちらも失敗を確認して修正し、製品側の検査は緩めていません。初期サイズが上限を超える場合は、
-切り詰め flag の変更だけで 2 bytes 減る場合でも、少なくとも一つの node を省略します。
-独立レビュアーが操作後の非公開 tree hash による追加の漏えいを再現し、保守的な省略で解消を確認しました。
-候補の native 検証と全 harness の証拠は集約 ExecPlan が管理します。これらのローカル結果で
-Windows/macOS の native 挙動や過去のすべての不具合の再導入検証まで証明したとは扱いません。
+ローカル検証では `go test -race ./internal/app ./internal/runtime/android ./internal/runtime/android/uihelper -run 'TestUI|TestVerify|TestLoad' -count=1` が境界・復旧 fixture 修正後に 2 回成功した（6.122s/1.353s/1.012s と 5.675s/1.340s/1.010s）。
+初版 fixture は JSON の `log` プロパティに必要な 9 bytes と、復旧時の SDK 応答を欠いていた。
+どちらも失敗を確認して修正し、製品側の検査は緩めていない。初期サイズが上限を超える場合は、
+切り詰め flag の変更だけで 2 bytes 減る場合でも、少なくとも一つの node を省略する。
+独立レビュアーが操作後の非公開 tree hash による追加の漏えいを再現し、保守的な省略で解消を確認した。
+候補の native 検証と全 harness の証拠は集約 ExecPlan が管理する。これらのローカル結果で
+Windows/macOS の native 挙動や過去のすべての不具合の再導入検証まで証明したとは扱わない。
 
 ## 確認した不変条件の行列
 
-「新規指摘なし」は確認したソースと局所assertionが一致するという意味で、網羅的証明ではない。現在の指摘はすべてPhase Bまで未分類。既存回帰実行は過去資料に記録した。
+「新規指摘なし」は確認したソースと局所assertionが一致するという意味で、網羅的証明ではない。現在の指摘はすべてPhase Bまで未分類。過去の修正を確認する既存テストの実行結果は、過去資料に記録した。
 
 | 領域・production境界 | 確認した不変条件 | 証拠と結果 |
 | --- | --- | --- |
-| Android `Validate` / app allocation | tool、acceleration、ABI、共有ADB、path alias不備をsource/resource write前に拒否 | `app_test.go` preflightとCLI `create_store_test.go`。新規指摘なし。factory回帰はCobra dispatchを通らない。 |
+| Android `Validate` / app allocation | tool、acceleration、ABI、共有ADB、path alias不備をsource/resource write前に拒否 | `app_test.go` preflightとCLI `create_store_test.go`。新規指摘なし。factoryのテストはCobraによるcommandの振り分けを通らない。 |
 | Android `Inspect` / `Destroy` | kill/delete前にmarker、lease、tuple、PID/Job、console token、live portの一致が必要 | `lifecycle.go`とstale-marker/reused-port test。新規指摘なし。Windows再読取raceのtest不足M12は残る。 |
 | Android process/port cleanup | root消失はtree消失ではなく、認証kill後もgroup/port不在を待つ | `DestroyWaitsForPostKillTreeConfirmation`、cancel test、containmentソース。新規指摘なし。native OS race証明は別。 |
-| 共有ADB | Inspectは作成せず、非互換daemonを置換せず、lease containment外でstart | `adb.go` smart-socket preflightと対応負例。新規指摘なし。 |
+| 共有ADB | Inspectは作成せず、非互換daemonを置換せず、lease containment外でstart | `adb.go` smart-socket preflightと、非互換・不正応答の共有ADB serverに操作用ADB commandを送らないことを確認するテスト。新規指摘なし。 |
 | 混在app lifecycle | readiness期限を分離し、局所失敗後の独立cleanupを続け、全体fence喪失で停止 | `mixed_readiness_test.go`、`cleanup_siblings_test.go`、`waitReady`/`cleanup`。新規指摘なし。 |
 | Flutter build path | 明示実行file、project/祖先symlink拒否、APK regularity、終了不明時のsource保持 | `flutter.go` Validate/Buildとapp guard。新規指摘なし。外部APK実行・実toolchainはnative証拠。 |
 | Application desired state | 確認済install/reverse/launchと意図を区別し、reconcile用の実行file/directoryを保持 | `applicationConsistent`と必須field mutation test。新規指摘なし。 |
@@ -81,7 +81,7 @@ Windows/macOS の native 挙動や過去のすべての不具合の再導入検�
 
 一時overlay testは`internal/app`の`TestAuditUIRedactionBounds`。tracked sourceを変更せずGo `-overlay`でpackage testを追加し、`AUDIT_PRIVATE_SECRET=qz`、`uiFixture`、上記node数・文字列を使う。`Service.UI`後のrune数と、登録`ui-snapshot`artifactの実byte長`1<<20`以下をassertする。local overlay pathは監査担当へ伝達したが、永続文書のmachine固有依存にはしていない。
 
-既存`TestUIEvidenceRedactsEnteredAndEditableText`はsecret置換・抑制、`TestUIEditableDescriptionAndHintRedacted`はeditable各field、`TestUIInvalidCompletedCaptureFinalizesFailed`は明らかな過大入力を検証する。正常producer budgetと置換拡大、最終serialized-byte測定を独立に組み合わせていない。helper上限も秘匿化前である。Phase Aで製品修正・永続回帰は追加していない。
+既存`TestUIEvidenceRedactsEnteredAndEditableText`はsecret置換・抑制、`TestUIEditableDescriptionAndHintRedacted`はeditable各field、`TestUIInvalidCompletedCaptureFinalizesFailed`は明らかな過大入力を検証する。正常producer budgetと置換拡大、最終serialized-byte測定を独立に組み合わせていない。helper上限も秘匿化前である。Phase Aで製品修正と、修正を確認する恒久テストは追加していない。
 
 ### Escapeと同型分析
 
@@ -121,7 +121,7 @@ semantic snapshot/action/recoveryの基準は検証済source/APK digestに結び
 
 secret由来識別子をoffline照合oracleとして残さない。設定secretを含むwindow titleは秘匿化されKeyも消えるが、node Fingerprint除去はnodeSecretだけを条件にする。Java producerはwindow keyをroot ancestryへ含めてnode本人性をhashする。app entry overlayではwindow keyが消えても登録snapshotのnode fingerprintが残った。secretを含むwindow情報への入れ子依存はソースで確認。overlayは代表hashを用い、native password crackingの実行は主張しない。
 
-既存秘匿化testは平文探索のみで派生識別子を確認せず、window由来hash専用回帰を特定できなかった。検出S9、最早S2。`INVARIANT_GAP`、`NEGATIVE_FIXTURE_GAP`、`ORACLE_COUPLING`。予防策はproducer相当hashをwindow metadataから生成し、title/root secret秘匿化後のraw・normalized・result・runで派生key/hashが残らないことを検証する。secretと無関係なmetadataの安全なfingerprintだけを維持する。
+既存秘匿化testは平文探索のみで派生識別子を確認せず、windowの秘密値から派生したhashが消えることを直接確認するテストを特定できなかった。検出S9、最早S2。`INVARIANT_GAP`、`NEGATIVE_FIXTURE_GAP`、`ORACLE_COUPLING`。予防策はproducer相当hashをwindow metadataから生成し、title/root secret秘匿化後のraw・normalized・result・runで派生key/hashが残らないことを検証する。secretと無関係なmetadataの安全なfingerprintだけを維持する。
 
 ### AUDIT-PREREQUISITE-001
 

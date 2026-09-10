@@ -31,7 +31,7 @@ Run `docker compose config` before `up`; save its rendered output and hash.
 
 ## Service selection
 
-Merge `compose_services` from the resolved component closure while preserving deterministic order and eliminating duplicates.
+Merge `compose_services` from the selected stack’s root components and all components reached by recursively following their dependencies. Preserve deterministic order and eliminate duplicates.
 
 Do not assume component name equals Compose service name.
 

@@ -22,13 +22,13 @@ performed by this review slice.
 | --- | --- | --- |
 | Provider selection / identity | Compose dispatcher, Docker recorded context, Podman encoded executable/URL/fingerprint/environment, native bridge. | No fallback; Podman rechecks fingerprints before mutations. Docker pins context name, not daemon fingerprint: this review does not infer stronger protection. |
 | Ownership before destruction | Container/named-resource inspection, declared-name lookup, anonymous-volume attachment/fingerprint/current-user proof, Down re-observation. | Missing container ID authorizes Down: finding below. Named-resource and inventory empty-ID guards already exist. Concurrent engine replacement between observations is not disproved by static review. |
-| Readiness / protocol | Selected service presence, container running/health, retained-volume existence, Podman remote TCP-only checks. | Historical P04/P12 regressions pass. TCP success does not prove UDP/application readiness. Actual Machine forwarding is not claimed. |
+| Readiness / protocol | Selected service presence, container running/health, retained-volume existence, Podman remote TCP-only checks. | Historical P04/P12 tests checking retained-volume existence and TCP/UDP handling pass. TCP success does not prove UDP/application readiness. Actual Machine forwarding is not claimed. |
 | Partial cleanup / persistence | App cleanup-proof Save before Down, repeat Destroy after lost containers, scoped residual deletion, absence after rm/down. | Historical P10 app failure injection passes; no new confirmed defect in reviewed paths. Entire app saga is reviewed separately by the parent audit. |
 | Inventory completeness | Available/recorded provider union and independent native labelled traversal; missing/stale Compose frontend. | Historical P01/P13 pass, including partial errors. Count-only inspection set matching is a follow-up hypothesis, not a reproduced finding here. |
-| Policy / path relocation / ambient state | Raw Podman normalization, recursive extensions, allowed mount/network forms, file confinement, explicit environment, private escaped JSON. | Existing provider/normalization regressions pass. No native malicious-manifest experiment conducted. |
+| Policy / path relocation / ambient state | Raw Podman normalization, recursive extensions, allowed mount/network forms, file confinement, explicit environment, private escaped JSON. | Existing tests of provider normalization and host-access refusal pass. No native malicious-manifest experiment conducted. |
 | Evidence / bounds | Native diagnostic redaction before 8 KiB tail; canonical snapshot secrets and inherited secrets; archive/file/asset readers. | Release reader growth bypass confirmed. Diagnostic long-message test remains historical coverage limitation; no diagnostic leak reproduced. |
 | Assets / concurrency / path | Portable names, provenance, root/intermediate entry checks, concurrent mkdir, bounded opened reads, native publication implementation. | Existing Linux independent-process and corruption tests pass. Windows held-handle/long-path/winner tests require native baseline. Static symlink checks are not proof against arbitrary replacement races. |
-| Release source | Strict canonical tag, HEAD equality, clean index/tree, private committed checkout, filter/config isolation, final identity comparison. | Source/filter/hidden-index regressions pass. Mid-build final-identity injection remains historical coverage limitation. No public refs modified. |
+| Release source | Strict canonical tag, HEAD equality, clean index/tree, private committed checkout, filter/config isolation, final identity comparison. | Tests of pinned sources, isolated Git filters and hidden-index refusal pass. Mid-build final-identity injection remains historical coverage limitation. No public refs modified. |
 | Packaging / exact boundaries | Three members, exact eight-file set, canonical manifest, checksums, local/central ZIP, whole-second mtimes, member stream caps. | Existing archive mutation/range tests pass. Short-root path filtering and outer regularRead bound fail. Large 256 MiB exact-size allocations were not run merely to simulate the small-cap reproducer. |
 | Publication / reproducibility | Independent stage, source validation, destination-local transfer, existing-output refusal, workflow build→smoke→publish, exact artifact name. | Preservation/workflow negative tests pass. Real repeat builds and native smoke are parent baseline work; no public GitHub Release is created. |
 
@@ -60,7 +60,7 @@ performed by this review slice.
   boundary. Existing fixtures shared only longer directory examples, so neither
   helper nor real-binary test exercised this branch.
 - Preventive guardrail: structural root cases plus length-adjacent valid roots and
-  genuine/module-path positive/negative pairs. Expected future stage S2.
+  paired tests that detect genuine paths without misclassifying module paths. Expected future stage S2.
   Guard implementation/evidence: see the Phase C record below.
 
 ## AUDIT-RELEASE-002 — preflight file size does not bound the actual read

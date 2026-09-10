@@ -17,8 +17,8 @@ responsibilities.
 ## Decision
 
 Use Compose v2 as the first runtime adapter. Record an explicit unique project
-identity, absolute configuration paths, selected service closure, normalized
-configuration digest and observed resources.
+identity, absolute configuration paths, the selected services including all their
+direct and indirect service dependencies, normalized configuration digest and observed resources.
 
 At that stage, generic processes and Android were deferred until the Compose MVP
 passed. That sequencing decision is historical: their current implementations

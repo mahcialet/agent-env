@@ -635,7 +635,7 @@ A checked item means observed completion, not intention.
 - CAS uses a lowercase digest key and `<cas-root>/<digest>/data`, not the old
   `sha256/<digest>` sketch (`internal/blobstore/store.go`: `ValidDigest`, `Open`).
 - Reconciliation covers all recorded runtime providers, not Compose alone;
-  existing Android/process reconciliation regressions corroborate this boundary.
+  existing tests of Android/process reconciliation corroborate this boundary.
 - The final recorded local Browser CI run is `34320519250` at `440082b`;
   `34316121411` belongs to `53fe81a`. The completed multi-host Plan preserves the
   original evidence. Roadmap now links there rather than duplicating run details.
@@ -1321,7 +1321,7 @@ promise (Git worktree registration changes metadata), Japanese missing active-op
 conditions, an incorrect current-spec language link, native Emulator/physical-device
 ambiguity, and operation-fence/evidence wording. Architectural reconciliation now
 names all recorded runtime providers rather than only Compose; app Android/process
-reconcile regressions corroborate this existing behavior. Product review corrected
+tests of reconciliation across the recorded runtimes corroborate this existing behavior. Product review corrected
 a baseline Podman endpoint summary to TCP, preserving UDP observation without a
 TCP/UDP probe, and repaired a Japanese typo and a fenced-code language tag.
 

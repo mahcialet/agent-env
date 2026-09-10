@@ -213,6 +213,9 @@ Indexes expose both language versions without duplicating authority.
 
 ### Milestone 5 — Acceptance and regression
 
+Verify that the new translation checks meet their requirements and that existing
+repository checks continue to pass.
+
 Run:
 
 ```
@@ -300,9 +303,9 @@ Translation checkpoint (2026-09-08): all 29 required documents have full Japanes
 
 Harness checkpoint: repoctl unit tests and Go 1.26 race repetitions passed (initial ten repetitions, then three after duplicate-JSON-key regressions); Go 1.27 unit tests passed. CGO-disabled Windows/amd64 and Darwin/arm64 cross-builds passed; these do not establish native CI behavior. Tests cover missing/stale pairs, synchronized edits, CRLF, orphan/provenance errors, metadata consistency, broken Japanese links/indexes, translated plans, restricted exceptions and duplicate JSON keys.
 
-Independent harness review (2026-09-08) found three enforceability gaps: case-insensitive JSON struct field matching could bypass exact duplicate-key rejection; unbalanced metadata quotes were accepted; the shared source enumerator skipped hidden/vendor directories inside docs despite the policy covering them. Accepted all three findings for fixes and regressions before final verification. No exception was added to hide them.
+Independent harness review (2026-09-08) found three enforceability gaps: case-insensitive JSON struct field matching could bypass exact duplicate-key rejection; unbalanced metadata quotes were accepted; the shared source enumerator skipped hidden/vendor directories inside docs despite the policy covering them. Accepted all three findings for fixes and tests detecting the same omissions before final verification. No exception was added to hide them.
 
-Final local acceptance (2026-09-08): all three harness review findings were fixed with actual docsCheck regressions. `repoctl doctor`, `docs-check`, and full `check` passed with Go 1.26.8. Final repoctl race tests repeated three times and Go 1.27.1 unit tests passed; Windows/amd64 and Darwin/arm64 CGO-disabled cross-builds passed. The initial migration contains 29 required EN/JA pairs and six documented exact-path exceptions. Generated files, historical handoff and pre-migration completed plans are unchanged. Native CI remains to be verified after push.
+Final local acceptance (2026-09-08): all three harness review findings were fixed with tests detecting the same omissions through actual docsCheck calls. `repoctl doctor`, `docs-check`, and full `check` passed with Go 1.26.8. Final repoctl race tests repeated three times and Go 1.27.1 unit tests passed; Windows/amd64 and Darwin/arm64 CGO-disabled cross-builds passed. The initial migration contains 29 required EN/JA pairs and six documented exact-path exceptions. Generated files, historical handoff and pre-migration completed plans are unchanged. Native CI remains to be verified after push.
 
 Native CI acceptance (2026-09-08): all 24 checks passed at `6dbfc60` (push run `34162436866`, PR run `34162472137`). The matrix covers native Windows, macOS and Linux with Go 1.26.x/1.27.x, Linux integration/race tests and five CGO-disabled cross-build targets. This is harness evidence, not real Android SDK/Emulator validation on every platform.
 

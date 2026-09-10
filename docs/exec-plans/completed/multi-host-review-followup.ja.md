@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/exec-plans/completed/multi-host-review-followup.md
-source_sha256: 04157a380fd1131b9cf143bb3b33b982b24c6c6517ec74bdad5a69018c9845af
+source_sha256: 22a8131d72067a850efa837bf5881d6ca0c185e769b1a1bc5ab9e597fe2e0023
 ---
 
 # PR 12のcontrol-planeレビューに対応する
@@ -26,14 +26,14 @@ native runtimeの所有権と保守的なcleanup保証を維持し、PR 12の7�
 - [x] active操作があるhostの削除と、削除後の新規操作を拒否する。
 - [x] worker登録の恒久エラーを再試行し続けない。
 - [x] 作用開始後の全create失敗で不確実性を保持し、安全な後続cleanupを可能にする。
-- [x] 対象回帰・全harness/race・native CIを実行し、統合差分をレビューする。
+- [x] 指摘された不具合を再検出するテスト・全harness/race・native CIを実行し、統合差分をレビューする。
 - [x] 修正をpushし、対応済みthreadへ返信してResolveし、本Planを日英でarchiveする。
 
 ## 想定外の発見
 
-一部のコメントは短いため、文面だけでなく実装と既存契約から具体的な失敗と回帰条件を確認する。
+一部のコメントは短いため、文面だけでなく実装と既存契約から具体的な失敗と、同じ不具合を検出するための条件を確認する。
 
-修正前の回帰検証で、別processのowner変化、容量超過がTLS設定まで進む挙動、未完了操作を持つ
+修正前の不具合再現テストで、別processのowner変化、容量超過がTLS設定まで進む挙動、未完了操作を持つ
 hostの削除、期限切れ処理の欠落、恒久的な登録拒否の再試行、曖昧なcreateのfailed判定、worker
 journalへの平文入力受け入れを再現した。独立レビューでは過去の不正TTLによる起動失敗も再現した。
 過去の記録の移行だけは元のcreate時刻と既定TTLを使い、不正な過去のrenewを無視する。
@@ -71,7 +71,7 @@ product契約、ADR 0006/0007の責務境界と移植性要件を維持する。
 ## 作業計画
 
 CLI、controller、workerの担当ファイルを分け、rootが統合する。可能な範囲で修正前に失敗する
-回帰を追加する。TTLと非対応のremote text入力について日英の契約を更新する。
+同じ不具合を検出するテストを追加する。TTLと非対応のremote text入力について日英の契約を更新する。
 統合後にrepository harnessと該当するnative/runtime検査を実行し、各threadへの返信に
 具体的な修正と検証の証拠を対応付ける。
 

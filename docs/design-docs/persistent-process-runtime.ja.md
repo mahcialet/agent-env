@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/design-docs/persistent-process-runtime.md
-source_sha256: b0b1657a8331aafa079292ae5d12863c13dac2f9fb0c74aec972ab8f4a4cca54
+source_sha256: 6652d970269410851d392417d5189b3adf00833bff4d23736476e0a73c6bb1ec
 ---
 
 # 常駐プロセスのlifecycle設計
@@ -107,6 +107,8 @@ App は `runtime_port` を共通の解決済み endpoint 表現へ変換しま�
 
 ## 検証
 
-Windows・macOS・Linux でのネイティブ統合、クラッシュからの復旧、兄弟 lease の存続、
-起点プロセスの所有権が不確かな場合の回帰検証が必要です。
-cross-build は追加の証拠にとどまり、ネイティブ実行の代わりにはなりません。
+Windows・macOS・Linux の各OS上で統合テストを実行する必要があります。
+クラッシュから復旧できなくなること、別の lease まで終了させてしまうこと、
+起点プロセスの所有権を確認できないプロセスツリーを安全に扱えなくなることを検出するため、
+これらの挙動を確かめるテストを維持します。
+cross-build は追加の証拠にとどまり、各OS上での実行の代わりにはなりません。

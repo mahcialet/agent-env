@@ -66,8 +66,8 @@ Resource ownership checks remain necessary.
 
 ### Dynamic endpoints and reachability
 
-Both providers apply the existing host policy before creating resources. Only the
-selected service closure starts. Fixed host ports remain rejected; dynamic
+Both providers apply the existing host policy before creating resources. Only the selected services
+and all their direct and indirect service dependencies start. Fixed host ports remain rejected; dynamic
 endpoints require observed mappings. The common snapshot retains published port
 `0`; Podman receives a private copy with that field omitted and `host_ip` preserved,
 requesting an engine-assigned port without widening the loopback binding. For a

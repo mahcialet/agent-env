@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/design-docs/compose-providers.md
-source_sha256: 0f55afe683c0effb8a8298ad7a013bc82b02364d533fd42e31ef3689388f7dfb
+source_sha256: 00b6c5bd67776224227749429bc6e4c5b19d2fe2c24740e0372670075b001fc2
 ---
 
 [English（翻訳元）](compose-providers.md)
@@ -46,16 +46,18 @@ password、機密の環境変数値をregistry metadata、log、commitする証�
 podman-composeはPodmanの子processを起動する。現在のagent-env実行ファイルに実装した
 native bridgeが、その子processへ固定したPodmanのglobal引数を渡す。これによりproviderと
 直接のengine観測が同じ経路を使う。実行にはnativeの引数配列と既存のexecx process境界を
-使用し、bridgeを生成shell scriptとして実装しない。endpoint解析とargv/envの正確な動作は、
-空白や非ASCII文字を含むpathを含めてnativeの回帰検証で証明する必要がある。
+使用し、bridgeを生成shell scriptとして実装しない。
+接続先の解析と引数・環境変数の受け渡しが正確に保たれることを、対象OS上のテストで
+証明する必要がある。空白や非ASCII文字を含むパスも対象にする。
+provider経由の呼び出しとengineへの直接の呼び出しで、接続経路や引数が食い違う変更を検出するためである。
 
 ## 共通configと実観測
 
 ### 設定の正規化と provider による再解析
 
 Dockerの正規化済みJSONとpodman-composeの正規化済みYAMLを同じhost-policy modelへ
-入力する。作用の前にpolicyを適用し、選択したservice/resourceの到達可能な依存関係閉包を
-digestとともにcanonical JSONで記録する。podman-composeが変更操作のsnapshotを再解析
+入力する。作用の前にpolicyを適用する。選択したサービスと、その直接・間接の依存先サービス、
+およびそれらが参照するnetwork、volume、config、secretだけを、digestとともにcanonical JSONで記録する。podman-composeが変更操作のsnapshotを再解析
 する前に、private copyのliteralなdollar記号をescapeし、固定値を再展開させない。
 同じprivate copyで、記録portがzeroの場合だけ`published`を省略し、`host_ip`は保持する。
 Podmanは指定したloopback制限のまま動的portを割り当てる。canonical設定とdigestは変えない。

@@ -3,18 +3,18 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/audits/repository-correctness/historical-corpus.md
-source_sha256: afd5b94b91c9db629ec79dbbed6e3a1330ff4d24d4eb46205eea32e30b4041cc
+source_sha256: 1bf70bafaedb463c245306baf89cd7933df5bdcffe1f5c3af9908beb8b0f80c8
 ---
 
 # 過去指摘の全体索引と見逃し分析
 
 [English](historical-corpus.md) · [監査索引](index.ja.md)
 
-固定対象に存在する英語の完了 Plan 全20件を確認した。日本語版は翻訳として扱い、別の指摘件数には数えない。後続レビュー Plan に加えて feature Plan 内の独立レビューと発見も調べた。各付録には重要な指摘、元の記録、現行実装入口、回帰テストの実際の assertion と限界を示す。元資料にない Thread ID は作らない。PR #5 の feature Plan には後続レビューがないため、外部コメント24件を補完した。全182行（mobile77、MVP/process/browser56、Compose/release42、文書7）を記録した。まとめた行数は個別 PR コメントの件数とは異なる。
+固定対象に存在する英語の完了 Plan 全20件を確認した。日本語版は翻訳として扱い、別の指摘件数には数えない。後続レビュー Plan に加えて feature Plan 内の独立レビューと発見も調べた。各付録には重要な指摘、元の記録、現行実装入口、修正を確認するテストが実際に判定する条件と、その限界を示す。元資料にない Thread ID は作らない。PR #5 の feature Plan には後続レビューがないため、外部コメント24件を補完した。全182行（mobile77、MVP/process/browser56、Compose/release42、文書7）を記録した。まとめた行数は個別 PR コメントの件数とは異なる。
 
 ## 全 Plan 一覧
 
-| 完了 Plan | 重要な指摘と現行回帰テストの対応 | 適用 |
+| 完了 Plan | 重要な指摘と、修正を確認する現行テストの対応 | 適用 |
 | --- | --- | --- |
 | [android-emulator-lease](../../exec-plans/completed/android-emulator-lease.md) | [history-mobile](history-mobile.ja.md) | 適用。現行製品の動作または有効な検証手段。 |
 | [android-emulator-review](../../exec-plans/completed/android-emulator-review.md) | [history-mobile](history-mobile.ja.md) | 適用。現行製品の動作または有効な検証手段。 |
@@ -51,7 +51,7 @@ source_sha256: afd5b94b91c9db629ec79dbbed6e3a1330ff4d24d4eb46205eea32e30b4041cc
 | S7/S8 | 修正した呼出し元だけを見て別の利用箇所を逃す。REVIEW_CHECKLIST_GAP。 | 契約の全呼出し元を検索し、作用・証拠の境界で合成検証する。繰り返すレビュー指摘が本監査の理由であり、個人の意図は推測しない。 |
 | S9 | 監査で残存・再発を発見。 | 修正前に再現を残し、修正後に独立再レビュー。将来の不具合全廃を保証しない。 |
 
-各分類は付録の記録に基づき、資料が足りない検出機会を断定しない。Windows の2回目 PID 読取、Java producer の完全性・fingerprint、process readiness と browser 選択の一部、release の後段永続化失敗には直接回帰の不足があり、製品不具合と区別する。無条件に ACCEPT 指摘へ数えない。広い防止策を今回の修正外に残す場合は Phase B でリスクと後続作業を記録する。共通指示の自動変更は提案しない。
+各分類は付録の記録に基づき、資料が足りない検出機会を断定しない。Windows の2回目 PID 読取、Java producer の完全性・fingerprint、process readiness と browser 選択の一部、release の後段永続化失敗には問題の条件を直接作って動作を確認するテストが不足しており、製品不具合と区別する。無条件に ACCEPT 指摘へ数えない。広い防止策を今回の修正外に残す場合は Phase B でリスクと後続作業を記録する。共通指示の自動変更は提案しない。
 
 ## 遅れて確認した外部commentの追加
 

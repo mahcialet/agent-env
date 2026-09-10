@@ -15,7 +15,7 @@ Address PR #7 thread PRRT_kwDOURHsR86gHJ1z: allow a new release output inside a 
 ## Progress
 
 - [x] 2026-09-08: Inspected clean branch and the unresolved review thread.
-- [x] 2026-09-08: Real six-target regression failed before the fix with the clean-tree diagnostic.
+- [x] 2026-09-08: The real six-target worktree-output test failed before the fix with the clean-tree diagnostic.
 - [x] 2026-09-08: External construction and destination-local publication pass real-candidate, cleanup, source-guard, harness and repoctl race checks.
 - [x] 2026-09-08: Pushed fix 6912ec6, replied in discussion_r3954818214 and confirmed the thread resolved.
 
@@ -31,7 +31,7 @@ The first attempt reused an older candidate and correctly failed identity verifi
 
 ## Outcomes & Retrospective
 
-Completed on 2026-09-08. Commit `6912ec6` fixes non-ignored worktree output without excluding source changes from cleanliness checks. The real regression fails before and passes after; existing bytes, source guards and owned cleanup remain covered. Independent read-only review found no confirmed material regression. The single reviewed thread was answered and resolved. Both language versions are archived; hosted CI is separate from the successful local evidence recorded below.
+Completed on 2026-09-08. Commit `6912ec6` fixes non-ignored worktree output without excluding source changes from cleanliness checks. The test that writes real output inside the worktree fails before and passes after; existing bytes, source guards and owned cleanup remain covered. Independent read-only review found no confirmed material regression. The single reviewed thread was answered and resolved. Both language versions are archived; hosted CI is separate from the successful local evidence recorded below.
 
 ## Context and Orientation
 
@@ -39,11 +39,11 @@ Expected branch: `feat/standalone-release-finalization`. Previous delivery: [rel
 
 ## Plan of Work
 
-Add the real-output regression first, move construction staging, and preserve existing destinations and failed-build cleanup.
+Add the test of real output inside the worktree first, move construction staging, and preserve existing destinations and failed-build cleanup.
 
 ## Concrete Steps
 
-Run the candidate regression before and after the fix, repoctl check and race. Commit and push only scoped changes; reply with evidence and resolve the reviewed thread.
+Run the candidate output-location test before and after the fix, repoctl check and race. Commit and push only scoped changes; reply with evidence and resolve the reviewed thread.
 
 ## Validation and Acceptance
 

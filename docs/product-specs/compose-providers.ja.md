@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/product-specs/compose-providers.md
-source_sha256: cf4f21cbedb3e7a8ca8809649272510ad247b4e14cdc5b85a1c17b8781328f86
+source_sha256: 6ca9c05be7dab7eb3e8c50803d0e362e409956c1fff1ba48ca6f2bc13aea5a50
 ---
 
 [English（翻訳元）](compose-providers.md)
@@ -65,8 +65,8 @@ Podman、podman-compose、およびそれらの導入に必要な依存関係は
 
 ### 動的な接続先と到達確認
 
-両プロバイダーともリソース作成前に既存のホストポリシーを適用する。選択したサービスの
-依存関係閉包だけを起動する。固定ホストポートは引き続き拒否し、動的接続先には
+両プロバイダーともリソース作成前に既存のホストポリシーを適用する。選択したサービスと、
+その直接・間接の依存先サービスだけを起動する。固定ホストポートは引き続き拒否し、動的接続先には
 観測した対応付けを使う。共通スナップショットには公開ポートの`0`を保持し、Podmanへ渡すプロバイダー専用のコピー
 ではそのフィールドだけを省略して`host_ip`を保持する。これによりループバックへのバインドを広げずに
 エンジンによるポート割り当てを要求する。記録済みリモート URLを使う場合、TCP 対応付けには

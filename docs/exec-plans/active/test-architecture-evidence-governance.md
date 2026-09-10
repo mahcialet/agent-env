@@ -11,7 +11,7 @@ workstreams:
   - repoctl
   - documentation
 owner: maintainers
-last_verified: 2026-09-10
+last_verified: 2026-09-11
 ---
 
 # Audit test architecture and evidence governance
@@ -30,7 +30,7 @@ Starting revision: `cbd84ed1d2ef4456b8a95db215461bd3d726fe59`, the `master` merg
 
 Audit the repository's tests as a system in their own right, repair test architecture defects, and strengthen agent instructions so that passing tests cannot be presented as stronger evidence than they actually provide.
 
-The immediate trigger is a Browser/CDP regression test whose mock server continued executing after client cancellation while the test read callback-owned state without synchronization. The production regression was intended to test a concurrency invariant, but the test fixture itself relied on another hidden ordering assumption.
+The immediate trigger is a test intended to detect recurrence of a Browser/CDP defect. After client cancellation ended the client wait, the mock server callback could continue executing, but the test read callback-owned state without synchronization. The test was meant to detect an invalid ordering assumption in production code. Yet it relied on another such assumption: that the server callback had finished when the client wait ended.
 
 This Plan therefore does not ask only:
 
@@ -131,6 +131,7 @@ Out of scope:
 - [x] Run final full race/harness checks (2026-09-10).
 - [x] Run required native Windows/macOS/Linux validation, including Q14 follow-ups (2026-09-10).
 - [x] Complete bilingual reader and semantic parity review; resolve two JA omissions and record the withdrawn M5 finding (2026-09-10).
+- [x] Clarify rejection/error-test terminology in both languages without changing recorded evidence (2026-09-11).
 - [ ] Complete retrospective and archive only after merge into `master`.
 
 
@@ -142,7 +143,7 @@ Out of scope:
 
 - Baseline docs-check exposed stale draft metadata; the kickoff migrated it to the current schema.
 - Windows guardian polling ignored every observation error, hiding the exact sharing violation propagated by the runtime caller. The handle owner is unknown; the fix only treats a sharing conflict on a verified empty Job as still pending.
-- The old truncated-snapshot negative passed an injected unrelated early failure. The strengthened oracle rejects the identical injection before counting the expected boundary as exercised.
+- The old test that checks refusal to confirm node absence from a truncated snapshot passed an injected unrelated early failure. The strengthened oracle rejects the identical injection before counting the expected boundary as exercised.
 
 Record findings that change the audit model, not only individual test defects.
 
@@ -202,7 +203,7 @@ Twelve accepted ledger entries are test-only defects; Q08 affects production
 completion observation and its test oracle. CDP and app/process helpers had the
 largest concentration of lifecycle and reachability gaps. Earlier repeat-pass
 results did not prove callback completion or cross-platform socket semantics.
-Targeted invariant regressions are executable controls; evidence classification,
+Tests of specific conditions that must remain true can be executable controls; evidence classification,
 bounded sibling review and language meaning remain review disciplines. Q09,
 unexposed inline client-reader joins, unforced schedules and environments not
 executed remain explicit limits rather than claims of exhaustive correctness.
@@ -746,8 +747,8 @@ Any durable human-facing documentation change requires corresponding English/Jap
 The rubric below was frozen before repairs. Classify evidence by what it proves:
 forced invariant schedules; direct native/integration behavior; race/static tooling;
 stability repetitions; compilation/structural checks. Repetition never upgrades
-the evidence class. For each negative oracle, ask whether an earlier unrelated
-refusal could satisfy it. Cancellation notification is not completion evidence.
+the evidence class. For each test that checks an expected rejection or error, ask whether an earlier
+unrelated refusal could satisfy its assertions. Cancellation notification is not completion evidence.
 
 Baseline at PR #14 merge `cbd84ed1d2ef4456b8a95db215461bd3d726fe59`:
 `repoctl check` passed unit tests and vet but rejected the supplied Plan dependency
@@ -762,8 +763,8 @@ Bounded inventory and finding ledger, before repairs:
 
 | ID / owner | Resources, completion, shared state and failure surface | Disposition / invariant, escape, earliest detection and prevention | Evidence |
 | --- | --- | --- | --- |
-| Q01 CDP fixtures | Six HTTP/WS fixture families own hijacked handlers and client reader; only mockBrowser joins handler; callback state uses atomics/mutexes | ACCEPT: join owned work before teardown; sibling lifecycle gap escaped helper review; share explicit admission/close/join ownership | Source inspection; forced regression pending |
-| Q02 CDP negatives | Cancellation, overflow, truncated AX and frame-mutation paths accept generic errors or omit effect checks | ACCEPT: intended failure stage must be reached; unrelated early refusal can pass; review oracle before implementation, add stage and cause checks | Source inspection; fault controls pending |
+| Q01 CDP fixtures | Six HTTP/WS fixture families own hijacked handlers and client reader; only mockBrowser joins handler; callback state uses atomics/mutexes | ACCEPT: join owned work before teardown; sibling lifecycle gap escaped helper review; share explicit admission/close/join ownership | Source inspection; test forcing the problematic ordering pending |
+| Q02 CDP rejection/error tests | Cancellation, overflow, truncated AX and frame-mutation paths accept generic errors or omit effect checks | ACCEPT: intended failure stage must be reached; unrelated early refusal can pass; review oracle before implementation, add stage and cause checks | Source inspection; fault controls pending |
 | Q03 CDP load wait | Atomic evaluation counter is sound, actual load cancellation overlap is not forced; existing 50ms cleanup observation is timing evidence | ACCEPT: force evaluation entry and cancellation, distinguish completion from notification; schedule/oracle design is earliest control | Source inspection |
 | Q04 app command fixtures | SQLite/temp resources outlive success-path done receive but early Fatal can skip cancellation/release/join; cancellation, UI, browser and readiness siblings | ACCEPT: cleanup must own operation on failure paths; helper API review should establish completion before DB cleanup | Source inspection |
 | Q05 execx/process fixtures | Native subprocess stop/wait/Destroy errors ignored in cleanup; detached fixtures vary in fallback containment | ACCEPT: failed termination must fail validation; cleanup oracle review, inject failed completion | Source inspection |
@@ -834,17 +835,17 @@ patterns alone do not establish an invalid oracle.
   the tested leaf lifetime, not disappearance of arbitrary descendant trees.
   Affected full Linux race: app 47.223s; execx 6.603s.
 - Q07: Android TCP fixtures close admission and accepted connections, then join
-  handlers. A close-listener-only overlay fails the partial-request regression
+  handlers. A close-listener-only overlay fails the test with a partially sent request
   (“cleanup returned with a partial-request handler still active”). Normal focused
   tests pass; full Android race passes (2.600s). Fixed-port suite isolation remains
   a harness constraint: run these suites serially, do not relax port ownership.
-- Q08: deterministic Windows DELETE-handle regression proves the sharing-conflict
+- Q08: deterministic test holding a Windows DELETE handle proves the sharing-conflict
   injection before checking pending empty-Job state and release-to-absence. Bad
   proof and other read failures remain refused. Windows amd64 cross-compilation
   passes; native execution and native fail-before remain pending CI.
 
-Mechanical-control decision: use the above executable lifecycle/reachability
-regressions in existing harness/native/race jobs. Do not add prose/sleep/count
+Mechanical-control decision: run the above tests of operation completion and
+reachability in existing harness/native/race jobs. Do not add prose/sleep/count
 scanners that cannot distinguish evidence classes semantically.
 
 Remaining scope limits: inline CDP Observe fixtures join server handlers but do
@@ -869,7 +870,7 @@ registry regardless of returned CLI JSON and preserves recovery state when
 cleanup cannot be confirmed. No global discovery/prune authorizes destruction.
 No-daemon controls cover missing/malformed response, wrong ID, incomplete state,
 destroy error and corrupt registry (focused CLI race 1.282s). The real Docker
-lost-response regression verifies live containers before and absence after
+test reproducing lost CLI output verifies live containers before and absence after
 cleanup; its native result is pending below. No old-code Docker fail-before is
 claimed merely because the new helper API was absent.
 
@@ -878,16 +879,16 @@ review. The supplied Japanese Plan omitted the general-purpose model-checker
 non-goal and the behind-master recovery step; both were restored. The reviewer rechecked and withdrew the M5 omission: all three fields were
 already present in the Japanese schema at review time.
 
-Q12 (ACCEPT before repair): Android UI companion symlink negative uses an empty target or invalid metadata. An unrelated missing-file/source-mismatch refusal can pass without proving symlink rejection. Invariant: start from valid companion artifacts, confirm success, then isolate directory/file symlinks and assert the intended refusal. Earliest prevention: negative fixture/oracle design; test-only UNREACHED_EFFECT, not a demonstrated product bypass.
+Q12 (ACCEPT before repair): The Android UI companion test for symlink rejection uses an empty target or invalid metadata. An unrelated missing-file/source-mismatch refusal can pass without proving symlink rejection. Invariant: start from valid companion artifacts, confirm success, then isolate directory/file symlinks and assert the intended refusal. Earliest prevention: fixture and assertion design for rejection tests; test-only UNREACHED_EFFECT, not a demonstrated product bypass.
 
 Q12 evidence: replacing directory/file Lstat with Stat by overlay passes the
-original symlink negative. The strengthened valid-artifact controls reject that
+original test for symlink rejection. The strengthened valid-artifact controls reject that
 same fault (directory, metadata and APK symlinks accepted). Normal uihelper tests
 pass. Relative links keep file targets inside the valid companion root, avoiding
 an unrelated root-escape refusal. The corpus contains 195 baseline test files in
 28 package directories; three owned fixture files bring the current total to 198.
 UI helper/Android UI tests use synchronous provenance/payload/dispatch fixtures;
-the additional negative-fixture audit yielded Q12. Process-runtime native
+the additional audit of fixtures for rejection tests yielded Q12. Process-runtime native
 immediate-exit inspection is the direct caller that exposed Q08.
 
 Local validation checkpoint: `repoctl doctor` and `repoctl check` passed on Linux
@@ -941,7 +942,7 @@ Post-Windows-correction independent technical review found no additional defect;
 
 Post-correction `repoctl check` passed all stages before the next native CI attempt.
 
-Q13 (ACCEPT investigation before repair): e558891 Verify push run34421905630 integration job102698956780 failed `TestRemoteCreateNearManifestLimitRoundtrip` after62.02s with controller capacity/no online compatible host. This is a newly observed CLI fixture failure, not a proven manifest transport regression. Investigate host-registration freshness relative to expensive bundle preparation and sibling fixtures. Earliest prevention: explicit prerequisite lifetime contract and a forced stale-host control; do not inflate TTLs or hide the failed run with a rerun.
+Q13 (ACCEPT investigation before repair): e558891 Verify push run34421905630 integration job102698956780 failed `TestRemoteCreateNearManifestLimitRoundtrip` after62.02s with controller capacity/no online compatible host. This is a newly observed CLI fixture failure, not proof that a previous change broke manifest transport. Investigate host-registration freshness relative to expensive bundle preparation and sibling fixtures. Earliest prevention: explicit prerequisite lifetime contract and a forced stale-host control; do not inflate TTLs or hide the failed run with a rerun.
 
 Q13 source evidence: registration precedes another near-4MiB Build plus blob upload inside flags.create; Online expires30s after last_seen and the fixture never heartbeats. The PR integration job102698969153/run34421909744 reproduced capacity failure after61.95s. The exact CI heartbeat age was not logged. Fix the liveness contract with an owned heartbeat and forced offline/refresh control, not the controller TTL. Real multi-host fixtures already run Worker.Run heartbeats; direct scheduler tests intentionally test stale hosts and must remain unchanged.
 
@@ -986,3 +987,339 @@ These CI results supplement the forced-fault controls above; they do not prove
 unforced schedules. This reconciliation changes only the bilingual Plan.
 Recheck its resulting HEAD checks and current-HEAD human approval before merge.
 The Plan remains active under guarded/manual fallback until merge and archive.
+
+
+### Repository terminology follow-up (2026-09-11)
+
+The user requested implementation-grounded clarification of the remaining
+Japanese rejection-test shorthand across 23 documents (67 occurrences): five
+guidance/design documents, nine audit documents and nine completed Plans.
+This is documentation maintenance under EP-QUAL-001, on its existing branch.
+The earlier local clarification of this active Plan remains part of the change.
+
+Decision: inspect the referenced tests and implementation before naming the input,
+expected refusal/error or retained state. Preserve historical revisions, commands,
+results, pending work and native-evidence limits in completed Plans; editorial
+clarification does not rerun or upgrade historical evidence. Update the corresponding
+English wording and review parity before refreshing translation hashes.
+
+- [x] Reconcile all 67 occurrences with available repository evidence and review the 23 bilingual document pairs; retain the A15 limitation below (2026-09-11).
+- [x] Run documentation/Plan checks and record the inspected evidence and limitations (2026-09-11).
+
+The following ledger covers all 23 documents; AGENTS/QUALITY and ARCHITECTURE/ADR share rows.
+Audit slugs refer to `docs/audits/repository-correctness/`; completed slugs refer to
+`docs/exec-plans/completed/`. Both language files were edited.
+
+| Document | Inspected repository evidence | Clarified meaning |
+| --- | --- | --- |
+| AGENTS / QUALITY | `internal/browser/cdp/fixture_lifecycle_test.go` | Reach the tested condition and discriminate the returned cause. |
+| ARCHITECTURE / ADR 0005 | `tools/repoctl/main.go`; `tools/repoctl/main_test.go` | Deliberately forbidden imports, including nested Flutter packages. |
+| design-docs/browser-cdp-automation | `internal/config/browser.go`; `internal/config/browser_test.go` | Reject missing bindings and invalid protected switches. |
+| audits/current-compose-release | `tools/repoctl/release.go`; `tools/repoctl/release_path_test.go` | Detect real checkout paths without flagging module paths. |
+| audits/current-process-browser | `internal/browser/cdp/client_test.go`; `internal/browser/cdp/actions.go`; `internal/cli/browser_native_test.go` | Reject identity mismatch and targets obscured by overlay elements. |
+| audits/supplemental-cli | `internal/cli/browser_native_test.go` | Check required output and absence of misleading output after successful mutations. |
+| audits/current-control-plane | `internal/app/readiness.go`; `internal/app/readiness_safety_test.go` | Unconfirmed termination/output stops retries and preserves cleanup barriers. |
+| audits/current-mobile | `internal/runtime/android/adb.go`; `internal/runtime/android/adb_test.go` | Do not send operational ADB commands after incompatible/malformed server responses. |
+| audits/history-mobile | `internal/runtime/android/adb_test.go`; `internal/app/application_identity_test.go` | Requirement-specific identity/path/environment failures and no-effect assertions. |
+| audits/history-process-browser | `internal/app/plan_process_test.go`; `internal/app/browser_review_test.go`; `internal/execx/managed_windows_test.go` | Secret literals, changed manifests and native identity checks; retain helper-only limits. |
+| audits/documentation | `tools/repoctl/translation_review_test.go`; `tools/repoctl/fragment_audit_test.go`; `tools/repoctl/main.go` | Missing/hidden links, invalid translation exceptions and fake heading targets. |
+| audits/matrix | `internal/browser/cdp/supplemental_audit_test.go`; `internal/browser/cdp/snapshot_test.go`; `internal/browser/cdp/snapshot.go` | Changed checked/pressed state, navigation and the preceding subsystem checks. |
+| completed/persistent-process-runtime | `internal/execx/detached.go`; `internal/execx/managed_test.go`; `internal/execx/managed_windows_test.go`; `tools/repoctl/main_test.go` | Observation/termination with invalid identity, PID reuse and forbidden imports. |
+| completed/android-ui-observer | `internal/app/ui.go`; `internal/app/ui_test.go` | UI refusal/failure behavior and out-of-range coordinates. |
+| completed/browser-cdp-automation | `internal/config/browser_test.go`; `internal/browser/cdp/client_test.go`; `tools/repoctl/main_test.go` | Profile violations, controlled transport mismatches and forbidden dependencies. |
+| completed/flutter-android-runtime | `internal/config/application_test.go`; `internal/app/applications_test.go`; `internal/app/application_identity_test.go`; `internal/runtime/android/application_test.go`; `tools/repoctl/main_test.go` | Invalid manifests, unconfirmed termination, evidence/launch failures and forbidden dependencies. |
+| completed/standalone-release-finalization | `tools/repoctl/release_source.go`; `tools/repoctl/release_source_test.go`; `tools/repoctl/release_e2e_test.go`; `tools/repoctl/release_workflow_test.go` | Invalid release inputs, modified archives and publication-gate bypass mutations. |
+| completed/standalone-distribution | `tools/repoctl/release_source_test.go` | Git mismatch/dirty input rejection and private checkout isolation. |
+| completed/multi-host-control-plane | `internal/controlplane/server/server_test.go`; `internal/controlplane/store/store_test.go`; `internal/blobstore/store_test.go`; `internal/remotesource/package_test.go`; `internal/cli/multihost_integration_test.go` | ACL, cleanup proof, CAS/source validation and helper environment-error controls. |
+| completed/repository-correctness-audit | `internal/browser/cdp/supplemental_audit_test.go`; `internal/browser/cdp/snapshot_test.go`; `tools/repoctl/fragment_audit_test.go` | Defect reproduction, incomplete Browser observations and fragment checks; Android A15 limit below. |
+| completed/repository-correctness-review | `internal/browser/cdp/page_create_review_test.go`; `tools/repoctl/fragment_audit_test.go` | Missing target type cannot prove absence; valid/invalid heading anchors. |
+
+
+Review corrected three misleading candidate phrasings: successful CLI mutations
+must not become failed-operation scenarios; completed Windows Jobs can correctly
+report absence despite historical PID reuse; AGENTS now requires reaching the
+tested condition, not performing a forbidden effect. Independent changed-passage
+review covered the five guidance/design pairs and the prior active-Plan edits;
+the integrating editor reviewed the audit/completed-Plan changes.
+
+Limitation: the dedicated Android partial/truncated-wait fixture behind historical
+A15 was not directly identified. Its original historical description remains,
+separate from the directly inspected Browser absence tests. Past CI durations and
+OS acceptance were preserved, not rerun or independently recertified.
+
+
+Validation for this documentation change: `repoctl docs-check`, `repoctl plans check` (three Plans valid) and `git diff --check` passed. The intermediate
+documentation/Plan checks rejected translation hashes while those pairs
+were still being edited; after parity review and hash updates they passed.
+All 48 changed files are Markdown. Comparing inline code, link targets and
+headings against HEAD found no differences outside the intentionally extended
+active Plan. The repository Markdown search found no remaining Japanese shorthand
+occurrences from the 67-entry inventory.
+
+Focused current-source tests passed on Linux Go 1.27.1:
+
+```text
+go test ./tools/repoctl ./internal/config ./internal/browser/cdp -run '^(TestArchitectureBoundaries|TestBrowserManifestContract|TestBrowserManifestNegativeFixtures|TestBrowserRequiresProcessRuntime|TestBrowserAbsentPreservesLegacyCanonicalShape|TestFixtureCancellationErrorDiscriminatesReturnedCause)$' -count=1
+```
+
+Results: repoctl 0.021s, config 0.016s, CDP 0.003s. This supports the inspected
+guidance examples; it is not a new full-suite or native acceptance claim.
+
+
+### Dependency terminology follow-up (2026-09-11)
+
+The next requested terminology pass covers 18 occurrences in 14 Japanese
+documents and their English counterparts. Preserve the earlier uncommitted
+editorial changes. This remains documentation maintenance under EP-QUAL-001.
+
+Decision: distinguish component selection from Compose service selection and
+resource retention. `internal/stack/resolve.go` includes roots plus every direct
+and indirect `DependsOn` dependency in deterministic order. `policy.Services`
+similarly follows Compose `depends_on`; `pruneConfig` then keeps resources
+referenced by the resulting services. Do not describe resource retention as
+starting arbitrary additional services, or omit the roots from the selected set.
+
+- [x] Complete the 14 bilingual document revisions and review their evidence/parity (2026-09-11).
+- [x] Run focused resolver, policy, Compose and application tests (2026-09-11).
+- [x] Complete documentation/Plan checks and preserve the validation scope (2026-09-11).
+
+Focused validation on Linux Go 1.27.1:
+
+```text
+go test ./internal/stack ./internal/policy ./internal/runtime/compose ./internal/app -run '^(TestClosure|TestDeterminismAndNoMutation|TestSelectedClosureAndHazards|TestRenderSelectedClosureAndPolicy|TestPruneRemovesUnselectedCleanupTargets|TestMobilePlanStackClosure|TestPlanClosureAndNoAllocation)$' -count=1
+```
+
+All four packages passed (stack 0.005s, policy 0.002s, Compose 0.002s, app 0.010s).
+This checks current selection/pruning examples; it does not repeat historical
+native Podman or Flutter acceptance.
+
+
+Coverage: ARCHITECTURE, QUALITY, roadmap, ADR 0003; design documents
+compose-runtime, compose-providers, core-beliefs, lease-control-plane; product
+specifications agent-env-mvp, cli-contract, compose-providers, manifest-v1;
+the current-control-plane audit and completed flutter-android-runtime Plan.
+All 18 occurrences were inspected; code identifiers and heading anchors remain unchanged.
+
+Evidence: `internal/stack/resolve.go` and `resolve_test.go`;
+`internal/app/plan.go`, `plan_test.go` and `applications_test.go`;
+`internal/policy/policy.go` and `policy_test.go`;
+`internal/runtime/compose/compose.go`, `compose_test.go`, `prune.go`,
+`prune_test.go` and Podman's shared validation call in `podman.go`.
+Independent changed-passage review of ARCHITECTURE, QUALITY, roadmap and the
+Flutter Plan found one subject drift: QUALITY must retain the observed lease-ready
+result, rather than claim an individual service-ready result. Both languages now
+retain that subject. The integrating editor reviewed the remaining ten pairs.
+
+Final dependency-wording checks: `repoctl docs-check`, `repoctl plans check`
+(three Plans valid) and `git diff --check` passed. The repository Markdown
+search found no remaining occurrences of the targeted Japanese term.
+
+
+QUALITY volume wording follow-up (2026-09-11): clarify the recorded test's
+Dockerfile `VOLUME` declaration, Podman-created anonymous volumes, observed
+`Anonymous: true`/empty `Labels`, and absence after destroy.
+Source inspection: `internal/cli/podman_integration_test.go` (image creation,
+attached-volume inspection and post-cleanup listing), and
+`internal/runtime/compose/podman_anonymous.go`. This is an editorial
+clarification of the historical run, not a new native execution.
+
+
+### Acceptance intent tables (2026-09-11)
+
+The user requested that dense acceptance lists explain what each condition aims
+to establish. Restructure QUALITY's publication gates, persistent-process lifecycle
+acceptance and multi-host native-fixture scope into item/check/reason tables.
+Keep prerequisites, historical results and native/physical-host limits outside
+the tables, and preserve the earlier editorial changes. This does not change
+product behavior or introduce a repository-wide table-format rule.
+
+Rationales come from existing checks, not inferred implementation history:
+`.github/workflows/release.yml`, `tools/repoctl/release_workflow_test.go`,
+`release.go` and `release_smoke.go`; `internal/cli/process_native_test.go`,
+`process_compose_integration_test.go`; `internal/app/process_lifecycle_test.go`;
+`internal/runtime/process/process_test.go`; and
+`internal/cli/multihost_integration_test.go`.
+The process fixture proves two simultaneously live leases, not simultaneous create
+calls. Persistence-failure cleanup remains conditional on ownership evidence.
+The browser-shaped helper does not establish Browser/CDP feature correctness.
+The multi-host fixture remains two worker roots on one host.
+
+- [x] Complete independent English/Japanese reader and semantic-parity reviews (2026-09-11).
+- [x] Run documentation checks and record focused validation with its limits (2026-09-11).
+
+
+Independent reviews retained all original conditions. Revisions clarified
+whole-lease placement as all runtimes on one worker, renewal as preservation of
+the managing controller/placement rather than the user-facing Owner label, and
+smoke-test scope as CLI startup/dependencies rather than all provider runtimes.
+English/Japanese observation wording now explicitly includes state and logs.
+Historical successful runs remain separate from the tables.
+
+Focused current-source checks passed on Linux Go 1.27.1:
+`TestReleasePublicationGate` (repoctl 0.004s);
+`TestProcessIdentitySaveFailureAndPartialStartCompensate`,
+`TestProcessUnknownOwnershipQuarantinesAndRecovers` and
+`TestProcessReadinessUsesRecordedNumericEndpoint` (app 0.036s);
+`TestReservedPortOccupationPreventsLaunch` and
+`TestReceiptFailurePreservesReturnedIdentity` (process adapter 0.017s).
+All were selected with `go test`, an anchored name pattern and `-count=1`.
+The initial combined selection matched no process-adapter tests; that result was
+not counted as validation, and the two correct adapter test names were run
+separately. No new native multi-host, Compose or release-candidate run is claimed.
+
+Table restructuring validation: `repoctl docs-check`, `repoctl plans check`
+(three Plans valid) and `git diff --check` passed.
+
+
+### Process test-scope tables (2026-09-11)
+
+The user requested the same intent-first structure for QUALITY's preceding
+config/adapter/native-primitive paragraph. Replaced it with three tables
+(5 configuration, 7 adapter and 3 OS-process rows), preserving the existing
+requirement to check that existing Android detached-process behavior remains correct and the separate lifecycle table.
+Source-relative path confinement is distinguished from host PATH lookup.
+Prelaunch redaction evidence, post-launch secret changes, and root-exit/descendant
+survival are separate checks with separate reasons.
+
+Evidence: `internal/config/process_test.go`;
+`internal/runtime/process/process.go` and `process_test.go`;
+`internal/execx/managed_test.go` and `detached_test.go`.
+Focused uncached config and adapter tests passed (0.008s/0.136s), covering
+manifest variants, YAML presence, legacy serialization, expansion, path/identity
+checks, bounded logs and durable redaction. Native process tests were inspected,
+not rerun; this editorial change does not renew prior OS acceptance.
+
+- [x] Finish independent English/Japanese/parity review and final documentation checks (2026-09-11).
+
+
+Independent English, Japanese and parity passes found two overbroad phrasings:
+ports/readiness remain optional, so checks apply when configured; portable-name
+checks specifically cover process runtime names used as directories. Both were
+corrected against `internal/config/process.go`. Final `repoctl docs-check`
+and `git diff --check` passed.
+
+
+### First-reading clarity across documentation (2026-09-11)
+
+The user requested clearer explanations of regression terminology and dense prose.
+Preserve all earlier uncommitted editorial changes. This pass reviews QUALITY in
+full and the passages using the Japanese shorthand in repository documentation;
+it does not claim a complete readability rewrite of every repository document.
+For those passages, distinguish tests preserving existing behavior, tests detecting
+recurrence of a repaired defect, and historical mappings to current checks.
+Preserve test names, links, historical results and unverified-environment limits.
+
+Decision: explain the check and its purpose in ordinary language. Use tables for
+parallel acceptance conditions and connected prose for mechanisms and limitations.
+Keep existing headings where changing them would break anchors; explain any
+retained term directly below its heading. No product behavior or test requirement
+is changed by this editorial work.
+
+Discovery: the multi-host design's Japanese expiry description implied completed
+cleanup. `TestControllerServeQueuesExpiryWithoutPolling` instead verifies a queued
+destroy request while the worker is offline and the lease remains READY. The test
+polls SQLite to observe this, but does not use a worker poll or HTTP request to
+trigger expiry. Both languages now distinguish that queueing evidence from
+completed cleanup. This clarification does not rerun historical acceptance.
+
+- [x] Complete the QUALITY full-document pass and the terminology passage inventory.
+- [x] Complete independent reader/parity review and documentation validation.
+
+
+Terminology inventory: 43 Japanese documents and their English counterparts:
+QUALITY; PORTABILITY; design documents compose-providers, multi-host-control-plane
+and persistent-process-runtime; both active Plans; 13 repository-correctness audit
+documents; and 23 completed Plans. Each targeted passage is read in context.
+QUALITY receives a full section-by-section readability pass followed by a global
+pass; the other documents receive a targeted passage review, not a full-prose rewrite.
+The audit subset contained 188 occurrences on 184 lines. Historical mappings now
+say “current verification” where they include documentation, CI or unresolved
+coverage as well as tests, so the label does not imply a reproduced old defect.
+
+Focused current-source checks passed on Linux Go 1.27.1:
+`TestControllerServeQueuesExpiryWithoutPolling`, `TestPodmanBridgeNativeRoundTrip`,
+`TestCompletedStackedDependencySurvivesBranchDeletion`,
+`TestStackedProvenanceValidatesSeparateHistories`, and
+`TestHumanContractAcceptsCleanCRLFCheckout`, selected with an anchored test-name
+pattern and `-count=1`. Results: repoctl 0.501s, CLI 1.016s, Compose 0.264s.
+This validates the inspected examples; no new full-suite, real-engine or
+Windows/macOS acceptance is claimed.
+
+The completed-Plan subset contained 149 occurrences across 23 pairs: 148 were
+rewritten and one protected heading was retained with an explanation immediately
+below it. In the bilingual-review history, the term described a repair breaking
+existing behavior, not a test. In the real-writer history, source inspection
+identified injected lock loss rather than lock acquisition. Preserve both meanings.
+Comparisons against HEAD found unchanged inline literals, headings and link targets
+in the affected audit and completed-Plan documents; completed-Plan numeric sequences
+also remained unchanged, excluding translation hashes.
+
+
+Independent reviews: the root-owned passages received English-reader,
+Japanese-reader and semantic-parity passes with no findings. The completed-Plan
+review found repeated Japanese phrases, a nonparallel English list, and an A22
+summary that could imply all 186 historical rows had defect-detection tests. These
+were corrected; the summary now includes implementation, verification evidence
+and its limits. QUALITY's independent full English/Japanese/parity review caught
+three scope losses: non-Windows interop had become Linux-only; identifying the
+earliest irrelevant rejection path had become merely checking for any such path;
+and lifecycle compensation had become creation-only. All three were corrected,
+including the compensation overview in both languages. These findings show why
+terminology simplification needs meaning review as well as hash validation.
+
+
+The independent audit-passage review found no semantic issue and one awkward
+Japanese connective, now corrected. Final documentation validation passed:
+`docs-check`, `plans check` (3 valid Plans), and `git diff --check`.
+This editorial work remains uncommitted and unpushed; it does not complete the
+Plan’s implementation/review/merge lifecycle or replace historical acceptance.
+
+
+### Japanese register consistency (2026-09-11)
+
+The user approved the preceding register review's recommendations. The review
+scanned 85 Japanese documents and checked 18 candidates in context. Normalize
+unexplained switches within prose to each document's predominant register.
+Preserve compact table/checklist forms, quoted text, technical literals, tense,
+modality and historical evidence. Retain the guide/history distinction in the
+audit index and the planning/execution-record distinction in the Flutter Plan;
+normalize inconsistencies within those regions rather than flattening them.
+Review corresponding English meaning; Japanese politeness changes do not require
+inventing new English content. This is a local editorial decision, not a new
+repository-wide writing rule. Existing uncommitted changes remain in place.
+
+- [x] Apply the approved register corrections and compare protected content.
+- [x] Complete independent review and documentation checks.
+
+
+Completed: 17 Japanese documents corrected; the audit index required no change.
+Independent reviewers checked the narrow before/after diffs, corresponding
+English meaning, tense and requirement strength. No unresolved findings remain.
+The Flutter Plan's compact numbered procedures were retained in their original
+form during integration; its historical-summary sentence was normalized to the
+surrounding plain register. Protected literals, headings, links and numerical
+evidence were unchanged. `docs-check`, `plans check` (3 valid Plans), and
+`git diff --check` passed. No product code changed; no new native acceptance was
+claimed. Commit and push were not performed.
+
+
+### Post-destroy cache wording correction (2026-09-11)
+
+Implementation consistency review found one confirmed editorial error in the
+completed multi-host round-two Plan: a disproved cache-removal concern had been
+rephrased as a repaired defect's recurrence test. With user authorization, both
+languages now describe a retained test of post-destroy cache reuse with an empty
+CAS. `internal/worker/postdestroy_cache_review_test.go` verifies subsequent
+logs/artifact/reconcile/repeated destroy and a single process start. Keep the
+separate source-diff/reuse fail-before evidence unchanged. No product behavior or
+historical validation result is changed.
+
+
+### Editorial commit authorization (2026-09-11)
+
+The user authorized committing and pushing the accumulated documentation work.
+The delivery includes terminology explanations, acceptance rationale tables,
+Japanese register consistency, and the implementation-review correction above.
+Earlier notes that edits were uncommitted describe those earlier checkpoints.
+Keep this Plan active pending its existing review/merge requirements; publishing
+these documentation edits does not supply new native acceptance evidence.

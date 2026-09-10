@@ -269,7 +269,7 @@ revision, command/workflow run and outcome.
 
 - 2026-09-08: After the first native green run, a ZIP local-header-only mutation
   reproduced a validation bypass: a safe central name concealed a traversal or
-  absolute local filename. The regression failed before the fix. Validation now
+  absolute local filename. The test rejecting mismatched ZIP local/central names failed before the fix. Validation now
   compares local/central names, metadata, offsets and descriptors without
   recompression. Final preview 34190701402 and Verify 34190701428 passed after the fix.
 
@@ -364,9 +364,10 @@ Do not mask nondeterminism by weakening digest assertions.
 
 ## Outcomes & Retrospective
 
-Completed on 2026-09-08. Final implementation `641cb49` passes local harness,
-real-candidate negative tests and race, Verify 34190701428 (12 jobs), and Release
-preview 34190701402 (build plus all three native smoke jobs).
+Completed on 2026-09-08. Final implementation `641cb49` passes the local harness,
+race tests and tests that mutate real release candidates to verify rejection.
+Verify 34190701428 (12 jobs) and Release preview 34190701402 (build plus all three
+native smoke jobs) also pass.
 
 Private-clone v0.1.0 candidates exercise the strict tag/tree/version/commit guards,
 immutable source checkout, six CGO-free archives, normalized metadata, checksums,
@@ -379,16 +380,16 @@ empty inventory; no Android/Flutter tool is implicitly bundled or initialized.
 
 The tag workflow gates publication on harness/race, exact-source construction,
 static checks, tag-specific repeat comparison and all native smoke jobs. Preview
-runs exercise the uploaded candidate bytes and failure-gate regressions reject
+runs exercise the uploaded candidate bytes and tests of the failure gates reject
 bypasses. No public tag or GitHub Release was created: actual publication remains
 an intentional maintainer tag push. Signing, notarization, package managers,
 SBOMs and attestations remain outside this plan.
 
 The initial harness pass did not justify release completion: no tests exercised
-release artifacts. Actual negative fixtures exposed missing validation and the
-ZIP local/central-name discrepancy. Separate review also found ignored-source
+release artifacts. Tests that verify rejection of malformed release artifacts
+exposed missing validation and the ZIP local/central-name discrepancy. Separate review also found ignored-source
 injection and a discarded final source identity; these now have guarded paths
-and regression evidence. Bilingual progress was repaired alongside its hashes.
+and evidence from tests detecting the same defects. Bilingual progress was repaired alongside its hashes.
 Parent acceptance is reconciled separately; parent asset-inventory/stress and
 broader state/prerequisite requirements remain active.
 
@@ -515,7 +516,7 @@ and bilingual retrospective, then move both plans to completed and update links.
 
 | ID | Required behavior | Evidence |
 | --- | --- | --- |
-| R1 | `release-build` rejects missing/malformed/ambiguous tags before build effects. | TestReleaseSourceRejectsInvalidIdentity and TestReleaseCommandUsage pass; missing/noncanonical/ambiguous tags fail before construction. |
+| R1 | `release-build` rejects missing/malformed/ambiguous tags before build effects. | TestReleaseSourceRejectsInvalidIdentity and TestReleaseCommandUsage pass, verifying rejection of invalid release sources and command arguments; missing/noncanonical/ambiguous tags fail before construction. |
 | R2 | `HEAD == tag commit` is mandatory. | Source fixtures test moved HEAD, exact peeled commit and annotated tags; private snapshots exclude local uncommitted inputs. |
 | R3 | Documented clean-tree/index policy is enforced. | TestReleaseSourceRejectsDirtRegardlessGitConfig and TestPrivateReleaseSourceUsesOnlyCommittedFiles pass. |
 | R4 | Requested `X.Y.Z` equals selected `vX.Y.Z` without `v`. | Canonical requested-version mismatch/leading-zero cases fail in source tests. |
@@ -537,7 +538,7 @@ and bilingual retrospective, then move both plans to completed and update links.
 | R20 | arm64 is labeled native only where an actual native runner executed it. | Windows/arm64, Darwin/amd64 and Linux/arm64 are cross-build/static-check only; remaining targets have native smoke evidence. |
 | R21 | Release workflow starts from maintainer-created valid tag and never mutates Git refs/history. | Tag workflow triggers on maintainer-pushed v* and enforces exact tag before building. Source operations create tags only in disposable private clones; caller refs are covered by regression tests. |
 | R22 | Workflow delegates artifact mechanics to repoctl. | Both workflows invoke repoctl for build/check/repeat/smoke; packaging never appears as shell/YAML logic. |
-| R23 | Validation/smoke failure prevents successful publication. | TestReleasePublicationGate plus four bypass mutations pass: build/smoke dependencies mandatory, no unconditional/ignored failures, repeat required. Preview gates succeeded; no public release was created. |
+| R23 | Validation/smoke failure prevents successful publication. | TestReleasePublicationGate passes, including rejection of four mutations that bypass the gate: build/smoke dependencies mandatory, no unconditional/ignored failures, repeat required. Preview gates succeeded; no public release was created. |
 | R24 | Publication bytes are the exact validated bytes, not rebuilt copies. | Preview native jobs download the uploaded candidate without rebuilding it. Publication gate tests require the same artifact identity and reject publish run/rebuild steps. |
 | R25 | English/Japanese durable docs describe final release contract and capability prerequisites. | Bilingual durable docs/prerequisite matrix updated and docs-check passed. |
 | R26 | Final repoctl check/docs/translation/race pass. | Verify 34190701428 passes all 12 jobs including native harness, Linux race and Docker integration; local final race also passed. |
@@ -591,7 +592,7 @@ Final code checkpoint: `641cb49d91972b40fff352c14945697d876dad6d`.
 2026-09-08 local release evidence at `d6280988441537418d70925174cfa58374efea9b`:
 
 - Go 1.27.1: `go run ./tools/repoctl check` and `go test -race ./...` passed
-  during the implementation checkpoint. Latest workflow graph regression was
+  during the implementation checkpoint. The latest test detecting workflow-gate bypasses was
   subsequently added and the harness rerun successfully.
 - `go run ./tools/repoctl release-verify --out dist/verified-d628098` passed:
   six targets built twice, eight files byte-identical, Linux/amd64 native smoke.
@@ -609,7 +610,7 @@ Final code checkpoint: `641cb49d91972b40fff352c14945697d876dad6d`.
   directories; only the overridden state directory was created by list.
 - Independent review identified ignored-source injection, discarded final source
   identity, and absent tag-specific repeat gate. These were fixed before the
-  candidate checkpoint. Private checkout regression proves ignored/hidden edits
+  candidate checkpoint. The private-checkout test proves ignored/hidden edits
   cannot enter the build; final identity is compared and tag workflow repeats.
 - Hosted runs: Release preview 34190096757 (4 jobs) and Verify 34190096727 (12 jobs) succeeded.
   No public release/tag was created; public publication remains maintainer-triggered.

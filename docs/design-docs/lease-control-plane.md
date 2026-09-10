@@ -47,7 +47,7 @@ A logical participant in the system, such as `api`, `dashboard`, `database`, or 
 
 ## Stack
 
-A named startup group consisting of explicit root components. `agent-env` computes the transitive dependency closure.
+A named startup group consisting of explicit root components. `agent-env` selects those roots and every component they depend on, directly or indirectly.
 
 Examples:
 
@@ -154,7 +154,7 @@ It should:
 2. validate schema and references;
 3. identify source repositories;
 4. resolve requested refs to commits without creating worktrees;
-5. resolve stack roots to component dependency closure;
+5. select the stack roots and all components they depend on, directly or indirectly;
 6. identify required runtime operations;
 7. validate host policy and prerequisites where possible;
 8. show a deterministic plan and diagnostics.

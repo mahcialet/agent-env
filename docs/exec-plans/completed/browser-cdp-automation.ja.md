@@ -1,5 +1,5 @@
 ---
-source_sha256: 4bdb8194e03133d17a36b47ee09ac929faaab3fe932ab18cc204ed445d071978
+source_sha256: bf7911eb8802e2afde30654639bdd122511173651ecf52b6c8519be5d2f5812b
 translation_of: docs/exec-plans/completed/browser-cdp-automation.md
 status: completed
 owner: maintainers
@@ -80,12 +80,12 @@ port名だけからbrowserをimplicit推測しない。
 - [x] 2026-09-09: 第3回最終実装dda35cd435ffeea5679ab345b47d199e85cea546でPR Verify 34288757443（12 jobs）、PR Browser native 34288757444（3 OS）、Release preview 34288757521（buildと全smoke jobs）、push Verify 34288753918、push Browser native 34288753905が成功した。5件すべてに実装と最終検証を返信し、archiveとともにResolveした。
 
 
-- [x] 2026-09-09: 最終統合repoctl check、全repository race、sandbox有効Linux native race（10.082秒）が成功した。6件のmutation callback検証を復旧後（race 10回、1.582秒）、独立相互レビューも成功した。redaction後のsnapshot回帰テスト成功（6.369秒）。2 MiB超の膨張、保存artifact 1 MiB上限、対象識別子保持、永続run完了を検証した。この時点では複数OS CIが未完だったが、上記の最終証拠で完了した。
+- [x] 2026-09-09: 最終統合repoctl check、全repository race、sandbox有効Linux native race（10.082秒）が成功した。6件のmutation callback検証を復旧後（race 10回、1.582秒）、独立相互レビューも成功した。redaction後のsnapshot上限・識別情報・証拠保存を確認するテスト成功（6.369秒）。2 MiB超の膨張、保存artifact 1 MiB上限、対象識別子保持、永続run完了を検証した。この時点では複数OS CIが未完だったが、上記の最終証拠で完了した。
 
-- [x] 2026-09-09: 第3回5件を修正し、修正前に失敗する回帰テストを追加した。closed shadow native race成功（11.031秒）、actions/focus race 3回成功（1.245秒）、AX snapshot/gone境界race 10回成功（15.425秒）、capture/network/transport race 10回成功（44.414秒）、最終console/capture race 10回成功（3.091秒）。この時点では統合harness/full raceとnative CIは未完だったが、上記の最終証拠で完了した。
+- [x] 2026-09-09: 第3回5件を修正し、同じ不具合を検出し、修正前に失敗するテストを追加した。closed shadow native race成功（11.031秒）、actions/focus race 3回成功（1.245秒）、AX snapshot/gone境界race 10回成功（15.425秒）、capture/network/transport race 10回成功（44.414秒）、最終console/capture race 10回成功（3.091秒）。この時点では統合harness/full raceとnative CIは未完だったが、上記の最終証拠で完了した。
 
 
-- [x] 2026-09-09: PR #10の第3回レビューに対応する。redaction後のsemantic上限、closed shadow入力、capture購読期限、AX node境界、console引数省略を修正し、回帰テスト・harness・native CIの証拠を確認してから完了へ移す。
+- [x] 2026-09-09: PR #10の第3回レビューに対応する。redaction後のsemantic上限、closed shadow入力、capture購読期限、AX node境界、console引数省略を修正し、同じ不具合を検出するテスト・harness・native CIの証拠を確認してから完了へ移す。
 
 - [x] 2026-09-09: 最終実装cdcec91807a27b6215d2aeb0f6533ed8c96437cdで全検証が成功した。PR Verify 34252382308（12 jobs）、PR Browser native 34252379866（Linux 11.50秒、macOS 14.04秒、Windows 30.98秒）、Release preview 34252379587（buildと3 smoke jobs）、push Verify 34252373749、push Browser native 34252373761。第2回8件すべてに対応内容を返信済みで、archiveとともに最終CI確認とResolveを行う。
 
@@ -98,7 +98,7 @@ port名だけからbrowserをimplicit推測しない。
 - [x] 2026-09-09: レビュー8件の修正を実装した。app targeted race成功（2.656秒）、capture/transport isolated race 10回成功（4.600秒）、CDP race成功（2.439秒）、frame fixtureを強化したsandbox有効Linux native成功（8.633秒、Chrome 152.0.7977.64/CDP 1.3）。
 
 
-- [x] 2026-09-09: PR #10の第2回レビュー8件に対応し、回帰テストとharness・3 OS CIの新しい証拠を確認してから再度完了へ移動する。
+- [x] 2026-09-09: PR #10の第2回レビュー8件に対応し、同じ不具合を検出するテストとharness・3 OS CIの新しい証拠を確認してから再度完了へ移動する。
 
 ### PR #10 review対応（2026-09-09）
 
@@ -110,14 +110,14 @@ port名だけからbrowserをimplicit推測しない。
 維持した。`391288c`で最終gateがすべて成功し、9 Threadすべてへ返信・Resolveした後、
 2026-09-09に英日Planを再archiveした。
 
-- [x] browser報告のsecurity originでiframeを判定。継承・blob・opaque originとnative timingの回帰を検証。
+- [x] browser報告のsecurity originでiframeを判定。継承・blob・opaque originとnative実行のtimingに関する不具合を検出するテストを検証。
 - [x] URL waitに空でないsubstringを必須とし、roleを拒否。
 - [x] 保存network文字列すべてに上限を適用し、DOM名の省略をtruncatedに反映。
 - [x] 省略されたsnapshotから消失を断定しない。
 - [x] captureに必要なeventだけを購読し、無関係eventで通常操作を切断しない。
 - [x] 不確定runを含め、入力前にpage/snapshot/nodeの根拠を保存。textは開示しない。
 - [x] architectureの英日statusを修正し、契約と判断の証拠を更新。
-- [x] 回帰・race・harnessと実3 OS native CIを完了し、最新証拠を照合してからarchive。
+- [x] 既存動作と修正した不具合のテスト・race・harnessと実3 OS native CIを完了し、最新証拠を照合してからarchive。
 - [x] PR #10の対応済みThreadすべてへ返信しResolve。
 
 - [x] PR #9 merge / exact revision記録
@@ -175,7 +175,7 @@ checkboxは観測済み完了のみ。browser/protocol version、native run、re
   後続consoleのUnicode redaction、および下記fixture範囲を検証。
 - `CGO_ENABLED=0`のCLI cross-buildはWindows/Darwin/Linux × amd64/arm64の6 targetで成功。
   これはコンパイルの証拠のみ。Windows/macOSのnative browser CIは未実行。
-- `TestArchitectureBoundaries`へbrowser adapter依存の負例を追加し、arch-check成功。
+- `TestArchitectureBoundaries`へbrowser adapterに関する禁止依存を検出するテストを追加し、arch-check成功。
   今回の証拠更新後にdocs-checkを再実行する。
 - その後Dockerを使う完全な`repoctl test-integration`が成功。明示opt-in前提testは設計どおりskipするため、
   このrunでoptional native Android/Podman/browser gateまで検証済みとはしない。B25/B26/B33/B34は未完了。
@@ -185,28 +185,28 @@ checkboxは観測済み完了のみ。browser/protocol version、native run、re
 
 同一document内のURL digest、許可したAX状態、Windowsの混在区切りprofile path比較、
 redaction済みlabelの照合を実装した。これらを含む`go run ./tools/repoctl check`は成功し、
-architecture負例と翻訳検査も通った。最終実Linux native race fixture成功
+禁止された依存関係を検出するarchitectureテストと翻訳検査も通った。最終実Linux native race fixture成功
 （package 8.819秒 / test 7.81秒）、Chrome 152.0.7977.64 / CDP 1.3、sandbox有効。
 以前のcheckpointで残っていたlocal追加修正の検証はこの結果で完了した。
 Windows/macOSのbrowser実行と公開最終CIは未完了のため、Planはactiveを維持する。
 
 ## 想定外の発見
 
-- 2026-09-09: 独立レビューで、既存のstale target回帰fixtureに新たに必要な隔離execution contextがなく、mutation callback前の拒否だけでテストが通ることが判明した。context fixtureとcallback実行の必須assertionを追加し、意図した拒否経路を検証する。統合harnessとfull raceは成功し、snapshot検証もartifact実byte数、保持node識別子、永続runのpassed状態まで確認した。
+- 2026-09-09: 独立レビューで、既存のstale targetを拒否することを確認するfixtureに新たに必要な隔離execution contextがなく、mutation callback前の拒否だけでテストが通ることが判明した。context fixtureとcallback実行の必須assertionを追加し、意図した拒否経路を検証する。統合harnessとfull raceは成功し、snapshot検証もartifact実byte数、保持node識別子、永続runのpassed状態まで確認した。
 
-- 2026-09-09: 短いsecretのredactionでprovider上限内の文字列がAX fieldとsemantic JSON上限を超え、大きな回帰ケースは従来のapp 2 MiB guardも超えた。2048 nodeちょうどの単一/複数frameや末尾空frameが誤ってtruncatedになっていた。native closed root clickはhost.shadowRootを参照できず修正前に失敗した。遅いdomain enableで20 ms captureが500 ms超になり、省略console引数も完全な証拠と表示された。既存bulk-eventテストはenable時間の除外を前提としていたため、event件数とassertionを維持してenable処理を含む時間予算へ更新した。
+- 2026-09-09: 短いsecretのredactionでprovider上限内の文字列がAX fieldとsemantic JSON上限を超え、大きな入力で同じ上限超過を再現するケースは従来のapp 2 MiB guardも超えた。2048 nodeちょうどの単一/複数frameや末尾空frameが誤ってtruncatedになっていた。native closed root clickはhost.shadowRootを参照できず修正前に失敗した。遅いdomain enableで20 ms captureが500 ms超になり、省略console引数も完全な証拠と表示された。既存bulk-eventテストはenable時間の除外を前提としていたため、event件数とassertionを維持してenable処理を含む時間予算へ更新した。
 
 
-- 2026-09-09: 859ca74の新しいnative CIでfocus転送回帰テストがmacOSとWindowsのpush run 34251804805・PR run 34251809149の両方で失敗した。Linuxは成功した。key操作が不確定拒否でなく成功を返しており、tab focus/event dispatchを調査する。テストやsandbox条件を緩めず、受け入れは未完とする。
+- 2026-09-09: 859ca74の新しいnative CIでfocus転送後の入力拒否を確認するテストがmacOSとWindowsのpush run 34251804805・PR run 34251809149の両方で失敗した。Linuxは成功した。key操作が不確定拒否でなく成功を返しており、tab focus/event dispatchを調査する。テストやsandbox条件を緩めず、受け入れは未完とする。
 
 - 2026-09-09: 実ChromeでURL mockの不足が判明した。Page.Frame.urlにfragmentは含まれずurlFragmentで別返却される。native query waitは成功したがfragment waitはtimeoutした。frame decode・一時条件評価・document identityへurlFragmentを追加し、commit前にnative検証を再実行する。
 
 - 2026-09-09: 統合docs-checkで再開した日本語版のtranslation_ofがcompleted/を参照していたため拒否された。メタデータを修正し、日英の内容を確認した。文書検証が未完の段階でfull raceは成功した。
 
-- 2026-09-09: 独立レビューで、入力後のJavaScript readback例外やboolean欠落も不確定状態を保つ必要があると判明した。例外なし・明示booleanの検証を追加した。appのartifact回帰テストもrun.jsonの登録を必須確認し、保存検証が空振りしないようにした。
+- 2026-09-09: 独立レビューで、入力後のJavaScript readback例外やboolean欠落も不確定状態を保つ必要があると判明した。例外なし・明示booleanの検証を追加した。appのartifact保存を確認するテストもrun.jsonの登録を必須確認し、保存検証が空振りしないようにした。
 
 
-- 2026-09-09: 第2回PR reviewで、effect後の確認状態、focus証明、DOM origin範囲、別tabのtopology、redaction後のサイズ制限、raw URL条件、capture queueのtruncation、保存manifest digestの不足が判明した。Planを再開し、以前のCI成功は今回の修正の受け入れ証拠として扱わない。最初のlocal harnessは新規回帰テストのformatで停止したため、整形後に再検証する。
+- 2026-09-09: 第2回PR reviewで、effect後の確認状態、focus証明、DOM origin範囲、別tabのtopology、redaction後のサイズ制限、raw URL条件、capture queueのtruncation、保存manifest digestの不足が判明した。Planを再開し、以前のCI成功は今回の修正の受け入れ証拠として扱わない。最初のlocal harnessは新たな不具合検出テストのformatで停止したため、整形後に再検証する。
 
 - 2026-09-09 — `3d3fce5`のpush Browser native 34246852839は3 OSすべて成功したが、
   PR Browser native 34246856039のWindowsは最後のprofile削除で共有違反に失敗した
@@ -222,9 +222,9 @@ Windows/macOSのbrowser実行と公開最終CIは未完了のため、Planはact
 - 別の実navigationでは、child URLが空でorigin不明の状態を確認した。確定したopaque frame
   と異なり、waitの既存期限内で再観測できる。独立reviewでは、AX取得前だけのorigin検証では
   navigation後の文書に古いframe識別情報を付ける競合も見つかった。取得後のframe/tree/origin
-  とtargetの整合確認で変化を検出したら、全証拠を破棄する。決定的な回帰testでこの変化を模擬する。
+  とtargetの整合確認で変化を検出したら、全証拠を破棄する。同じ不具合を決定的に再現するテストでこの変化を模擬する。
 
-- 2026-09-09 — PR #10回帰testで修正前の失敗を確認した。URL待機はroleだけでも成功し、
+- 2026-09-09 — PR #10の不具合を検出するテストで修正前の失敗を確認した。URL待機はroleだけでも成功し、
   semantic入力はpage/snapshot/nodeの根拠を保存していなかった。AX上限で対象nodeが落ちても
   `gone`が成功し、DOM名の省略はtruncationに反映されなかった。network metadataにより
   65,536-byte予算に対して1,230,500 bytesの文字列を保持できた。未購読や別sessionのeventも
@@ -321,7 +321,7 @@ dynamic page対応のためidentity/stale checkを弱めない。
   未commitのoriginや取得中の文書変化という一時的なerrorだけを、waitの既存期限内で再試行する。
 
 - 2026-09-09 — semantic入力前のCommandRunへpage ID・参照元snapshot run ID・node参照を
-  保存する。不確定な結果とrun.jsonでも保持するが、set-text内容は保存しない。回帰providerは
+  保存する。不確定な結果とrun.jsonでも保持するが、set-text内容は保存しない。この動作を確認するテスト用providerは
   入力中にstoreを検査し、click/set-text/key/scrollの成功・不確定の両方で同じ根拠を検証する。
   URL待機は空でないsubstringを必須とし、roleのみ・role併用の要求を接続前に拒否する。
 - capture queueはdomain有効化前に、1操作のsessionと対象eventだけを購読し、全returnで
@@ -352,12 +352,12 @@ dynamic page対応のためidentity/stale checkを弱めない。
 - 2026-09-08 — 非公開の全選択keydownでCDPの明示的な`selectAll`編集commandを送る。
   native Inputと入力後の一時的な一致検証を維持する。macOSではplatform shortcutだけでは
   空でないtextを確実に全選択できなかった。Linux/macOS/Windowsのkeydownとkeyupの
-  protocol上の動作を回帰testで検証する。
+  protocol上の既存動作が維持されることをテストで検証する。
 - Windowsのnative process birth proofには意図的にUnicode guardian pathが含まれる。
   広い`日本語`部分文字列検査は、その信頼されたpathを入力textと誤認した。
   固有の入力prefixを使用し、decodeしたJSON文字列から実際の入力Unicode文字列
   （引用符とbackslashを含む）を検査する。escape済みsecretを検出し、正当なproof pathは
-  許容する回帰testを追加した。実装側のredactionと受け入れ要件は変更しない。
+  許容することを確認するテストを追加した。実装側のredactionと受け入れ要件は変更しない。
 - native test失敗時、lease cleanup前にprocess診断を取得してLinuxのChrome起動の証拠を残す。
   readiness timeoutだけを根拠にsandboxを無効化したりhost policyを変えたりしない。
 
@@ -464,7 +464,7 @@ macOS/WindowsおよびLinuxのnative CIは未完了。既存のmacOS readiness t
 以下の過去の完了・native結果は履歴として残し、今回の第3回受け入れ完了は上記に記録した。
 
 
-第2回レビュー完了（2026-09-09）: 8件すべてを859ca74とcdcec91で修正した。effect後のエラーで不確定状態を保持し、前面化・選択後のdocument/target focusを証明する。DOM origin/topologyと別tab境界を検証し、redaction後もcapture上限を維持してqueue省略を明示する。query/fragmentを一時URL条件へ含めつつ保存証拠を秘匿化し、保存manifest digestを検証する。cdcec91の新しいCIは上記全gateで成功した。859ca74のmacOS/Windows native focus失敗は過去の失敗として残し、成功には数えない。page前面化と再検証により強化nativeシナリオは3 OSすべて成功したが、OS/browserのevent配送機構自体は計測しておらず、当初の原因説明は仮説として扱う。回帰テスト・独立レビュー・実ブラウザの複数OS検証を組み合わせた。URL mockとLinuxだけのnative証拠では不十分だった。
+第2回レビュー完了（2026-09-09）: 8件すべてを859ca74とcdcec91で修正した。effect後のエラーで不確定状態を保持し、前面化・選択後のdocument/target focusを証明する。DOM origin/topologyと別tab境界を検証し、redaction後もcapture上限を維持してqueue省略を明示する。query/fragmentを一時URL条件へ含めつつ保存証拠を秘匿化し、保存manifest digestを検証する。cdcec91の新しいCIは上記全gateで成功した。859ca74のmacOS/Windows native focus失敗は過去の失敗として残し、成功には数えない。page前面化と再検証により強化nativeシナリオは3 OSすべて成功したが、OS/browserのevent配送機構自体は計測しておらず、当初の原因説明は仮説として扱う。同じ不具合を検出するテスト・独立レビュー・実ブラウザの複数OS検証を組み合わせた。URL mockとLinuxだけのnative証拠では不十分だった。
 
 
 以下は過去の第1回レビュー完了記録であり、今回の第2回レビュー完了は上記に記録した。
@@ -472,7 +472,7 @@ macOS/WindowsおよびLinuxのnative CIは未完了。既存のmacOS readiness t
 2026-09-09、PR #10 review対応を完了した。`3d3fce5`でoriginの証明、wait条件、
 省略・byte予算、event購読、永続的な入力対象の根拠を修正し、`391288c`でnative不在証明後の
 Windows共有違反cleanupを上限付きにした。所有権・sandbox・privacyとprocess/CDPの責務境界は
-維持した。回帰testで修正前の不具合を再現し、実browser testではmockで見つからなかった
+維持した。テストで修正前の不具合を再現し、実browser testではmockで見つからなかった
 継承originの代用値と省略されたOOPIFを確認した。独立reviewで取得後の識別情報検査を追加し、
 navigation中の部分証拠を古いorigin/loader付きで公開しないようにした。
 
@@ -503,7 +503,7 @@ sandbox有効のLinux browser反復も成功した。各受け入れ行と日付
 実行した検証と証拠の限界を記録した。
 
 独立reviewでは、fence loss時の早期returnで未redactの値を返す問題と、汎用JSON redactionが
-操作の根拠となる識別情報まで壊す問題を発見し、修正と回帰testを追加した。native CIでは、
+操作の根拠となる識別情報まで壊す問題を発見し、修正と同じ不具合を検出するテストを追加した。native CIでは、
 macOSの全選択、WindowsのUnicode proof pathによる誤検出、Ubuntuのsandbox前提条件が
 明らかになった。明示CDP編集command、decode後のsecret検査、対象を限定したrunner設定で
 解決した。browser fixtureの準備期限も、検査対象の操作期限から分離した。protocol mockと
@@ -691,11 +691,11 @@ bundleしない。
 
 | ID | 必須動作 | 証拠 |
 | --- | --- | --- |
-| B1 | existing Compose/Podman/Android/Flutter/UI/process非回帰 | local full race/harnessとDocker integration成功。optional前提を要するopt-in testは設計どおりskipし、追加のnative Android/Podman成功は主張しない。 |
+| B1 | existing Compose/Podman/Android/Flutter/UI/processの既存動作を維持 | local full race/harnessとDocker integration成功。optional前提を要するopt-in testは設計どおりskipし、追加のnative Android/Podman成功は主張しない。 |
 | B2 | owned process runtime + named CDP port explicit binding | `TestBrowserManifestContract`、`TestBrowserManifestNegativeFixtures`、`TestBrowserRequiresProcessRuntime`。`TestEndpointBoundary`で別endpoint authority拒否。 |
-| B3 | runtime-owned private profileのみ、default profile未使用 | `TestPrivateProfileFlags`とconfig負例。Linux `TestBrowserNativeCLI`で2 leaseのstate directory・PID・CDP port相違を確認。 |
+| B3 | runtime-owned private profileのみ、default profile未使用 | `TestPrivateProfileFlags`と、専用profileの要件に違反する設定を拒否するテスト。Linux `TestBrowserNativeCLI`で2 leaseのstate directory・PID・CDP port相違を確認。 |
 | B4 | browser operation前process identity再検証 | `TestBrowserLifecycleGuards`でdead/uncertainをprovider呼出し前に拒否。`TestNodeChangesDuringOwnershipVerificationNeverInputs`で入力直前再検査。 |
-| B5 | unrelated port reuse誤認無し | `TestBrowserPIDAndDiscoveryProof`で不一致PID/version/endpoint拒否、`TestEndpointBoundary`で別port拒否。制御したtransport負例であり、実kernel port再利用raceの再現とはしない。 |
+| B5 | unrelated port reuse誤認無し | `TestBrowserPIDAndDiscoveryProof`で不一致PID/version/endpoint拒否、`TestEndpointBoundary`で別port拒否。transportの応答を制御して不一致を拒否するテストであり、実kernel port再利用raceの再現とはしない。 |
 | B6 | capabilities side effect無し | Linux `TestBrowserNativeCLI`でChrome 152.0.7977.64 / CDP 1.3を記録し、capabilities後もpageがabout:blankであることを確認。 |
 | B7 | page deterministic、multiple時explicit | Linux `TestBrowserNativeCLI`で2つ目のpage作成/閉鎖、省略時のmulti-page snapshot拒否。adapterはpage IDで整列。 |
 | B8 | AX snapshot deterministic versioned JSON/text | `TestBrowserSnapshotRegistrationAndSemanticInput`でsnapshot artifact登録。native fixtureでheading/button/textboxのroleとiframe/shadow nodeを確認。 |
@@ -713,7 +713,7 @@ bundleしない。
 | B20 | destroyがmutating operationを追い越さない | `TestBrowserMutationFenceBlocksDestroy`、`TestBrowserUncertainMutationRetainsCleanupBarrier`、`TestBrowserEvidenceFailureRetainsBarrier`。 |
 | B21 | process death後CDP拒否 | native fixtureで2つ目のbrowser rootをkillし、後続browser pages拒否、showがnon-readyで履歴PID不変を確認。 |
 | B22 | process absence前profile削除無し | native fixtureで両lease destroy後のstate/profile directory不在を確認。generic `TestMissingLaunchingReceiptIsUncertain`とbrowser結果不明/証拠barrierで保守的cleanupを維持。 |
-| B23 | process lifecycle重複実装無し | `TestArchitectureBoundaries`のbrowser依存負例とarch-check成功。native fixtureはCDP Browser.closeではなく通常destroyでcleanup。 |
+| B23 | process lifecycle重複実装無し | `TestArchitectureBoundaries`のbrowserに関する禁止依存の検出テストとarch-check成功。native fixtureはCDP Browser.closeではなく通常destroyでcleanup。 |
 | B24 | auto restart無し | `TestBrowserLifecycleGuards`で起動回数不変。native手動終了fixtureで履歴PID不変・readyに戻らないことを確認。 |
 | B25 | Native Windows | 成功：`391288c`、PR Browser native 34247636411、windows/amd64、Chrome 152.0.7977.82 / CDP 1.3、実CLI fixture 26.76秒。sandboxアクセスguardと通常cleanupも成功。 |
 | B26 | Native macOS | 成功：`391288c`、PR Browser native 34247636411、darwin/arm64、Chrome 152.0.7977.82 / CDP 1.3、実CLI fixture 9.60秒。 |
@@ -809,7 +809,7 @@ local race 10回反復も成功（20.222秒）。全Verifyは未完了。
 [Browser native 34235476126](https://github.com/mahcialet/agent-env/actions/runs/34235476126)で
 3 jobすべて成功。Chrome 152.0.7977.82 / CDP 1.3、Go 1.27。
 Linux/amd64のnative fixtureは8.16秒、Windows/amd64は29.97秒、macOS/arm64は19.62秒。
-JSON privacy検査の回帰testも3 OSで成功した。この結果は以前のnative未完了checkpointを
+JSON privacy検査の誤判定を検出するテストも3 OSで成功した。この結果は以前のnative未完了checkpointを
 更新するもので、失敗履歴は消さない。
 
 最終完了記録（2026-09-08）: `b48ab64`のVerify 34235476057は全12 jobで成功した。
@@ -818,7 +818,7 @@ Browser native 34235476126と合わせ、以前の日付付きcheckpointに残�
 archiveの区切りではruntimeやtestの動作を変更していない。
 
 2026-09-09 review checkpoint: appのURL/provenance対象raceは成功（2.056秒）。
-app・CDP全raceも成功（36.887秒 / 1.735秒）。capture/transportの回帰はrace 10回反復
+app・CDP全raceも成功（36.887秒 / 1.735秒）。capture/transportの既存動作を確認するテストはrace 10回反復
 成功（4.392秒）。app/provenance・transport/capture・限定したWindows ACL準備の
 独立reviewで追加不具合は見つからず、文書検査も成功した。originの証明とnative受け入れは
 引き続き実装・検証中であり、Planをactiveに維持する。
@@ -836,7 +836,7 @@ Windows fixtureは以前の実行ファイルsandboxアクセス拒否ログも�
 完了には新しい複数OS CIとThread返信が引き続き必要。
 
 2026-09-09 cleanup checkpoint: process race成功（1.964秒）、cleanup/Destroyの
-回帰race 10回反復成功（2.916秒）、Windows amd64/arm64 test binaryのcrosscompile成功。
+destroyの不具合を検出するテストがrace 10回反復成功（2.916秒）、Windows amd64/arm64 test binaryのcrosscompile成功。
 Windows native testはdelete sharingなしで実fileを保持し、RemoveAllの共有違反を確認して
 から解放し、cleanup成功を検証する。独立reviewで新たな不具合は見つからなかった。2秒の
 予算は再試行の開始を制限し、実行中の同期filesystem呼出しを中断しない。最終local harnessと

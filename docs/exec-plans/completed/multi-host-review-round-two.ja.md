@@ -1,6 +1,6 @@
 ---
 translation_of: docs/exec-plans/completed/multi-host-review-round-two.md
-source_sha256: bfa14fa306b66fee129044027a066d1f6dd8f37e3692c9242c03900dc49d2be8
+source_sha256: 54b724a678863e8ee3bf3e06c14a2c73f9e8f0ac4c8182626fbf344a386a8f0d
 status: completed
 owner: maintainers
 last_verified: 2026-09-09
@@ -89,7 +89,7 @@ clientがHTTP通信、remotesource/workerがpackage検証、blobstoreがCAS公�
 
 ## 作業計画
 
-各境界を修正前に失敗する回帰テストと独立レビューで補強する。
+各境界を同じ不具合を検出し、修正前に失敗するテストと独立レビューで補強する。
 日英の契約を更新し、過去のCI失敗の記録を保持する。
 
 ## 具体的な手順
@@ -155,7 +155,8 @@ native CLI再起動fixtureが成功した（46.249秒）。実Docker/Podmanのre
 adapterの転送methodを検出し、push前に修正した。
 
 削除後のcacheへの懸念は再現しなかった。削除対象はlease worktreeであり、bare cache repositoryは
-残る。保存した回帰テストで、削除後に空CASを使うlogs/artifact/reconcile/再destroyを確認した。
+残る。削除後もcacheを再利用できることを確認するテストを残し、空CASを使う
+logs/artifact/reconcile/再destroyを確認した。
 検証条件は緩めていない。source diffと再利用は修正前の失敗も確認済み。実17MiB diffは実効化した
 capture上限で安全に失敗し、cleanupの安全性を維持する。
 
@@ -166,7 +167,7 @@ package_retention.goへ移し、永続化の実装を分離した。
 
 2026-09-09の追加修正検証: `go run ./tools/repoctl check`と`go test -race ./...`が成功した
 （worker15.948秒、CLI44.877秒）。実nativeの2worker CLI再起動fixtureも成功した（46.995秒）。
-UI復旧と証拠の回帰テストは旧executorで失敗し、修正後に成功した。独立レビューでは、旧形式の
+UI復旧と証拠保存の不具合を検出するテストは旧executorで失敗し、修正後に成功した。独立レビューでは、旧形式の
 重複packageは破棄する一時コピーだけでなく、既存fileのinodeも同期する必要があると判明した。
 追加の失敗注入テストとworker全raceが成功した（10.774秒）。独立レビューの未対応指摘はない。
 

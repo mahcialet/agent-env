@@ -14,7 +14,7 @@ remains historical delivery evidence. Follow `docs/PLANS.md`.
 
 ## Purpose / Big Picture
 
-Resolve all eight current PR 4 threads with regression evidence, synchronized
+Resolve all eight current PR 4 threads with evidence from tests detecting the same defects, synchronized
 public documentation, per-thread replies and resolution after validated fixes.
 
 ## Progress
@@ -23,7 +23,7 @@ public documentation, per-thread replies and resolution after validated fixes.
 - [x] 2026-09-08: Correct colliding selected APK output paths, optional reverse observation and destroy previews.
 - [x] 2026-09-08: Correct host Flutter doctor, default plan rendering, project symlinks and nonzero ADB diagnostics.
 - [x] 2026-09-08: Synchronize existing English/Japanese public documentation.
-- [x] 2026-09-08: Run regression tests, repository harness, race checks and native CI.
+- [x] 2026-09-08: Run tests that detect recurrence of the reviewed defects, repository harness, race checks and native CI.
 - [x] 2026-09-08: Reply to and resolve all eight threads, then archive this plan.
 
 ## Surprises & Discoveries
@@ -45,12 +45,12 @@ feature tests. Record reproduced failures and unexpected results below.
 ## Outcomes & Retrospective
 
 All eight review requests are addressed in `4677b89`. Each thread received a
-specific fix and regression-test reply, then was resolved after native CI passed.
+specific fix and reply identifying a test that detects the same defect, then was resolved after native CI passed.
 The final GitHub query found eight threads and zero unresolved threads.
 
 The fixes cover previously untested entry points and optional paths: default
 human-readable planning, host-only prerequisites, absent reverse bindings and
-safety previews. Regression tests now assert these independently of the original
+safety previews. Tests detecting these defects now assert these independently of the original
 happy-path feature tests. Selected colliding APK outputs are explicitly rejected
 before effects rather than allowing one build to overwrite another. No new APK
 storage lifecycle or adapter ownership boundary was introduced. Existing real
@@ -65,7 +65,7 @@ Android owns generic device commands and identity. Public contracts live in
 
 ## Plan of Work
 
-Add failing regressions for each behavior, implement focused fixes without
+Add tests that detect failures in each behavior, implement focused fixes without
 weakening ownership or evidence guards, then update public documents in both
 languages. Root owns app/planning/preview and this plan; delegated work owns CLI,
 adapters and public docs. Root integrates and performs GitHub operations.
@@ -108,11 +108,11 @@ native Windows/macOS/Linux behavior, existing lease JSON and resource ownership.
 
 Review checkpoint (2026-09-08):
 
-- All behavioral regressions failed against the initial implementation: four
+- All tests of the expected behavior failed against the initial implementation: four
   selected output collisions, unwanted reverse inspection, two unsafe preview
   guards, missing host Android diagnostics/default table data, six internal
   symlink cases and six discarded nonzero ADB command results.
-- App targeted regressions plus existing build-guard tests passed with Go 1.27.1
+- App tests targeting the reviewed defects plus existing build-guard tests passed with Go 1.27.1
   `-race -count=10` (12.410s). CLI `-race -count=1` passed (1.940s).
   Flutter/Android adapter tests passed on Go 1.26.8, and Go 1.27.1 race repeated
   five times. Independent read-only app review found no concrete issue.
@@ -126,7 +126,7 @@ Final local validation (2026-09-08):
 - Go 1.27.1 and Go 1.26.8 `go run ./tools/repoctl check` passed all phases.
 - Go 1.27.1 `go test -race ./...` passed (app 24.654s; CLI 1.811s;
   Android 2.110s; Flutter 3.039s).
-- Direct review regressions: `TestSelectedApplicationAPKOutputsCannotCollide`,
+- Tests directly detecting the reviewed defects: `TestSelectedApplicationAPKOutputsCannotCollide`,
   `TestApplicationWithoutReverseSkipsNetworkObservation`,
   `TestDestroyPreviewHonorsApplicationBuildBarriers`,
   `TestFlutterHostDoctorRequiresBothToolchains`,

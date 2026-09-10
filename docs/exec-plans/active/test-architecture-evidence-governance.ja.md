@@ -1,6 +1,6 @@
 ---
 translation_of: docs/exec-plans/active/test-architecture-evidence-governance.md
-source_sha256: 0891b87c48efe67d65b3bfb859a12a09c02925c3a481dbea957432cd710b6ec2
+source_sha256: fc81804a37c170cf93a815d037f18b4e94958f60a795f60bcc297a1c77f99fd7
 status: active
 plan_id: EP-QUAL-001
 plan_type: implementation
@@ -13,7 +13,7 @@ workstreams:
   - repoctl
   - documentation
 owner: maintainers
-last_verified: 2026-09-10
+last_verified: 2026-09-11
 ---
 
 # テストアーキテクチャと検証証拠の全体監査
@@ -32,9 +32,9 @@ Plan ID: `EP-QUAL-001`
 
 リポジトリのテストを、production codeを検証する手段としてだけでなく、それ自体が正しさを要求される一つのシステムとして監査する。
 
-直接の契機はBrowser/CDPの回帰テストである。client側の待機がcancelで終了した後もmock server側のcallbackは実行を継続できたが、テスト本体はcallbackが所有する状態を同期なしで読み取っていた。
+直接の契機は、Browser/CDPで修正した不具合の再発を検出するためのテストである。クライアント側の待機がキャンセルで終了した後も、模擬サーバー側のコールバックは処理を続けられた。それにもかかわらず、テスト本体は、そのコールバックが所有する状態を同期せずに読み取っていた。
 
-つまり、production側のhidden ordering assumptionを検出するために追加した回帰テスト自身が、別のhidden ordering assumptionを持っていた。
+製品コードで処理順序に関する暗黙の前提が崩れる問題を検出しようとしていたのに、テスト自身も「クライアントの待機が終われば、サーバーの処理も終わっている」という別の暗黙の前提に頼っていた。
 
 今回の監査では、単に、
 
@@ -137,6 +137,7 @@ Plan ID: `EP-QUAL-001`
 - [x] full race/harnessの最終実行が成功した（2026-09-10）。
 - [x] Q14対応を含むWindows/macOS/Linux native validationを完了した（2026-09-10）。
 - [x] English/Japanese独立reviewとsemantic parity reviewを完了する。
+- [x] 記録した証拠を変えず、拒否・エラーを確認するテストの呼び方を英日両版で明確にした（2026-09-11）。
 - [ ] merge後にretrospectiveを完成しarchiveする。
 
 
@@ -148,7 +149,7 @@ Plan ID: `EP-QUAL-001`
 
 - baseline docs-checkで古いdraft metadataを検出し、開始時に現行schemaへ移行した。
 - Windows guardianのpollは全観測errorを無視しており、runtime側へ伝播するsharing violationも隠せた。handle所有者は未特定。確認済み空Jobでのsharing競合だけを完了待ちとして扱う。
-- 旧snapshot切り詰め負例は無関係な早期失敗注入でも成功した。強化したoracleは同じ注入を拒否し、期待した境界を未検証のまま数えない。
+- 切り詰められたsnapshotからnodeの不在を確定しないことを確認する旧テストは、無関係な早期失敗注入でも成功した。強化したoracleは同じ注入を拒否し、期待した境界を未検証のまま数えない。
 
 個別bugだけでなく、監査方法自体へ影響する発見を記録する。
 
@@ -191,7 +192,7 @@ Q14までの実装はlocalとnative/integration CIで検証済みである。mer
 
 PR #15がcurrent-HEADで人間のreviewを受けmasterへmergeされるまでarchiveしない。信頼するbaseにgate policyがないためguarded/manual fallbackを維持し、自動mergeの許可とは解釈しない。
 
-採用した台帳の12項目はtestのみの不備で、Q08はproductionの完了観測とtest oracleの両方に関わる。lifecycleと到達性の不足はCDPとapp/process helperに集中した。過去の反復成功はcallback完了やOS間のsocketの意味を証明しなかった。対象を絞った不変条件の回帰は実行可能な検査となるが、証拠分類、限定した同種箇所のreview、言語の意味はreviewで判断する。Q09、直接公開されないinline client readerのjoin、強制していない実行順序、未実行の環境は限界として明示し、網羅的な正しさとは主張しない。
+採用した台帳の12項目はtestのみの不備で、Q08はproductionの完了観測とtest oracleの両方に関わる。lifecycleと到達性の不足はCDPとapp/process helperに集中した。過去の反復成功はcallback完了やOS間のsocketの意味を証明しなかった。常に守るべき条件を絞り、その条件が崩れていないか確かめるテストは、自動実行する検査にできる。一方、証拠分類、限定した同種箇所のreview、言語の意味はreviewで判断する。Q09、直接公開されないinline client readerのjoin、強制していない実行順序、未実行の環境は限界として明示し、網羅的な正しさとは主張しない。
 
 この新PlanはEP-OPS-001の規定branch、安定Plan ID、commit/PR trailer、provenance、guarded gate確認を実装段階まで実運用した。信頼するpolicyがないためgateは適切にmanual fallbackを維持し、Human Validationも自動開始していない。forward merge/archiveの証拠はmaintainerがPR #15を完了するまで未完了である。
 
@@ -716,7 +717,7 @@ repository checkerを追加する場合は既存`tools/repoctl` architectureへ�
 durable human-facing documentationはEnglish/Japaneseを同一coherent changeで維持する。
 ## 開始時の監査記録（2026-09-10）
 
-修正前に監査基準を固定した。証拠は、強制した不変条件の実行順序、native/integrationの直接観測、race・静的ツール、反復による安定性、コンパイル・構造検査に分ける。反復回数で証拠の種類は変わらない。負例では、無関係な早期拒否でも成功しないかを確認する。キャンセル通知は完了の証拠ではない。
+修正前に監査基準を固定した。証拠は、強制した不変条件の実行順序、native/integrationの直接観測、race・静的ツール、反復による安定性、コンパイル・構造検査に分ける。反復回数で証拠の種類は変わらない。想定した拒否やエラーになることを確認するテストでは、無関係な早期拒否でもテストが成功してしまわないかを確認する。キャンセル通知は完了の証拠ではない。
 
 PR #14のmerge `cbd84ed1d2ef4456b8a95db215461bd3d726fe59` でのbaseline: `repoctl check` の単体テストとvetは成功したが、提供Planの依存関係がmappingではなくscalarだったため拒否された。同時に実行した`go test -race ./...`はAndroid fixtureの5554ポート使用中で失敗し、単独のAndroid raceは2.545秒で成功した。suite同士の衝突は仮説であり、外部プロセスの不具合と断定しない。PR #14の最終Windows native run 34418194332/job 102687663661は、即時終了時にguardian完了証拠の読み取りがsharing violationで失敗した。merge済みであることはnative検証の成功を意味しない。
 
@@ -724,8 +725,8 @@ PR #14のmerge `cbd84ed1d2ef4456b8a95db215461bd3d726fe59` でのbaseline: `repoc
 
 | ID / 所有者 | 資源・完了・共有状態・失敗経路 | 判断 / 不変条件・見逃し・最初の検出機会と予防 | 証拠 |
 | --- | --- | --- | --- |
-| Q01 CDP fixtures | 6種類のHTTP/WS fixtureがhijack handlerとclient readerを所有。mockBrowserのみhandlerをjoin。共有状態はatomic/mutex | ACCEPT: teardown前に所有処理をjoinする。同種helperのlifecycle確認で見逃した。admission/close/joinを共通化 | ソース確認。強制回帰は未実施 |
-| Q02 CDP負例 | cancellation、overflow、AX切り詰め、frame変更で汎用error受理やeffect確認欠落 | ACCEPT: 意図した失敗段階への到達が必要。早期拒否でも成功する。実装前のoracle設計と到達・原因確認で予防 | ソース確認。故障対照は未実施 |
+| Q01 CDP fixtures | 6種類のHTTP/WS fixtureがhijack handlerとclient readerを所有。mockBrowserのみhandlerをjoin。共有状態はatomic/mutex | ACCEPT: teardown前に所有処理をjoinする。同種helperのlifecycle確認で見逃した。admission/close/joinを共通化 | ソース確認。問題の処理順序を強制する再現テストは未実施 |
+| Q02 CDPの拒否・エラーを確認するテスト | cancellation、overflow、AX切り詰め、frame変更で汎用error受理やeffect確認欠落 | ACCEPT: 意図した失敗段階への到達が必要。早期拒否でも成功する。実装前のoracle設計と到達・原因確認で予防 | ソース確認。故障対照は未実施 |
 | Q03 CDP load wait | atomic評価counterは妥当だが実際のload cancellation重複を強制していない。既存50ms観測は時間依存 | ACCEPT: evaluation開始とcancelを強制し通知と完了を区別。実行順序・oracle設計で検出 | ソース確認 |
 | Q04 app command fixtures | SQLite/temp資源に対し成功経路のみdoneを受信。早期Fatalではcancel/release/joinを飛ばせる。cancellation/UI/browser/readinessも対象 | ACCEPT: 失敗経路のoperation所有をcleanupへ持たせる。DB cleanup前の完了をhelper設計で保証 | ソース確認 |
 | Q05 execx/process fixtures | native subprocessのstop/wait/Destroyのcleanupエラーを無視。detachedのfallback処理は個別確認が必要 | ACCEPT: 終了失敗は検証失敗とする。cleanup oracle確認と完了失敗注入 | ソース確認 |
@@ -749,10 +750,10 @@ Q09判断: stream/constructor失敗経路の追加強化はDEFER。pipe close/co
 - Q04: operation cleanup登録を除くoverlayは“resource cleanup preceded operation completion”で失敗。appの6呼び出しでassertion前にcancel/joinを登録し、早期終了時のcleanupを成功経路とは別に検査した。
 - Q05: managed/native process fixtureの終了・完了失敗を報告する。全cleanup箇所への故障注入は主張しない。
 - Q06: native leafがTCP接続を所有しready byteで開始、EOFでfixture接続寿命の終了を確認する。live echo、明示終了、native Waitが正常対照。親だけkillするoverlayはexecx normalとapp Destroyの両方で“descendant lifetime connection did not end”となる。対象leafの寿命を検証したのであって任意の子孫tree全体の消滅証明ではない。対象packageのLinux full raceはapp 47.223秒、execx 6.603秒で成功。
-- Q07: Android TCP fixtureは受付と受付済み接続を閉じてhandlerをjoinする。listener closeだけのoverlayはpartial-request回帰で“cleanup returned with a partial-request handler still active”となる。通常の対象テストは成功、Android full raceは2.600秒で成功。固定portのsuite分離はharness制約として直列実行し、port所有検査を緩めない。
-- Q08: Windows DELETE-handle回帰はsharing競合への到達を確認してから空Jobの完了待ちと解除後のabsenceを検査する。不正proofと他の読取失敗は拒否を維持。Windows amd64 cross-compileは成功したがnative実行とnative修正前失敗はCI待ち。
+- Q07: Android TCP fixtureは受付と受付済み接続を閉じてhandlerをjoinする。listener closeだけのoverlayはリクエストを途中まで送った状態のテストで“cleanup returned with a partial-request handler still active”となる。通常の対象テストは成功、Android full raceは2.600秒で成功。固定portのsuite分離はharness制約として直列実行し、port所有検査を緩めない。
+- Q08: WindowsのDELETE-handleを保持するテストはsharing競合への到達を確認してから空Jobの完了待ちと解除後のabsenceを検査する。不正proofと他の読取失敗は拒否を維持。Windows amd64 cross-compileは成功したがnative実行とnative修正前失敗はCI待ち。
 
-mechanical controlの判断: 上記の実行可能なlifecycle/到達性回帰を既存harness/native/race jobで動かす。証拠の種類を意味的に区別できない文章・sleep・回数scannerは追加しない。
+mechanical controlの判断: 上記の、処理の完了と目的の検証箇所への到達を確認するテストを既存harness/native/race jobで動かす。証拠の種類を意味的に区別できない文章・sleep・回数scannerは追加しない。
 
 残る範囲の限界: inline CDP Observe fixtureはserver handlerをjoinするが内部client reader完了を直接公開していない。connectionを保持するfixtureはreaderもjoinする。full harness/race、最終integration/native CI、独立technical/英日/parity review、mergeは未完了。
 
@@ -760,13 +761,13 @@ mechanical controlの判断: 上記の実行可能なlifecycle/到達性回帰�
 
 独立technical reviewで新しい修正にも2件の不足が見つかった。CDPのoperation worker自身に失敗時joinが必要であり、reader/serverのjoinだけでは足りない。またDockerの出力欠落testは非空runtime identityとcleanup前の実container観測が必要だった。両方修正した。browser mutation-fenceの開始待ちは無期限に待たず早期operation結果を拒否する。早期終了overlayは0.008秒で該当assertionを失敗させ、対象raceは1.246秒で成功した。
 
-Q10: mutation前build errorのoverlayは旧Flutter oracleを通し、強化後は5ケースとも拒否した。通常対象testは成功、Flutter対象raceは1.017秒で成功。Q11: fixture cleanupは返却CLI JSONに依存せず専用SQLite registryを列挙し、完了を確認できなければ回復状態を保存する。global discovery/pruneで削除を認めない。daemon不要の対照は出力欠落・不正JSON・ID不一致・未完了状態・destroy失敗・registry破損を扱う（CLI対象race 1.282秒）。実Dockerの出力欠落回帰はcleanup前のcontainer存在と後の不在を確認する。native結果は追記待ち。新helper APIがなかったことだけで旧コードのDocker修正前失敗とは主張しない。
+Q10: mutation前build errorのoverlayは旧Flutter oracleを通し、強化後は5ケースとも拒否した。通常対象testは成功、Flutter対象raceは1.017秒で成功。Q11: fixture cleanupは返却CLI JSONに依存せず専用SQLite registryを列挙し、完了を確認できなければ回復状態を保存する。global discovery/pruneで削除を認めない。daemon不要の対照は出力欠落・不正JSON・ID不一致・未完了状態・destroy失敗・registry破損を扱う（CLI対象race 1.282秒）。CLI出力が失われた場合を実Dockerで再現するテストはcleanup前のcontainer存在と後の不在を確認する。native結果は追記待ち。新helper APIがなかったことだけで旧コードのDocker修正前失敗とは主張しない。
 
 英日のpolicy追加部分は独立した読者・意味reviewを受けた。提供された日本語Planには汎用model checkerを対象外とする規則とmasterから遅れたときの復旧手順が欠けており、両方補った。M5の欠落指摘は、要求された3項目がreview時点から既に日本語schemaにあったことをreviewerが再確認し撤回した。
 
-Q12（修正前にACCEPT）: Android UI companionのsymlink負例は空targetや不正metadataを使い、無関係なfile不在・source不一致でも成功できる。不変条件: 正常なcompanion artifactの成功を確認してからdirectory/file symlinkを分離し、意図した拒否を検査する。最初の予防機会は負例fixture/oracle設計。testのUNREACHED_EFFECTでありproductの回避を実証したものではない。
+Q12（修正前にACCEPT）: Android UI companionがsymlinkを拒否することを確認するテストは空targetや不正metadataを使い、無関係なfile不在・source不一致でも成功できる。不変条件: 正常なcompanion artifactの成功を確認してからdirectory/file symlinkを分離し、意図した拒否を検査する。最初の予防機会は、拒否を確認するテストの入力・環境と成否判定の設計。testのUNREACHED_EFFECTでありproductの回避を実証したものではない。
 
-Q12の証拠: directory/fileのLstatをStatへ置換するoverlayを旧symlink負例は通す。正常artifactから始める強化後の対照は同じ故障（directory・metadata・APKのsymlink受理）を拒否する。通常uihelper testは成功。相対linkでfile targetを正常なcompanion root内へ置き、無関係なroot逸脱拒否を避ける。baseline corpusは28 package directoryの195 test fileであり、所有fixture fileを3つ追加した現在は198。UI helper/Android UIは同期provenance/payload/dispatch fixtureを使い、追加の負例監査でQ12を発見した。process runtimeのnative即時終了検査がQ08を露呈した直接のcallerである。
+Q12の証拠: symlinkの拒否を確認する旧テストは、directory/fileのLstatをStatへ置換するoverlayを適用しても成功する。正常artifactから始める強化後の対照は同じ故障（directory・metadata・APKのsymlink受理）を拒否する。通常uihelper testは成功。相対linkでfile targetを正常なcompanion root内へ置き、無関係なroot逸脱拒否を避ける。baseline corpusは28 package directoryの195 test fileであり、所有fixture fileを3つ追加した現在は198。UI helper/Android UIは同期provenance/payload/dispatch fixtureを使い、拒否を確認するテストの入力・環境を追加監査してQ12を発見した。process runtimeのnative即時終了検査がQ08を露呈した直接のcallerである。
 
 local検証checkpoint: Linux Go 1.27.1で`repoctl doctor`と`repoctl check`が成功。Docker/Composeを使う`repoctl test-integration`が成功。最後のcleanup前container oracle追加後、`AGENT_ENV_INTEGRATION=1 go test -tags=integration ./internal/cli -run '^TestIntegrationRegistryRecoversLostCreateResponse$' -count=1`が25.594秒で成功した。Q11の直接daemon証拠である。cacheなし全体raceとreview後最終harnessは実行中。Windows/macOS native CI、current-HEAD review gate、mergeは未完了。
 
@@ -790,7 +791,7 @@ Windows向け修正後の独立technical reviewに追加不具合の指摘はな
 
 次のnative CI実行前に、修正後の`repoctl check`は全段階で成功した。
 
-Q13（修正前に調査をACCEPT）: e558891のVerify push run34421905630 integration job102698956780で`TestRemoteCreateNearManifestLimitRoundtrip`が62.02秒後、controller capacity/no online compatible hostで失敗した。新たに観測したCLI fixture失敗であり、manifest転送の回帰を証明したものではない。高コストbundle準備とhost登録の鮮度の関係、同種fixtureを調査する。最初の予防機会は前提資源の有効期間契約とstale hostを強制した対照。TTL延長や再実行で失敗を隠さない。
+Q13（修正前に調査をACCEPT）: e558891のVerify push run34421905630 integration job102698956780で`TestRemoteCreateNearManifestLimitRoundtrip`が62.02秒後、controller capacity/no online compatible hostで失敗した。新たに観測したCLI fixture失敗であり、manifest転送が以前の変更によって壊れたと証明したものではない。高コストbundle準備とhost登録の鮮度の関係、同種fixtureを調査する。最初の予防機会は前提資源の有効期間契約とstale hostを強制した対照。TTL延長や再実行で失敗を隠さない。
 
 Q13のソース証拠: 登録後、flags.create内で約4MiBのBuildとblob uploadを再実行する。Onlineはlast_seenから30秒で失効するがfixtureはheartbeatを送らない。PR integration job102698969153/run34421909744でも61.95秒後にcapacity失敗を再現した。CIの正確なheartbeat経過時間は未記録である。controller TTLではなく、所有したheartbeatとoffline/refreshの強制対照でliveness契約を直す。実multi-host fixtureは既にWorker.Runでheartbeatを送る。scheduler直接testはstale hostを意図的に検証しているため変更しない。
 
@@ -832,3 +833,308 @@ Q14のPRスレッド4件すべてに修正・対照の証拠を添えて返信�
 今回の整合更新は英日Planのみを変更する。merge前に更新後HEADの検査と、
 そのHEADに対する人間の承認を再確認する。
 merge・archiveまではguarded/manual fallbackのもとでPlanをactiveに保つ。
+
+
+### リポジトリ内の用語の追加改稿（2026-09-11）
+
+ユーザーは、残る23文書・67箇所の日本語のテスト表現を、実装と照合して明確にするよう依頼した。
+対象は方針・設計文書5件、監査文書9件、完了済みPlan9件である。
+EP-QUAL-001の文書保守として既存branchで作業し、先に行った本active Planの未commitの改稿も維持する。
+
+判断: 参照先のテストと実装を確認してから、入力、想定する拒否・エラー、保持すべき状態を具体化する。
+完了済みPlanの過去のrevision、コマンド、結果、当時の残件、native証拠の限界は維持する。
+文章の明確化を、過去の検証の再実行や証拠の格上げとして扱わない。
+対応する英語表現も更新し、意味の一致を確認してから翻訳hashを更新する。
+
+- [x] 67箇所を確認可能なリポジトリ内の証拠と照合し、23文書の英日改稿をreviewした。下記A15の留保は維持する（2026-09-11）。
+- [x] 文書・Plan検査を実行し、参照した証拠と検証の限界を記録した（2026-09-11）。
+
+以下の台帳で23文書すべてを扱う。AGENTS/QUALITYとARCHITECTURE/ADRは同じ行にまとめた。
+auditsは`docs/audits/repository-correctness/`、completedは`docs/exec-plans/completed/`内の文書を指す。
+各文書の英日両版を改稿した。
+
+| 文書 | 確認したリポジトリ内の証拠 | 明確にした意味 |
+| --- | --- | --- |
+| AGENTS / QUALITY | `internal/browser/cdp/fixture_lifecycle_test.go` | 検証対象の条件への到達と返却原因の区別。 |
+| ARCHITECTURE / ADR 0005 | `tools/repoctl/main.go`; `tools/repoctl/main_test.go` | 入れ子のFlutter packageを含む禁止importの意図的な入力。 |
+| design-docs/browser-cdp-automation | `internal/config/browser.go`; `internal/config/browser_test.go` | binding欠落と保護対象switchの不正を拒否。 |
+| audits/current-compose-release | `tools/repoctl/release.go`; `tools/repoctl/release_path_test.go` | 実checkout pathを検出しmodule pathを誤検出しない。 |
+| audits/current-process-browser | `internal/browser/cdp/client_test.go`; `internal/browser/cdp/actions.go`; `internal/cli/browser_native_test.go` | identity不一致と重なった要素に遮られた対象への入力を拒否。 |
+| audits/supplemental-cli | `internal/cli/browser_native_test.go` | 成功した操作の必要な表示と誤表示の不在を確認。 |
+| audits/current-control-plane | `internal/app/readiness.go`; `internal/app/readiness_safety_test.go` | 終了・出力が未確認なら再試行を止め削除を防ぐ状態を保持。 |
+| audits/current-mobile | `internal/runtime/android/adb.go`; `internal/runtime/android/adb_test.go` | 非互換・不正なserver応答の後に操作用ADB commandを送らない。 |
+| audits/history-mobile | `internal/runtime/android/adb_test.go`; `internal/app/application_identity_test.go` | identity/path/environmentの要件違反と操作なしの確認。 |
+| audits/history-process-browser | `internal/app/plan_process_test.go`; `internal/app/browser_review_test.go`; `internal/execx/managed_windows_test.go` | secretリテラル、manifest改変、native識別検査。helperのみの限界は維持。 |
+| audits/documentation | `tools/repoctl/translation_review_test.go`; `tools/repoctl/fragment_audit_test.go`; `tools/repoctl/main.go` | リンク欠落・非表示、不正な翻訳例外、偽見出しへのリンク。 |
+| audits/matrix | `internal/browser/cdp/supplemental_audit_test.go`; `internal/browser/cdp/snapshot_test.go`; `internal/browser/cdp/snapshot.go` | checked/pressed状態変化、navigation、上記の領域別検査。 |
+| completed/persistent-process-runtime | `internal/execx/detached.go`; `internal/execx/managed_test.go`; `internal/execx/managed_windows_test.go`; `tools/repoctl/main_test.go` | 不正な識別情報・PID再利用時の観測と停止、禁止import。 |
+| completed/android-ui-observer | `internal/app/ui.go`; `internal/app/ui_test.go` | UIの拒否・失敗時の挙動と範囲外座標。 |
+| completed/browser-cdp-automation | `internal/config/browser_test.go`; `internal/browser/cdp/client_test.go`; `tools/repoctl/main_test.go` | profile要件違反、制御したtransport不一致、禁止依存。 |
+| completed/flutter-android-runtime | `internal/config/application_test.go`; `internal/app/applications_test.go`; `internal/app/application_identity_test.go`; `internal/runtime/android/application_test.go`; `tools/repoctl/main_test.go` | 不正manifest、終了未確認、証拠保存・起動失敗、禁止依存。 |
+| completed/standalone-release-finalization | `tools/repoctl/release_source.go`; `tools/repoctl/release_source_test.go`; `tools/repoctl/release_e2e_test.go`; `tools/repoctl/release_workflow_test.go` | 不正release入力、改変archive、公開gateを迂回する変更。 |
+| completed/standalone-distribution | `tools/repoctl/release_source_test.go` | Git不一致・未commit変更の拒否と専用checkoutの分離。 |
+| completed/multi-host-control-plane | `internal/controlplane/server/server_test.go`; `internal/controlplane/store/store_test.go`; `internal/blobstore/store_test.go`; `internal/remotesource/package_test.go`; `internal/cli/multihost_integration_test.go` | ACL、cleanup証拠、CAS/source検証、helperへ環境変数の誤りを与える対照。 |
+| completed/repository-correctness-audit | `internal/browser/cdp/supplemental_audit_test.go`; `internal/browser/cdp/snapshot_test.go`; `tools/repoctl/fragment_audit_test.go` | 不具合再現、不完全なBrowser観測、fragment検査。Android A15の留保は下記。 |
+| completed/repository-correctness-review | `internal/browser/cdp/page_create_review_test.go`; `tools/repoctl/fragment_audit_test.go` | target type欠落で不在を証明しない。有効・無効な見出しanchor。 |
+
+
+reviewでは、誤解を招く改稿案を3点修正した。成功したCLI操作の表示検証を操作失敗の検証に変えず、
+完了したWindows Jobは過去のPIDが再利用されても正しく不在を返せることを維持した。
+AGENTSは、禁止する副作用の実行ではなく検証対象の条件への到達を要求する表現にした。
+方針・設計文書5組と先行するactive Plan改稿には変更箇所の独立reviewを行い、
+監査文書・完了済みPlanの改稿は統合担当が確認した。
+
+留保: 過去のA15にあるAndroidの部分取得・打切りwait専用fixtureは直接特定できなかった。
+その歴史的記述は維持し、直接確認できたBrowserの不在検証とは分けた。
+過去のCI実行時間やOS別の受け入れ結果は保存したもので、今回再実行・再認定したものではない。
+
+
+今回の文書変更に対する`repoctl docs-check`、`repoctl plans check`（3 Plan有効）、
+`git diff --check`は成功した。途中の文書・Plan検査では編集中の翻訳hashを拒否したが、
+意味一致のreviewとhash更新後は成功した。
+変更48ファイルはすべてMarkdownであり、意図的に追記したactive Planを除き、
+HEADとの比較でinline code・リンク先・見出しに差はなかった。
+リポジトリのMarkdown検索でも、棚卸しした67箇所の日本語の略した表現は残っていない。
+
+Linux Go 1.27.1で現在のソースに対する対象テストを実行し、成功した。
+
+```text
+go test ./tools/repoctl ./internal/config ./internal/browser/cdp -run '^(TestArchitectureBoundaries|TestBrowserManifestContract|TestBrowserManifestNegativeFixtures|TestBrowserRequiresProcessRuntime|TestBrowserAbsentPreservesLegacyCanonicalShape|TestFixtureCancellationErrorDiscriminatesReturnedCause)$' -count=1
+```
+
+結果はrepoctl 0.021秒、config 0.016秒、CDP 0.003秒。
+確認した方針文書の例を補う検証であり、新たな全suite・native受け入れの主張ではない。
+
+
+### 依存関係の用語の追加改稿（2026-09-11）
+
+次の用語改稿依頼は、日本語14文書・18箇所と対応する英語版を対象とする。
+先行する未commitの改稿を維持し、EP-QUAL-001の文書保守として進める。
+
+判断: componentの選択、Compose serviceの選択、resourceの保持を区別する。
+`internal/stack/resolve.go`はルートと、その`DependsOn`を直接・間接にたどった依存先すべてを、
+同じ入力なら同じ順序で選ぶ。`policy.Services`もComposeの`depends_on`をたどり、
+`pruneConfig`が選択結果のserviceから参照するresourceを残す。
+resourceの保持を任意の追加serviceの起動として説明せず、選択集合からルート自身を落とさない。
+
+- [x] 14文書の英日改稿と、証拠・意味一致のreviewを完了した（2026-09-11）。
+- [x] resolver・policy・Compose・appの対象テストを実行した（2026-09-11）。
+- [x] 文書・Plan検査を完了し、検証範囲を記録した（2026-09-11）。
+
+Linux Go 1.27.1での対象検証:
+
+```text
+go test ./internal/stack ./internal/policy ./internal/runtime/compose ./internal/app -run '^(TestClosure|TestDeterminismAndNoMutation|TestSelectedClosureAndHazards|TestRenderSelectedClosureAndPolicy|TestPruneRemovesUnselectedCleanupTargets|TestMobilePlanStackClosure|TestPlanClosureAndNoAllocation)$' -count=1
+```
+
+4 packageすべて成功した（stack 0.005秒、policy 0.002秒、Compose 0.002秒、app 0.010秒）。
+現在の選択・保持対象を確認する検証であり、過去のnative PodmanやFlutterの受け入れを再実行したものではない。
+
+
+確認範囲: ARCHITECTURE、QUALITY、roadmap、ADR 0003、設計文書の
+compose-runtime・compose-providers・core-beliefs・lease-control-plane、
+製品仕様のagent-env-mvp・cli-contract・compose-providers・manifest-v1、
+current-control-plane監査文書、完了済みflutter-android-runtime Plan。
+18箇所すべてを確認し、コードの識別子と見出しanchorは維持した。
+
+証拠: `internal/stack/resolve.go`と`resolve_test.go`、
+`internal/app/plan.go`・`plan_test.go`・`applications_test.go`、
+`internal/policy/policy.go`と`policy_test.go`、
+`internal/runtime/compose/compose.go`・`compose_test.go`・`prune.go`・
+`prune_test.go`、および`podman.go`内の共通検証の呼出し。
+ARCHITECTURE・QUALITY・roadmap・Flutter Planの変更箇所への独立reviewで、
+QUALITYの観測対象がleaseのreadyから各serviceのreadyへ変わる改稿案を1件検出した。
+英日とも元の観測対象を維持する表現に修正し、残り10組は統合担当が確認した。
+
+依存関係の改稿後の最終検査: `repoctl docs-check`、`repoctl plans check`（3 Plan有効）、
+`git diff --check`が成功した。リポジトリのMarkdown検索で対象の日本語表現は残っていない。
+
+
+QUALITYのvolume表現の追加改稿（2026-09-11）: 記録されたテストのDockerfileの`VOLUME`指定、
+Podmanが作成した匿名volume、観測した`Anonymous: true`と空の`Labels`、
+destroy後の不在を明記した。
+`internal/cli/podman_integration_test.go`のイメージ作成・接続volume検査・cleanup後の一覧検査と、
+`internal/runtime/compose/podman_anonymous.go`を確認した。
+過去の実行記録の表現を明確にしたもので、新たなnative実行ではない。
+
+
+### 受け入れ条件の意図を示す表（2026-09-11）
+
+ユーザーは、列挙された受け入れ条件ごとに何を確かめたいのかを示すよう依頼した。
+QUALITYの公開条件、常駐processのlifecycle受け入れ、複数hostのnative fixtureの検証範囲を、
+項目・確認内容・理由の表へ整理する。
+前提条件、過去の実行結果、native・物理hostの検証範囲は表の外に維持し、先行する改稿も保持する。
+製品の挙動変更や、リポジトリ全体への表形式の規則追加は行わない。
+
+理由は実装の経緯の推測ではなく、既存の検査を根拠とする。
+確認先は`.github/workflows/release.yml`、`tools/repoctl/release_workflow_test.go`、
+`release.go`・`release_smoke.go`、`internal/cli/process_native_test.go`・
+`process_compose_integration_test.go`、`internal/app/process_lifecycle_test.go`、
+`internal/runtime/process/process_test.go`、`internal/cli/multihost_integration_test.go`。
+process fixtureの検証は2 leaseの同時生存であり、create呼出しの同時実行ではない。
+保存失敗時のcleanupは所有の証拠を確認できる場合に限る。
+Browserを模したhelperをBrowser/CDP機能の正しさの証拠にせず、
+複数hostのfixtureは同じhost上の2 worker rootという範囲を維持する。
+
+- [x] 英語・日本語の読者reviewと意味一致の独立reviewを完了した（2026-09-11）。
+- [x] 文書検査を実行し、対象検証とその限界を記録した（2026-09-11）。
+
+
+独立reviewで元の条件がすべて残っていることを確認した。
+lease全体の配置は全runtimeを1 workerへ置くこと、期限更新は利用者向けOwner labelではなく
+管理するcontrollerと配置の維持であることを明確にした。
+smoke testは全providerのruntimeではなくCLIの起動・依存を確認する範囲とし、
+状態とlogの観測についても英日を揃えた。過去の成功記録は表と分けて維持した。
+
+Linux Go 1.27.1で現在のソースに対する対象検証が成功した。
+`TestReleasePublicationGate`（repoctl 0.004秒）、
+`TestProcessIdentitySaveFailureAndPartialStartCompensate`、
+`TestProcessUnknownOwnershipQuarantinesAndRecovers`、
+`TestProcessReadinessUsesRecordedNumericEndpoint`（app 0.036秒）、
+`TestReservedPortOccupationPreventsLaunch`、
+`TestReceiptFailurePreservesReturnedIdentity`（process adapter 0.017秒）。
+いずれも`go test`で名前の完全一致patternと`-count=1`を指定した。
+最初の一括選択ではprocess adapterのテストが一致しなかったため、その結果を検証に数えず、
+正しい名前の2 testを別途実行した。新たなnative multi-host・Compose・release候補の実行は主張しない。
+
+表への再構成後、`repoctl docs-check`、`repoctl plans check`（3 Plan有効）、
+`git diff --check`が成功した。
+
+
+### processのテスト範囲を示す表（2026-09-11）
+
+ユーザーは、QUALITYの先行するconfig・adapter・native primitiveの説明も、
+確認する意図が読める構成にするよう依頼した。
+設定5行・adapter7行・OS上のprocess処理3行の表に分け、
+変更後も既存のAndroid detached processが正しく動くことを確かめる条件と、後続のlifecycle表は維持した。
+source相対pathの範囲制限とhostのPATH検索を区別し、
+起動前の秘密値保護、起動後の秘密値変更、起点終了後の子孫生存は理由も分けた。
+
+確認先は`internal/config/process_test.go`、
+`internal/runtime/process/process.go`・`process_test.go`、
+`internal/execx/managed_test.go`・`detached_test.go`。
+cacheなしの設定・adapter対象テストは成功した（0.008秒／0.136秒）。
+manifestのvariant、YAML項目指定、既存の保存形式、参照の展開、path・識別検査、
+上限付きlog、永続化した秘密値保護を対象とした。
+native processテストはソースを確認したもので再実行しておらず、
+今回の文書変更で過去のOS別受け入れを再認定しない。
+
+- [x] 英語・日本語・意味一致の独立reviewと最終文書検査を完了した（2026-09-11）。
+
+
+英語・日本語・意味一致の独立reviewで、広く読める表現を2点修正した。
+port・readinessは任意なので設定した場合の検査とし、移植性のための名前検査は
+directory名に使うprocess runtime名が対象であることを明記した。
+`internal/config/process.go`と照合し、最終`repoctl docs-check`と`git diff --check`は成功した。
+
+
+### 初読で理解できる文書への見直し（2026-09-11）
+
+ユーザーの依頼により、既存機能の維持や不具合の再発防止を指す用語と、情報を詰め込んだ
+文章を見直す。これまでの未commitの文書修正は維持する。今回はQUALITY全文と、
+リポジトリ文書で対象用語を使っている箇所を確認する。リポジトリ内の全文章を改稿したとは
+主張しない。対象箇所では、既存の挙動を維持するテスト、修正済み不具合の再発を検出する
+テスト、過去の指摘と現在の検査との対応を区別する。テスト名、リンク、過去の結果、
+未検証の環境に関する限界を維持する。
+
+判断：何を確かめる検査なのか、その目的とともに平易に説明する。同列の受け入れ条件には
+表を使い、仕組みや制限はつながりのある文章で説明する。リンク先のanchorを壊さないため
+既存の見出しは維持し、見出しに残る用語は直下で説明する。製品の挙動とテストの要件は変更しない。
+
+発見：multi-host設計の日本語版では、期限処理のテストが後片付けの完了まで確認するように
+読めた。実際の`TestControllerServeQueuesExpiryWithoutPolling`は、workerがofflineで
+leaseがREADYのまま、destroy要求がキューへ入ることを確認する。観測のためSQLiteを繰り返し
+照会するが、workerのpollやHTTPリクエストで期限処理を起動するわけではない。
+英日両版で、要求の登録と後片付けの完了を区別した。過去の受け入れ検証を再実行したとは扱わない。
+
+- [x] QUALITY全文の見直しと対象用語の出現箇所の確認を完了する。
+- [x] 独立した読者レビュー・英日意味照合と文書検証を完了する。
+
+
+対象用語の確認範囲は43件の日本語文書と対応する英語版である。
+QUALITY、PORTABILITY、設計文書compose-providers・multi-host-control-plane・
+persistent-process-runtime、2件のactive Plan、repository-correctness監査資料13件、
+完了済みPlan23件を含む。各対象箇所を文脈とともに読む。
+QUALITYは節ごとの読みやすさを確認した後、文書全体の流れを確認する。
+他の文書は対象箇所のレビューであり、全文章の改稿ではない。
+監査資料では184行に188箇所あった。過去の指摘との対応には、テストだけでなく文書・CI・
+確認範囲が未確定な項目も含まれるため、「現在の確認手段」と表記する。
+これにより、ラベルだけで過去の不具合を再現したかのように読まれることを防ぐ。
+
+現在のソースに対する対象検証はLinux Go 1.27.1で成功した。
+`TestControllerServeQueuesExpiryWithoutPolling`、`TestPodmanBridgeNativeRoundTrip`、
+`TestCompletedStackedDependencySurvivesBranchDeletion`、
+`TestStackedProvenanceValidatesSeparateHistories`、
+`TestHumanContractAcceptsCleanCRLFCheckout`を、テスト名の完全一致パターンと
+`-count=1`で実行した。結果はrepoctl 0.501秒、CLI 1.016秒、Compose 0.264秒だった。
+これは説明に使った検査例の確認であり、全テスト、実際のengine、Windows/macOSの
+受け入れ検証を新たに完了したとは扱わない。
+
+完了済みPlanでは23組に149箇所あり、148箇所を書き換えた。保護対象の見出し1箇所は維持し、
+直下に意味を説明した。二言語レビューの履歴では、対象用語はテストではなく、修正によって
+既存の動作を壊した不具合を指していた。実際のwriterを使う履歴では、実装照合により
+ロック取得ではなくロック喪失の注入だと確認した。いずれもその意味を維持する。
+HEADとの比較で、対象の監査資料と完了済みPlanのinline literal、見出し、リンク先に
+変更がないことを確認した。完了済みPlanの数値列も、翻訳hashを除いて維持されている。
+
+
+独立レビュー：主担当が修正した箇所は、英語読者・日本語読者・英日意味一致の各観点で
+確認し、指摘はなかった。完了済みPlanのレビューでは、日本語の重複、英語の列挙の不揃い、
+A22で過去の186行すべてに不具合検出テストがあるように読める要約を指摘された。
+いずれも修正し、要約には実装・確認手段・証拠の限界を含めた。
+QUALITYの全文を英語・日本語・意味一致の観点で独立レビューした結果、3件の範囲の欠落を
+検出した。Windows以外のOSを対象にするinteropがLinux限定になっていた点、別理由で
+最も早く拒否される経路の特定が任意の拒否経路の確認になっていた点、ライフサイクル操作の
+補償が作成失敗時だけになっていた点である。英日両版の補償処理の導入文も含めて修正した。
+用語を平易にする作業でも、hash検証だけでなく意味のレビューが必要だと確認できた。
+
+
+監査資料の対象箇所を独立レビューした結果、意味上の問題はなく、日本語の接続が不自然な
+1箇所を修正した。最終的な文書検証は、`docs-check`、`plans check`（3件のPlanが有効）、
+`git diff --check`が成功した。
+この文書修正は未commit・未pushである。本Planの実装・レビュー・mergeのライフサイクルを
+完了したとは扱わず、過去の受け入れ検証を置き換えない。
+
+
+### 日本語文書の文体統一（2026-09-11）
+
+ユーザーは直前の文体レビューで示した方針を承認した。レビューでは日本語文書85件を走査し、
+候補18件を文脈で確認した。同じ説明内の意図が読み取れない切り替わりを、各文書の主な文体へ
+統一する。表やチェックリストの短句、引用、技術的なliteral、時制、義務や禁止の強さ、
+過去の証拠は維持する。監査indexの案内と履歴、Flutter Planの計画と実行記録の書き分けは
+残し、それぞれのまとまりの中で混在する箇所を直す。
+対応する英語版と意味を確認する。日本語の文末変更のために新たな英語の内容は作らない。
+これは今回の編集判断であり、リポジトリ全体の新たな執筆規則ではない。
+既存の未commitの変更は維持する。
+
+- [x] 承認された文体修正を適用し、保護対象の内容を比較する。
+- [x] 独立レビューと文書検査を完了する。
+
+
+完了：日本語文書17件を修正した。監査indexは変更不要だった。
+独立した担当者が今回の変更前後の差分、対応する英語の意味、時制、要件の強さを確認し、
+未解決の指摘はない。統合時にFlutter Planの簡潔な番号付き手順は元の形式を維持し、
+履歴の要約文は周囲の常体へ揃えた。保護対象のliteral、見出し、リンク、数値の証拠は維持した。
+`docs-check`、`plans check`（3件のPlanが有効）、`git diff --check`が成功した。
+製品コードは変更せず、新たなnative受け入れ検証を完了したとは扱わない。
+commit・pushは実施していない。
+
+
+### 削除後のcacheに関する表現の修正（2026-09-11）
+
+実装との整合性レビューで、完了済みmulti-host第2回レビューPlanに文書上の誤りを1件確認した。
+再現しなかったcache削除への懸念を、修正済み不具合の再発検出テストとして説明していた。
+ユーザーの承認を受け、英日両版を、削除後も空CASでcacheを再利用できることを確かめるために
+残したテストという説明へ修正した。`internal/worker/postdestroy_cache_review_test.go`は、
+後続のlogs/artifact/reconcile/再destroyと、process起動が1回であることを確認する。
+別件のsource diff・再利用に関する修正前失敗の証拠は維持した。
+製品の挙動と過去の検証結果は変更していない。
+
+
+### 文書修正のcommit承認（2026-09-11）
+
+ユーザーは蓄積した文書修正のcommitとpushを承認した。
+対象は用語の説明、受け入れ条件の理由を示す表、日本語文体の統一、上記の実装照合による修正である。
+先に記録した未commitという状態は、それぞれの時点の記録として維持する。
+本Planは既存のレビュー・merge要件を満たすまでactiveに保つ。
+今回の文書修正の公開を、新たなnative受け入れ検証の証拠とは扱わない。

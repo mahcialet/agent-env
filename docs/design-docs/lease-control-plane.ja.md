@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/design-docs/lease-control-plane.md
-source_sha256: bc7956644f4e5c7f41e59aba9c33347f1cce8fe7752978a1be22ad26efe3dd55
+source_sha256: 5d301ed43612e744cda19b64835073f6cf0558667e28a599b55a9ec0a219be5b
 ---
 
 [English（翻訳元）](lease-control-plane.md)
@@ -48,7 +48,7 @@ shared-schema@cccc3333
 
 ## Stack
 
-明示的なルートコンポーネントからなる名前付きの起動グループです。`agent-env` が推移的な依存関係の閉包を計算します。
+明示的なルートコンポーネントからなる名前付きの起動グループです。`agent-env` は、そのルートと、ルートが直接・間接に依存するすべてのコンポーネントを選びます。
 
 例:
 
@@ -153,7 +153,7 @@ Git 実装は、ライブラリで Git object/ref の動作を再実装するの
 2. schema と参照を検証する
 3. source リポジトリを特定する
 4. worktree を作成せずに要求された ref を commit に解決する
-5. stack のルートからコンポーネント依存関係の閉包を解決する
+5. stack のルートと、ルートが直接・間接に依存するすべてのコンポーネントを選ぶ
 6. 必要なランタイム操作を特定する
 7. 可能な範囲でホスト policy と前提条件を検証する
 8. 決定的な plan と診断情報を表示する
@@ -241,4 +241,4 @@ alias/リポジトリ識別情報/解決済み commit をソートした組が s
 
 ### Readiness の中断と削除の制御
 
-command readiness は実行前に running の command 行を永続化する。プロセス群の終了確認と証拠の永続化が完了した場合だけ terminal 行に進める。終了または出力が未確認なら再試行せず、作成を隔離し running 行を残して、後続の destroy/GC でも source を保持する。終了確認済みの通常 probe 失敗は再試行できる。永続化された中断要求では次の試行を開始せず readiness を停止する。
+command readiness は実行前に running の command 行を永続化します。プロセス群の終了確認と証拠の永続化が完了した場合だけ terminal 行に進めます。終了または出力が未確認なら再試行せず、作成を隔離し running 行を残して、後続の destroy/GC でも source を保持します。終了確認済みの通常 probe 失敗は再試行できます。永続化された中断要求では次の試行を開始せず readiness を停止します。

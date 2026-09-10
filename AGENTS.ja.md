@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-10
 translation_of: AGENTS.md
-source_sha256: 626720fd317fb51de8f2ca9671696230fc40ca05a0579c8a5ddb7ab1af1706b3
+source_sha256: e841e3b9112f4af4e95336861061b72d5e3c1dcbb23387a40042c7d93abb7796
 ---
 
 # エージェントの入口
@@ -76,7 +76,7 @@ go run ./tools/repoctl generate
 
 - 証拠は何を示すかで分類する。反復で実行順序の強制を証明しない。
 - fixtureは失敗経路も含めcancel、資源close、完了joinを所有する。
-- 負例は意図した処理へ到達し、その失敗原因を区別する。
+- 拒否やエラーを確認するテストでは、検証対象の条件に到達し、意図した拒否・エラーを無関係な失敗と区別する。
 - 指摘の判断と修正前失敗の対照をactive Planへ記録する。
 - 実行順序・oracle・reviewは[品質の証拠規則](docs/QUALITY.ja.md#証拠の種類とテストアーキテクチャ)に従う。
 

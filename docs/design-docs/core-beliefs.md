@@ -17,7 +17,7 @@ SQLite owns desired state, reservations, and evidence. Git and runtime adapters 
 
 Failures are data: preserve failed allocations, compensations, and quarantine events. Cleanup prioritizes preserving tracked edits and resource identity over optimistic deletion.
 
-Components own dependencies; stacks name roots. A minimal selected closure avoids starting costly irrelevant services. Repository manifests are explicit startup authority.
+Components own dependencies; stacks name roots. Selecting only those roots and all their direct and indirect dependencies avoids starting costly irrelevant services. Repository manifests are explicit startup authority.
 
 Native Windows, macOS, and Linux behavior is a product requirement. Use argument arrays, OS-native paths, and CGo-free releases; no implicit shell or mandatory daemon.
 

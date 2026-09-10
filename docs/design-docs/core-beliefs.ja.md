@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/design-docs/core-beliefs.md
-source_sha256: 2ca7c26c0b4120d08bd0fc22a8df15432a0a078b78124cb50cba7921a12c90ba
+source_sha256: 3e225c168c77b0bf38b312b2a20de153490a8626434ebaff2f3d0b8245bf914e
 ---
 
 [English（翻訳元）](core-beliefs.md)
@@ -19,7 +19,7 @@ SQLite は desired state、予約、証拠を管理します。Git と各ラン�
 
 失敗はデータです。失敗した割り当て、補償処理、隔離イベントを保持します。削除では、楽観的な削除よりも追跡対象ファイルの編集とリソース識別情報の保護を優先します。
 
-コンポーネントが依存関係を持ち、stack がルートを指定します。必要最小限の閉包を選び、高コストで無関係なサービスの起動を避けます。リポジトリの manifest を、起動構成を明示的に定義する基準とします。
+コンポーネントが依存関係を持ち、stack がルートを指定します。そのルートと、その直接・間接の全依存先コンポーネントだけを選び、高コストで無関係なサービスの起動を避けます。リポジトリの manifest を、起動構成を明示的に定義する基準とします。
 
 Windows、macOS、Linux のネイティブ動作は製品要件です。引数配列、OS ネイティブのパス、CGo 不要のリリースを使い、暗黙の shell や必須 daemon を導入しません。
 

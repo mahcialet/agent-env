@@ -109,7 +109,8 @@ fails closed.
 
 ## Validation strategy
 
-Negative config fixtures establish explicit binding and exact switch requirements.
+Tests with invalid browser configurations verify rejection when explicit binding
+or exact switch requirements are not met.
 App tests must cover ownership rechecks, stale/cross-lease references, run/evidence
 failure and destroy fencing. Transport fixtures must reject foreign discovery and
 malformed/oversized responses. Real native tests use pinned Chrome for Testing

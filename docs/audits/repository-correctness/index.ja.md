@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/audits/repository-correctness/index.md
-source_sha256: eea3c0043503bc21c336fcdbd3878a08875f5be0023a96df7b80c1d5af531f4c
+source_sha256: 4023cbe72adb04c1cc43b3ae52fec2ce0a01b306c226d7a5e74eb902db7a7a32
 ---
 
 # リポジトリ正確性監査
@@ -18,9 +18,9 @@ source_sha256: eea3c0043503bc21c336fcdbd3878a08875f5be0023a96df7b80c1d5af531f4c
 Phase Aの固定対象はPR #10 merge後のmaster、`031869c8b9073b8e23bc17fbc55243666a52f557`です。
 監査時のbranchは`audit/repository-correctness`でした。
 
-Phase A/Bは完了しています。当初採用した15件は実装・回帰・native受け入れを通過しました。
+Phase A/Bは完了しています。当初採用した15件は実装修正、その動作を確認するテスト、native受け入れを完了しました。
 その後merge後の4件を再現・採用し、計19件を修正して独立レビューしました。
-過去の回帰テスト名が記録されていても、すべての過去の不具合版をmutation replayしたという意味ではありません。
+過去の修正を確認するテスト名が記録されていても、すべての過去の不具合を再導入して、そのテストが失敗することを確かめたわけではありません。
 
 ## レポート
 
@@ -80,7 +80,7 @@ Verify34294068659: Go1.26/1.27のnative OS6job、cross-build5job、integration�
 ## 最終受入
 
 最終製品revision: `f2ec634baa00af5221217dbfcd5c0aef93c624c9`。
-全 `repoctl check` と `go test -race ./...` は成功。追加protocol回帰も
+全 `repoctl check` と `go test -race ./...` は成功。追加したpage上限・ignored node・pressed状態のprotocolテストも
 race付き3回1.564秒、独立実行5回2.039秒成功。
 実Browser native raceは新しい既定table表示の検査を含め10.157秒成功。
 [Verify34295144985](https://github.com/mahcialet/agent-env/actions/runs/34295144985)

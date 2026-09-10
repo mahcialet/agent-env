@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/design-docs/multi-host-control-plane.md
-source_sha256: bf5decc24b3c99a9ca6c7b49ab7b983a51e69a1788577c35d59881afc103aa87
+source_sha256: 6e2d33a67f57ca055da974a1336e378e5f933f8e685be6883d6e36d310f3ba80
 ---
 
 # 一つの管理主体による複数 host の調整
@@ -54,8 +54,8 @@ destroy は cleanup に加え、実行中 command の cancellation 前にも検�
 ### 機密入力は保存前に検査する
 
 共通protocol検証は保存前にUI/browserのJSON tokenを調べ、重複や大文字小文字違いのtext項目も
-検査する。一時的なtextと`set-text`を拒否し、伏せ字へ変更した入力を実行しない。
-既存journalは書き換えない。非永続の入力protocolは今後の課題とする。
+検査します。一時的なtextと`set-text`を拒否し、伏せ字へ変更した入力を実行しません。
+既存journalは書き換えません。非永続の入力protocolは今後の課題とします。
 
 ## Scheduling と不確実性
 
@@ -73,10 +73,10 @@ host の削除は拒否します。
 
 ### Worker incarnation の交代
 
-配信した操作の所有者を現在のworker登録とは別に永続化する。前のincarnationがonlineなら、
-再試行可能な登録拒否を返す。offline後の交代でも、過去に配信済みの変更操作をpollで引き継がせない。
-localの永続receiptによる復旧完了は受け付ける。incarnationを記録していない旧操作の所有者は
-未確認とし、capacityを保持して再配信しない。移行時点の登録先を推測で所有者にはしない。
+配信した操作の所有者を現在のworker登録とは別に永続化します。前のincarnationがonlineなら、
+再試行可能な登録拒否を返します。offline後の交代でも、過去に配信済みの変更操作をpollで引き継がせません。
+localの永続receiptによる復旧完了は受け付けます。incarnationを記録していない旧操作の所有者は
+未確認とし、capacityを保持して再配信しません。移行時点の登録先を推測で所有者にはしません。
 
 ## Native実行とWSLの境界
 
@@ -113,14 +113,14 @@ global RELEASED には worker による明確な cleanup/不在の証明が必�
 
 ### Create の失敗と削除判断に使う保存情報
 
-createの作用境界を越えた失敗は、予約処理がleaseを返さなかった場合も不確実として扱う。
+createの作用境界を越えた失敗は、予約処理がleaseを返さなかった場合も不確実として扱います。
 補償処理したcreateの結果payloadには解放済みlocal leaseを含められるが、destroy専用の
-cleanup確認フィールドでは解放を宣言しない。復旧後も含め、明示的なdestroyで正式に解放を確認する。
+cleanup確認フィールドでは解放を宣言しません。復旧後も含め、明示的なdestroyで正式に解放を確認します。
 
 保持remote packageはcleanupの判断に必要な情報であり、journalが作用境界を越える前に永続的に
-公開しなければならない。package fileを同期してから、platformのnative方式で一時・公開directoryの
-永続化を確認する。同一packageが既にあっても成功応答前に再確認し、破損・不一致の記録は拒否する。
-このlocal保持rootはworkerの直列処理で管理する。native APIの検証は物理的な電源断試験ではない。
+公開しなければなりません。package fileを同期してから、platformのnative方式で一時・公開directoryの
+永続化を確認します。同一packageが既にあっても成功応答前に再確認し、破損・不一致の記録は拒否します。
+このlocal保持rootはworkerの直列処理で管理します。native APIの検証は物理的な電源断試験ではありません。
 
 ### 初期の操作 dispatch 方針
 
@@ -150,28 +150,30 @@ CAS key は小文字の SHA-256 digest です。`internal/blobstore` は
 ### 転送期限と公開データの永続化
 
 認可済みblob handlerはHTTP serverの固定read/write期限を解除し、
-metadataと認可されていない要求では通信処理の上限を維持する。
+metadataと認可されていない要求では通信処理の上限を維持します。
 
-CAS公開ではfile同期に加え、platformの名前空間の永続化処理を成功応答前に実行する。
+CAS公開ではfile同期に加え、platformの名前空間の永続化処理を成功応答前に実行します。
 Unixでは一時directory、公開directory、CAS rootとその親を同期し、Windowsではnativeの
-write-through moveを使う。検証済みの重複blobでも、過去の失敗後に見えているだけの状態を
-信用せず、公開の永続化処理を再実行する。Windowsでは公開を直列化し、重複時は同期済みの
-同一dataを再公開する。同時readerはfileの識別情報の変化を保守的に拒否する場合がある。
-テストは公開失敗を注入して再試行を検証する。物理的な電源断や、native APIを超える
-filesystem/hardwareの保証を実証したものとは扱わない。
+write-through moveを使います。検証済みの重複blobでも、過去の失敗後に見えているだけの状態を
+信用せず、公開の永続化処理を再実行します。Windowsでは公開を直列化し、重複時は同期済みの
+同一dataを再公開します。同時readerはfileの識別情報の変化を保守的に拒否する場合があります。
+テストは公開失敗を注入して再試行を検証します。物理的な電源断や、native APIを超える
+filesystem/hardwareの保証を実証したものとは扱いません。
 
 ## 期限の永続化と機密入力の境界
 
-追加する`lease_lifetimes`テーブルにcontrollerの期限と自動cleanupのoperation IDを保存する。
-既存leaseは永続化済みcreateと成功したrenewの時刻から補完する。起動時、1秒ごとのserver検査、
-workerのpollで、期限切れcleanupをtransaction内で予約する。queued/dispatched操作があれば
-cleanupを延期する。自動cleanupが失敗または不確実になっても、新規の変更操作として盲目的に
-再試行しない。成功したrenewだけが期限とcleanup記録をリセットする。検査中のdatabaseエラーは
-serverの終了として表面化させ、期限処理が黙って無効になることを防ぐ。
+追加する`lease_lifetimes`テーブルにcontrollerの期限と自動cleanupのoperation IDを保存します。
+既存leaseは永続化済みcreateと成功したrenewの時刻から補完します。起動時、1秒ごとのserver検査、
+workerのpollで、期限切れcleanupをtransaction内で予約します。queued/dispatched操作があれば
+cleanupを延期します。自動cleanupが失敗または不確実になっても、新規の変更操作として盲目的に
+再試行しません。成功したrenewだけが期限とcleanup記録をリセットします。検査中のdatabaseエラーは
+serverの終了として表面化させ、期限処理が黙って無効になることを防ぎます。
 
-CLI controllerもserverテストと同じServer.Runを呼び、定期的な期限処理と終了待機を共有する。
-実際のCLI入口を使う回帰テストで、独立したdatabase接続からoffline leaseを期限切れにし、
-pollなしでcleanupを確認する。
+CLIのcontrollerもserverテストと同じServer.Runを呼び、定期的な期限処理と終了待機を共有します。
+CLIから起動したときに期限処理が動かなくなる不具合を検出するため、実際のCLI入口を使う
+テストを用意しています。このテストは、独立したデータベース接続からoffline leaseを期限切れにし、
+workerのpollやHTTPリクエストを契機とせずに、後片付けの要求がキューへ登録されることを確認します。
+offlineのworkerによる後片付けの完了までを証明するものではありません。
 
 ## 証拠と制限
 
@@ -183,9 +185,9 @@ client への暗黙の tunnel はありません。HA、migration、host をま�
 ### 診断情報の上限
 
 対話的なログ取得ではCompose/Podmanの上限付き表示interfaceと、集計前に制限するAndroid file読み込みを
-使う。既存の完全なcleanupログの証拠収集は別経路とし、表示上限を理由に必須証拠を捨てない。
+使います。既存の完全なcleanupログの証拠収集は別経路とし、表示上限を理由に必須証拠を捨てません。
 remote source diffではbufferを埋め込まず、io.Copyがbytes.Buffer.ReadFrom経由でWriteの上限を
-迂回できないようにする。
+迂回できないようにします。
 
 ### 受け入れ検証の証拠
 

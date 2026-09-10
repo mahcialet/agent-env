@@ -24,9 +24,9 @@ Make release-verify enforce the documented caller cleanliness policy before buil
 
 ## Surprises & Discoveries
 
-All four new entry-point fixtures failed before the fix: execution reached LICENSE lookup in build preparation instead of rejecting index flags. After sharing the guard, the source and entry-point regression tests pass.
+All four new entry-point fixtures failed before the fix: execution reached LICENSE lookup in build preparation instead of rejecting index flags. After sharing the guard, the source and entry-point tests for rejection of hidden index flags pass.
 
-The previous regression tested releaseVersion only. release-verify validated the caller with porcelain and applied releaseVersion only to its clean private clone, missing caller index flags.
+The previous hidden-index-flag test exercised releaseVersion only. release-verify validated the caller with porcelain and applied releaseVersion only to its clean private clone, missing caller index flags.
 
 ## Decision Log
 
@@ -34,7 +34,7 @@ The previous regression tested releaseVersion only. release-verify validated the
 
 ## Outcomes & Retrospective
 
-Completed in code revision `2c6ff8f`. Shared validation closes the caller/clone gap without changing release identity or runtime behavior. The thread was replied to with evidence and resolved. Future cleanliness regressions must exercise command entry points as well as identity helpers. No merge, public tag or release was created.
+Completed in code revision `2c6ff8f`. Shared validation closes the caller/clone gap without changing release identity or runtime behavior. The thread was replied to with evidence and resolved. Future tests for recurrence of cleanliness-check omissions must exercise command entry points as well as identity helpers. No merge, public tag or release was created.
 
 ## Context and Orientation
 
@@ -58,7 +58,7 @@ Fixtures use temporary repositories only. Do not rewrite published history, muta
 
 ## Artifacts and Notes
 
-Local `go run ./tools/repoctl check` and `go test -race ./tools/repoctl` passed on 2026-09-08, including the four entry-point regressions. Local `release-verify --out dist/pr6-index-guard-candidate` built all six targets twice, compared eight identical files and passed Linux native smoke. `AGENT_ENV_RELEASE_CANDIDATE=../../dist/pr6-index-guard-candidate go test ./tools/repoctl -run TestReleaseCandidate -count=1` passed. Independent read-only review found no confirmed defects.
+Local `go run ./tools/repoctl check` and `go test -race ./tools/repoctl` passed on 2026-09-08, including the four entry-point tests rejecting hidden index flags. Local `release-verify --out dist/pr6-index-guard-candidate` built all six targets twice, compared eight identical files and passed Linux native smoke. `AGENT_ENV_RELEASE_CANDIDATE=../../dist/pr6-index-guard-candidate go test ./tools/repoctl -run TestReleaseCandidate -count=1` passed. Independent read-only review found no confirmed defects.
 
 Verify https://github.com/mahcialet/agent-env/actions/runs/34208637620 passed all 12 jobs (six native OS/Go checks, five cross-builds, full race and Docker integration). Release preview https://github.com/mahcialet/agent-env/actions/runs/34208637650 passed repeat-build/candidate validation and Windows/macOS/Linux native smoke. Both runs tested `2c6ff8f`. Thread reply: https://github.com/mahcialet/agent-env/pull/6#discussion_r3956287032 ; thread resolved.
 

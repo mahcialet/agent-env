@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/product-specs/cli-contract.md
-source_sha256: 5a8c2af67f25516a2498679f724abc8e87fae4b311879d43eb7dd1df2f46394b
+source_sha256: 9e32cca2511673b7a6ac7932149fb430c8f6bec2f6654771962ea94c2d95b76f
 ---
 
 [English（翻訳元）](cli-contract.md)
@@ -41,7 +41,7 @@ agent-env doctor [repository|lease-id] [--runtime compose|process|android-emulat
 
 リポジトリ省略時は現在のディレクトリを使います。`init` は認識可能なルート Compose ファイルが 1 つあることを要求し、`.agent-env.yaml` を排他的に新規作成して review が必要と報告します。何も起動しません。
 
-`validate` は Docker や Podman なしでスキーマと参照を確認します。`plan` はさらにローカル Git commit と決定的なコンポーネント閉包を解決し、状態やワークツリーは作成しません。
+`validate` は Docker や Podman なしでスキーマと参照を確認します。`plan` はさらにローカル Git commit を解決し、stack のルートと、その直接・間接の依存先コンポーネントをすべて、同じ入力なら同じ順序で選びます。状態やワークツリーは作成しません。
 
 `--ref` はソースが 1 つの場合に限ります。複数ソースには alias ごとの `--source` override を使います。どちらもリモート ref を fetch しません。
 

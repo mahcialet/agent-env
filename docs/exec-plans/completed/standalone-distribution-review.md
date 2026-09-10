@@ -20,14 +20,14 @@ of previously delivered behavior, then reply and resolve each thread.
 ## Progress
 
 - [x] 2026-09-08: Read harness, inspected clean branch and all review threads.
-- [x] 2026-09-08: Fixed asset names/size, VCS fallback, release path matching/index flags with regression tests.
-- [x] 2026-09-08: Corrected bilingual completed status and state.db audit; current JP milestones match English, archive checksums/manifest are release-set siblings, root symlink and first-write race regressions pass.
+- [x] 2026-09-08: Fixed asset names/size, VCS fallback, release path matching/index flags with tests detecting the same defects.
+- [x] 2026-09-08: Corrected bilingual completed status and state.db audit; current JP milestones match English, archive checksums/manifest are release-set siblings, root symlink and tests of first-write race safety pass.
 - [x] 2026-09-08: Local harness/race and Verify 34206038055 / Release preview 34206043365 passed at 23f19fd; replied to and resolved all eleven threads.
 - [x] 2026-09-08: Recorded outcomes and archived this bilingual plan.
 
 ## Surprises & Discoveries
 
-Independent review rejected the first path-token-boundary approach: Go concatenates string-pool bytes, so a genuine absolute path may follow an ordinary letter. Preserve raw leakage detection outside exact known module occurrences and add this regression.
+Independent review rejected the first path-token-boundary approach: Go concatenates string-pool bytes, so a genuine absolute path may follow an ordinary letter. Preserve raw leakage detection outside exact known module occurrences and add a test detecting this path leak.
 
 Before fixes: 25 invalid asset-name subcases passed incorrectly; a 32MiB cached file lacked size rejection; an actual clean Git build lost VCS identity; four flagged-index cases were accepted; module suffixes matched checkout roots. New tests reproduced each and pass after fixes.
 
@@ -46,7 +46,7 @@ registry.sqlite instead of the CLI's state.db.
 
 ## Outcomes & Retrospective
 
-Completed at code revision `23f19fd`. All eleven reviewed findings have replies and resolved threads. Four were already fixed; seven received new code or documentation changes. Regression, full harness/race, native Windows/macOS/Linux and release preview passed. Independent review caught and prevented a string-pool path-check regression before publication. No public tags/releases or history rewrites were performed.
+Completed at code revision `23f19fd`. All eleven reviewed findings have replies and resolved threads. Four were already fixed; seven received new code or documentation changes. Tests detecting the same defects, full harness/race, native Windows/macOS/Linux and release preview passed. Independent review caught and prevented a string-pool path-check regression before publication. No public tags/releases or history rewrites were performed.
 
 ## Context and Orientation
 
@@ -56,7 +56,7 @@ Standalone product/design docs and the completed parent describe contracts.
 
 ## Plan of Work
 
-Implement bounded regressions for portable names, oversized cached bytes, embedded
+Implement bounded tests detecting defects in portable names, oversized cached bytes, embedded
 VCS fallback, path-leak false positives and hidden tracked edits. Correct metadata
 and state.db audit in both languages. Validate existing thread fixes directly.
 
@@ -68,7 +68,7 @@ inspect native Verify/Release preview, reply using concrete evidence, then resol
 
 ## Validation and Acceptance
 
-Each unresolved thread has code/document evidence and a reply. New regressions
+Each unresolved thread has code/document evidence and a reply. New defect-detection tests
 fail before and pass after where practical. Existing tests remain strict. Native
 Windows/macOS/Linux and release preview must succeed for the code revision.
 Bilingual docs-check passes and working tree is clean after final push.

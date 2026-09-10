@@ -20,7 +20,7 @@ Correct PR #9 destroy previews for persistent processes on `feat/persistent-proc
 
 ## Surprises & Discoveries
 
-Process inspection was routed correctly, but preview formatting fell through to Compose whenever a process existed. Exited processes also need a private-state cleanup preview. The initial targeted regression failed for both live and exited states with force off/on, reproducing the review before changing production code.
+Process inspection was routed correctly, but preview formatting fell through to Compose whenever a process existed. Exited processes also need a private-state cleanup preview. The initial process-preview test failed for both live and exited states with force off/on, reproducing the review before changing production code.
 
 ## Decision Log
 
@@ -28,7 +28,7 @@ Process inspection was routed correctly, but preview formatting fell through to 
 
 ## Outcomes & Retrospective
 
-The process case now reports native identity validation, termination if running, retained logs, whole-tree absence and private-state removal. Live and exited previews failed before the fix; all six state/force cases pass after it. Existing Android preview regression also passes.
+The process case now reports native identity validation, termination if running, retained logs, whole-tree absence and private-state removal. Live and exited previews failed before the fix; all six state/force cases pass after it. The test preserving existing Android preview behavior also passes.
 
 
 Correction `45175dc` is pushed; the sole review thread was replied to and resolved. No review findings remain open. A post-commit whitespace check found extra blank EOF lines in the new plan pair; this archive update removes them without rewriting history.
@@ -39,7 +39,7 @@ Correction `45175dc` is pushed; the sole review thread was replied to and resolv
 
 ## Plan of Work
 
-Add a public Destroy regression covering live, exited and uncertain processes with force both off and on. Verify registry, events, artifacts, private state and provider counters remain unchanged. Then fix formatting.
+Add a public Destroy test checking accurate, side-effect-free previews for live, exited and uncertain processes with force both off and on. Verify registry, events, artifacts, private state and provider counters remain unchanged. Then fix formatting.
 
 ## Concrete Steps
 

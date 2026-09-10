@@ -3,7 +3,7 @@ status: completed
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/exec-plans/completed/persistent-process-runtime.md
-source_sha256: 1a1026838411a6333d1dfd654abcfd37e122ab9d26e1e7898023c2d53e3d43da
+source_sha256: d5e403ec13c36413c993c7ea24fef0ae96673b5ccec5ee9e94138329907db56d
 ---
 
 # leaseが所有する汎用の常駐process runtimeを追加する
@@ -16,12 +16,12 @@ source_sha256: 1a1026838411a6333d1dfd654abcfd37e122ab9d26e1e7898023c2d53e3d43da
 
 PR #8（`feat: add explicit Podman Compose provider with safe lease cleanup`）は
 実装開始前に`master`へmerge済みである。本PlanはPodmanの挙動に依存しないが、
-Compose providerの挙動を回帰範囲に含める。
+Compose providerの既存挙動が変わらないことも確認する。
 
 推奨する開始方法:
 
 - PR #8がmerge済みなら、その結果の`master`からbranchを作り、Compose providerの
-  挙動を回帰検証の範囲に含める。
+  既存挙動が変わらないことも検証する。
 - 未mergeなら現在の`master`からbranchを作る。利便性だけを理由に、未mergeの
   Podman branchの上へprocess runtimeの作業を積まない。
 
@@ -354,12 +354,12 @@ process起動後の永続化に失敗した場合も、返された識別情報�
 
 - [x] (2026-09-08) base branch/revisionを記録し、`feat/persistent-process-runtime`を作る。
 - [x] (2026-09-08) baselineのrepository harnessとrace suiteを実行する。
-- [x] (2026-09-08) native detached codeとAndroid回帰範囲を調べる。
+- [x] (2026-09-08) native detached codeとAndroidの既存挙動の検証範囲を調べる。
 - [x] (2026-09-08) app/config/domain/store/endpoint/readiness/log/cleanup経路を調べる。
 - [x] (2026-09-08) 英日product/design文書を書く。
 - [x] (2026-09-08) processのmanifest/endpoint/補間契約を確定する。
 - [x] (2026-09-08) 必要に応じ、識別情報を条件とするnative停止primitiveを追加する。（3 OSのnative証拠は下記。）
-- [x] (2026-09-08) native停止/識別情報の負例回帰testを追加する。（3 OSのnative証拠は下記。）
+- [x] (2026-09-08) 不正・不一致の識別情報を与えたときの観測・native停止を検証するテストを追加する。（3 OSのnative証拠は下記。）
 - [x] (2026-09-08) Android detached/guardian testをすべて通し続ける。（3 OSのnative証拠は下記。）
 - [x] (2026-09-08) 厳密なprocess runtimeのconfig/domain型を実装する。
 - [x] (2026-09-08) 実行ファイルと作業directoryの解決を実装する。
@@ -372,7 +372,7 @@ process起動後の永続化に失敗した場合も、返された識別情報�
 - [x] (2026-09-08) 並行する2つのprocess leaseの分離を追加する。
 - [x] (2026-09-08) processとComposeの共存fixtureを追加する。
 - [x] (2026-09-08) 別々のCLI起動を通じたprocess間復旧を追加する。
-- [x] (2026-09-08) PID再利用と、子孫が残る起点終了の回帰testを追加する。
+- [x] (2026-09-08) PID再利用と、子孫が残る起点終了時の安全性を確認するテストを追加する。
 - [x] (2026-09-08) 自動再起動しないことを証明する。
 - [x] (2026-09-08) native Windows/macOS/Linuxの常駐process integrationを追加する。
 - [x] (2026-09-08) 割り当てたloopback endpointを使う実HTTP helperを追加する。
@@ -391,7 +391,7 @@ check済みは観測した完了を意味する。UTC日付、revision、正確�
 [Verify run 34226859965](https://github.com/mahcialet/agent-env/actions/runs/34226859965)
 は全12 job成功。Windows/macOS/Ubuntu × Go 1.26/1.27の6 native jobで
 `repoctl doctor`、`repoctl check`、CLI buildを実行した。
-`TestPersistentProcessNativeCLI`、managed-process、Android detached/guardianの回帰を含み、
+`TestPersistentProcessNativeCLI`、managed-process、Android detached/guardianの既存動作を確認するテストを含み、
 Windowsでは`TestManagedWindowsCompletedJobIgnoresReusedHistoricalPID`も実行した。
 integrationの`go test -race ./...`と`repoctl test-integration`はいずれも成功。
 CIの5 cross-build jobも成功した。別途localの6 target CGO無効buildの証拠はコンパイルのみを
@@ -424,11 +424,11 @@ CIの5 cross-build jobも成功した。別途localの6 target CGO無効buildの
   Podman opt-in suiteは設計どおりgateされたままである。
 - 別途`AGENT_ENV_PODMAN_INTEGRATION=1`と`AGENT_ENV_PODMAN_DOCKER_COEXISTENCE=1`で
   `TestPodmanIntegrationConcurrentLeasesAndEvidence`が成功（150.407s）。
-  rootless PodmanとDocker共存の回帰証拠となる。
+  rootless PodmanとDockerとの既存の共存動作を確認する証拠となる。
 - `go run ./tools/repoctl doctor`と`agent-env doctor --runtime process --output json`が
   成功。process診断はComposeに依存せずnative detached対応を報告する。
-- config/domain、architecture負例fixture、繰り返したdocs-checkが成功。
-  reviewで確定した5件に対象回帰testを追加して修正した。readiness中の終了、起動前と証明
+- config/domainの検査、禁止された依存関係を検出するarchitectureテスト、繰り返したdocs-checkが成功。
+  reviewで確定した5件に同じ不具合を検出するテストを追加して修正した。readiness中の終了、起動前と証明
   できる失敗、予約前のpath正規化、endpoint別名の優先、literal readiness認証情報のsnapshot
   混入である。他の実装担当のlifecycle/backendを評価したreviewは独立したものだが、
   config/docsの作者による自身の確認は独立reviewには数えない。
@@ -446,7 +446,7 @@ workflow全体の成功ではない。
 失敗は`TestPersistentProcessNativeCLI`の329行目で、手動終了した2番目のprocessをdestroy
 した際の`detached job root identity reused or ambiguous`だった。正確なnamed Jobの完了
 証拠より先に過去の起点PIDを検証し、managed観測もtree全体の不在証明後に起点を検査していた。
-修正とnative負例回帰を実装中である。完了した所有Jobの証拠を再利用された過去のPIDより優先
+修正と、PID再利用時の観測・停止を検証するnativeテストを実装中である。完了した所有Jobの証拠を再利用された過去のPIDより優先
 しつつ、active Jobの識別情報検査を弱めてはならない。この失敗を証拠として保持する。
 再試行成功や修正commitのnative成功はまだ主張しない。
 
@@ -498,7 +498,7 @@ testを通すために、不確実なprocess所有を誤ってclean状態にし�
 
 - 2026-09-08: 公開CIで、Linux/macOSとWindows Go 1.27が成功していても、Windows
   Go 1.26ではJob完了後に起点PIDの再利用/曖昧性で失敗した。過去の起点検索よりtree完了証明を
-  優先する必要がある。active所有検査は厳密なまま保ち、対象platform修正/回帰を実装中である。
+  優先する必要がある。active所有検査は厳密なまま保ち、対象platformの修正と同じ不具合を検出するテストを実装中である。
 
 ## Decision Log
 
@@ -603,7 +603,7 @@ app調整、`execx.ManagedProcess`の責務を分離した。専用可変状態�
 source変更保護、無関係processの存続を検証した。Unixではsignal直前の生成/group証明を要求するが、
 観測からsignalまでの競合は残り、子孫の所有が曖昧ならquarantineする。Windowsは正確なJobを停止し、
 完了には一致するguardian証明を要求する。初回Windows CIでJob完了後の過去PID検索の問題が判明した。
-2 processの回帰testで過去識別情報の再利用を模擬し、無関係processの存続を検証する。
+2 processを使うテストで過去識別情報の再利用を模擬し、無関係processの存続を検証する。
 kernelのPID再利用を強制したtestではない。独立レビューとnative CIにより、Linuxのみの成功や
 cross-buildでは確定できなかった問題を検出できた。
 
@@ -713,7 +713,7 @@ Security/Quality/Roadmapを更新し、完了後は汎用の常駐host process�
 1. baseを記録してbranchを作る。
 2. 英日のactive Planを追加する。
 3. baseline harness/raceを実行する。
-4. native detached/Android回帰範囲を調べる。
+4. native detached/Androidの既存挙動の検証範囲を調べる。
 5. 英日product/design文書を書く。
 6. process/endpoint/補間構文を確定する。
 7. 識別情報を条件とする停止を追加する。
@@ -738,7 +738,7 @@ Security/Quality/Roadmapを更新し、完了後は汎用の常駐host process�
 
 | ID | 必須の挙動 | 証拠 |
 | --- | --- | --- |
-| H1 | 既存Compose/Android/Flutter/UI-observerの挙動が有効なまま。 | local check/race/Docker integration、Podman+Docker成功。Verify 34226859965の6 native回帰jobも成功。 |
+| H1 | 既存Compose/Android/Flutter/UI-observerの挙動が有効なまま。 | local check/race/Docker integration、Podman+Docker成功。Verify 34226859965の既存動作を検証する6つのnative jobも成功。 |
 | H2 | `type: process`を厳密に検証し、非互換のruntime fieldを拒否する。 | TestProcessManifestContract; TestProcessManifestNegativeFixtures; TestProcessPresenceRejectsYAMLMergeAndAliases; TestProcessFieldsDoNotChangeLegacyCanonicalShape — 2026-09-08、Linux統合作業treeで成功。 |
 | H3 | commandは閉じたcwdを使うargv直接実行で、暗黙のshellを使わない。 | TestStartInterpolatesWithoutSnapshotSecrets; TestPrepareRejectsUnownedRootAndSourceEscape; TestPrepareRejectsSymlinkCWDAndRuntimeRoot — 2026-09-08、Linux統合作業treeで成功。 |
 | H4 | 起動元create CLI終了後もprocessが生存する。 | Linux TestPersistentProcessNativeCLI成功。create終了後に後続の独立CLIで観測。 |
@@ -763,11 +763,11 @@ Security/Quality/Roadmapを更新し、完了後は汎用の常駐host process�
 | H23 | 宣言したstackでprocessとCompose runtimeが共存できる。 | TestIntegrationPersistentProcessComposeCoexistence (55.965s) — 2026-09-08、Linux統合作業treeで成功。 |
 | H24 | processがworktreeを参照し得る間も、sourceのtracked変更保護を保つ。 | TestPersistentProcessNativeCLI（5.422s）成功。稼働中tracked READMEの変更を拒否時にbytes/processごと保持し、forceはtracked-diff記録後に解放。 |
 | H25 | shell/Python/Node/systemd/launchd/Windows Serviceをcore要件にしない。 | 統合arch-check/build/testとGo製CLI/helper成功。新たなcore runtime/daemonは不要。 |
-| H26 | 実常駐process integrationがnative Windowsで成功する。 | f588960のVerify 34226859965でWindows Go 1.26/1.27 native repoctl check成功。TestPersistentProcessNativeCLIと完了Job回帰を含む。 |
+| H26 | 実常駐process integrationがnative Windowsで成功する。 | f588960のVerify 34226859965でWindows Go 1.26/1.27 native repoctl check成功。TestPersistentProcessNativeCLIと完了Jobの証拠を優先することを確認するテストを含む。 |
 | H27 | 実常駐process integrationがnative macOSで成功する。 | f588960のVerify 34226859965でmacOS Go 1.26/1.27 native repoctl check成功。TestPersistentProcessNativeCLIを含む。 |
 | H28 | 実常駐process integrationがnative Linuxで成功する。 | TestPersistentProcessNativeCLI (5.422s) — 2026-09-08、Linux統合作業treeで成功。 |
 | H29 | Browser状fixtureが状態directory、CDP状port、readiness、後続観測、cleanupを証明する。 | TestPersistentProcessNativeCLI成功。専用profile、/json/version、readiness、独立show、cleanupを検証。 |
-| H30 | execx変更後も既存Android detached/guardianの受け入れが成功する。 | f588960のVerify 34226859965で6 native repoctl check jobのAndroid detached/guardian回帰成功。 |
+| H30 | execx変更後も既存Android detached/guardianの受け入れが成功する。 | f588960のVerify 34226859965で6 native repoctl check jobのAndroid detached/guardianの既存動作のテスト成功。 |
 | H31 | 英日永続文書が提供した契約を説明する。 | 英日永続契約、完了先リンク、native証拠を一緒に更新。docs-check成功。 |
 | H32 | 最終harness/翻訳/race/native CIが成功する。 | local harness/race/integration成功。f588960のVerify 34226859965は6 native、race/integration、5 cross-buildを含む全12 job成功。 |
 | H33 | archive前に両ExecPlanが直接証拠とretrospectiveを持つ。 | 両Planに最終checkpoint、H1〜H33証拠、完了retrospectiveを記録し、リンクを更新して一緒にarchiveした。 |
@@ -790,7 +790,7 @@ process treeが使う可能性がある間はworktree/runtime directory/portを�
 Windows修正時点の記録（2026-09-08）: 同一sessionの正確なJobを、過去のPIDより先に
 確認する。空または存在しないJobの不在判定には、同期済みguardian完了証拠の一致が必要で、
 活動中Jobのbirth・所属検査は維持する。PID観測中に完了した場合はJobを再観測する。
-完了を証明した後は過去のPIDへsignalを送らない。新しいnative回帰テスト
+完了を証明した後は過去のPIDへsignalを送らない。同じPID再利用の問題を検出する新しいnativeテスト
 `TestManagedWindowsCompletedJobIgnoresReusedHistoricalPID`では2つの実processと保持した
 旧Job handleを使い、空のJob・消失したJob・証拠欠落/不一致・活動中identity不一致を確認する。
 Linux harnessとWindows amd64/arm64テストcross-compileは成功した。native CIは未確認である。

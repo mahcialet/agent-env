@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/audits/repository-correctness/history-mobile.md
-source_sha256: 83dd22f5e134ea985a3ef2fa4519b675e0230ab5262c09a734d9012dce1d4b50
+source_sha256: 560b72814ca9ea67119e9c641875d6c8ad431cb3696b2a0f2087c935d5b8016e
 ---
 
 # Mobile領域の過去correctnessレビュー資料
@@ -14,11 +14,11 @@ source_sha256: 83dd22f5e134ea985a3ef2fa4519b675e0230ab5262c09a734d9012dce1d4b50
 
 ## Phase C の対応状況
 
-以下の記述は、Phase A の固定対象で得た証拠と当時の検証不足を保存したものです。
-Phase B では mobile の 8 件をすべて採用しました。現在の分類は **ACCEPT** であり、
-後述の「未分類」「未修正」は Phase A 当時を指します。候補実装には次の検査と恒久回帰 test を追加しました。
+以下の記述は、Phase A の固定対象で得た証拠と当時の検証不足を保存したものである。
+Phase B では mobile の 8 件をすべて採用した。現在の分類は **ACCEPT** であり、
+後述の「未分類」「未修正」は Phase A 当時を指す。候補実装には次の検査と、修正した動作を繰り返し確認できるテストを追加した。
 
-| 指摘 | 実装した検査 | 回帰の証拠 |
+| 指摘 | 実装した検査 | 修正を確認するテストと判定内容 |
 | --- | --- | --- |
 | AUDIT-BOUNDARY-001 | デバイスから 2001 件を要求し、時間範囲で絞って最新 2000 件を保持し、実際の省略を明示 | `TestUILogExactTailUsesOverflowProof`: 1999/2000/2001 件と時間範囲外の追加記録 |
 | AUDIT-REDACTION-001 | redaction 後にフィールドと escape 済み snapshot/result の実バイト数を再検査し、node 順序を保持して省略を明示 | `TestUIAuditUIRedactionBounds`、`TestUIFieldBoundaryAndSerializedObservationBoundary`: 登録 artifact、保持識別情報、4096 文字と 1 MiB の直前・一致・直後 |
@@ -29,13 +29,13 @@ Phase B では mobile の 8 件をすべて採用しました。現在の分類�
 | AUDIT-BOUNDARY-002 | provider 実行と永続 run 作成前に小数秒を拒否 | `TestUIAuditFractionalLogLookback` |
 | AUDIT-LIFECYCLE-001 | 型付き preflight 失敗では完了確認状態を維持し、実際の dispatch 後の失敗では不確実性を保持 | `TestUINativePreflightThroughAppDoesNotBlockCleanup`: 失敗 run を記録後に解放成功。`TestUINativeDispatchedFailureRemainsUnconfirmed`: Home/Back/tap/swipe |
 
-ローカル検証では `go test -race ./internal/app ./internal/runtime/android ./internal/runtime/android/uihelper -run 'TestUI|TestVerify|TestLoad' -count=1` が境界・復旧 fixture 修正後に 2 回成功しました（6.122s/1.353s/1.012s と 5.675s/1.340s/1.010s）。
-初版 fixture は JSON の `log` プロパティに必要な 9 bytes と、復旧時の SDK 応答を欠いていました。
-どちらも失敗を確認して修正し、製品側の検査は緩めていません。初期サイズが上限を超える場合は、
-切り詰め flag の変更だけで 2 bytes 減る場合でも、少なくとも一つの node を省略します。
-独立レビュアーが操作後の非公開 tree hash による追加の漏えいを再現し、保守的な省略で解消を確認しました。
-候補の native 検証と全 harness の証拠は集約 ExecPlan が管理します。これらのローカル結果で
-Windows/macOS の native 挙動や過去のすべての不具合の再導入検証まで証明したとは扱いません。
+ローカル検証では `go test -race ./internal/app ./internal/runtime/android ./internal/runtime/android/uihelper -run 'TestUI|TestVerify|TestLoad' -count=1` が境界・復旧 fixture 修正後に 2 回成功した（6.122s/1.353s/1.012s と 5.675s/1.340s/1.010s）。
+初版 fixture は JSON の `log` プロパティに必要な 9 bytes と、復旧時の SDK 応答を欠いていた。
+どちらも失敗を確認して修正し、製品側の検査は緩めていない。初期サイズが上限を超える場合は、
+切り詰め flag の変更だけで 2 bytes 減る場合でも、少なくとも一つの node を省略する。
+独立レビュアーが操作後の非公開 tree hash による追加の漏えいを再現し、保守的な省略で解消を確認した。
+候補の native 検証と全 harness の証拠は集約 ExecPlan が管理する。これらのローカル結果で
+Windows/macOS の native 挙動や過去のすべての不具合の再導入検証まで証明したとは扱わない。
 
 ## 出典と読み方
 
@@ -50,22 +50,22 @@ PR2の出典はcomment IDを指摘別に対応付けていないため、本報�
 
 `最早/検出/profile`はExecPlanのS0–S9を使う。検出段階は出典に従い、native CIはS5、独立レビューはS8とする。最早予防段階とescape profileは監査による分類であり、記録にないreviewerの考えを断定しない。E/M05はnative CI前にも実launcher-child fixtureを作れたため最早S3とし、OS固有Job挙動はS5とする。
 
-回帰test名は現在その修正を検証するものを示す（過去Planがカテゴリしか記録していない場合もある）。下記のtest有効性はassertionのソース確認と今回のLinux実行であり、**元不具合を再導入するmutation replayの証明ではない**。全件を再導入して検出できると述べるには別途mutation検証が必要である。
+test名は、現在その修正の動作を確認するものを示す（過去Planがカテゴリしか記録していない場合もある）。下記のtest有効性はassertionのソース確認と今回のLinux実行であり、**元不具合を再導入するmutation replayの証明ではない**。全件を再導入して検出できると述べるには別途mutation検証が必要である。
 
 | Code | 現testは不変条件を証明するか | 公開・全体entry pointか |
 | --- | --- | --- |
 | A | yes: app境界でprovider注入と永続状態のassertion | yes: Service use case。ただし実SDKは使わない |
 | C | yes: CLI解析・出力境界 | yes: CLI commandまたは明示的host diagnostic entry |
 | F | yes: factory順序 | no: factory+ServiceでありCobra dispatchではない |
-| D | yes: concrete adapter・native primitive境界 | no: その回帰単独ではapp/CLI結合を検証しない |
+| D | yes: concrete adapter・native primitive境界 | no: そのテスト単独ではapp/CLI結合を検証しない |
 | W | yes: ソース確認。Windows専用実行は今回localで再実行していない | no: native primitiveでありapp全体ではない |
 | N | yes: native testソースと過去の実行記録。今回担当内では未再実行 | yes: 実provider entry経路 |
 | S | 両側それぞれyes。結合は過去native fixtureで検証 | no: この2 test単独では相互動作を証明できない |
-| G | no: 当該producer省略を直接検証する回帰を特定できなかった | no: 記載testはconsumer・隣接挙動のみ |
+| G | no: 当該producer省略を直接検証するテストを特定できなかった | no: 記載testはconsumer・隣接挙動のみ |
 | H | yes: 障害注入fixture | no: test基盤であり製品entryではない |
 | DOC | 意味の自動証明はno。docs-checkは構造・hashを検証 | no: 日英の意味レビューも必要 |
 
-guardrail statusは上記の局所回帰についてexistingとする。profile表の広い予防策は監査のdispositionまでdeferred。G行は直接guardrailが不足している。Phase Aで製品の予防controlは追加していない。
+guardrail statusは上記の局所的な確認テストについてexistingとする。profile表の広い予防策は監査のdispositionまでdeferred。G行は直接guardrailが不足している。Phase Aで製品の予防controlは追加していない。
 
 ## Escape profileと早期検出機会
 
@@ -73,7 +73,7 @@ guardrail statusは上記の局所回帰についてexistingとする。profile�
 
 | Profile | 検出機会と逃した理由 | 不足guardrail・予防策・将来の検出段階 | 確認済みまたは次の同型探索候補 |
 | --- | --- | --- | --- |
-| I | S2/S3で独立した不正入力・本人性変更を試せたが、positive fixtureは正常値のみだった。`NEGATIVE_FIXTURE_GAP`、場合により`ORACLE_COUPLING`。 | 要件別identity/path/environment負例と操作なしassertion、S2/S3。 | Android marker/ADB、application reverse、process receipt、browser target。 |
+| I | S2/S3で独立した不正入力・本人性変更を試せたが、positive fixtureは正常値のみだった。`NEGATIVE_FIXTURE_GAP`、場合により`ORACLE_COUPLING`。 | 要件に反するidentity/path/environmentを与え、操作が行われないことを確認するテスト、S2/S3。 | Android marker/ADB、application reverse、process receipt、browser target。 |
 | C | S3/S4時点で公開entryは存在したがhelper・単一provider・JSON専用testでは次の依存や任意分岐を省略した。`HELPER_ONLY`、`COMPOSITION_GAP`。 | CLI/factory/app/adapterと任意機能有無の行列、操作なしの観測、S3/S4。 | Inventory/Doctorのfrontend依存、runtime別preview、CLI store factory、Raw/Binary証拠。 |
 | P | store/provider注入でfailure/cancel/restart窓を表現できたが、成功・初回失敗testだけで後続復旧を見なかった。`FAILURE_INJECTION_GAP`、`COMPOSITION_GAP`、場合により`INVARIANT_GAP`。 | durable intent/effect/finalization行列とstore回復後Destroy/Reconcile、callback実行assertion、S2/S4。 | build guard、UI recovery、process receipt、browser mutation barrier。 |
 | N | 実SDK・OS lifecycleはfake identity/tool出力に表れず、cross-buildでも判定できなかった。`NATIVE_EVIDENCE_GAP`、`CONCURRENCY_GAP`。 | native lifecycle、親終了・子生存、同時2 leaseと兄弟cleanup、S5（M05は実process fixtureのS3）。 | Windows Job完了、Linux procfs race、Android helper専用discovery、共有ADB containment。 |
@@ -83,9 +83,9 @@ guardrail statusは上記の局所回帰についてexistingとする。profile�
 
 ## 過去指摘と現時点の検証
 
-repository prefixなしのpathは`internal/`配下。production symbolは現在のentry・責務境界を示す。helper testを全体結合回帰とは扱わない。
+repository prefixなしのpathは`internal/`配下。production symbolは現在のentry・責務境界を示す。helper testをappやCLI全体を通す組合せテストとは扱わない。
 
-| ID / 出典 | 元の不変条件・不具合・影響 | 最早/検出/profile | 現回帰test位置 | 現production位置 | 検証範囲 |
+| ID / 出典 | 元の不変条件・不具合・影響 | 最早/検出/profile | 修正を確認するtest位置 | 現production位置 | 検証範囲 |
 | --- | --- | --- | --- | --- | --- |
 | M01 / E | console本人性確認後のcancelでもkill・削除を止める。確認後のcancelで操作が続き得た。 | S2/S8/P | `runtime/android/android_test.go:TestCancellationDuringIdentityHandshakeCannotKill` | `runtime/android/lifecycle.go:Destroy` | D |
 | M02 / E | ADBは所有するローカルserverを使う。同じserialのremote deviceを継承設定で観測し得た。 | S2/S8/I | `runtime/android/android_test.go:TestReadinessPinsLocalADBServer` | `runtime/android/adb.go:adbRoutingEnvironment` | D |
@@ -143,7 +143,7 @@ repository prefixなしのpathは`internal/`配下。production symbolは現在�
 
 ## 現在の証拠と未解決の検証不足
 
-固定対象のLinux/Go 1.27.1で過去回帰の対象選択を`-race -count=1`実行し、Android 2.461秒、Flutter 1.037秒、execx 1.300秒、app 19.000秒、CLI 2.313秒で成功した。Android/SDK/ADB/Detached/MixedReadiness/Cleanup/CreateService/Flutter/Mobile/UIの記載回帰と、APK衝突・reverse・preview・symlink・障害注入testを選択した。UI helper subpackageはこのregexで**実行testなし**だったため、test実行の証拠に数えない。Windows専用・実SDK/UI testはソース確認のみで、今回担当内では未実行。baseline担当が別途実行する。既存ソースは変更していない。
+固定対象のLinux/Go 1.27.1で過去の修正を確認するテストを選択して`-race -count=1`実行し、Android 2.461秒、Flutter 1.037秒、execx 1.300秒、app 19.000秒、CLI 2.313秒で成功した。Android/SDK/ADB/Detached/MixedReadiness/Cleanup/CreateService/Flutter/Mobile/UIの記載した確認テストと、APK衝突・reverse・preview・symlink・障害注入testを選択した。UI helper subpackageはこのregexで**実行testなし**だったため、test実行の証拠に数えない。Windows専用・実SDK/UI testはソース確認のみで、今回担当内では未実行。baseline担当が別途実行する。既存ソースは変更していない。
 
 M12も2回目PID再読取の強制raceを直接検証するtestは特定できなかった。記載Windows testは不在PIDでのproof検証であり、一般PID再利用testもその特定race窓を強制しない。
 
@@ -155,10 +155,10 @@ M48/M49は検証不足であり、現在のproducer不具合を確定したも�
 - 不変条件: `truncated=true`には実際の証拠省略が必要。上限ちょうどの完全な応答だけでは省略の証明にならない。
 - 位置: `internal/runtime/android/ui.go:357`の`boundedUILog`。`Adapter.ObserveUI`のlogcatが251行で呼ぶ。243行のdevice要求は`logcat -t 2000`。
 - 再現条件: 既存`applicationFixture`でPID応答を`1234`、device時刻を`1000`とし、logcat command応答を`999.000 1234 1234 I Tag: current\n`の2000回繰り返しにする。package `com.example.app`、`SinceSeconds:30`で`ObserveUI`を呼ぶ。1999回を対照とする。
-- 観測結果: 一時Go overlay回帰は2000件で失敗し、66,000 bytesをすべて返しながら`Truncated=true`だった。1999件は完全と返した。test packageは0.014秒で失敗。byte省略・local保持行の省略はない。runnerを注入してconcrete adapterを呼んだ結果であり、実deviceの証拠ではない。
+- 観測結果: 一時Go overlayで追加した、logの省略判定を確認するテストは2000件で失敗し、66,000 bytesをすべて返しながら`Truncated=true`だった。1999件は完全と返した。test packageは0.014秒で失敗。byte省略・local保持行の省略はない。runnerを注入してconcrete adapterを呼んだ結果であり、実deviceの証拠ではない。
 - 期待・影響: 完全な上限ちょうどのcaptureは完全と示すべきだが、省略と誤表示する。device側に2000件超のlogがある場合はtailが古い行を省略し得るが、commandはoverflow bitを返さない。helperの`raw行数>=2000`は、上流省略の可能性と実証済み省略を混同している。比較だけを消すと実overflowを完全とするため、上流の追加1件取得・証明方式はdisposition/remediationで検討する。
 - 既存検証: `TestUILogPIDAttributionAndBounds`は2行と、2001行かつbyte上限超の応答を検証する。短い完全応答1999/2000/2001行を個別に検証しない。consumer testも渡されたflagに依存する。
-- 回帰・解決: 一時overlayのみ。製品・test変更、修正は未実施。過去との関係はM49のproducer完全性不足とBrowser exact-limit分類。同型探索候補はJava `node/tree`上限、UI text/log artifact上限、browser producer。他の不具合があるとは断定しない。
+- 修正を確認するテスト・解決: 一時overlayのみ。製品・test変更、修正は未実施。過去との関係はM49のproducer完全性不足とBrowser exact-limit分類。同型探索候補はJava `node/tree`上限、UI text/log artifact上限、browser producer。他の不具合があるとは断定しない。
 - Escape分析: 検出S9、現実的な最早検出S2。`BOUNDARY_GAP`と`ORACLE_COUPLING`。既存testは件数超過とbyte超過を同時に作り、上限ちょうどを独立検証しない。S3/S4 fixtureは短いlog、過去S5 UI native fixtureは2000件ちょうどを生成しない。S6はそのtestを実行するが意味的上限validatorを持たない。S7/S8では独立したexact-limit判定基準を用意する機会があったが、過去Planにその記録はない。予防策候補は共通境界ケース規約とprovider overflow証明、将来検出S2/S3。dispositionまでdeferred。
 
 ## 過去の制約を維持する

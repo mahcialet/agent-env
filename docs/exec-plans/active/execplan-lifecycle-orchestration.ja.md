@@ -12,7 +12,7 @@ workstreams:
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/exec-plans/active/execplan-lifecycle-orchestration.md
-source_sha256: b354774f68fe6c5f822eb1e9b9cc9f357ca3134d0757094dae0f37542dceb84c
+source_sha256: c9866e2c4b36897ff4c838f9209e87d6f33eb6b3f2709a6ea4b82ebe30b98aae
 ---
 
 # ExecPlan lifecycle orchestrationと自動delivery gateを追加する
@@ -107,7 +107,7 @@ automationを通すためgateを弱めない。
 
 本Planはactiveのままで、未完了である。multi-hostの環境準備、明示的なhuman kickとシナリオの証拠、次の実際に新しい通常ExecPlanによるforward live dogfood、最終native検証、baseへのmergeが残る。履歴再現や合成fixtureではこれらを代替しない。親Planの最終受け入れとアーカイブでは、それぞれの結果を照合する。
 
-独立レビューでは、初期fixtureが通っていても検出できなかった祖先関係、ID保持、入力サイズ制限の不具合が見つかった。各失敗条件を切り分けた回帰テストを追加した。受け入れの直接証拠は、実装状況や実環境のレビュー・人間の観察についての推測と区別する。
+独立レビューでは、初期fixtureが通っていても検出できなかった祖先関係、ID保持、入力サイズ制限の不具合が見つかった。同じ不具合の再発を検出できるよう、各失敗条件を切り分けたテストを追加した。受け入れの直接証拠は、実装状況や実環境のレビュー・人間の観察についての推測と区別する。
 
 ## 背景と構成
 
@@ -344,7 +344,7 @@ PASSを推測しないこと、追跡付きFINDING、証拠ディレクトリの
 必要とし、模擬再現や今回の初回実装をその実運用の証拠とは数えない。
 
 独立レビューでは、stackedの確認先が利用branchでなく変更可能なbaseだったこと、引用符付きYAMLのIDで
-完了Planの見出し検査を回避できること、全ペア削除でID保持検査を回避できることを発見し、回帰テスト付きで修正した。
+完了Planの見出し検査を回避できること、全ペア削除でID保持検査を回避できることを発見し、同じ検査回避を検出するテストを追加して修正した。
 全体担当はさらに、draftを含むだけの無関係なcommitが依存のmerge証拠にならないよう厳密化した。
 人間検証frameworkの独立レビューでは、上限付きreaderが後続JSONを隠し、その後の上限なし再読み込みで
 hashを計算していた問題を修正し、同じ上限付きsnapshotを解析・hash化するようにした。
@@ -366,7 +366,7 @@ remoteでの結果は未確認である。
 | E5 | 成功。draftの昇格条件を必須化し、readinessはdraftを選択・変更しない。 |
 | E6 | 成功。複数activeのgraphを受け入れ、選択は最大1件とするfixture。 |
 | E7 | 成功。TestLoadPlanGraphPairsAndReferencesでID重複と日英metadataの差を拒否。 |
-| E8 | 成功。改名しても履歴のIDを保持し、merge証拠はbranch参照の保存に依存しない。削除回帰を検査。 |
+| E8 | 成功。改名しても履歴のIDを保持し、merge証拠はbranch参照の保存に依存しない。削除後にも証拠を確認できることをテストで検査。 |
 | E9 | 成功。親子と実行依存は別graph。親子関係だけでは実行依存を追加しない。 |
 | E10 | 成功。欠落・自己参照・cycleの異常系fixture。 |
 | E11 | 成功。completed、baseの祖先関係、ID、一意のmerge元trailerを要求し、draftを含むだけのcommitを拒否。 |
@@ -406,7 +406,8 @@ Draft PR #14には`ExecPlan: EP-OPS-001`があり、`b1f8c8e`、`c95268a`、`c79
 実際の`plans gate --plan EP-OPS-001 --pr 14 --repo mahcialet/agent-env`は観測したHEAD/baseと
 base側の信頼済み方針不足という理由を添えてBLOCKEDを返し、mergeは行っていない。
 最終のmodel確認では、呼び出し元が古い証拠を渡してもabandonedのstacked依存を拒否する。
-実Gitの回帰テストでmerge済みの模擬branchを削除してもPlan固有のmerge証拠を確認できた。
+branch削除でmerge証拠を失う不具合を検出するため、実Gitを使うテストも実行した。
+merge済みの模擬branchを削除してもPlan固有のmerge証拠を確認できた。
 両方の関連テストが成功した。
 
 実装commitには`9cca40b`も含む。この時点のローカルの全`repoctl check`と
@@ -448,7 +449,7 @@ consumerの検査範囲から除外する。consumer自身のcommitが少なく�
 squashでは配信されたsquash commitだけを証拠とし、consumerが実際にそのcommitを
 含むことを要求する。任意の過去のtipを推測で採用しない。
 
-検証：隔離Git回帰テストで、コマンド入口を通した正常なstacked provenance、
+検証：独立したGitリポジトリを用意するテストで、コマンド入口を通した正常なstacked provenance、
 依存側・consumer側の誤ったtrailer、consumer commitの欠落、祖先関係の欠落、
 完了後のbranch削除、不正なmerge証拠を検証した。
 `go test -race ./tools/repoctl -count=1`は成功（12.162秒）、全`repoctl check`も
@@ -460,13 +461,13 @@ squashでは配信されたsquash commitだけを証拠とし、consumerが実�
 新しい4件のThreadに対応した。activeな候補は依存がなくてもbaseを解決する。
 replayはsource parentでのarchive追加・変更とmerge時のblob一致を要求する。
 サイズ制限付きHuman Validation JSONは、型へのdecode前に重複キーを再帰的に拒否する。
-完全なcommit IDはSHA-1とSHA-256に対応した。回帰テストで、baseの欠落、無関係な
+完全なcommit IDはSHA-1とSHA-256に対応した。同じ不具合が再発していないか確かめるテストで、baseの欠落、無関係な
 replay mergeとmerge時のみのarchive変更、通信・証拠書き込みを伴わない入れ子・
 escape表記のJSON重複キー拒否、実際のSHA-256 Git祖先関係、メタデータのID長を検証する。
 
 独立レビューで、最初のbase検査の適用範囲が広すぎると判明した。実行候補ではない
 履歴Planのbase削除によって選択全体を止めるべきではない。このため必須の解決は
-activeな候補に限定し、baseがないdraft/paused/completed/abandonedも回帰テストに含めた。
+activeな候補に限定し、baseがないdraft/paused/completed/abandonedが選択全体を妨げないこともテストに含めた。
 実際のPR #12の履歴replayは引き続き成功している。この最後の適用範囲修正前には
 統合した全harnessとrepoctl raceが成功した。最終検証はPR返信に記録する。
 
@@ -485,7 +486,7 @@ JSON・Markdownの証拠に記録する。未追跡・変更済み契約は拒�
 使用不能な保存先への出力失敗に先立って未記録の外部probeを行わない。
 独立レビューで、LF/CRLFのバイト比較ではcleanなWindows checkoutを誤拒否すると
 判明した。厳密にdecodeした契約値を比較し、digestの算出元はcommit済みblobを維持する。
-回帰テストには、commit済みmetadata、明示的branch解決、契約の変更・復元、
+修正した検証条件が今後も保たれることを確かめるテストには、commit済みmetadata、明示的branch解決、契約の変更・復元、
 clean CRLF checkout、通信を伴わない不正な証拠保存先の拒否を含める。
 最終harness・race結果と実装commitはレビュー返信に記録する。
 
@@ -501,7 +502,7 @@ completed graphの検証では、consumer自身の完了や存続branchを信用
 Human Validationでは、副作用の前に選択した英日Planのmetadataが契約のcommit済み
 revisionと一致することも要求する。名前付きの実行ファイルとendpointの前提条件一覧は
 両方とも空を禁止し、不正な契約が無検査でREADYを出さないようにした。
-回帰テストは、consumerで書き換えた依存base、tag衝突、未充足なcompleted依存、
+今回の検証不足を再発させないためのテストは、consumerで書き換えた依存base、tag衝突、未充足なcompleted依存、
 変更済み・未追跡Human Plan、空の前提条件一覧を対象にする。
 最終harness・raceの証拠はPR返信に記録する。
 
@@ -510,7 +511,7 @@ revisionと一致することも要求する。名前付きの実行ファイル
 追加4件のThreadに対応した。activeな依存・consumer branchは明示的なlocal headを
 解決し、同名tagがcommitを代替できない。FINDINGのfollow-up review Planは証拠作成前に
 英日metadataが契約revisionと一致することを要求する。翻訳管理フィールドは日本語Planの
-stringだけを許可し、英語Planでは拒否する。回帰テストはbranch/tag衝突・tagだけのref、
+stringだけを許可し、英語Planでは拒否する。同じ誤受け入れを検出するテストはbranch/tag衝突・tagだけのref、
 未追跡・変更済みfollow-up Plan、翻訳フィールドの不正なpath・型を検証する。
 
 multi-host契約からclientローカルADB要求を除いた。AndroidシナリオEP-MHOST-001-04は
@@ -528,13 +529,13 @@ readiness期限とは別問題である。共有counterをatomicにし、mock cl
 WebSocket handlerの終了を待つよう修正した。HTTP serverの終了だけではupgrade済み接続を
 joinしない。cleanupは複数回呼び出しても安全である。
 
-新しい回帰テストはchannelでhandlerを止めてclientをキャンセルし、限られた観察時間中に
+再発を検出するための新しいテストは、channelでhandlerの処理を待機させてからclientをキャンセルし、限られた観察時間中に
 cleanupが完了しないことを確認してからhandlerを解放・joinする。CI負荷に頼らず、
 キャンセルとserver処理の重なりを作る。一時的なGo overlayで旧cleanupを戻すと
 `cleanup returned while handler was blocked`で失敗し、修正後は成功した。
 否定確認に時間制限付き待機を使うため、全てのscheduler依存をなくしたとは主張しない。
 
-新回帰テストとload-waitテストは`-count=50 -cpu=1,4`のrace検査に成功（37.431秒）。
+この新しいテストとload-waitテストは`-count=50 -cpu=1,4`のrace検査に成功（37.431秒）。
 全repoctl checkも成功した。独立レビューに重大な指摘はなく、関連するキャンセルfixtureの
 handler寿命と共有状態も確認した。製品の期限・キャンセル動作やテストassertionは弱めていない。
 最初の編集では広い文字列置換による構文エラーが出たが、検証前に修正した。

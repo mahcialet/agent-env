@@ -3,7 +3,7 @@ status: completed
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/exec-plans/completed/reader-first-documentation-restructure.md
-source_sha256: 5e92d362abe9722f71a063583804694a4810709a114fe358467f14929b3a6856
+source_sha256: 47db619528606fa775eded6cb29b742d38a149e04dead8c8b43e34995661e289
 ---
 
 # Durable documentation全体をreader-firstな英語・日本語へ再構成する
@@ -453,7 +453,7 @@ source_sha256はsource review acknowledgmentでありstructure同一性の証明
 - CASのキーは小文字のdigestで、保存先は`<cas-root>/<digest>/data`だった。
   古い`sha256/<digest>`表記を`internal/blobstore/store.go`の`ValidDigest`、`Open`と照合した。
 - reconcileはCompose以外も含む、記録済みのruntime providerを観測する。
-  既存のAndroidとprocessの回帰テストもこの境界を裏付ける。
+  Androidとprocessの既存動作を確認するテストもこの境界を裏付ける。
 - 最終のローカルBrowser CI証拠は`440082b`の`34320519250`だった。
   `34316121411`は`53fe81a`の実行である。元の証拠は完了済みmulti-host Planに保持し、
   roadmapでは詳細を重複掲載せず、その記録へ案内した。
@@ -863,7 +863,7 @@ MVPだけを現在の全範囲と読める文も修正した。QUALITYの最終l
 過剰な約束（Git worktreeの登録はmetadataを更新する）、日本語の実行中条件の抜け、現行仕様の
 誤った言語リンク、native Emulatorと物理deviceの曖昧さ、operation fenceと証拠の文言を修正した。
 reconcileの構成説明はComposeだけでなく記録済みの各runtimeにした。既存のapp Android/process
-reconcile回帰テストで確認できる挙動である。製品レビューでは、既存のPodman endpoint要約をTCPに
+テストでも、reconcileが記録済みの各runtimeを観測する挙動は裏付けられている。製品レビューでは、既存のPodman endpoint要約をTCPに
 限定し、UDPは観測だけでTCP/UDP probeをしない条件を維持した。日本語の誤字とcode fenceの言語tagも直した。
 
 途中の検査では、明示例外のある古い日本語Planへのリンク、編集中のhash、一時的に失ったlocal index経路、
@@ -871,8 +871,8 @@ reconcile回帰テストで確認できる挙動である。製品レビュー�
 
 ### 棚卸しの分類と読者の目的
 
-以下は前掲の個別パスに適用する分類です。英語版の表を読まなくても、対象・役割・
-編集の優先度を確認できます。各行は対応する日本語版も含みます。
+以下は前掲の個別パスに適用する分類である。英語版の表を読まなくても、対象・役割・
+編集の優先度を確認できる。各行は対応する日本語版も含む。
 
 | 対象 | Tier | 読者の質問・文書の役割 | 優先度と扱い |
 | --- | --- | --- | --- |
@@ -887,13 +887,13 @@ reconcile回帰テストで確認できる挙動である。製品レビュー�
 | audits/repository-correctness/index、references/index | 6 | 監査証拠や過去の参照資料はどこか。現行の案内 | 中。案内だけを整理 |
 | audits/repository-correctnessの各報告本文 | 6 | 監査時点で何が観測されたか。過去の証拠 | 文体変更の対象外。証拠を保持 |
 
-MVP仕様だけは当初の要件範囲も保持します。他の製品仕様にMVP限定という条件はありません。
-各indexは案内であり、機能の契約や採用済み判断そのものではありません。
+MVP仕様だけは当初の要件範囲も保持する。他の製品仕様にMVP限定という条件はない。
+各indexは案内であり、機能の契約や採用済み判断そのものではない。
 
 ### 履歴・生成物の個別棚卸し
 
-文体変更の対象外であることと、翻訳の例外であることは別です。例外registryは変更しません。
-次の28件の英語文書と、既存の日本語版を保持します。
+文体変更の対象外であることと、翻訳の例外であることは別である。例外registryは変更しない。
+次の28件の英語文書と、既存の日本語版を保持する。
 
 | 英語パス | 翻訳の扱い | 文体変更の対象外とする理由 |
 | --- | --- | --- |
@@ -926,7 +926,7 @@ MVP仕様だけは当初の要件範囲も保持します。他の製品仕様�
 | `docs/generated/db-schema.md` | 既存の明示的な例外 | 生成schema |
 | `docs/references/handoffs/CHATGPT_HANDOFF_30.md` | 既存の明示的な例外 | 元の引き継ぎ記録 |
 
-現行文書は46組を編集し、本Planを含めて47組を扱いました。前掲の監査報告本文と、この表の対象は変更していません。
+現行文書は46組を編集し、本Planを含めて47組を扱った。前掲の監査報告本文と、この表の対象は変更していない。
 
 ### 最終の独立レビュー証拠（2026-09-09）
 

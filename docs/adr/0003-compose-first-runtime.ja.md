@@ -3,7 +3,7 @@ status: accepted
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/adr/0003-compose-first-runtime.md
-source_sha256: 12b738cfa4bcf6452430dc61375456ecc5ba2d8e34fefe062c91bfa7a2be5670
+source_sha256: cca6c0963070bf8d316181865b398b17dba20038e21adbf6bdd7514737ed2c73
 ---
 
 [英語版（翻訳元）](0003-compose-first-runtime.md)
@@ -18,8 +18,8 @@ source_sha256: 12b738cfa4bcf6452430dc61375456ecc5ba2d8e34fefe062c91bfa7a2be5670
 ## 決定
 
 最初のランタイムアダプターには Compose v2 を採用します。明示的で一意なプロジェクトの
-識別情報、設定の絶対パス、選択サービスの依存閉包、正規化した設定の digest、
-観測したリソースを記録します。
+識別情報、設定の絶対パス、選択したサービスとその直接・間接の依存先サービスの全体、
+正規化した設定の digest、観測したリソースを記録します。
 
 当時は Compose MVP の合格まで、汎用プロセスと Android の実装を延期しました。
 これは実装順序についての過去の決定です。現在の実装は

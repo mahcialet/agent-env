@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/PORTABILITY.md
-source_sha256: d67e9537e186c6a91efa54c615e6c3422904258eeeced1d50a9dad3ae7b53142
+source_sha256: 6a890ea6238a1624eab21e7243f3b4c047f814147a9723b881620e4ddd52f7e1
 ---
 
 [英語版（翻訳元）](PORTABILITY.md)
@@ -102,7 +102,17 @@ CIは、対応する両Go minorバージョンについてWindows・macOS・Linu
 
 ### MVPの過去の記録と未検証の範囲
 
-c641286に対するCI 34124194139では、6件すべてのネイティブOS/Go jobと5件すべてのCGO無効buildが成功しました。同じrunでLinux raceと実Compose統合も成功しました。ローカル実fixtureも、並行プロジェクト、Unicode worktree、複数リポジトリの固定、名前付き証拠、rollback、変更済みソースのcleanupを含め成功しました。[完了済み実装計画](exec-plans/completed/agent-env-mvp.md)に、すべての証拠とネイティブ回帰修正を記録しています。Windows/macOSでの実Docker統合は未実行であり、適切なrunnerが必要です。
+c641286に対するCI 34124194139では、OSとGoバージョンを組み合わせた6件すべての
+ネイティブ実行ジョブと、CGOを無効にした5件すべてのビルドが成功しました。
+同じ実行で、Linuxのデータ競合検査（race）と実際のComposeを使う統合テストも成功しました。
+
+ローカルでも実際の環境を使って検証し、並行して存続するプロジェクト、Unicodeを含む
+worktree、複数リポジトリのコミット固定、名前付き証拠、失敗時の巻き戻し（rollback）、
+変更済みソースの後片付けを含めて成功しました。
+[完了済み実装計画](exec-plans/completed/agent-env-mvp.md)に、すべての証拠と
+各OS上で見つかった不具合の修正を記録しています。
+
+Windows/macOSで実際のDockerを使う統合テストは未実行であり、適切なrunnerが必要です。
 
 ## Androidの永続プロセス
 

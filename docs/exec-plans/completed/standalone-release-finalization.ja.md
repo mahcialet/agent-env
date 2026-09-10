@@ -3,7 +3,7 @@ status: completed
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/exec-plans/completed/standalone-release-finalization.md
-source_sha256: 269b638cbcd2da93dda62f485dbb8a344b6f0800129c0ff65fbc31c7eb96bdb5
+source_sha256: 353b429109ff2aa189f636dc419618c418d6a4df5223be04b38fa2b1f566c5ac
 ---
 
 # スタンドアロン配布のリリース工程を完成させる
@@ -98,7 +98,7 @@ pipeline要件にしない。packagingはGo標準libraryとrepository Go codeで
 
 - 2026-09-08: 最初の native 成功後、ZIP のローカルヘッダーだけを改ざんすると、
   中央側の安全な名前が走査パス・絶対パスを隠し、検査を通ることを再現した。
-  回帰テストは修正前に失敗。再圧縮せずにローカル・中央の名前、metadata、offset、
+  ZIPのlocal/central名の不一致を検出するテストは修正前に失敗。再圧縮せずにローカル・中央の名前、metadata、offset、
   descriptor を照合する修正を追加した。最終修正後のpreview 34190701402とVerify 34190701428も成功した。
 
 - 2026-09-08: `0bf2d12` の完了記録は早すぎた。Git コマンドは root 引数を
@@ -187,9 +187,9 @@ antivirus、asset metadata mismatch等を記録する。digest assertionを弱�
 
 ## 成果と振り返り
 
-2026-09-08 完了。最終実装 `641cb49` でローカル harness・実候補の負例・race、
-Verify 34190701428（12 job）、Release preview 34190701402（buildと3つのnative
-smoke）が成功した。
+2026-09-08 完了。最終実装 `641cb49` でローカルharness、race、および実際の
+リリース候補を改変して拒否を確認するテストが成功した。Verify 34190701428
+（12 job）とRelease preview 34190701402（buildと3つのnative smoke）も成功した。
 
 private clone の v0.1.0 候補で、厳密なtag/tree/version/commit検証、commit固定の
 checkout、6つのCGO不要アーカイブ、metadata正規化、checksums、schema 1 manifest、
@@ -200,15 +200,15 @@ checkout、6つのCGO不要アーカイブ、metadata正規化、checksums、sch
 暗黙に同梱・初期化しない。
 
 tag workflowはharness/race、厳密なsourceのbuild、静的検査、同じtagの再生成比較、
-全native smokeを公開の前提とする。previewでupload済み候補を実行し、gateの回帰
+全native smokeを公開の前提とする。previewでupload済み候補を実行し、gateの迂回を検出する
 テストで迂回を拒否した。公開tagやGitHub Releaseは作成していない。実際の公開は
 maintainerによる意図的なtag pushで行う。署名、notarization、package manager、
 SBOM、attestationはこのPlanの範囲外として残る。
 
 当初のharness成功はリリース完了の根拠にならなかった。配布物を検査するテストが
-なかったためである。実際の負例で検査不足とZIPのlocal/central名の不一致を発見した。
+なかったためである。不正な配布物の拒否を確認するテストで、検査不足とZIPのlocal/central名の不一致を発見した。
 別担当のレビューでignored source混入と最終source識別の未比較も発見し、現在は
-防止処理と回帰証拠を備える。英日進捗の本文もhashとともに修正した。親の受け入れは
+防止処理と同じ問題を検出するテストの証拠を備える。英日進捗の本文もhashとともに修正した。親の受け入れは
 別途照合し、asset inventory・stress・より広いstate/prerequisite条件はactiveで残す。
 
 ## 背景と構成
@@ -318,9 +318,9 @@ final repoctl check/race/release/determinism/native smoke/manual archive inspect
 
 | ID | 必須動作 | 証拠 |
 | --- | --- | --- |
-| R1 | missing/malformed/ambiguous tagをbuild前に拒否 | source/usage の負例テストが成功。欠落・不正・曖昧な tag はビルド前に拒否。 |
+| R1 | missing/malformed/ambiguous tagをbuild前に拒否 | release sourceやコマンド引数が要件を満たさない場合に拒否するテストが成功。欠落・不正・曖昧な tag はビルド前に拒否。 |
 | R2 | HEAD == tag commit必須 | HEAD 移動・tag の commit 解決・annotated tag のテストが成功。専用 snapshot はローカル変更を含めない。 |
-| R3 | clean-tree/index policyを強制 | dirty/staged/untracked と専用 checkout の回帰テストが成功。 |
+| R3 | clean-tree/index policyを強制 | dirty/staged/untracked と専用 checkout でローカル変更の混入を防ぐテストが成功。 |
 | R4 | requested X.Y.Z == selected vX.Y.Z minus v | 要求バージョン不一致・数値の先頭ゼロを拒否するテストが成功。 |
 | R5 | 6targetすべてCGO=0 build | 641cb49 のローカル検証と preview 34190701402 で6ターゲットをビルドし、CGO=0 を静的検証。 |
 | R6 | archive name contract一致 | 6つの契約通りの名前をローカル・preview・独立検査で確認。 |
@@ -340,7 +340,7 @@ final repoctl check/race/release/determinism/native smoke/manual archive inspect
 | R20 | arm64 native/cross evidence正確区別 | Windows/arm64・Darwin/amd64・Linux/arm64 はcross-build/静的検査のみ。他の3ターゲットにはnative証拠あり。 |
 | R21 | maintainer-created tag起点、Git ref mutation無し | maintainerのv* tag pushで起動し厳密なtagを検証。tag作成は使い捨てclone内のみで、callerのrefs保護をテスト。 |
 | R22 | workflowがrepoctlへmechanics委譲 | 両workflowはbuild/check/repeat/smokeをrepoctlへ委ね、YAMLやシェルにpackaging処理を実装しない。 |
-| R23 | validation/smoke failure時publish無し | publication gateと4つの迂回負例が成功。build/smoke依存とrepeatを必須にし、無条件公開や失敗無視を拒否。公開releaseは作成していない。 |
+| R23 | validation/smoke failure時publish無し | publication gateの検査と、それを迂回する4通りの改変を拒否するテストが成功。build/smoke依存とrepeatを必須にし、無条件公開や失敗無視を拒否。公開releaseは作成していない。 |
 | R24 | publish bytesがvalidated bytesそのもの | preview native jobはupload済み候補をdownloadし、再ビルドしない。gateテストは同じartifact名を要求しpublishのrunを拒否。 |
 | R25 | 英日durable docsがfinal contract/prerequisiteを説明 | 英日の文書・前提ツール比較表を更新し、docs-check成功。 |
 | R26 | final repoctl/docs/translation/race pass | Verify 34190701428 の12 job（native harness、Linux race、Docker integration）が成功。ローカル最終raceも成功。 |
@@ -390,7 +390,7 @@ auto move/recreateしない。
 2026-09-08、`d6280988441537418d70925174cfa58374efea9b` のローカル証拠:
 
 - Go 1.27.1 で `go run ./tools/repoctl check` と `go test -race ./...` が
-  実装中の checkpoint で成功。workflow gate の回帰テスト追加後も harness が成功。
+  実装中の checkpoint で成功。workflow gate の迂回を検出するテスト追加後も harness が成功。
 - `go run ./tools/repoctl release-verify --out dist/verified-d628098` が成功。
   6ターゲットを2回ビルドし、8ファイルのバイト一致と Linux/amd64 の実行を確認。
 - `AGENT_ENV_RELEASE_CANDIDATE=../../dist/verified-d628098 go test ./tools/repoctl
@@ -407,7 +407,7 @@ auto move/recreateしない。
   list は override した状態保存先だけを作成した。
 - 独立レビューで ignored source 混入、最後の source identity 未比較、tag 用
   repeat gate 欠落を発見し、候補 checkpoint 前に修正した。専用 checkout の
-  回帰テストで隠れた変更を排除し、最後の識別比較と tag workflow の再ビルドを追加。
+  専用checkoutのテストで隠れた変更の混入がないことを確認し、最後の識別比較と tag workflow の再ビルドを追加。
 - Hosted run は Release preview 34190096757 と Verify 34190096727。両runとも全job成功。
   公開 tag/release は作成していない。公開は maintainer の意図的な操作で行う。
 

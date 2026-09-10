@@ -19,11 +19,11 @@ original implementation evidence.
 
 - [x] 2026-09-08: Read both unresolved threads and reconcile the implementation.
 - [x] 2026-09-08: Reproduced both findings, fixed protocol filtering/native inventory,
-  and passed full provider regression tests, repository check, and full race tests.
+  and passed the full provider tests for reviewed and existing behavior, repository check, and full race tests.
 - [x] 2026-09-08: Full harness, race, Docker integration, native Podman/Docker
   coexistence (104.081s), and Verify 34221034636 (all 12 jobs) passed.
 - [x] 2026-09-08: Pushed 53c141f, replied to both original threads with fix and
-  regression evidence, resolved both threads, and archived this plan.
+  evidence from tests that detect the same defects, resolved both threads, and archived this plan.
 
 ## Surprises & Discoveries
 
@@ -51,10 +51,10 @@ unchanged. English/Japanese contracts state the precise UDP observation limit.
 
 The original tests stopped at adjacent helpers: engine-only Doctor did not prove
 the following inventory path, and endpoint fixtures did not exercise mixed remote
-protocols. The new regressions cover those full entry points, absent/stale optional
+protocols. The new tests for the same defects cover those full entry points, absent/stale optional
 tooling, label-only orphans, partial failures, and mixed TCP/UDP observations.
 Review-driven coverage therefore checks provider composition as well as helpers.
-Real Podman Machine forwarding remains unverified; the remote regression uses
+Real Podman Machine forwarding remains unverified; the remote endpoint test uses
 runner-backed inspection with native local sockets.
 
 ## Context and Orientation

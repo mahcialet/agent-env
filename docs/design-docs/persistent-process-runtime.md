@@ -89,6 +89,8 @@ browser behavior in its separate adapter.
 
 ## Validation
 
-Native Windows/macOS/Linux integration,
-crash recovery, sibling survival, and uncertain-root regressions are required;
-cross-compilation is additional evidence only.
+Run integration tests directly on Windows, macOS and Linux. Keep tests that detect
+broken crash recovery, unintended termination of sibling leases, and unsafe
+handling of a process tree whose root ownership cannot be confirmed.
+Cross-compilation is additional evidence only; it does not replace execution on
+each operating system.

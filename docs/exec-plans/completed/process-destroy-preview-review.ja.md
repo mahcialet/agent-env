@@ -3,7 +3,7 @@ status: completed
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/exec-plans/completed/process-destroy-preview-review.md
-source_sha256: 94fa2713245d91c69dc4be1f60159920c91b8223746d3f80f98f529cd2c40e70
+source_sha256: 3281d52a54c888bdb91d71dc74e30b8aafb788822f32216c8f21ee8e8e452d0f
 ---
 
 # Process destroyプレビューのレビュー対応
@@ -22,7 +22,7 @@ source_sha256: 94fa2713245d91c69dc4be1f60159920c91b8223746d3f80f98f529cd2c40e70
 
 ## Surprises & Discoveries
 
-processの観測経路は正しかったが、稼働中processのプレビューがComposeの説明に流れていた。終了済みprocessにも専用状態のcleanup説明が必要。最初の対象回帰testではforce有無の両方で稼働中/終了済みが失敗し、production code変更前に指摘を再現した。
+processの観測経路は正しかったが、稼働中processのプレビューがComposeの説明に流れていた。終了済みprocessにも専用状態のcleanup説明が必要。最初のprocessプレビュー検証テストではforce有無の両方で稼働中/終了済みが失敗し、production code変更前に指摘を再現した。
 
 ## Decision Log
 
@@ -30,7 +30,7 @@ processの観測経路は正しかったが、稼働中processのプレビュー
 
 ## Outcomes & Retrospective
 
-process専用分岐でnative識別情報確認、稼働中なら停止、log保持、tree全体の不在確認、専用状態削除を説明する。修正前に稼働中と終了済みのプレビューが失敗し、修正後は状態/forceの全6ケースが成功した。既存Androidプレビューの回帰も成功。
+process専用分岐でnative識別情報確認、稼働中なら停止、log保持、tree全体の不在確認、専用状態削除を説明する。修正前に稼働中と終了済みのプレビューが失敗し、修正後は状態/forceの全6ケースが成功した。既存Androidプレビューが維持されることを確認するテストも成功。
 
 
 修正`45175dc`をpushし、指摘1件のThreadに返信してResolveした。未解決の指摘はない。commit後の空白検査で新規Plan両方の末尾に余分な空行を検出したため、このarchive更新で履歴を書き換えず除去する。
@@ -41,7 +41,7 @@ process専用分岐でnative識別情報確認、稼働中なら停止、log保�
 
 ## Plan of Work
 
-公開Destroy経路の回帰を追加し、稼働中・終了済み・所有不明をforce有無の両方で検証する。registry、event、artifact、専用状態、provider呼出回数が変わらないことを確認し、説明を修正する。
+公開Destroy経路のプレビューが正しく無作用であることを確認するテストを追加し、稼働中・終了済み・所有不明をforce有無の両方で検証する。registry、event、artifact、専用状態、provider呼出回数が変わらないことを確認し、説明を修正する。
 
 ## Concrete Steps
 

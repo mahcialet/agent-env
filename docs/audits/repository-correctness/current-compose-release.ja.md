@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/audits/repository-correctness/current-compose-release.md
-source_sha256: cc55711c88472bc0ba1291d5ea2a0b8492f057408eec9a342561f0d9dc282905
+source_sha256: 9c6ba798b708ae0738a8034ad60a2b316ed0a59f3909e1c504c1c2fc99b9ea97
 ---
 
 # 現在の Compose・asset・release の正確性レビュー
@@ -23,13 +23,13 @@ Phase A はレビューと一時 Go overlay のみを使用した。Phase B の 
 | --- | --- | --- |
 | provider 選択・identity | Compose dispatcher、Docker 記録済み context、Podman の executable/URL/fingerprint/environment、native bridge。 | fallback はなく、Podman は作用前に fingerprint を再確認する。Docker は context 名を固定し、daemon fingerprint は固定しない。それ以上の保護は推定しない。 |
 | 破壊操作前の所有権 | container/named resource の inspection、宣言名検索、匿名 volume の attachment/fingerprint/利用者、Down 後の再観測。 | container ID 欠落で Down を許可する指摘を確認。named resource/inventory には空 ID 拒否がある。観測間の engine 置換は静的確認だけで否定できない。 |
-| readiness・protocol | 選択 service の存在、running/health、残存 volume の存在、Podman remote の TCP 限定検査。 | 過去 P04/P12 の回帰は成功。TCP 成功は UDP/application readiness の証明ではない。実 Machine forwarding は未主張。 |
+| readiness・protocol | 選択 service の存在、running/health、残存 volume の存在、Podman remote の TCP 限定検査。 | 過去 P04/P12 の、残存volumeの存在とTCP/UDPの扱いを確認するテストは成功。TCP 成功は UDP/application readiness の証明ではない。実 Machine forwarding は未主張。 |
 | 部分 cleanup・永続化 | Down 前の app proof Save、container 消失後の Destroy 再試行、scope 内残存削除、rm/down 後の不在。 | 過去 P10 の失敗注入は成功。確認箇所に新しい欠陥は未確認。app saga 全体は親監査が別途確認する。 |
 | inventory の完全性 | 利用可能・記録済み provider の集合、独立 native label traversal、Compose frontend 欠落・古いパス。 | P01/P13 は部分 error を含め成功。件数だけによる inspection 集合の一致判定は追加仮説であり、今回の再現済み指摘ではない。 |
-| policy・パス移動・ambient state | raw Podman 正規化、再帰的拡張、許可 mount/network、ファイル範囲、明示 environment、private escaped JSON。 | 既存 provider/正規化の回帰は成功。悪意ある manifest を実 provider に渡す実験は行っていない。 |
+| policy・パス移動・ambient state | raw Podman 正規化、再帰的拡張、許可 mount/network、ファイル範囲、明示 environment、private escaped JSON。 | providerの設定正規化とhostアクセス拒否を確認する既存テストは成功。悪意ある manifest を実 provider に渡す実験は行っていない。 |
 | evidence・上限 | native 診断を redact 後に末尾8 KiBへ限定、canonical snapshot/inherited secret、archive/file/asset reader。 | release reader の成長による上限迂回を確認。診断長文は過去の coverage 制限として残り、診断漏洩は再現していない。 |
 | asset・並行性・パス | portable 名、provenance、root/中間 entry、同時 mkdir、open 後の上限付き read、native publication。 | Linux の独立 process/破損テストは成功。Windows held-handle/long-path/winner は native baseline が必要。静的 symlink 検査では任意置換 race を証明できない。 |
-| release source | canonical tag、HEAD 一致、clean index/tree、private commit checkout、filter/config 隔離、最終 identity 比較。 | source/filter/hidden-index 回帰は成功。build 中の identity 変更注入は過去の coverage 制限。公開 ref は変更していない。 |
+| release source | canonical tag、HEAD 一致、clean index/tree、private commit checkout、filter/config 隔離、最終 identity 比較。 | sourceの固定、Git filterの隔離、hidden-index flagの拒否を確認するテストは成功。build 中の identity 変更注入は過去の coverage 制限。公開 ref は変更していない。 |
 | packaging・正確な境界 | member3件、release file8件、canonical manifest、checksum、ZIP local/central、秒単位 mtime、member stream 上限。 | archive 変異・時刻範囲は成功。短い root の path filter と外側の regularRead 上限は失敗。小さい cap で再現できるため、模擬目的だけで256 MiB境界を allocation してはいない。 |
 | publication・再現性 | 独立 stage、source 検証、出力先 transfer、既存出力拒否、workflow build→smoke→publish、artifact 名一致。 | 保存・workflow 拒否テストは成功。実 repeat build/native smoke は親の baseline 作業。公開 GitHub Release は作成しない。 |
 
@@ -44,10 +44,10 @@ Phase A はレビューと一時 Go overlay のみを使用した。Phase B の 
 - 影響: 正当な短い checkout root で path-leak guard に死角がある。detector の契約不足であり、secret 漏洩や candidate 検証全体の迂回は実証していない。
 - 既存 coverage: `TestReleaseBinaryKnownModulePaths` は `/tmp`、`/agent-env`、長い Windows root を使い、長さ2・3はない。実連結 literal も `/agent-env` を使う。
 - 再現: 一時 `go test -overlay` で上記2式が true であることを要求し、native Linux Go 1.27.1 で両失敗を観測した。
-- 回帰・修正: Phase A 中は変更せず、Phase C の記録を末尾に示す。
+- 修正と確認テスト: Phase A 中は変更せず、Phase C の記録を末尾に示す。
 - 検証: overlay `TestAuditShortReleaseRootLeak` の失敗。通常 test file は未変更。関連は過去 HCR-R13/R14 と現在の path/boundary 監査。
 - 見逃し: 検出 S9、最早 S2。`BOUNDARY_GAP`、`NEGATIVE_FIXTURE_GAP`。early-return 境界の前後で path 長を試す機会があった。既存 fixture が長い directory に偏り、helper/実 binary ともこの分岐を通さなかった。
-- 防止策: 構造的 root の例、隣接長の正常 root、実 path/module path の正例・負例を組み合わせる。次回期待段階は S2。追加した実装・証拠は Phase C の記録に示す。
+- 防止策: 構造的 root の例、隣接長の正常 root、実 path を検出し module path は誤検出しないことを確認するテストを組み合わせる。次回期待段階は S2。追加した実装・証拠は Phase C の記録に示す。
 
 ## AUDIT-RELEASE-002 — 事前サイズ検査で実際の read を制限できない
 
@@ -60,11 +60,11 @@ Phase A はレビューと一時 Go overlay のみを使用した。Phase B の 
 - 影響: release candidate/manifest/checksum、copy/compare の cap が厳密な read 上限になっていない。後段の JSON/checksum が拒否しても過大 allocation の後になる。破損 release の受理を確認したわけではない。
 - 既存 coverage: archive member 展開は LimitReader を使用する。過去 asset HCR-A08 は open 後サイズと bounded read を確認する。release fixture は静的な完成 file を変異させ、同時成長を扱わなかった。
 - 再現: 一時 overlay `TestAuditRegularReadGrowthBound`。writer は自分の一時 file を一度 open し、`WriteAt(64 KiB, 0)` と `Truncate(1)` を繰り返す。reader は最大20,000回、`err == nil && len(bytes) > 1` で失敗する。終了時に writer を join する。interleaving が起きなければ skip とし、安全性の証明とはしない。
-- 回帰・修正: Phase A 中は変更せず、Phase C の記録を末尾に示す。writer staging の再発箇所は source 確認のみで、別の失敗注入は行っていない。
+- 修正と確認テスト: Phase A 中は変更せず、Phase C の記録を末尾に示す。writer staging の再発箇所は source 確認のみで、別の失敗注入は行っていない。
 - 検証: native Linux Go 1.27.1 の overlay が失敗。RELEASE-001 と合わせ package 0.008s。通常 repoctl race は別途8.768sで成功した。
 - 関連: 過去 HCR-A08（asset の同種欠陥）、HCR-R03/R05（writer error/境界 coverage）、横断 file-reader 監査。
 - 見逃し: 検出 S9、最早 S2。`CONCURRENCY_GAP`、`BOUNDARY_GAP`、`FAILURE_INJECTION_GAP`。事前検査後の変異、または bounded reader 自体を判定基準にする機会があった。asset の局所修正が release 基盤に残る同種構造を検出しなかった。
-- 防止策: regular-file read の共通上限処理、または asset/release/evidence を横断する cap/growth fixture。期待段階 S2/S3。実装修正と回帰証拠は Phase C の記録に示す。
+- 防止策: regular-file read の共通上限処理、または asset/release/evidence を横断する cap/growth fixture。期待段階 S2/S3。実装修正と、その動作を確認するテストの証拠は Phase C の記録に示す。
 
 ## AUDIT-OWNERSHIP-001 — container identity 欠落で Down を許可する
 
@@ -77,16 +77,16 @@ Phase A はレビューと一時 Go overlay のみを使用した。Phase B の 
 - 影響: 不完全な identity 観測が破壊操作の検査を通る。native engine がこの不正 record を実際に返したこと、無関係な資源の実削除、任意の foreign resource 取得は実証していない。
 - 既存 coverage: `TestManagedResourcesRequireBothOwnershipLabels` は有効 ID を保ちながら label を変える。named resource と native inventory は空 identity を既に拒否するが、container 分岐には同等の検査がない。
 - 再現: 一時 overlay `TestAuditMissingContainerIDAuthorizesDown`。既存 runtimeFixture を使用し、一時 canonical snapshot を書き、LeaseID を設定し、上記応答を返す。error あり・Down dispatch ゼロを要求したが `dispatched=true err=<nil>` を観測した（package 0.025s）。
-- 回帰・修正: Phase A 中は変更せず、Phase C の記録を末尾に示す。
+- 修正と確認テスト: Phase A 中は変更せず、Phase C の記録を末尾に示す。
 - 関連: 過去 HCR-P04/P06。同種検索で named resource/Inventory の既存検査と Podman 匿名 attachment の ID 厳密一致を確認した。件数だけ一致する異なる非空 ID 集合は、別の未確認仮説として残る。
 - 見逃し: 検出 S9。最早は欠落 field に対し S2、Down 検査に対し S3。`NEGATIVE_FIXTURE_GAP`、`ORACLE_COUPLING`、`COMPOSITION_GAP`。所有 label を正常に保ちながら identity field を個別に省き、公開破壊入口が作用に到達しないことを試せた。既存 fixture は ID と正常 record を結び付けていた。
 - 防止策: provider inspection 共通の missing/empty/duplicate/wrong-ID 応答 matrix と公開 Down の作用拒否 assertion。期待段階 S2/S3。採否決定後に追加した防止策は Phase C の記録に示す。
 
 ## 否定した仮説と確認範囲の限界
 
-- 「Podman UDP がまだ TCP dial する」: 現在の suffix filter と protocol 混在の全体回帰で否定した。mapping は application 応答ではない。
+- 「Podman UDP がまだ TCP dial する」: 現在の suffix filter と TCP/UDPを混在させてInspect全体を通すテストで否定した。mapping は application 応答ではない。
 - 「Inventory は常に podman-compose が必要」: engine-only Doctor 後の InventoryFor を frontend 欠落・古いパス、全 native kind で検証して否定した。
-- 「残存匿名 volume を不在扱いできる」: 過去の条件は最終 resource 集合での存在算出と retained-only 回帰で否定した。任意の同時外部削除・再生成まで証明したのではない。
+- 「残存匿名 volume を不在扱いできる」: 過去の条件は最終 resource 集合での存在算出と 残存volumeだけがある状態を検査するテストで否定した。任意の同時外部削除・再生成まで証明したのではない。
 - 「release-verify が caller の hidden index flag をまだ受理する」: build/output 前の executeArgs 4例で caller bytes/index/refs を保存したまま拒否するため否定した。
 - 「private clone が active global/system clean/smudge filter を引き継ぐ」: 対照の通常 checkout は変換され、隔離 checkout は commit bytes と一致する fixture で否定した。
 - 「ZIP central-safe/local-unsafe がまだ通る」: 現在の local-record parser と直接 local-header 変異で否定した。

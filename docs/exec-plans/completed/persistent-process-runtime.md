@@ -14,12 +14,12 @@ Expected branch: `feat/persistent-process-runtime`.
 
 PR #8 (`feat: add explicit Podman Compose provider with safe lease cleanup`) is
 merged into `master` before implementation started. This plan does not depend on
-Podman behavior; Compose provider behavior remains in regression scope.
+Podman behavior; unchanged Compose provider behavior must still be verified.
 
 Preferred start:
 
 - if PR #8 has merged, branch from the resulting `master` and include Compose
-  provider behavior in regression scope;
+  checks that preserve existing provider behavior;
 - otherwise branch from current `master` and do not stack this process-runtime
   work on an unmerged Podman branch merely for convenience.
 
@@ -358,12 +358,12 @@ compensate only while ownership remains proven.
 
 - [x] (2026-09-08) Record base branch/revision and create `feat/persistent-process-runtime`.
 - [x] (2026-09-08) Run baseline repository harness and race suite.
-- [x] (2026-09-08) Inspect native detached code and Android regression surface.
+- [x] (2026-09-08) Inspect native detached code and the checks preserving Android behavior.
 - [x] (2026-09-08) Inspect app/config/domain/store/endpoint/readiness/log/cleanup paths.
 - [x] (2026-09-08) Write English/Japanese product and design docs.
 - [x] (2026-09-08) Finalize process manifest/endpoint/interpolation contract.
 - [x] (2026-09-08) Add identity-gated native termination primitive if required. (Native three-OS evidence below.)
-- [x] (2026-09-08) Add native termination/identity negative regressions. (Native three-OS evidence below.)
+- [x] (2026-09-08) Add tests of native observation and termination with invalid or mismatched process identity. (Native three-OS evidence below.)
 - [x] (2026-09-08) Keep all Android detached/guardian tests passing. (Native three-OS evidence below.)
 - [x] (2026-09-08) Implement strict process runtime config/domain types.
 - [x] (2026-09-08) Implement executable and working-directory resolution.
@@ -376,7 +376,7 @@ compensate only while ownership remains proven.
 - [x] (2026-09-08) Add two-concurrent-process-lease isolation.
 - [x] (2026-09-08) Add process+Compose coexistence fixture.
 - [x] (2026-09-08) Add cross-process recovery through separate CLI invocations.
-- [x] (2026-09-08) Add PID-reuse and root-exit-with-descendant regressions.
+- [x] (2026-09-08) Add tests of safety after PID reuse and root exit with surviving descendants.
 - [x] (2026-09-08) Prove no automatic restart occurs.
 - [x] (2026-09-08) Add native Windows/macOS/Linux persistent-process integration.
 - [x] (2026-09-08) Add real HTTP helper using allocated loopback endpoint.
@@ -396,7 +396,7 @@ workflow run and result.
 at `f58896050b11481b021bf1ad07701818d3c133eb` PASS: all 12 jobs succeeded.
 The six native Windows/macOS/Ubuntu jobs (Go 1.26 and 1.27) ran `repoctl doctor`,
 `repoctl check` and CLI build. This includes `TestPersistentProcessNativeCLI`,
-managed-process and Android detached/guardian regressions; Windows also ran
+managed-process and tests preserving Android detached/guardian behavior; Windows also ran
 `TestManagedWindowsCompletedJobIgnoresReusedHistoricalPID`. Integration ran
 `go test -race ./...` and `repoctl test-integration`, both PASS. Five CI cross-build
 jobs PASS; the separate local six-target CGO-disabled build evidence remains
@@ -432,11 +432,11 @@ commit/native CI success is not implied.
   opt-in suites remain gated as designed in that command.
 - Separate `TestPodmanIntegrationConcurrentLeasesAndEvidence` PASS (150.407s) with
   `AGENT_ENV_PODMAN_INTEGRATION=1` and `AGENT_ENV_PODMAN_DOCKER_COEXISTENCE=1`:
-  rootless Podman plus Docker coexistence regression evidence.
+  rootless Podman plus evidence preserving Docker coexistence behavior.
 - `go run ./tools/repoctl doctor` and `agent-env doctor --runtime process --output json`
   PASS; process diagnostics report native detached support without a Compose dependency.
-- Config/domain, architecture negative fixtures and repeated docs-check PASS.
-  Five confirmed review issues were fixed with targeted regressions: death during
+- Config/domain checks, architecture tests detecting forbidden dependencies and repeated docs-check PASS.
+  Five confirmed review issues were fixed with tests detecting the same defects: death during
   readiness, proven pre-spawn failure, canonical paths before reservation, endpoint
   alias precedence, and literal readiness credentials entering snapshots. Review
   of another implementer's lifecycle/backend was independent; an author's review
@@ -456,7 +456,7 @@ The failure was `TestPersistentProcessNativeCLI` line 329 while destroying the
 second manually exited process: `detached job root identity reused or ambiguous`.
 Inspection found historical root PID validation before exact named-Job completion
 evidence, and managed observation still inspecting the root after whole-tree
-absence was proven. A fix and native negative regression are in progress:
+absence was proven. A fix and a native test for observation and termination after PID reuse are in progress:
 completed owned Job evidence must take precedence over a recycled historical PID
 without weakening active Job identity checks. Preserve the failure as evidence;
 no successful retry or fixed-commit native result is claimed.
@@ -518,7 +518,7 @@ pass.
 - 2026-09-08: Published CI exposed a Windows Go 1.26 root-PID reuse/ambiguity
   failure after Job completion despite Linux/macOS and Windows Go 1.27 success.
   Completed-tree proof must precede historical root lookup; active ownership checks
-  must remain strict. The targeted platform fix/regression are in progress.
+  must remain strict. The targeted platform fix and test detecting the same defect are in progress.
 
 ## Decision Log
 
@@ -643,7 +643,7 @@ readiness, creator interruption, retained logs, source-change protection and unr
 process survival. Unix signals require fresh birth/group proof and retain an
 observation-to-signal race; ambiguous descendants quarantine. Windows terminates the
 exact Job and requires matching guardian proof for completion. Initial Windows CI
-exposed historical-PID lookup after Job completion. A two-process regression now
+exposed historical-PID lookup after Job completion. A test using two processes now
 simulates recycled historical identity and proves unrelated-process survival; it does
 not force kernel PID reuse. Independent review and native CI caught issues that
 Linux-only success and cross-compilation could not settle.
@@ -766,7 +766,7 @@ roadmap after completion.
 1. Record base and create branch.
 2. Add bilingual active plans.
 3. Baseline harness/race.
-4. Inspect native detached/Android regression surface.
+4. Inspect the checks preserving native detached/Android behavior.
 5. Write bilingual product/design docs.
 6. Finalize process/endpoint/interpolation syntax.
 7. Add identity-gated termination.
@@ -791,7 +791,7 @@ roadmap after completion.
 
 | ID | Required behavior | Evidence |
 | --- | --- | --- |
-| H1 | Existing Compose/Android/Flutter/UI-observer behavior remains valid. | Local check/race/Docker integration and Podman+Docker PASS; all six native regression jobs PASS in Verify 34226859965. |
+| H1 | Existing Compose/Android/Flutter/UI-observer behavior remains valid. | Local check/race/Docker integration and Podman+Docker PASS; all six native jobs checking existing behavior PASS in Verify 34226859965. |
 | H2 | `type: process` is strictly validated and rejects incompatible runtime fields. | TestProcessManifestContract; TestProcessManifestNegativeFixtures; TestProcessPresenceRejectsYAMLMergeAndAliases; TestProcessFieldsDoNotChangeLegacyCanonicalShape — PASS, Linux integrated working tree 2026-09-08. |
 | H3 | Command is direct argv with confined cwd and no implicit shell. | TestStartInterpolatesWithoutSnapshotSecrets; TestPrepareRejectsUnownedRootAndSourceEscape; TestPrepareRejectsSymlinkCWDAndRuntimeRoot — PASS, Linux integrated working tree 2026-09-08. |
 | H4 | Process remains alive after launching create CLI exits. | Linux TestPersistentProcessNativeCLI PASS: create exits before independent later CLI observations. |
@@ -816,11 +816,11 @@ roadmap after completion.
 | H23 | Process and Compose runtimes can coexist in a declared stack. | TestIntegrationPersistentProcessComposeCoexistence (55.965s) — PASS, Linux integrated working tree 2026-09-08. |
 | H24 | Source tracked-change protections remain intact while a process may reference its worktree. | TestPersistentProcessNativeCLI (5.422s): live tracked README refusal preserves bytes/process; force captures tracked-diff before release — PASS, Linux integrated working tree 2026-09-08. |
 | H25 | No shell/Python/Node/systemd/launchd/Windows Service becomes a core requirement. | Integrated arch-check/build/tests and Go-built CLI/helper PASS; no new core runtime/daemon. |
-| H26 | Real persistent-process integration passes natively on Windows. | Windows Go 1.26/1.27 native repoctl check, including TestPersistentProcessNativeCLI and completed-Job regression, PASS in Verify 34226859965 at f588960. |
+| H26 | Real persistent-process integration passes natively on Windows. | Windows Go 1.26/1.27 native repoctl check, including TestPersistentProcessNativeCLI and test prioritizing completed-Job evidence, PASS in Verify 34226859965 at f588960. |
 | H27 | Real persistent-process integration passes natively on macOS. | macOS Go 1.26/1.27 native repoctl check, including TestPersistentProcessNativeCLI, PASS in Verify 34226859965 at f588960. |
 | H28 | Real persistent-process integration passes natively on Linux. | TestPersistentProcessNativeCLI (5.422s) — PASS, Linux integrated working tree 2026-09-08. |
 | H29 | Browser-shaped fixture proves state dir + CDP-like port + readiness + later observation + cleanup. | TestPersistentProcessNativeCLI: private profile, /json/version, readiness, independent show, cleanup — PASS, Linux integrated working tree 2026-09-08. |
-| H30 | Existing Android detached/guardian acceptance still passes after execx changes. | Android detached/guardian regressions PASS in all six native repoctl check jobs at f588960, Verify 34226859965. |
+| H30 | Existing Android detached/guardian acceptance still passes after execx changes. | tests preserving Android detached/guardian behavior PASS in all six native repoctl check jobs at f588960, Verify 34226859965. |
 | H31 | Bilingual durable docs describe the delivered contract. | Bilingual durable contracts, completion links and native evidence updated together; docs-check PASS. |
 | H32 | Final harness/translation/race/native CI passes. | Local harness/race/integration PASS; Verify 34226859965 at f588960 PASS, all 12 jobs including six native jobs, race/integration and five cross-build jobs. |
 | H33 | Both ExecPlans contain direct evidence and retrospective before archival. | Both plans contain the final checkpoint, H1–H33 evidence and completed retrospective, and are archived together with updated links. |
@@ -846,7 +846,7 @@ Windows correction checkpoint (2026-09-08): the exact same-session Job is now
 queried before historical PID validation. Empty/missing Jobs require matching
 synced guardian completion evidence; active Jobs retain birth and membership
 checks. A second census handles completion during PID observation. No historical
-PID is signaled after proven completion. The new native regression
+PID is signaled after proven completion. The new native test detecting the same PID-reuse defect
 `TestManagedWindowsCompletedJobIgnoresReusedHistoricalPID` uses two real processes
 and retains the old Job handle to test both empty and missing Job cases, plus
 missing/wrong proof and active identity mismatch rejection. Linux harness and

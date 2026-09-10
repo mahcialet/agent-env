@@ -3,7 +3,7 @@ status: completed
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/exec-plans/completed/standalone-release-filter-review.md
-source_sha256: b88b35a0ea773ea6da75063d94484b75b9867f071370d3817c123906e588508c
+source_sha256: e4490ed34fc039718fd4fa573c204783280d69f686f178996ed9b60e7f0f3787
 ---
 
 # リリースcheckoutのfilterを隔離する
@@ -30,7 +30,7 @@ smudgeがコンパイラ入力を変えても、対応するclean filterがGit s
 
 ## Outcomes & Retrospective
 
-2026-09-08完了。release checkoutはglobal/system filter設定・外部属性・templateを継承しない。両filter回帰、source guard、実候補、harness、repoctl raceが成功。指摘に返信してResolve済み。隔離処理とテストはユーザーのGit設定や公開refsを変更していない。hosted CIは下記の成功済みローカル証拠と区別する。
+2026-09-08完了。release checkoutはglobal/system filter設定・外部属性・templateを継承しない。両filterによるrelease checkoutの改変を防ぐテスト、source guard、実候補、harness、repoctl raceが成功。指摘に返信してResolve済み。隔離処理とテストはユーザーのGit設定や公開refsを変更していない。hosted CIは下記の成功済みローカル証拠と区別する。
 
 ## Context and Orientation
 
@@ -42,7 +42,7 @@ smudgeがコンパイラ入力を変えても、対応するclean filterがGit s
 
 ## Concrete Steps
 
-修正前後の対象回帰、repoctl check、repoctl raceを実行。commit/push後に返信してResolveする。
+修正前後のcheckoutがfilterで改変されないことを確認するテスト、repoctl check、repoctl raceを実行。commit/push後に返信してResolveする。
 
 ## Validation and Acceptance
 
@@ -54,7 +54,7 @@ global/systemのfixtureは通常checkoutを実際に変換し、release専用che
 
 ## Artifacts and Notes
 
-指摘: https://github.com/mahcialet/agent-env/pull/7#discussion_r3954872828 。Go 1.27.1でsource/filter回帰、`go run ./tools/repoctl check`、`go test -race ./tools/repoctl`、`AGENT_ENV_RELEASE_CANDIDATE=build go test ./tools/repoctl -run TestReleaseCandidate -count=1` が成功。最後の検査は6ターゲットの実成果物と18ケースを含む。独立した読み取りレビューでも重大な問題は確認されなかった。
+指摘: https://github.com/mahcialet/agent-env/pull/7#discussion_r3954872828 。Go 1.27.1でsource/filterの検証漏れを再検出するテスト、`go run ./tools/repoctl check`、`go test -race ./tools/repoctl`、`AGENT_ENV_RELEASE_CANDIDATE=build go test ./tools/repoctl -run TestReleaseCandidate -count=1` が成功。最後の検査は6ターゲットの実成果物と18ケースを含む。独立した読み取りレビューでも重大な問題は確認されなかった。
 
 ## Interfaces and Dependencies
 

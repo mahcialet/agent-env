@@ -3,7 +3,7 @@ status: completed
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/exec-plans/completed/compose-provider-podman-review.md
-source_sha256: 2890b85003a28a940066b3965ea3bca821d254a201f109a295bfa51dfc5b9ada
+source_sha256: 450b1bb1813d7d20d0a3d31a0811e77b77b0ff7cf8eda6e94a003d731dab9329
 ---
 
 # Podman providerのPRレビュー修正
@@ -21,10 +21,10 @@ PR #8のUDP到達性と任意のComposeツールに依存するinventoryの指�
 
 - [x] 2026-09-08: 未解決の2 threadを読み、実装と照合した。
 - [x] 2026-09-08: 両指摘を再現し、protocol判定とnative inventoryを修正した。
-  provider回帰テスト、全repository check、全raceテストが成功した。
+  providerの修正対象と既存動作を確認するテスト、全repository check、全raceテストが成功した。
 - [x] 2026-09-08: 全harness、race、Docker integration、native Podman/Docker
   共存（104.081秒）、Verify 34221034636の全12 jobが成功した。
-- [x] 2026-09-08: 53c141fをpushし、元の両threadへ修正と回帰検証の証拠を返信した。
+- [x] 2026-09-08: 53c141fをpushし、元の両threadへ修正と同じ不具合を検出できるテストの証拠を返信した。
   両threadをResolveし、本Planをcompletedへ移した。
 
 ## 想定外の発見
@@ -52,9 +52,9 @@ native Podman inventoryはCompose frontendなしで動作する。Dockerのproje
 
 従来のテストは隣接するhelperで止まっていた。engineのみのDoctor検証はその後の
 inventory経路を証明せず、endpoint fixtureはremoteでのprotocol混在を扱わなかった。
-新しい回帰テストは入口からの全経路、任意ツールの欠落／古いpath、labelのみのorphan、
+同じ不具合を検出する新しいテストは入口からの全経路、任意ツールの欠落／古いpath、labelのみのorphan、
 途中失敗、TCP/UDP混在を扱う。providerの組み合わせもhelperとともに検証する。
-実Podman Machineの転送は未検証であり、remote回帰テストはrunnerによるinspectionと
+実Podman Machineの転送は未検証であり、remote endpointのTCP/UDP判定を確認するテストはrunnerによるinspectionと
 nativeなローカルsocketを使用している。
 
 ## 背景と構成

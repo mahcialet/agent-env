@@ -3,7 +3,7 @@ status: completed
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/exec-plans/completed/repository-correctness-audit.md
-source_sha256: 64778d19be0e69a415dd8d7f92203d18dd4c015a0dc433bda063253421125245
+source_sha256: 3d1d864a291422f3072ade86d515fa0523f6bd37a938ab9226b461f3bb4d614b
 ---
 
 # Browser/CDP merge後にrepository全体のcorrectness invariantを監査する
@@ -351,7 +351,7 @@ must/never/always/enforced/rejects/guaranteesのmechanical claimに実装+negati
 
 - 2026-09-09 最終照合: 候補6872286のVerify34294068659とBrowser native34294068663は全成功。ローカル実integrationとrelease検証も成功。履歴資料の最終更新で完了PlanにないPR10のmerge後追加指摘3963154175/4182/4186/4191を発見した。page-create128上限、変更結果のtable表示、ignored AX wait、pressed-state fingerprintを追加のreview-onlyで再現中。採否・修正と新候補検証まで完了移動しない。
 
-- 2026-09-09 時点: Phase A/Bは完了（文書のみのcommit `56b9c2c`）。採用15件の修正と回帰テストを実装した。集約matrix、最終独立レビュー、安定した修正版の検証は継続中。固定版をディスク上の一時領域で再検証しFlutter73.54秒成功、UI75.11秒で最初のtapが失敗しAUDIT-UI-001を確認した。最初の修正版はFlutter107.45秒/UI146.19秒、Linux Browser race10.178秒成功。UIは最後の出力上限修正後に再実行する。途中のharness/race/integrationは、新しいmobile fixtureのサイズとAPI応答の修正中に失敗した。並行integration負荷中のprocess preview deadline失敗は単独で再確認する。
+- 2026-09-09 時点: Phase A/Bは完了（文書のみのcommit `56b9c2c`）。採用15件の修正と同じ不具合を検出するテストを実装した。集約matrix、最終独立レビュー、安定した修正版の検証は継続中。固定版をディスク上の一時領域で再検証しFlutter73.54秒成功、UI75.11秒で最初のtapが失敗しAUDIT-UI-001を確認した。最初の修正版はFlutter107.45秒/UI146.19秒、Linux Browser race10.178秒成功。UIは最後の出力上限修正後に再実行する。途中のharness/race/integrationは、新しいmobile fixtureのサイズとAPI応答の修正中に失敗した。並行integration負荷中のprocess preview deadline失敗は単独で再確認する。
 
 
 - 2026-09-09: 固定版の全 repoctl、全 race、Docker integration、Linux Browser native race、実 Podman 共存（126.631秒）、実 Android 並行リースと手動終了（48.587秒）、隔離 clone での配布検証（6対象、2回生成した8ファイルの完全一致、Linux実行）が成功。固定 master の Verify 34290359477、Browser native 34290359439 は Windows/macOS/Linux で成功。Flutter/UI integration は実行中で、修正後の検証は未実施。
@@ -366,9 +366,9 @@ disproved hypothesisも削除せずconfirmed defectと区別する。
 
 ## 判断の記録
 
-- 2026-09-09 追加Phase B: merge後4指摘を固定031869c8で再現した。AUDIT-BOUNDARY-003（128page作成超過）、AUDIT-STATE-001（ignored AX wait）、AUDIT-STALE-002（pressed fingerprint）、AUDIT-CLI-001（変更結果table）をすべてMediumとしてACCEPT。最初の15件も採用を維持し計19件。CDP負例3件は0.061秒で失敗。native CLIは作成/削除両表示の検証で失敗し、作用と兄弟保持は独立に確認した。詳細は追加監査別紙。本監査の範囲照合であり別PRタスクではない。
+- 2026-09-09 追加Phase B: merge後4指摘を固定031869c8で再現した。AUDIT-BOUNDARY-003（128page作成超過）、AUDIT-STATE-001（ignored AX wait）、AUDIT-STALE-002（pressed fingerprint）、AUDIT-CLI-001（変更結果table）をすべてMediumとしてACCEPT。最初の15件も採用を維持し計19件。CDPの上限超過・ignored AXの待機判定・状態変更後の入力を検証する3件の不具合再現テストは0.061秒で失敗。native CLIは作成/削除両表示の検証で失敗し、作用と兄弟保持は独立に確認した。詳細は追加監査別紙。本監査の範囲照合であり別PRタスクではない。
 
-- 2026-09-09 / 監査実装担当、Phase B: 20件の完了Planと182行の履歴を含むPhase Aを製品変更なしで完了した。再現した15件（High7、Medium6、Low2）をすべてACCEPTとし、DEFER/REJECT/DUPLICATEはない。Phase Cは対象契約と回帰テストの修正に限定する。固定版の実Flutter成功後、実UIの最初のtapでAUDIT-UI-001を再現した。最終検証は未完了。
+- 2026-09-09 / 監査実装担当、Phase B: 20件の完了Planと182行の履歴を含むPhase Aを製品変更なしで完了した。再現した15件（High7、Medium6、Low2）をすべてACCEPTとし、DEFER/REJECT/DUPLICATEはない。Phase Cは対象契約と不具合の再発を検出するテストの修正に限定する。固定版の実Flutter成功後、実UIの最初のtapでAUDIT-UI-001を再現した。最終検証は未完了。
 
 - 2026-09-09 / 監査実装担当: 恒久レポートはdocs/audits/repository-correctness/に日英index・matrix・findings・historical corpus・escape summaryと範囲を区切ったsubsystem付録として置き、完了後も保持する。Phase Aの再現は隔離一時checkout/Go overlayとlease所有fixtureのみで、製品ファイルや共有資源を変更しない。新規指摘はdisposition時点まで未分類とし、範囲内Medium/Lowは原則ACCEPT、未解決Critical/HighはDEFERしない。public issueやglobal policy変更は含めない。利用可能な既存実integrationとnative CIを必須とし、利用できない基盤は成功と数えず記録する。共通予防策は再発パターンを確認してから採用する。
 
@@ -509,29 +509,29 @@ Browser/CDP/execx/evidence/paths/release/buildinfo/assets。
 | A5 | accepted boundary classにlimit-1/limit/limit+1 regression | UI4096文字±1、1000node±1、JSON1MiB±1、ログ2000行±1、DOM JSON1MiB±1、release読込上限前後、Browser page127/128/129。 |
 | A6 | count==limitだけでtruncatedにしない | 余分な1行と実node省略を根拠に判定。ちょうど上限なら完全。BOUNDARY-001、REDACTION-001/002。 |
 | A7 | READY/owned/clean/absent/released positive proof audit | 制御処理の段階・肯定的根拠表とprovider別紙。CLEANUP-001、OWNERSHIP-001、LIFECYCLE-001を修正。 |
-| A8 | major external effectのintent/effect/identity ordering audit | 制御処理のintent/effect/result確認、provider受領情報・永続化テスト、readiness試行の永続化回帰。 |
+| A8 | major external effectのintent/effect/identity ordering audit | 制御処理のintent/effect/result確認、provider受領情報・永続化テスト、readiness試行の永続化を確認するテスト。 |
 | A9 | effect成功+persistence failureでidentity silent loss無し | 既存process起動受領情報、application/UI/browser実行中行と保存失敗検証、新規readiness安全性テスト。 |
 | A10 | cleanupはabsence proof監査 | Destroy/GCの実行中行による隔離、ID欠落の公開Down拒否、実リースの兄弟を保つ削除検証。 |
 | A11 | PID/port/project/connection/serial/page/node reuse監査 | provider identity再利用表。source登録、process birth/Job、Compose engine/project、AVD serial、helper digest、Browser target/node。 |
-| A12 | lock loss/cancel後unintended effect無し | readinessの型付きキャンセル回帰、既存lock-loss/command-tree/UI/Browser fence、修正版race成功。 |
+| A12 | lock loss/cancel後unintended effect無し | readinessの型付きキャンセル後に再試行しないことを確認するテスト、既存lock-loss/command-tree/UI/Browser fence、修正版race成功。 |
 | A13 | cross-process claimはindependent process/connection test | SQLite独立connection/process予約、execx native helper、実Docker/Android/UI並行リース。Podman99.951秒成功。 |
-| A14 | Android/Browser stale action exact target再検証 | UIの編集可能値正常系とsecret/stale拒否、helper build一致と復旧、CDP述語評価後の文書切替回帰。 |
-| A15 | truncated evidenceでgone/absence誤判定無し | 既存Android wait部分/打切りとBrowser AX/frame不存在の負例を維持。mobile/Browser表で確認。 |
+| A14 | Android/Browser stale action exact target再検証 | UIの編集可能値正常系とsecret/stale拒否、helper build一致と復旧、CDP述語評価後の文書切替を見逃さないことを確認するテスト。 |
+| A15 | truncated evidenceでgone/absence誤判定無し | Android waitで部分取得・打切り状態を扱う既存テストと、不完全なBrowser AX/frame観測を不在の証拠として扱わないことを確認する既存テストを維持。mobile/Browser表で確認。 |
 | A16 | redaction/truncation multibyte/chunk/limit boundary | evidenceのchunk跨ぎ・複数byte文字と最終UI/DOM保存byte検査。秘密値由来hashを削除。 |
 | A17 | path symlink/traversal/case/space/Unicode/Windows | source/paths/assets/release表とOS固有pathテスト。隔離release smokeのstate rootはUnicode。 |
 | A18 | native Windows/macOS/Linux semantics分離検証 | Verify34295144985 native Go1.26/1.27×3OS成功、Browser34295144958実3OS成功。最終f2ec634。 |
-| A19 | release source/determinism/validated-byte publication audit | cleanな最終f2ec634の隔離cloneでrelease-verify成功。6対象2回生成、8ファイル一致、Linux smoke、release回帰suite成功。 |
-| A20 | durable mechanical claimにimplementation/negative test | docsCheck全体のfragment負例/正常例。UI/DOM上限とreadiness永続化の両言語説明を修正。docs-check成功。 |
+| A19 | release source/determinism/validated-byte publication audit | cleanな最終f2ec634の隔離cloneでrelease-verify成功。6対象2回生成、8ファイル一致、Linux smoke、releaseの検証漏れを検出するテスト群成功。 |
+| A20 | durable mechanical claimにimplementation/negative test | docsCheck全体を通し、存在しないfragmentへのlinkの拒否と有効なlinkの受理を確認。UI/DOM上限とreadiness永続化の両言語説明を修正。docs-check成功。 |
 | A21 | completed review/follow-up ExecPlanを全inventoryまたはN/A明記 | historical-corpusで完了英語Plan20件とPR5外部24指摘を記録。 |
-| A22 | historical regressionをcurrent test/entry pointへmapしstale/weakened coverage確認 | 186行に現行実装・回帰経路と検証限界を対応。過去版の再実行とコード確認を区別。 |
+| A22 | 過去のレビューで判明した不具合を現在のテスト・実行経路に対応づけ、検証範囲が古くなったり弱まったりしていないか確認する。 | 186行に現在の実装・確認手段と、その証拠の限界を対応づけた。過去版の再実行とコード確認を区別。 |
 | A23 | historical defect patternを他subsystemへrecurrence search | 過去・現行別紙の再発探索で19件を確認。不成立の仮説も記録。 |
-| A24 | 過去の「なぜtestが見逃したか」をcurrent audit fixture/methodへ反映 | 公開経路callback、永続run/artifact検査、独立した負例/正常例、実JSON境界を追加。 |
+| A24 | 過去の「なぜtestが見逃したか」をcurrent audit fixture/methodへ反映 | 公開経路callback、永続run/artifact検査、独立した拒否・エラー確認用と正常動作確認用のテスト、実JSON境界を追加。 |
 | A25 | 重要なhistorical finding全件にdetected stageとearliest realistic preventable stage | 過去別紙の各重要行で検出・最早防止段階を分類。historical-corpusで集約。 |
 | A26 | historical finding全件にpre-discovery detection opportunityと失敗理由 | 過去別紙に以前の検出機会・弱い検証条件・防止策を記録。レビュー担当者の意図は推測しない。 |
 | A27 | current ACCEPT finding全件にescape reasonとearliest preventable stage | matrixはACCEPT19/19件を対応。監査再現S9、元S9=15件/S8=4件。最早S2=9件/S3=7件/S4=3件。 |
 | A28 | recurring defect class全件にpreventive guardrail evidenceまたは非実施理由 | matrixの再発分類表に9種の防止策・再利用判断と証拠、汎用防止の限界を明記。 |
 | A29 | 全finding disposition/rationale | findingsでACCEPT19、REJECT0、DEFER0、DUPLICATE0。各契約違反の採用根拠。 |
-| A30 | ACCEPT finding regression evidence | Phase C別紙に固定版失敗overlayと恒久回帰を記録。独立レビューでreadiness通常キャンセルを発見し修正。 |
+| A30 | ACCEPT finding regression evidence | Phase C別紙に固定版失敗overlayと同じ不具合の再発を検出する恒久テストを記録。独立レビューでreadiness通常キャンセルを発見し修正。 |
 | A31 | accepted Critical/High resolved | 採用High7件をすべて修正し独立レビュー済み。Critical指摘なし。 |
 | A32 | unresolved Critical=0 | 0件。Criticalの採用・先送りなし。 |
 | A33 | unresolved High=0 | 0件。High7/7件を解決。 |
@@ -577,12 +577,12 @@ shellよりportable Go harnessを優先。
 
 1. 文書は `docs/audits/repository-correctness/` に置き、index/findings/matrix/historical-corpusを英日で提供する。
 2. 完了後も別紙を保持し、完了Planから詳細証拠へ参照する。
-3. 固定版の再現は隔離した一時overlay/cloneを使い、恒久的に意味のある回帰だけを製品履歴へ加える。
+3. 固定版の再現は隔離した一時overlay/cloneを使い、同じ不具合を継続して検出する意味のあるテストだけを製品履歴へ加える。
 4. Medium10件はすべて採用・修正し、先送りしない。
 5. Low2件も採用・修正する。
 6. 導入済みの必須integrationはDocker、Podman共存、Android、Flutter/UI、native Browser、release検証を実行した。native OS検証にはCIを使い、cross-buildだけで代替しない。
-7. 未依頼のQUALITY規則変更はしない。既存契約と対象回帰で厳密な上限を守る。
-8. 構文だけのlimit比較検査は導入しない。省略は領域ごとの有効性・encoding・skipに依存するため、matrixに正常例/負例の検証条件を記録する。
+7. 未依頼のQUALITY規則変更はしない。既存契約と上限の逸脱を検出するテストで厳密な上限を守る。
+8. 構文だけのlimit比較検査は導入しない。省略は領域ごとの有効性・encoding・skipに依存するため、matrixに正常動作と拒否・エラーを確認するための判定条件を記録する。
 9. DEFERがないため、そのGitHub issueも作らない。
 10. 小規模な反復監査は提案にとどめ、新しい必須workflowにしない。
 11. S0–S9/escape分類は本監査で使い、将来Planへの必須化は別の方針決定とする。

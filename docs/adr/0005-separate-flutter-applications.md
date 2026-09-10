@@ -41,5 +41,5 @@ require app to coordinate more effects but keep resource ownership unchanged.
 APK hashes establish build identity without promising historical artifact replay.
 
 `repoctl arch-check` already rejects cross-runtime imports generically. Its
-negative fixtures now explicitly cover the new Flutter node and nested packages,
+fixtures for forbidden imports now explicitly cover the new Flutter node and nested packages,
 with positive fixtures for app/domain/execx and same-adapter imports.

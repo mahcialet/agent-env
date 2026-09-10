@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/product-specs/manifest-v1.md
-source_sha256: fd152d1aa78e4d1b24f24898bdcfcc88c385e32a9e2c79d3e571b625eae56e14
+source_sha256: d55a3491a645a4d5008173904fd8bfece8ded622d05189dc2bbebb2ddb1dd113
 ---
 
 [English（翻訳元）](manifest-v1.md)
@@ -119,7 +119,7 @@ test/probe の working ディレクトリと成果物パスは、宣言したソ
 
 ### 選択するコンポーネントとサービス
 
-選択コンポーネントは決定的な依存順序に従います。Compose のサービス依存関係の閉包も含めます。実行する正規化設定には選択サービスと、そこから到達できるネットワーク、ボリューム、config、秘密情報だけを含め、未選択のグローバルリソースが削除対象へ入り込むのを防ぎます。
+選択コンポーネントは決定的な依存順序に従います。Compose では、選択したサービスに加えて、その直接・間接の依存先サービスもすべて実行対象に含めます。実行する正規化設定には、それらのサービスと、そこから参照するネットワーク、ボリューム、config、秘密情報だけを含め、未選択のグローバルリソースが削除対象へ入り込むのを防ぎます。
 
 ### Compose プロバイダーの選択
 

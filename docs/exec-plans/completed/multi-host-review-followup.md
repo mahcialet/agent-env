@@ -25,15 +25,15 @@ The user explicitly requests implementation, push, replies and Resolve on every 
 - [x] Fence host removal against active operations and refuse submissions after removal.
 - [x] Stop retrying permanent worker registration rejections.
 - [x] Preserve uncertainty for every post-boundary create failure and allow safe follow-up cleanup.
-- [x] Run focused regressions, full harness/race and native CI; review integrated changes.
+- [x] Run focused tests for recurrence of the reviewed defects, full harness/race and native CI; review integrated changes.
 - [x] Push fixes, reply to and resolve each addressed thread, archive this bilingual plan.
 
 ## Surprises & Discoveries
 
 Several review comments are terse; implementation and existing contracts determine
-the precise failure and required regression, not the comment wording alone.
+the precise failure and the test needed to detect it, not the comment wording alone.
 
-Fail-before regressions reproduced fresh-process owner changes, excessive worker
+Tests that failed before the fix reproduced fresh-process owner changes, excessive worker
 capacity reaching TLS setup, host removal with active operations, missing expiry,
 permanent registration retries, ambiguous create reported as failed, and plaintext
 accepted into worker journals. Independent review also reproduced startup failure
@@ -76,7 +76,7 @@ contract and ADRs 0006/0007 retain architectural and portability requirements.
 ## Plan of Work
 
 Use disjoint CLI, controller and worker implementation slices, with integration
-owned by the root reviewer. Add fail-before regressions where practical. Update
+owned by the root reviewer. Add tests that detect the same defects and fail before the fix where practical. Update
 bilingual durable contracts for TTL and unsupported remote text input. Integrate,
 run the repository harness and applicable native/runtime checks, then associate
 each thread reply with its concrete fix and validation evidence.

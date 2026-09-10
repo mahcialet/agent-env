@@ -15,9 +15,9 @@ Phase A, review only. Target `031869c8b9073b8e23bc17fbc55243666a52f557`; branch 
 The descriptions below preserve the frozen Phase A evidence and original coverage gaps.
 Phase B accepted all eight mobile findings. Their current disposition is **ACCEPT**;
 the earlier “untriaged” and “no repair” statements describe Phase A only.
-The candidate implements the following controls and permanent regressions:
+The candidate implements the following controls and permanent tests checking the repaired behavior:
 
-| Finding | Delivered control | Regression evidence |
+| Finding | Delivered control | Tests and assertions checking the repair |
 | --- | --- | --- |
 | AUDIT-BOUNDARY-001 | Request 2001 device records, filter the time window, keep the newest 2000 with explicit actual omission | `TestUILogExactTailUsesOverflowProof`: 1999/2000/2001 and an out-of-window probe |
 | AUDIT-REDACTION-001 | Recheck fields and actual escaped snapshot/result bytes after redaction; preserve node order and mark real omissions | `TestUIAuditUIRedactionBounds`, `TestUIFieldBoundaryAndSerializedObservationBoundary`: registered artifacts, retained identities, 4096 and 1 MiB minus/exact/plus boundaries |
@@ -40,14 +40,14 @@ Windows/macOS behavior or every historical mutation replay.
 
 ## Reviewed invariant matrix
 
-`No new finding` means the inspected source and scoped existing assertions agree; it is not exhaustive proof. All current findings remain untriaged until Phase B. Existing regression execution is recorded in the historical corpus.
+`No new finding` means the inspected source and scoped existing assertions agree; it is not exhaustive proof. All current findings remain untriaged until Phase B. Execution of existing tests checking historical repairs is recorded in the historical corpus.
 
 | Area / production boundary | Invariant checked | Evidence and result |
 | --- | --- | --- |
-| Android `Validate` / app allocation | Tools, acceleration, ABI, shared ADB and path aliases fail before source/resource writes | `app_test.go` preflight fixtures plus CLI `create_store_test.go`; no new finding. Factory regression does not exercise Cobra dispatch. |
+| Android `Validate` / app allocation | Tools, acceleration, ABI, shared ADB and path aliases fail before source/resource writes | `app_test.go` preflight fixtures plus CLI `create_store_test.go`; no new finding. The factory test does not exercise Cobra command dispatch. |
 | Android `Inspect` / `Destroy` | Marker, lease, tuple, PID/Job, console token and live port must agree before kill/delete | `lifecycle.go` marker/process/console checks and stale-marker/reused-port tests; no new finding. Native Windows second-read race test gap M12 remains. |
 | Android process/port cleanup | Root absence does not imply tree absence; authenticated kill waits for group and ports | `DestroyWaitsForPostKillTreeConfirmation`, cancellation tests and containment source; no new finding. Native OS race proof is separate. |
-| Shared ADB | Inspect is noncreating; incompatible daemon is not replaced; startup outside lease containment | `adb.go` smart-socket preflight and matching negative fixtures; no new finding. |
+| Shared ADB | Inspect is noncreating; incompatible daemon is not replaced; startup outside lease containment | `adb.go` smart-socket preflight and tests preventing operational ADB commands against shared servers with incompatible or malformed responses; no new finding. |
 | Mixed app lifecycle | Independent readiness deadlines, sibling cleanup on local failure, stop on lost global fence | `mixed_readiness_test.go`, `cleanup_siblings_test.go`, actual `waitReady`/`cleanup`; no new finding. |
 | Flutter build paths | Explicit executable, project/ancestor symlink refusal, APK regularity, source retention on uncertain termination | `flutter.go` Validate/Build and app build guards; no new finding. External APK execution/real toolchain remains native evidence. |
 | Application desired state | Confirmed install/reverse/launch differs from intent; executable and directory retained for reconcile | `applicationConsistent` and complete-field mutation tests; no new finding. |
@@ -122,7 +122,7 @@ Severity: **High**. Source: [PR5 comment 3954080097](https://github.com/mahciale
 
 Secret-derived identifiers must not remain offline verification oracles. A window title containing a configured secret is redacted and its Key cleared, but only nodeSecret triggers clearing node Fingerprints. The Java producer includes the window key in root ancestry before hashing node identity. An app-entry overlay confirmed that the window key is removed while the node fingerprint remains in a registered snapshot. Source inspection establishes the nested dependency on secret-bearing window data; the overlay uses a representative hash rather than claiming native password cracking.
 
-Existing redaction tests search for plaintext and do not check derived identifiers; no direct nested-window-hash regression was located. Detected S9, earliest S2; `INVARIANT_GAP`, `NEGATIVE_FIXTURE_GAP`, `ORACLE_COUPLING`. Preventive control: construct a real producer-equivalent fingerprint from window metadata, redact a configured title/root secret and verify all derived keys/hashes are absent from raw, normalized, result and run evidence. Preserve actionable fingerprints only for metadata proven unrelated to a secret.
+Existing redaction tests search for plaintext and do not check derived identifiers; no test directly checking removal of hashes derived from secret-bearing window data was located. Detected S9, earliest S2; `INVARIANT_GAP`, `NEGATIVE_FIXTURE_GAP`, `ORACLE_COUPLING`. Preventive control: construct a real producer-equivalent fingerprint from window metadata, redact a configured title/root secret and verify all derived keys/hashes are absent from raw, normalized, result and run evidence. Preserve actionable fingerprints only for metadata proven unrelated to a secret.
 
 ### AUDIT-PREREQUISITE-001
 
