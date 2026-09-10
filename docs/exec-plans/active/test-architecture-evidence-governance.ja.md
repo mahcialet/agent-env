@@ -1,6 +1,6 @@
 ---
 translation_of: docs/exec-plans/active/test-architecture-evidence-governance.md
-source_sha256: c463b3329b6e167a705586e2cd0ee0b709e39d04b23e87af42d08a123480c3ce
+source_sha256: 0891b87c48efe67d65b3bfb859a12a09c02925c3a481dbea957432cd710b6ec2
 status: active
 plan_id: EP-QUAL-001
 plan_type: implementation
@@ -135,7 +135,7 @@ Plan ID: `EP-QUAL-001`
 - [x] audit、disposition、修正を独立reviewする。
 - [x] focused deterministic regressionを最終実行する。
 - [x] full race/harnessの最終実行が成功した（2026-09-10）。
-- [ ] 必要なWindows/macOS/Linux native validationを完了する。
+- [x] Q14対応を含むWindows/macOS/Linux native validationを完了した（2026-09-10）。
 - [x] English/Japanese独立reviewとsemantic parity reviewを完了する。
 - [ ] merge後にretrospectiveを完成しarchiveする。
 
@@ -185,7 +185,7 @@ findingを十分記録する前に、その場で修正して消してはなら�
 
 ## Outcomes & Retrospective
 
-Q13までの実装は検証済みである。下記Q14のPR review対応は改めて最終検証する。merge/archiveの受け入れは未完了である。限定監査はbaselineの28 package directory・195 test fileを対象にQ01〜Q14を記録した。台帳の13項目を採用して修正し、未実証のstream/constructor失敗経路に関するQ09は理由を明記して保留した。所有fixtureの対照を加え、現在は199 test fileである。
+Q14までの実装はlocalとnative/integration CIで検証済みである。merge/archiveの受け入れは未完了である。限定監査はbaselineの28 package directory・195 test fileを対象にQ01〜Q14を記録した。台帳の13項目を採用して修正し、未実証のstream/constructor失敗経路に関するQ09は理由を明記して保留した。所有fixtureの対照を加え、現在は199 test fileである。
 
 旧oracleの誤成功を実証し、原因を区別する失敗段階とlifecycle完了を明示した。native証拠の限界も維持している。最初の修正ではnative CIがEOFのみを想定した移植性不備を検出し、race CIが一度だけ登録したhost情報の期限切れを検出した。deadline、controller TTL、移植性検査を緩めずに両方を修正した。独立reviewは新testの順序assertionにも2件の不足を指摘し、受け入れ前に修正した。local testとソースreviewは有用だがnative検証や強制故障対照の代用にはならなかった。
 
@@ -816,3 +816,19 @@ Q14（修正前にACCEPT）: CI成功後、PR #15の自動reviewでtestの不足
 Q14の対照: callback/frame変更へ到達した後に同じ無関係な返却errorを注入すると、旧CDPの4 testは成功し（0.514秒）、強化後は4つとも失敗する（0.515秒）。通常のCDP対象6 testはrace付きで成功した（1.563秒）。appでcancelのみ除去しjoinを残すmutationは独立watchdogで失敗し（5.013秒）、cleanup全体の除去も順序検査で失敗する（0.010秒）。Androidでconnection closeを除去してWaitを残すmutationは明示した救済assertionで失敗し（5.017秒）、通常の対象raceは成功した（1.012秒）。独立reviewと対象raceでapp/Android/CDPの所有とerror判別を確認した。最初の不正CDP overlayはcompile失敗のため除外し、修正したruntime mutationのみ証拠に数えた。
 
 Q14の最終独立ソース・英日reviewに残る指摘はなかった。全体cacheなしraceは成功し（app47.446秒、CLI41.503秒、CDP8.138秒、Android2.429秒）、最終`repoctl check`も全段階で成功した。この対応commitのnative CIは別途確認し、先行CIの受け入れで最新revisionの検証を代用しない。
+
+
+### Q14の最終受け入れ（2026-09-10）
+
+実装commit `9988ae811e78eea61731c1f8ebce5a27e11a26b3`:
+
+- [Verify PR 34424717606](https://github.com/mahcialet/agent-env/actions/runs/34424717606)と[Verify push 34424714380](https://github.com/mahcialet/agent-env/actions/runs/34424714380)は成功した。Go 1.26/1.27でのWindows/macOS/Linux、race、Docker integration、cross-buildを含む。
+- [Browser native 34424717678](https://github.com/mahcialet/agent-env/actions/runs/34424717678)と[Multi-host native 34424717628](https://github.com/mahcialet/agent-env/actions/runs/34424717628)は3 OSすべて成功した。
+- [Release preview 34424717634](https://github.com/mahcialet/agent-env/actions/runs/34424717634)はbuildと3 OSのnative smokeが成功した。
+
+Q14のPRスレッド4件すべてに修正・対照の証拠を添えて返信し、Resolveした。
+再取得時の未解決スレッドは0件であり、Plan provenanceも成功した。
+これらのCI結果は上記の故障を強制した対照を補うもので、強制していない実行順序の証明ではない。
+今回の整合更新は英日Planのみを変更する。merge前に更新後HEADの検査と、
+そのHEADに対する人間の承認を再確認する。
+merge・archiveまではguarded/manual fallbackのもとでPlanをactiveに保つ。

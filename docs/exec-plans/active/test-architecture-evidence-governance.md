@@ -129,7 +129,7 @@ Out of scope:
 - [x] Independently review the audit corpus, dispositions and repairs; address worker-join, stage-wait and live-container-oracle findings (2026-09-10).
 - [x] Run final focused deterministic regressions.
 - [x] Run final full race/harness checks (2026-09-10).
-- [ ] Run required native Windows/macOS/Linux validation.
+- [x] Run required native Windows/macOS/Linux validation, including Q14 follow-ups (2026-09-10).
 - [x] Complete bilingual reader and semantic parity review; resolve two JA omissions and record the withdrawn M5 finding (2026-09-10).
 - [ ] Complete retrospective and archive only after merge into `master`.
 
@@ -179,8 +179,8 @@ Do not repair a finding before recording enough evidence to explain the violated
 
 ## Outcomes & Retrospective
 
-Implementation through Q13 is validated; Q14 PR-review follow-ups below
-require their own final validation. Merge/archive acceptance remains open. The bounded audit covered 195 baseline test files across 28 package
+Implementation through Q14 is validated locally and by native/integration CI.
+Merge/archive acceptance remains open. The bounded audit covered 195 baseline test files across 28 package
 directories and recorded Q01–Q14. Thirteen ledger entries were accepted and repaired;
 Q09's unproven stream/constructor failure-path concern is explicitly deferred.
 The corpus now has 199 test files, including owned fixture controls.
@@ -970,3 +970,19 @@ Q14 (ACCEPT before repair): PR #15 automated review found four remaining test de
 Q14 controls: same unrelated returned-error substitutions after observed callback/frame mutation pass four old CDP tests (0.514s) and fail all four strengthened tests (0.515s). Six normal focused CDP tests pass under race (1.563s). App missing-cancel/retained-join mutation fails via independent watchdog (5.013s); omitted cleanup still fails ordering (0.010s). Android missing-connection-close/retained-Wait mutation now fails its explicit bounded rescue assertion (5.017s), while normal focused race passes (1.012s). Independent review and focused race verify app/Android/CDP ownership and error discrimination. An initial malformed CDP overlay failed compilation and was excluded; only corrected runtime mutations count.
 
 Q14 final independent source/English/Japanese review found no remaining issue. Full uncached race passed (app47.446s, CLI41.503s, CDP8.138s, Android2.429s), and final `repoctl check` passed all stages. Native CI must validate this follow-up commit; earlier CI acceptance does not substitute for the current revision.
+
+
+### Q14 final acceptance (2026-09-10)
+
+Implementation commit `9988ae811e78eea61731c1f8ebce5a27e11a26b3`:
+
+- [Verify PR 34424717606](https://github.com/mahcialet/agent-env/actions/runs/34424717606) and [Verify push 34424714380](https://github.com/mahcialet/agent-env/actions/runs/34424714380) passed, including Windows/macOS/Linux on Go 1.26/1.27, race, Docker integration and cross-builds.
+- [Browser native 34424717678](https://github.com/mahcialet/agent-env/actions/runs/34424717678) and [Multi-host native 34424717628](https://github.com/mahcialet/agent-env/actions/runs/34424717628) passed on all three operating systems.
+- [Release preview 34424717634](https://github.com/mahcialet/agent-env/actions/runs/34424717634) passed build and three-OS native smoke.
+
+All four Q14 PR threads received replies with repair/control evidence and were
+resolved; a fresh query found zero unresolved threads. Plan provenance passed.
+These CI results supplement the forced-fault controls above; they do not prove
+unforced schedules. This reconciliation changes only the bilingual Plan.
+Recheck its resulting HEAD checks and current-HEAD human approval before merge.
+The Plan remains active under guarded/manual fallback until merge and archive.
