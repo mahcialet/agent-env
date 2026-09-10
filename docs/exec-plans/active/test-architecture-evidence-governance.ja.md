@@ -1,6 +1,6 @@
 ---
 translation_of: docs/exec-plans/active/test-architecture-evidence-governance.md
-source_sha256: a24fb73d04a229a93e7da33f40d5415c1efd5c9432aa82a2c56019b9320e64fa
+source_sha256: 32f6c4c3543dd4dab8d6b4ca12b8f3bdcb78b4c08e80dadc56fc429746e055fa
 status: active
 plan_id: EP-QUAL-001
 plan_type: implementation
@@ -760,3 +760,19 @@ local検証checkpoint: Linux Go 1.27.1で`repoctl doctor`と`repoctl check`が�
 最終local race: `go test -race ./... -count=1`は全package成功（app 47.616秒、CLI 41.073秒、CDP 8.257秒、execx 6.642秒、Android 2.451秒）。修正後の独立technical reviewではCDP worker所有、Docker資源の前後観測、Q12 symlink対照に追加指摘なし。読者・意味一致の再reviewも成功した。これらは独立agent reviewであり、GitHub current-HEAD承認やmaintainer受け入れではない。
 
 review後の最終`repoctl check`はformat、単体test、vet、docs、generated、architectureの全検査に成功した。local実装・検証はcommitとnative CIへ進める状態である。Q09は上記の理由で調査を保留する。review gateとmergeの前に完了・archiveとはしない。
+
+### native CIでの修正（Q06）
+
+commit `d5f43cc8a3b160b6926acc0ad786c7a035d46ca8`、Verify push run 34420910331でWindows Go 1.26/1.27の新しい子孫oracleが失敗した。制御した正常終了を含め、process終了はEOFではなくWSAECONNRESETとなる。またexecxはrunner完了後にconnectionをacceptしていた。Windowsではprocess終了時に待ち行列のconnection/readiness byteが破棄され、寿命観測前のaccept/readが失敗し得る。Linux/macOS成功ではこのWindows protocolの仮定は証明できなかった。今回のQ06修正に入ったtest fixtureの移植性不備であり、新しいproduction process leakの証拠ではない。
+
+修正前の方針: 終了操作・親の正常終了の前にstartup handshakeの確認を必須化する。接続寿命の終了はEOFまたは正確なremote resetだけで判定し、timeout・local close・無関係なerrorは引き続き拒否する。生存leafの故障対照とnative CIを再実行し、この失敗した方法を残す。同じfull runでWindows process-runtimeのQ08とCDP packageは成功した。Browser/Multi-host nativeとRelease previewはWindows/macOS/Linuxで成功し、Linux integrationも成功した。
+
+PR #15で本Planを追跡する。commit後の`plans provenance --plan EP-QUAL-001 --pr-body <file>`と`plans check`は成功した。読み取り専用`plans gate --plan EP-QUAL-001 --pr 15 --repo mahcialet/agent-env`はguarded/manual fallbackとなった。信頼するbaseに`.github/execplan-gates.json`がないため、policyを勝手に追加したりmergeしたりせず、最終受け入れ・archiveにはmaintainerの通常reviewとmergeが必要である。
+
+Q06方針の補足: 元の300msのCommand.Timeoutを維持する。最初の修正では不要に3秒へ拡張していた。startup後にtimerを開始するためだけにdeadlineの意味が変わる独自Contextは導入しない。Runと並行してstartupを観測・確認し、親の継続より前に成立させる。実command timeoutはnativeの時間挙動の証拠として残す。startup前にdeadlineが切れればtest失敗であり、開始済み処理のcancelを検証した成功とはしない。強制証拠とするのはcallback/barrierの順序だけである。
+
+Q06修正を実装した。非同期runnerとaccept済みready/ackを親の継続より前に置き、型付きread reset（Windows WSAECONNRESET）またはEOFだけを接続終了とする。deadline/local-close/refusal/write-reset/bare-reset対照は引き続き拒否する。Linux対象raceはapp 1.261秒、execx 1.416秒で成功。親だけkillするoverlayは生存leafのtimeoutで引き続き失敗した（5.011秒/5.129秒）。PR Verify run 34420955724でも初回実装の同じWindows失敗を確認し、同runのLinux integrationは成功した。
+
+Windows向け修正後の独立technical reviewに追加不具合の指摘はなかった。EOFのみとしていたcommentをremote reset対応へ合わせた。Linux全体のcacheなしraceが再度成功した（`go test -race ./... -count=1`: app 48.064秒、execx 3.926秒、CLI 42.778秒）。対象2 test packageのWindows amd64 cross-compileも成功したが、これはコンパイル証拠に限る。
+
+次のnative CI実行前に、修正後の`repoctl check`は全段階で成功した。

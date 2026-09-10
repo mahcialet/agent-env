@@ -869,3 +869,37 @@ controls. Reader and semantic parity re-review passed; these are independent
 agent reviews, not GitHub current-HEAD approval or maintainer acceptance.
 
 Final post-review `repoctl check` passed format, unit tests, vet, docs, generated and architecture checks. Local implementation and validation are ready for commit and native CI. Q09 remains the explicitly deferred investigation above; no completed/archive claim is made before review gate and merge.
+
+### Native CI correction (Q06)
+
+Commit `d5f43cc8a3b160b6926acc0ad786c7a035d46ca8`, Verify push run
+34420910331: Windows Go 1.26/1.27 failed the new descendant oracle. Process exit
+reports WSAECONNRESET, not EOF, including the controlled positive exit. Also,
+execx accepted its connection only after runner completion: Windows can discard
+the queued connection/readiness bytes when the process dies, so accept or ready
+read failed before lifetime observation. Linux/macOS success did not establish
+this Windows protocol assumption. This is a test-fixture portability defect in
+our Q06 repair, not evidence of a new production process leak.
+
+Before correction: require an acknowledged startup handshake before triggering
+termination/normal parent exit, and classify only EOF or the exact remote reset
+as terminal connection lifetime. Timeouts, local closure and unrelated errors
+must remain failures. Re-run the surviving-leaf fault control and native CI;
+preserve this failed attempt. Windows process-runtime Q08 and CDP packages
+passed in the same failed full run. Browser and Multi-host native runs and
+Release preview passed across Windows/macOS/Linux. Linux integration passed.
+
+PR #15 tracks this Plan. `plans provenance --plan EP-QUAL-001 --pr-body <file>`
+and `plans check` passed after commit. The read-only `plans gate --plan
+EP-QUAL-001 --pr 15 --repo mahcialet/agent-env` returned guarded/manual fallback:
+the trusted base has no `.github/execplan-gates.json`. Do not provision policy or
+merge implicitly; final acceptance/archive needs the maintainer's normal review
+and merge.
+
+Q06 decision refinement: preserve the original 300ms Command.Timeout scenario; the first repair unnecessarily expanded it to 3s. Do not introduce a dynamic Context with changing deadline semantics merely to arm a timeout after startup. Observe and acknowledge startup concurrently with Run, before parent continuation, and retain a real command timeout as direct native temporal evidence. A deadline that expires before startup is a failed test, never successful evidence of entered cancellation. Only callback/barrier ordering is classified as forced evidence.
+
+Q06 correction implemented: asynchronous runner + accepted ready/ack precede parent continuation; only typed read resets (Windows WSAECONNRESET) or EOF count as connection termination. Deadline/local-close/refusal/write-reset/bare-reset controls remain rejected. Focused Linux race passes (app 1.261s, execx 1.416s); parent-only-kill overlays still fail on surviving leaf timeout (5.011s/5.129s). PR Verify run 34420955724 reproduced the same Windows failures on the first implementation; its Linux integration passed.
+
+Post-Windows-correction independent technical review found no additional defect; EOF-only comments were aligned with remote-reset handling. Full uncached Linux race passed again (`go test -race ./... -count=1`: app 48.064s, execx 3.926s, CLI 42.778s). Both affected test packages cross-compile for Windows amd64; this is compilation evidence only.
+
+Post-correction `repoctl check` passed all stages before the next native CI attempt.
