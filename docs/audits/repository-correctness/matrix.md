@@ -141,105 +141,105 @@ candidate tests; their execution evidence lives in the owning annex.
 
 - Detected/earliest: S9/S4; categories: `COMPOSITION_GAP,FAILURE_INJECTION_GAP,HELPER_ONLY,REVIEW_CHECKLIST_GAP`.
 - Earlier opportunity and escape: Typed executor safety existed; readiness caller retried/stringified it. The new composed test checks later Destroy, not just the immediate error.
-- Implemented control/regression: `readinessCommand -> runWithCancellation + durable CommandRun; TestReadinessRetainsUnconfirmedCommand, TestReadinessOrdinaryFailureMayRetryAndRelease, TestReviewReadinessCancellationDoesNotRetry`.
+- Implemented control and verification test: `readinessCommand -> runWithCancellation + durable CommandRun; TestReadinessRetainsUnconfirmedCommand, TestReadinessOrdinaryFailureMayRetryAndRelease, TestReviewReadinessCancellationDoesNotRetry`.
 - Expected future detection: S3/S4; candidate evidence/resolution: owning annex and ledger.
 
 ### AUDIT-OWNERSHIP-001
 
 - Detected/earliest: S9/S2; categories: `NEGATIVE_FIXTURE_GAP,ORACLE_COUPLING,COMPOSITION_GAP`.
 - Earlier opportunity and escape: Label-positive fixtures always supplied IDs; missing field must be independent of labels and the destructive entry point must remain uncalled.
-- Implemented control/regression: `dockerClient.Inspect shared by provider Down; TestMissingContainerIdentityRefusesInspectionAndDown`.
+- Implemented control and verification test: `dockerClient.Inspect shared by provider Down; TestMissingContainerIdentityRefusesInspectionAndDown`.
 - Expected future detection: S2/S3; candidate evidence/resolution: owning annex and ledger.
 
 ### AUDIT-DOCS-001
 
 - Detected/earliest: S9/S2; categories: `COMPOSITION_GAP,NEGATIVE_FIXTURE_GAP,REVIEW_CHECKLIST_GAP`.
 - Earlier opportunity and escape: Existing prose filtering protected links/required headings but not the other target-heading consumer.
-- Implemented control/regression: `documentProse reused in fragment target scan; TestFragmentsRequireRenderedTargetHeadings`.
+- Implemented control and verification test: `documentProse reused in fragment target scan; TestFragmentsRequireRenderedTargetHeadings`.
 - Expected future detection: S2/S6; candidate evidence/resolution: owning annex and ledger.
 
 ### AUDIT-RELEASE-001
 
 - Detected/earliest: S9/S2; categories: `BOUNDARY_GAP,NEGATIVE_FIXTURE_GAP`.
 - Earlier opportunity and escape: All root examples were longer than an early length exemption; short valid roots expose it while true volume roots retain explicit policy.
-- Implemented control/regression: `structural root classification; TestReleaseBinaryShortCheckoutPaths`.
+- Implemented control and verification test: `structural root classification; TestReleaseBinaryShortCheckoutPaths`.
 - Expected future detection: S2; candidate evidence/resolution: owning annex and ledger.
 
 ### AUDIT-RELEASE-002
 
 - Detected/earliest: S9/S2; categories: `CONCURRENCY_GAP,BOUNDARY_GAP,FAILURE_INJECTION_GAP`.
 - Earlier opportunity and escape: Stable oversized files missed growth after stat; the asset fix had not propagated to release readers/writer.
-- Implemented control/regression: `bounded opened-file reader shared by check/copy/compare and writer; TestReleaseReadBoundsGrowthAfterOpenedStat, TestReleaseRegularReadExactBounds`.
+- Implemented control and verification test: `bounded opened-file reader shared by check/copy/compare and writer; TestReleaseReadBoundsGrowthAfterOpenedStat, TestReleaseRegularReadExactBounds`.
 - Expected future detection: S2/S3; candidate evidence/resolution: owning annex and ledger.
 
 ### AUDIT-BOUNDARY-001
 
 - Detected/earliest: S9/S2; categories: `BOUNDARY_GAP,ORACLE_COUPLING`.
 - Earlier opportunity and escape: Prior count-overflow fixture also exceeded byte limit. Exact count needs independent overflow evidence, not >= alone.
-- Implemented control/regression: `2001-record provider probe -> boundedUILog; TestUILogExactTailUsesOverflowProof`.
+- Implemented control and verification test: `2001-record provider probe -> boundedUILog; TestUILogExactTailUsesOverflowProof`.
 - Expected future detection: S2/S3; candidate evidence/resolution: owning annex and ledger.
 
 ### AUDIT-REDACTION-001
 
 - Detected/earliest: S9/S2; categories: `BOUNDARY_GAP,COMPOSITION_GAP,ORACLE_COUPLING`.
 - Earlier opportunity and escape: Producer caps and redaction passed separately; final encoded bytes and expanded fields lacked a composed oracle.
-- Implemented control/regression: `boundUIEvidence reused for raw/normalized/result envelopes; TestUIAuditUIRedactionBounds, TestUIFieldBoundaryAndSerializedObservationBoundary`.
+- Implemented control and verification test: `boundUIEvidence reused for raw/normalized/result envelopes; TestUIAuditUIRedactionBounds, TestUIFieldBoundaryAndSerializedObservationBoundary`.
 - Expected future detection: S2/S4; candidate evidence/resolution: owning annex and ledger.
 
 ### AUDIT-REDACTION-002
 
 - Detected/earliest: S9/S4; categories: `COMPOSITION_GAP,BOUNDARY_GAP`.
 - Earlier opportunity and escape: Semantic/capture final caps omitted the sibling DOM artifact kind. Read actual published bytes and retained identities.
-- Implemented control/regression: `boundBrowserDOM before artifact publication; TestBrowserDOMBoundsAfterRedaction, TestBrowserDOMEncodedBoundary`.
+- Implemented control and verification test: `boundBrowserDOM before artifact publication; TestBrowserDOMBoundsAfterRedaction, TestBrowserDOMEncodedBoundary`.
 - Expected future detection: S4; candidate evidence/resolution: owning annex and ledger.
 
 ### AUDIT-STALE-001
 
 - Detected/earliest: S9/S3; categories: `CONCURRENCY_GAP,COMPOSITION_GAP`.
 - Earlier opportunity and escape: Snapshot consistency was assumed to cover the later predicate call. Injection must occur between those two stages.
-- Implemented control/regression: `load predicate post-evaluation frameDocument check; TestLoadWaitRechecksDocumentAfterPredicate`.
+- Implemented control and verification test: `load predicate post-evaluation frameDocument check; TestLoadWaitRechecksDocumentAfterPredicate`.
 - Expected future detection: S3; candidate evidence/resolution: owning annex and ledger.
 
 ### AUDIT-UI-001
 
 - Detected/earliest: S9/S3; categories: `ORACLE_COUPLING,FAILURE_INJECTION_GAP,COMPOSITION_GAP`.
 - Earlier opportunity and escape: Error-only assertion passed on premature stale refusal without reaching input callback. Composed positive asserts callback and durable success.
-- Implemented control/regression: `editable suppression distinct from secret-derived hash invalidation; TestUIAuditEditableSnapshotRemainsActionable`.
+- Implemented control and verification test: `editable suppression distinct from secret-derived hash invalidation; TestUIAuditEditableSnapshotRemainsActionable`.
 - Expected future detection: S3/S4; candidate evidence/resolution: owning annex and ledger.
 
 ### AUDIT-IDENTITY-001
 
 - Detected/earliest: S9/S3; categories: `ORACLE_COUPLING,INVARIANT_GAP,COMPOSITION_GAP`.
 - Earlier opportunity and escape: An arbitrary different backend is refused by both correct digest and wrong generic string; exact same-build positive was missing.
-- Implemented control/regression: `exact verified backend + recorded-identity recovery; TestUIAuditHelperBackendCarriesVerifiedDigest, TestUIRecoveryUsesRecordedHelperWithAbsentOrReplacedHostFiles`.
+- Implemented control and verification test: `exact verified backend + recorded-identity recovery; TestUIAuditHelperBackendCarriesVerifiedDigest, TestUIRecoveryUsesRecordedHelperWithAbsentOrReplacedHostFiles`.
 - Expected future detection: S3/S4; candidate evidence/resolution: owning annex and ledger.
 
 ### AUDIT-REDACTION-003
 
 - Detected/earliest: S9/S2; categories: `INVARIANT_GAP,NEGATIVE_FIXTURE_GAP,ORACLE_COUPLING`.
 - Earlier opportunity and escape: Plaintext searches did not inspect identifiers derived from secret-bearing window ancestry.
-- Implemented control/regression: `window-secret invalidation clears dependent node hashes; TestUIAuditWindowSecretClearsDerivedNodeHashes`.
+- Implemented control and verification test: `window-secret invalidation clears dependent node hashes; TestUIAuditWindowSecretClearsDerivedNodeHashes`.
 - Expected future detection: S2/S4; candidate evidence/resolution: owning annex and ledger.
 
 ### AUDIT-PREREQUISITE-001
 
 - Detected/earliest: S9/S2; categories: `NEGATIVE_FIXTURE_GAP,COMPOSITION_GAP`.
 - Earlier opportunity and escape: Every valid/invalid-provenance fixture passed an explicit directory; absent opt-in with valid cwd files was distinct.
-- Implemented control/regression: `uihelper.Load explicit nonblank directory before Abs; TestUIAuditUnsetHelperRefusesCurrentDirectory`.
+- Implemented control and verification test: `uihelper.Load explicit nonblank directory before Abs; TestUIAuditUnsetHelperRefusesCurrentDirectory`.
 - Expected future detection: S2/S3; candidate evidence/resolution: owning annex and ledger.
 
 ### AUDIT-BOUNDARY-002
 
 - Detected/earliest: S9/S2; categories: `BOUNDARY_GAP,NEGATIVE_FIXTURE_GAP`.
 - Earlier opportunity and escape: Integral duration examples never reached lossy integer conversion; reject unsupported fractions rather than silently shortening.
-- Implemented control/regression: `whole-second UI lookback validation before store/provider; TestUIAuditFractionalLogLookback`.
+- Implemented control and verification test: `whole-second UI lookback validation before store/provider; TestUIAuditFractionalLogLookback`.
 - Expected future detection: S2; candidate evidence/resolution: owning annex and ledger.
 
 ### AUDIT-LIFECYCLE-001
 
 - Detected/earliest: S9/S4; categories: `FAILURE_INJECTION_GAP,COMPOSITION_GAP,ORACLE_COUPLING`.
 - Earlier opportunity and escape: Error/zero-input checks discarded the returned confirmation bit; public run/cleanup status must distinguish preflight and launched uncertainty.
-- Implemented control/regression: `effect-aware ADB invocation preserves preflight certainty; TestUIAuditNativePreflightRemainsConfirmed, TestUINativePreflightThroughAppDoesNotBlockCleanup, TestUINativeDispatchedFailureRemainsUnconfirmed`.
+- Implemented control and verification test: `effect-aware ADB invocation preserves preflight certainty; TestUIAuditNativePreflightRemainsConfirmed, TestUINativePreflightThroughAppDoesNotBlockCleanup, TestUINativeDispatchedFailureRemainsUnconfirmed`.
 - Expected future detection: S3/S4; candidate evidence/resolution: owning annex and ledger.
 
 
@@ -249,7 +249,7 @@ candidate tests; their execution evidence lives in the owning annex.
   `COMPOSITION_GAP,BOUNDARY_GAP,NEGATIVE_FIXTURE_GAP`.
 - Earlier opportunity and escape: listing at capacity was tested, but creating
   one more page after the same census was not. The producer crossed its consumer's limit.
-- Implemented control/regression: shared page cap before creation;
+- Implemented control and verification test: shared page cap before creation;
   `TestSupplementPageLimitPreventsIrrecoverableGrowth` covers 127/128/129,
   effect counts and subsequent close.
 - Expected future detection: S3; [supplement](supplemental-browser.md) records
@@ -262,7 +262,7 @@ candidate tests; their execution evidence lives in the owning annex.
 - Earlier opportunity and escape: the adapter returned the created ID/closed
   result correctly while ordinary text output discarded it. Tests of JSON could
   not prove the human-facing command result.
-- Implemented control/regression: `internal/cli/browser.go` inline RunE
+- Implemented control and verification test: `internal/cli/browser.go` inline RunE
   operation branches; `TestBrowserNativeCLI/page_mutation_table_identifies_affected_page`
   verifies the actual created target and subsequent absent closed target.
 - Expected future detection: S3/S5; [CLI supplement](supplemental-cli.md)
@@ -274,7 +274,7 @@ candidate tests; their execution evidence lives in the owning annex.
   `COMPOSITION_GAP,INVARIANT_GAP,NEGATIVE_FIXTURE_GAP`.
 - Earlier opportunity and escape: snapshot preserved Ignored and input rejected
   it, but the separate wait consumer counted it as accessible.
-- Implemented control/regression: ignored-node predicate filter;
+- Implemented control and verification test: ignored-node predicate filter;
   `TestSupplementIgnoredAXCannotSatisfyWait` verifies both text/gone polarity
   and AX-query reachability; truncated-gone guard retained.
 - Expected future detection: S3; supplemental evidence is linked above.
@@ -283,9 +283,9 @@ candidate tests; their execution evidence lives in the owning annex.
 
 - Detected/earliest: historical S8, audit S9/S3; categories:
   `NEGATIVE_FIXTURE_GAP,ORACLE_COUPLING,COMPOSITION_GAP`.
-- Earlier opportunity and escape: checked-state negatives did not prove the
+- Earlier opportunity and escape: Tests rejecting stale input after checked-state changes did not prove the
   distinct pressed field was represented in the fingerprint.
-- Implemented control/regression: pressed enters existing bounded axState;
+- Implemented control and verification test: pressed enters existing bounded axState;
   `TestSupplementPressedStateRefusesStaleInput` covers boolean/mixed and all
   eight previously retained flags, asserting mutation reached and zero input.
 - Expected future detection: S3; no arbitrary state text is admitted.
@@ -296,21 +296,22 @@ candidate tests; their execution evidence lives in the owning annex.
 | --- | --- | --- |
 | Bounds/completeness: Browser AX/DOM, Android tree/log, console/network, release files | Exact-boundary tables and actual final-encoding assertions; boundUIEvidence runs for raw/normalized/result; DOM whole-node prefix preserves IDs; log requests one overflow record; bounded release reader verifies opened bytes. Named regressions above enter normal package/harness execution. | Bytes, Unicode characters, records, nodes, caller envelopes and device-tail omission have different units and authority semantics. A single generic “truncate” helper would hide those distinctions. Existing common rules are exercised through explicit domain oracles. |
 | Transform-after-bound / privacy: mobile, Browser, process logs, shared evidence | Full Service UI/Browser tests inspect retained artifacts after redaction, assert artifact existence/size/secret absence/identity and durable completion. Existing shared Redactor handles cross-chunk secrets; new dependent-window-hash test covers derived identity. | A text replacement engine cannot know which hashes are secret-derived or which fields grant action authority. Screenshots/private profiles are explicitly not pixel-redacted. No false blanket secrecy claim is added. |
-| Positive identity before effects: Compose, process/Jobs, Android, Browser, Git | Missing-container-ID negative reaches public Down; exact helper same/different-build tests; existing OS birth/Job/session, frame/node, source-registration negatives retained. | Provider-specific proof differs (engine labels/IDs, Job handles, AVD identity, Chromium origin, Git worktree registration). A name-only common ownership abstraction would weaken the contract; cross-provider tests share proof questions, not interchangeable identity formats. |
+| Positive identity before effects: Compose, process/Jobs, Android, Browser, Git | The missing-container-ID refusal test reaches public Down; exact helper same/different-build tests; existing tests rejecting mismatched or invalid OS birth/Job/session, frame/node and source-registration evidence retained. | Provider-specific proof differs (engine labels/IDs, Job handles, AVD identity, Chromium origin, Git worktree registration). A name-only common ownership abstraction would weaken the contract; cross-provider tests share proof questions, not interchangeable identity formats. |
 | Persist/effect/cleanup and cancellation: named tests, readiness, UI, Browser, releases | Readiness now reuses CommandRun plus runWithCancellation; unsafe attempts remain running for existing Destroy/GC gates. UI preflight versus dispatched failure tests cover both sides; release publication already preserves validated bytes. | A generic transaction cannot atomically commit external OS/device/engine effects. Explicit durable intent/identity/finalization barriers and injected failures are necessary. Windows second-PID scheduling and late release close/persist injections remain identified follow-ups, not invisible passes. |
-| Stale/temporal proof: Browser snapshot/load/URL, Android semantic input | Post-predicate document recheck plus single/continuous-navigation negative; retained existing frame mutation, stale fingerprint and no-coordinate-fallback controls. | There is no universal atomic observation across CDP/ADB/OS calls. Each multi-call operation must identify its own token and retry/uncertainty boundary. This audit adds the missing load boundary, not an impossible global atomicity guarantee. |
+| Stale/temporal proof: Browser snapshot/load/URL, Android semantic input | Post-predicate document recheck plus tests preventing stale evidence after single or continuous navigation; retained existing frame mutation, stale fingerprint and no-coordinate-fallback controls. | There is no universal atomic observation across CDP/ADB/OS calls. Each multi-call operation must identify its own token and retry/uncertainty boundary. This audit adds the missing load boundary, not an impossible global atomicity guarantee. |
 | Ambient prerequisite/path adoption: helper, Git, assets, release | Helper rejects absent/blank opt-in before Abs; existing provenance/symlink checks and asset opened-read controls; short-root release path cases and actual opened-file growth guard. | Host filesystems have platform-specific aliases, handle and case semantics. Native tests remain necessary; static checks alone cannot prove safety against arbitrary same-user hostile replacement outside the contract. |
 | Weak/vacuous oracle: historical reviews across all adapters | Tests now require intended callbacks/effects to be reached, registered artifacts to exist, durable status to match and a nearby positive to succeed. Existing helper-only limitations remain listed in the historical annexes. | A generic test cannot decide whether another test's semantic injection was meaningful. Static coverage percentage is not proof of the intended branch; explicit injection counters and independent outputs provide the practical guard. |
-| Documentation claims/navigation | Reuse documentProse for fragment targets as for required sections/links; full docsCheck hidden-target negatives plus valid duplicates; existing bilingual hash/index negatives retained. | Mechanical links/hashes are testable; actual translation meaning and native acceptance truth still need human/independent evidence review. No automatic prose-to-implementation theorem checker is asserted. |
+| Documentation claims/navigation | Reuse documentProse for fragment targets as for required sections/links; full docsCheck tests rejecting hidden heading targets plus valid duplicate-heading cases; existing tests rejecting bilingual hash mismatches and invalid indexes retained. | Mechanical links/hashes are testable; actual translation meaning and native acceptance truth still need human/independent evidence review. No automatic prose-to-implementation theorem checker is asserted. |
 | Native/concurrent behavior | Existing independent SQLite connections/processes, process/Job/native provider fixtures and candidate CI continue to provide non-mock evidence. File growth regression uses deterministic growth after opened stat. | Linux mocks/cross-builds cannot certify Windows/macOS/ADB/Machine behavior. Where no stable local fault hook exists, the ledger explicitly records the follow-up risk instead of adding a synthetic framework that pretends to be native proof. |
 
 These mechanisms satisfy the concrete promotion decision: reuse existing
 production/test entry points where the contract is shared, and add independent
 domain-specific negative/positive oracles where it is not. No new global AGENTS
 rule, organization policy, dependency or broad harness framework was required.
-Remaining coverage gaps (for example historical helper-only selection/readiness
-negatives and Java producer traversal) remain visible in the source annexes and
-ledger; they are not rewritten as completed tests.
+Historical tests reject changed manifests during browser selection and secret
+literals in readiness only through helpers. These public-entry coverage gaps and
+other remaining work, such as Java producer traversal, remain visible in the
+source annexes and ledger; they are not rewritten as completed tests.
 
 ## Acceptance use and verification limits
 

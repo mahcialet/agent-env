@@ -3,7 +3,7 @@ status: completed
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/exec-plans/completed/compose-provider-podman.md
-source_sha256: d4788803ec50db5feb9cdd614205fa8f18102503d77b075282e2733186131bb7
+source_sha256: b4f0cc7f1ff211619b043bd3354a3465bd181f593731ac4f6a6c58d6ce0cdfa4
 ---
 
 # Compose runtime provider として podman-compose を追加する
@@ -87,13 +87,13 @@ survival、conservative cleanup、uncertainty quarantineを維持する。
 - [x] 2026-09-08: plan/snapshot/show/doctorへprovider
 - [x] 2026-09-08: provider-neutral Compose boundary
 - [x] 2026-09-08: Docker implementation移行
-- [x] 2026-09-08: Docker real integration非回帰
+- [x] 2026-09-08: 実Docker integrationで既存動作が維持されることを確認
 - [x] 2026-09-08: Doctorとバージョン検査を実装。`TestPodmanDoctorVersionFloorAndSnapshot`で1.3.0・2.0.0の拒否と1.6.0 fixtureの受け入れを確認。
 - [x] 2026-09-08: local/remote識別情報を保存しnative childの接続先を固定。`TestPodmanIdentityPinsLocalAndRemote`、`TestPodmanBridgeNativeRoundTrip`、`TestPodmanChangedEngineRefusesMutation`がローカルで成功。
 - [x] 2026-09-08: YAMLをcanonical JSONと共通policyモデルへ変換。`TestPodmanNormalizeComposeModel`と`TestPodmanRenderRejectsProviderSpecificHostAccess`が成功。実1.6.0 lifecycleによる保存JSONの受け入れも、その後110.13秒で成功。
-- [x] 2026-09-08: 未対応拡張の再帰的拒否と、値が未確定の環境変数引き継ぎの拒否を実装。Renderと正規化の回帰テストが成功。
+- [x] 2026-09-08: 未対応拡張の再帰的拒否と、値が未確定の環境変数引き継ぎの拒否を実装。Renderと正規化で不正設定の拒否を確認するテストが成功。
 - [x] 2026-09-08: detached Up、構造化Inspectとendpoint、時刻付きLogs、Downと再検査を実装。ローカルharness/raceと実Linux lifecycleの受け入れが成功。
-- [x] 2026-09-08: Down前のanonymous volume証拠保存、中断後の保持、保存失敗時の副作用停止を実装。app/backendの回帰テストが成功。
+- [x] 2026-09-08: Down前のanonymous volume証拠保存、中断後の保持、保存失敗時の副作用停止を実装。app/backendで証拠保存とcleanupの安全性を確認するテストが成功。
 - [x] 2026-09-08: 以下の独立レビュー7件を修正し、別担当が再確認。
 - [x] 2026-09-08: 各OSで実行可能なprovider/path/argv/identityテストを追加。ローカルLinuxで成功し、`4a5de3d`のVerify `34216579481`で最終Windows/macOS/Linux・Go 1.26/1.27のnative 6 jobがすべて成功。
 - [x] 2026-09-08: 英日architecture、portability、security、reliability、quality、roadmap、前提条件文書へ実装範囲と未検証範囲を反映。
@@ -121,11 +121,11 @@ checkboxは観測済み完了のみ。UTC date、revision、command/test/run、r
   6. service識別をDocker互換labelだけに依存していた。Podman native service labelを必須とし、互換labelとの矛盾を拒否する。
   7. null map/bare listの環境変数がUp時に再解決されていた。Renderで値未確定の引き継ぎを拒否し、明示的な空文字・literal値を維持する。hostの秘密値を診断へ出さない。
 
-- 2026-09-08: ユーザーがPodman 5.4.2とpodman-compose 1.3.0を導入し、rootless infoは動作しました。composeは必須の1.6.0に届かないため、更新または隔離した検証環境への導入許可を問い合わせています。下限は変更しません。
-- 2026-09-08: full checkとraceの並行実行中にAndroidのport所有権テストが一度失敗しました。raceとDocker integrationは成功しました。同じfull checkを単独で再実行した結果は成功しました。Androidには変更していません。
+- 2026-09-08: ユーザーがPodman 5.4.2とpodman-compose 1.3.0を導入し、rootless infoは動作した。composeは必須の1.6.0に届かないため、更新または隔離した検証環境への導入許可を問い合わせている。下限は変更しない。
+- 2026-09-08: full checkとraceの並行実行中にAndroidのport所有権テストが一度失敗した。raceとDocker integrationは成功した。同じfull checkを単独で再実行した結果は成功した。Androidには変更していない。
 
-- 2026-09-08: baselineのGoテストとvetは成功しました。full checkは提供された日本語Planのtranslation_of/source_sha256不足で停止しました。翻訳を確認してmetadataを補い再実行します。
-- 2026-09-08: Docker 29.7.2は利用できますが、Podmanとpodman-composeはPATH上にありません。導入はPlanの対象外のため、既存環境か導入の追加許可を問い合わせ、独立した実装を進めています。
+- 2026-09-08: baselineのGoテストとvetは成功した。full checkは提供された日本語Planのtranslation_of/source_sha256不足で停止した。翻訳を確認してmetadataを補い再実行する。
+- 2026-09-08: Docker 29.7.2は利用できるが、Podmanとpodman-composeはPATH上にない。導入はPlanの対象外のため、既存環境か導入の追加許可を問い合わせ、独立した実装を進めている。
 
 config normalization、Compose option差、`x-podman`、label、health、dynamic port、
 rootless networking、anonymous volume、Podman Machine forwarding、Windows process、
@@ -143,15 +143,15 @@ Docker前提で差を隠さない。
 - 2026-09-08 / maintainers: global inventoryは登録済みprovider識別情報と利用可能なhost engineの和集合を調べ、engine専用inventory Doctorを使用する。孤立リソースを発見しつつ、任意のpodman-composeをDockerだけのlifecycleの依存にしない。providerの実行先選択にfallbackはない。
 - 2026-09-08 / maintainers: 同じpackage内のnative Podman command adapterを通じて既存Composeのリソース走査を共有する。native project/service labelとagent-env所有権を要求し、互換labelの矛盾を拒否する。fingerprintはendpointとhost/store構成を固定するもので、engine世代を不変に識別するものではない。同じ構成での再作成にもリソース所有権検査が必要となる。
 
-- 2026-09-08: provider省略時のcanonical manifest内容とdigestを保ち、domain snapshotでのみDockerの既定値を確定します。inventoryのキーにはprovider、engine識別情報、projectを含めます。
-- 2026-09-08: podman-composeの--podman-argsはsubcommand後に追加され、global remote flagを確実に固定できないため、native agent-env child bridgeを使用します。固定flagを先頭へ付け、環境の接続先指定を除去します。shell wrapperは使用しません。
+- 2026-09-08: provider省略時のcanonical manifest内容とdigestを保ち、domain snapshotでのみDockerの既定値を確定する。inventoryのキーにはprovider、engine識別情報、projectを含める。
+- 2026-09-08: podman-composeの--podman-argsはsubcommand後に追加され、global remote flagを確実に固定できないため、native agent-env child bridgeを使用する。固定flagを先頭へ付け、環境の接続先指定を除去する。shell wrapperは使用しない。
 
 - 判断: `type: compose`を維持しprovider fieldを追加。
   理由: stack/componentをengine implementationから独立させる。
   日付/担当: 2026-09-08 / maintainers.
 
 - 判断: provider省略は`docker-compose`。
-  理由: existing manifest非回帰。
+  理由: 既存manifestの動作を変えないため。
   日付/担当: 2026-09-08 / maintainers.
 
 - 判断: Docker/Podman auto fallback禁止。
@@ -427,19 +427,19 @@ final harness/translation/race/integration、evidence/retrospective後completed�
 
 | ID | 必須動作 | 証拠 |
 | --- | --- | --- |
-| P1 | provider省略existing ComposeはDockerで既存integration非回帰 | baseline `aee3a3d`で実Docker integrationとVerify `34213899668`が成功。 |
+| P1 | provider省略existing ComposeはDockerで既存integrationの動作を維持 | baseline `aee3a3d`で実Docker integrationとVerify `34213899668`が成功。 |
 | P2 | explicit docker-composeはdefaultと同等 | providerのplan/config互換性テストがローカルで成功。 |
 | P3 | explicit podman-composeのみ選択しDocker fallback無し | 明示dispatcherとfallbackなしのCLI/appテストがローカルで成功。 |
 | P4 | unknown/non-Compose providerをeffect前reject | strict manifestの拒否fixtureがローカルで成功。 |
 | P5 | plan/snapshot/showにprovider identity | plan/domain snapshotと予約前create検査がローカルで成功。 |
-| P6 | Docker context/cleanup safety非回帰 | 選択・cleanup変更後の実Docker integration再実行と最終ローカルfull check/raceが成功。 |
+| P6 | Docker context選択とcleanupの安全性を維持 | 選択・cleanup変更後の実Docker integration再実行と最終ローカルfull check/raceが成功。 |
 | P7 | Podman Doctorがprovider/client/server/mode/non-secret identity記録 | Doctor fixtureと実1.6.0/Podman 5.4.2 rootless lifecycleが成功。 |
 | P8 | default connection変更後もrecorded engineへ固定 | local/remote識別とnative bridgeテストが`4a5de3d`のVerify `34216579481`のOS/Go 6 jobで成功。 |
 | P9 | engine mismatch/ambiguityでcleanup block/quarantine | engine変更時の副作用拒否とcleanup隔離・再試行fixtureがローカルで成功。 |
-| P10 | configがcommon host-policy modelへ入る | 正規化・Render policy回帰と実canonical JSON lifecycleが成功。 |
+| P10 | configがcommon host-policy modelへ入る | 正規化・Render policyの検証漏れを検出するテストと実canonical JSON lifecycleが成功。 |
 | P11 | unmodeled Podman extensionでpolicy bypass不可 | 再帰的拡張とprovider固有hostアクセスのRender拒否fixtureが成功。 |
 | P12 | selected service closureのみdetached start | 選択closureとdetached実lifecycleのfixtureが成功（110.13秒）。 |
-| P13 | structured Podman inspectでowned resource/readiness | native label/healthと残存のみの回帰に加え、実READY・resource観測が成功。 |
+| P13 | structured Podman inspectでowned resource/readiness | native label/health検査と、残存資源だけがある場合の観測テストに加え、実READY・resource観測が成功。 |
 | P14 | real Linux rootless dynamic endpoint、fixed host port reject | 実dynamic loopback HTTP endpointとfixed port policy拒否テストが成功。 |
 | P15 | unsupported Docker-only flag無しでtimestamp/service attribution logs | 実logsとnamed testのartifact・秘密値マスク検査が成功。 |
 | P16 | destructive effect前にownership verify | native project/serviceと矛盾labelのfixture、実所有リソース削除が成功。 |
@@ -489,7 +489,7 @@ Podman対応のためDocker assertion/common policyを弱めない。
 - 実Linux受け入れ: `AGENT_ENV_PODMAN_INTEGRATION=1`と`AGENT_ENV_PODMAN_DOCKER_COEXISTENCE=1`を設定した`go test -tags=integration ./internal/cli -run '^TestPodmanIntegrationConcurrentLeasesAndEvidence$' -count=1 -v`が110.13秒で成功。Go 1.27.1、native Linux、rootless Podman client/server 5.4.2、podman-compose 1.6.0を使用した。選択closure、同時2leaseのREADY、動的loopback endpoint疎通、時刻付きlogs、実anonymous volume証拠、成功・失敗のnamed test、artifactと秘密値マスク、cleanup後の接続されていた全volumeの消失、他lease・外部リソース・Dockerの維持を検証した。実際のcanonical JSON実行経路を通っている。永続的な証拠にlease IDやローカル実行ファイルpathは不要。
 - 最終port修正後のローカル`go run ./tools/repoctl check`と`go test -race ./...`が成功した。ビルド済みstandaloneの`help`と`version`はPATHが空でも成功し、両操作にPythonもPodmanも不要と確認した。`4a5de3d`のVerify `34216579481`でnative 6 jobとcross-build 5 jobが成功。12 jobのworkflow全体が成功で完了した。実Podman Machine環境は利用不可。
 
-2026-09-08のprovider境界の証拠: `go run ./tools/repoctl check`、`go test -race ./...`、`go run ./tools/repoctl test-integration`がすべて成功しました。integrationはPodmanの副作用を有効化する前に既存の実Docker lifecycleを検証しました。新規テストはmixed providerの予約前Doctor、不変snapshotによるcleanup、未知providerでrunnerを呼ばないこと、providerを含むinventory識別、manifestに基づくfallbackなしのCLI Doctorを検証します。
+2026-09-08のprovider境界の証拠: `go run ./tools/repoctl check`、`go test -race ./...`、`go run ./tools/repoctl test-integration`がすべて成功した。integrationはPodmanの副作用を有効化する前に既存の実Docker lifecycleを検証した。新規テストはmixed providerの予約前Doctor、不変snapshotによるcleanup、未知providerでrunnerを呼ばないこと、providerを含むinventory識別、manifestに基づくfallbackなしのCLI Doctorを検証する。
 
 evidenceへ記録:
 

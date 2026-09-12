@@ -214,7 +214,7 @@ tests:
 ```
 
 This example is a design target, not permission to bypass strict manifest
-validation. Any final syntax must be documented and covered by negative fixtures.
+validation. Any final syntax must be documented and covered by tests that reject manifests violating its requirements.
 
 ## Progress
 
@@ -228,7 +228,7 @@ validation. Any final syntax must be documented and covered by negative fixtures
 - [x] 2026-09-08: Write English and Japanese product contracts before public CLI behavior.
 - [x] 2026-09-08: Write English and Japanese design documents before durable schema changes.
 - [x] 2026-09-08: Decide and document the application/workload manifest shape.
-- [x] 2026-09-08: Add strict manifest parsing and negative fixtures.
+- [x] 2026-09-08: Add strict manifest parsing and tests that reject invalid manifests.
 - [x] 2026-09-08: Add Flutter SDK/project prerequisite diagnostics.
 - [x] 2026-09-08: Implement build orchestration from the pinned source.
 - [x] 2026-09-08: Persist APK digest and build identity/evidence.
@@ -359,10 +359,10 @@ ownership assertion.
   The helper now uses `SetMaxOpenConns(1)` and `PRAGMA busy_timeout=10000`, matching
   store policy; errors immediately call `t.Errorf`, and exactly one affected row
   is required. Production fencing and the original exact no-later-effects
-  assertion are unchanged. The real-writer regression and existing cleanup
+  assertion are unchanged. The test of lock-loss injection while a real SQLite writer is held and existing cleanup
   lock-loss test passed `-race -count=30` (33.834s). The full Go 1.27 harness
   passed (app 5.794s), as did full `go test -race ./...` (app 25.304s).
-  The regression's 50ms wait schedules a bounded writer release, not a short
+  This test's 50ms wait schedules a bounded writer release, not a short
   success deadline. Fixed-source CI subsequently passed at `bb55393`, and both plans were re-archived.
 
 ## Decision Log
@@ -497,8 +497,9 @@ Retrospective: green injected tests did not expose a real shared netsimd
 lifetime coupling. Strict process-group cleanup correctly quarantined that case;
 fixing helper discovery and port ownership preserved the safety check. Process
 termination, required evidence persistence and launch success needed independent
-durable confirmation to survive crashes and later forced cleanup. Negative
-fixtures now exercise each distinction. Timing-based fake readiness failures
+durable confirmation to survive crashes and later forced cleanup. Tests now inject
+unconfirmed process termination, evidence-persistence failure and launch failure
+to exercise each distinction. Timing-based fake readiness failures
 required deterministic triggers without removing wait-loop cancellation coverage.
 Temporary-storage sizing is an infrastructure prerequisite, not a reason to resize
 templates or weaken checks. Local final race/harness and latest-source native CI passed. Both language
@@ -535,7 +536,7 @@ Read these before implementation:
 Current architecture:
 
 - `internal/config` strictly decodes `.agent-env.yaml`.
-- `internal/stack` resolves deterministic component dependency closure.
+- `internal/stack` selects root components and all their direct and indirect dependencies in a deterministic order.
 - `internal/domain` contains lease/source/component/runtime/resource/event state
   without concrete adapters.
 - `internal/app` owns orchestration, readiness, compensation, evidence and
@@ -766,7 +767,7 @@ Add realistic fixtures proving:
     mobile
     full
 
-resolve to the intended component closure.
+select the intended root components and all their direct and indirect dependencies.
 
 At minimum prove:
 
@@ -817,7 +818,7 @@ tests must not be reported as real Emulator/Flutter validation.
 5. Inspect config/domain/app/runtime/store schemas before changing them.
 6. Create the bilingual product and design docs.
 7. Record the final manifest/application-model decision; add/update ADR as needed.
-8. Add strict manifest parsing and negative fixtures.
+8. Add strict manifest parsing and tests that reject invalid manifests.
 9. Add persistence migration only after durable fields are defined.
 10. Add Flutter command/discovery adapter behind injected interfaces.
 11. Add application build and evidence recording.
@@ -853,7 +854,7 @@ tests must not be reported as real Emulator/Flutter validation.
 | F15 | Named-test evidence distinguishes tests that rebuild/reinstall from the lifecycle-installed APK identity. | PASS same check and repeated focused run: `TestMobileConcurrentNamedTestsUseOwnedSerialAndPersistWarning`, `TestMobileFailedNamedTestRetainsEvidenceAndReadyLease`. |
 | F16 | `api`, `dashboard`, `mobile` and `full` stacks resolve to the documented lightest component sets. | PASS same check: `TestMobilePlanStackClosure` covers all four named stacks. |
 | F17 | New durable Flutter Android product/design docs exist in both English and Japanese and are indexed. | PASS `docs-check` within Go 1.26.8 full check at `8975096`; English/Japanese product/design docs and both indexes present. |
-| F18 | Architecture/docs validators pass after any new application/workload dependency boundary is introduced. | PASS `arch-check` and `docs-check` in same full check; `TestArchitectureBoundaries` includes explicit Flutter cross-adapter negative fixtures. |
+| F18 | Architecture/docs validators pass after any new application/workload dependency boundary is introduced. | PASS `arch-check` and `docs-check` in same full check; `TestArchitectureBoundaries` includes tests that explicitly introduce and detect forbidden Flutter cross-adapter dependencies. |
 | F19 | Full repository harness and Go race checks pass on final implementation. | PASS final local implementation: Go 1.26.8 full harness all phases and Go 1.27.1 full `go test -race ./...`. Latest implementation CI passed at `81102f1`; validated documentation CI passed at `d4d4289`. Earlier failures retained below. |
 | F20 | Native Windows/macOS/Linux portability evidence is recorded honestly and separately from real Flutter+Emulator execution. | PASS recorded separately: Linux real SDK run; native six OS/Go and five cross-build plus integration CI succeeded at final implementation `81102f1` and documentation `d4d4289`. Real Windows/macOS SDK runs remain unverified. |
 | F21 | At least one real Flutter+Emulator+backend integration run passes when suitable local/CI prerequisites are available, or the missing infrastructure is explicitly recorded without substituting fake evidence. | PASS `TestRealFlutterAndroidBackendLease`: initial one-lease run 248.46s and latest two-debug-lease run 88.99s, including fresh sibling guest HTTP and both normal cleanups. Toolchain/source/APK evidence below. |
@@ -926,7 +927,7 @@ Reopened-plan correction checkpoint (2026-09-08):
   `go test -race ./...` (app 25.304s).
 - A separate read-only reviewer inspected the actual test-only diff and found
   no concrete issue: production fencing and exact assertions were unchanged,
-  regression goroutine joins/resource cleanup were safe, and the 50ms delay
+  this test’s goroutine joins/resource cleanup were safe, and the 50ms delay
   releases a held writer rather than imposing a short success deadline.
 - The historical CI did not log the exact SQLite failure; the held-writer test
   reproduces the fixture defect, not the historical error message. Only
@@ -1050,7 +1051,7 @@ Evidence checkpoint (2026-09-08, after `8975096`):
   Native Windows/macOS real Flutter/Emulator execution remains unverified.
 - Local Go 1.27.1 `go run ./tools/repoctl test-integration` subsequently exited 0.
   A later Reconcile guard, subsequently committed in `e2c23f8`, preserves uncertainty quarantine
-  independently of desired state; focused regression
+  independently of desired state; focused test preserving quarantine after an unconfirmed build
   `TestMobileUnconfirmedBuildRemainsQuarantinedOnObservation` passed. Native CI
   at `8975096` does not establish verification of that later change.
 - `go test -tags=flutterintegration -run TestRealFlutterAndroidBackendLease -v ./internal/cli -timeout=40m`
@@ -1066,7 +1067,7 @@ Evidence checkpoint (2026-09-08, after `8975096`):
 
 Implementation milestone validation (2026-09-08):
 
-- `go test ./internal/config`: pass, including negative shape/dependency fixtures.
+- `go test ./internal/config`: pass, including tests that reject invalid configuration shapes and dependencies.
 - `go test ./internal/app`: pass; mobile concurrency, compensation, degraded
   observations, owned-serial interpolation and durable uncertainty guards.
 - `go test -race ./...` with Go 1.27.1: pass on Linux.

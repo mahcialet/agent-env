@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/design-docs/browser-cdp-automation.md
-source_sha256: 34712fd936ff46bbef295935beda554ae906f59a2dff2e5285428cbe2eb8e5db
+source_sha256: e27e8dc8270ef45a43b94c044a73776276af606620cdd80f3f37ef693544c1df
 ---
 
 # Browser/CDP設計
@@ -93,7 +93,7 @@ console/networkで保持するすべての文字列（IDやmetadataも含む）�
 
 ## 検証方針
 
-configの負例で明示的bindingと正確なswitch要件を検証します。app testは所有権再検証、
+不正なbrowser設定を与えるテストで、明示的bindingや正確なswitchの要件を満たさない設定が拒否されることを検証します。app testは所有権再検証、
 古い参照・別lease参照、run/証拠の失敗、destroy fencingを対象にします。
 transport fixtureは別接続先discovery、不正・過大応答を拒否することを検証します。
 native testはWindows・macOS・Linux、Go 1.27、Chrome for Testing 152.0.7977.82で実行します。

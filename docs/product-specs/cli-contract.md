@@ -41,7 +41,7 @@ agent-env doctor [repository|lease-id] [--runtime compose|process|android-emulat
 
 An omitted repository means the current directory. `init` requires one recognizable root Compose file, creates `.agent-env.yaml` exclusively, and reports that review is required; it does not start anything.
 
-`validate` checks schema and references without Docker or Podman. `plan` additionally resolves local Git commits and the deterministic component closure without creating state or worktrees.
+`validate` checks schema and references without Docker or Podman. `plan` additionally resolves local Git commits and selects the stack roots and all their direct and indirect component dependencies in a deterministic order, without creating state or worktrees.
 
 `--ref` requires a single source; use alias-specific `--source` overrides for multiple sources. Neither form fetches remote refs.
 

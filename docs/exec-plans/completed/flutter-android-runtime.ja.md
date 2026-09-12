@@ -3,7 +3,7 @@ status: completed
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/exec-plans/completed/flutter-android-runtime.md
-source_sha256: f0e9902a892356adcfe9566f1b89115c2a1064d51b8b4b4ca325a65c55841e1c
+source_sha256: d6fc605c123e74e8a5c7b3d838c3482a9452a0d2c548a6324eabef593e486f5b
 ---
 
 # 環境リース内にFlutter Androidアプリケーションを実体化する
@@ -174,7 +174,7 @@ tests:
       - build/test-results
 ```
 
-これは設計案であり、厳密検証を省略する許可ではありません。最終構文は文書化し負例fixtureで検証します。
+これは設計案であり、厳密検証を省略する許可ではありません。最終構文は文書化し、要件を満たさないマニフェストが拒否されることをテストで検証します。
 
 ## 進捗
 
@@ -183,7 +183,7 @@ tests:
 - [x] 2026-09-08: 公開CLI変更前に英日製品契約を書く。
 - [x] 2026-09-08: 永続スキーマ変更前に英日設計を書く。
 - [x] 2026-09-08: アプリ宣言の形を決定し文書化する。
-- [x] 2026-09-08: 厳密パースと負例fixtureを追加する。
+- [x] 2026-09-08: 厳密パースと、不正なマニフェストを拒否するテストを追加する。
 - [x] 2026-09-08: Flutter SDK・プロジェクトの前提条件診断を追加する。
 - [x] 2026-09-08: 固定ソースからのビルドを実装する。
 - [x] 2026-09-08: APKダイジェストとビルド識別・証拠を保存する。
@@ -263,9 +263,9 @@ Flutter結合テストによるAPK置換、高速化不足、既存Android所有
   helperだけを `SetMaxOpenConns(1)` と `PRAGMA busy_timeout=10000` に変更して既存ストア方針と揃え、
   エラーは即座に `t.Errorf` で報告し、影響行数が正確に1であることを要求する。
   production fencingと元の後続作用がないことの厳密assertionは不変。
-  実writer回帰と既存cleanupロック喪失テストは `-race -count=30` で成功（33.834秒）。
+  実writer保持中のロック喪失注入を確認するテストと既存cleanupロック喪失テストは `-race -count=30` で成功（33.834秒）。
   Go 1.27全harnessも成功（app 5.794秒）、全 `go test -race ./...` も成功（app 25.304秒）。
-  回帰の50ms待ちは保持writerの解放を有限時間後に行うためで、短い成功期限ではない。
+  このテストの50ms待ちは保持writerの解放を有限時間後に行うためで、短い成功期限ではない。
   修正ソースのCIはその後 `bb55393` で成功し、両計画を再移動した。
 
 ## 判断の記録
@@ -346,7 +346,7 @@ UI観測、長期APK昇格、Windows/macOSの実SDK検証は後続作業。
 振り返り: 注入テスト成功では実netsimd共有の寿命結合を検出できなかった。
 厳密なプロセスグループcleanupは正しく隔離し、補助探索とポート所有を直すことで検査を維持できた。
 クラッシュや後の強制cleanupに備え、プロセス終了、必須証拠保存、起動成功を独立して永続確認する必要があった。
-負例fixtureは各区別を検証する。偽準備完了の時間依存失敗は、待機キャンセル検証を残して決定的な発火条件に直した。
+プロセス終了の未確認、証拠保存の失敗、起動の失敗をそれぞれ注入するテストで、これらの区別を検証する。偽準備完了の時間依存失敗は、待機キャンセル検証を残して決定的な発火条件に直した。
 一時容量は基盤の前提であり、テンプレート縮小や検査弱体化の理由ではない。ローカル最終race/harnessと最新ソースのネイティブCIは成功。過去失敗と実SDKの残るOS差を保持し、両言語を完了計画として保存した。
 
 
@@ -368,7 +368,7 @@ Windows/macOSの実Flutter/Emulator実行は、F20/F21で認める明示的なOS
 
 現在の責務:
 
-- config: マニフェストの厳密デコード。stack: 決定的な依存閉包。
+- config: マニフェストの厳密デコード。stack: ルートcomponentとその直接・間接の依存先すべてを、同じ入力なら同じ順序で選択。
 - domain: 具体アダプターに依存しないリース・ソース・コンポーネント・ランタイム・リソース・イベント状態。
 - app: 順序、準備完了判定、補償、証拠、reconcile方針。
 - runtime/compose: Composeの具体操作。runtime/android: Emulatorプロセス・AVD・ポート・デバイス操作。Flutterに依存させない。
@@ -453,7 +453,7 @@ createのAPKを実行したと主張しません。製品・設計とテスト�
 
 ### マイルストーン7 — スタックfixtureと並行実行
 
-api/dashboard/mobile/fullの依存閉包を検証します。apiとdashboardは明示要求がなければAndroid/Flutterを
+api/dashboard/mobile/fullで、意図したルートcomponentとその直接・間接の依存先すべてが選ばれることを検証します。apiとdashboardは明示要求がなければAndroid/Flutterを
 確保せず、mobileはAPI + Emulator + Flutter、fullはさらにDashboardを選びます。
 同時mobile二つのワークツリー、Compose、ホストエンドポイント、AVD状態、シリアル、APKビルド記録を分離し、
 同じデバイスreverseポートを利用可能にし、一方の破棄後も他方がREADYで利用可能と証明します。
@@ -476,7 +476,7 @@ Flutterビルド、Emulatorリース、APKインストール、reverse、起動�
 5. config/domain/app/runtime/storeのスキーマを調査する。
 6. 英日製品・設計を作る。
 7. 最終モデル判断と必要なADRを記録する。
-8. 厳密パースと負例を加える。
+8. 厳密パースと、不正なマニフェストを拒否するテストを加える。
 9. 永続フィールド決定後、必要な場合だけマイグレーションを加える。
 10. 注入インターフェースでFlutterコマンド・探索を加える。
 11. ビルドと証拠を実装する。
@@ -512,7 +512,7 @@ Flutterビルド、Emulatorリース、APKインストール、reverse、起動�
 | F15 | テスト証拠が再ビルド・再インストールとcreate APKを区別。 | 同全検査と反復重点実行で成功: `TestMobileConcurrentNamedTestsUseOwnedSerialAndPersistWarning`、`TestMobileFailedNamedTestRetainsEvidenceAndReadyLease`。 |
 | F16 | 4スタックが文書化した最小のコンポーネント集合へ解決。 | 同全検査の `TestMobilePlanStackClosure` が4スタックを検証し成功。 |
 | F17 | 新規製品・設計文書に英日版と索引がある。 | `8975096` のGo 1.26.8全検査内のdocs-checkで成功。英日製品・設計文書と両索引あり。 |
-| F18 | 新しい責務境界追加後のarchitecture/docs検査が成功。 | 同全検査のarch-checkとdocs-checkが成功。`TestArchitectureBoundaries` にFlutterのアダプター間依存の明示負例を追加。 |
+| F18 | 新しい責務境界追加後のarchitecture/docs検査が成功。 | 同全検査のarch-checkとdocs-checkが成功。`TestArchitectureBoundaries` にFlutterの禁止されたアダプター間依存を明示的に与えて検出するテストを追加。 |
 | F19 | 最終実装の全harnessとraceが成功。 | 最終ローカル実装で成功: Go 1.26.8全harness全工程とGo 1.27.1全 `go test -race ./...`。最新実装CIは `81102f1`、検証済み文書CIは `d4d4289` で成功。過去失敗は下記に保持。 |
 | F20 | 3 OSネイティブ証拠を実Flutter + Emulatorと区別して正確に記録。 | 区別して記録し成功: Linux実SDK、最終実装 `81102f1` と文書 `d4d4289` の6 OS/Goネイティブ・5クロスビルド・結合CI。Windows/macOS実SDKは未検証。 |
 | F21 | 利用可能なら少なくとも1回の実Flutter + Emulator + backend結合が成功、または不足基盤を偽証拠で代用せず明記。 | `TestRealFlutterAndroidBackendLease` 成功: 初回1リース248.46秒、最新debug2リース88.99秒。他方の新しいゲストHTTPと両方の通常cleanupを含む。ツール・ソース・APK証拠は下記。 |
@@ -553,7 +553,7 @@ planと前提検査は読み取り専用です。ビルド失敗で使い捨て�
 - 再現したfixture修正は重点 `-race -count=30`（33.834秒）、Go 1.27全harness（app 5.794秒）、
   Go 1.27全 `go test -race ./...`（app 25.304秒）で成功。
 - 別の読み取り専用レビュアーが実際のテスト限定差分を確認し、具体的問題なし。
-  production fencingと正確なassertionは不変で、回帰のgoroutine合流・リソースcleanupは安全。
+  production fencingと正確なassertionは不変で、このテストのgoroutine合流・リソースcleanupは安全。
   50ms遅延は保持writerを解放するためであり、短い成功期限を設けるものではない。
 - 過去CIにSQLite失敗そのもののログはない。writer保持テストはfixture欠陥を再現し、過去のエラーメッセージを再現したとはしない。
   その後、検証済み `bb55393` で修正ソースCIと再移動を完了した。
@@ -640,7 +640,7 @@ planと前提検査は読み取り専用です。ビルド失敗で使い捨て�
   クロスビルド、結合（raceと実Compose）が成功。Windows/macOSの実Flutter/Emulatorは未検証。
 - ローカルGo 1.27.1の `go run ./tools/repoctl test-integration` はその後終了コード0で成功。
   その後 `e2c23f8` にcommitした後続変更で、Reconcileは期待状態にかかわらずビルド未確認の隔離を保持する。
-  重点回帰 `TestMobileUnconfirmedBuildRemainsQuarantinedOnObservation` は成功。
+  不確定なbuildの隔離維持を確認する重点テスト `TestMobileUnconfirmedBuildRemainsQuarantinedOnObservation` は成功。
   `8975096` のネイティブCIは、この後続変更の検証を意味しない。
 - `go test -tags=flutterintegration -run TestRealFlutterAndroidBackendLease -v ./internal/cli -timeout=40m`
   はLinux amd64で248.46秒で成功。Go 1.26.8、Flutter 3.47.2、Dart 3.13.2、
@@ -654,7 +654,7 @@ planと前提検査は読み取り専用です。ビルド失敗で使い捨て�
 
 実装マイルストーンの検証（2026-09-08）:
 
-- `go test ./internal/config`: 成功。設定形式・依存関係の負例を含む。
+- `go test ./internal/config`: 成功。不正な設定形式・依存関係を拒否するテストを含む。
 - `go test ./internal/app`: 成功。mobileの並行実行、補償、DEGRADED観測、所有シリアル補間、永続的な未確認状態ガードを検証。
 - Go 1.27.1で `go test -race ./...`: Linuxで成功。
 - `go test ./internal/runtime/android -count=10`: 成功。Androidの汎用argv、識別、共有サーバー、パッケージ、アクティビティ、reverseのfixtureを検証。
@@ -698,7 +698,7 @@ PowerShell、symlink契約、CGO、暗黙の先頭デバイス、固定ホスト
 
 ## マイルストーン1の解決済み事項
 
-当初の7項目はすべて、判断の記録と実装済み契約で解決しました。
+当初の7項目はすべて、判断の記録と実装済み契約で解決した。
 
 1. `applications` と `component.application` を採用し、汎用ワークロード基盤は追加しない。
 2. package/activityは常に明示し、識別子を厳密に検証する。APK調査ツールへの依存やactivity推測は導入しない。

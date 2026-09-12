@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: ARCHITECTURE.md
-source_sha256: a1fdb1cdaccee855f03320dd49e98648e8336733af51663b622a5552ef4f15a8
+source_sha256: f685370b93db1ad064f1605975a1b0ee0331bcfeb396bebbc83d8c044fbdbd14
 ---
 
 [英語版（翻訳元）](ARCHITECTURE.md)
@@ -28,7 +28,7 @@ remote modeでは、worker内のlifecycle管理の外側に配置と通信の仕
 | CLI | 引数を解析し、出力を整形して、ユースケースをappへ委譲する。 |
 | Domain | 具体的なadapterに依存せず、lease、不変のソース集合、component、resource、eventをモデル化する。 |
 | Config | manifestを厳密にdecodeする。 |
-| Stack | 決定的な依存閉包を解決する。 |
+| Stack | ルートコンポーネントと、その直接・間接の依存先すべてを、同じ入力なら同じ順序で選ぶ。 |
 | App | ソースとruntimeのinterface、policy、準備完了判定、証拠、失敗時の補償cleanupを調整する。 |
 
 
@@ -48,7 +48,7 @@ reconcileはレジストリの意図とGitと記録済みの各runtime provider�
 - storeは永続化を実装し、appのオーケストレーション方針を担ってはいけません。
 - CLIはライフサイクルの振る舞いをappに委譲します。具体的な依存の接続はアプリケーション境界に置きます。
 
-これらの境界は、違反を検出する負例fixtureを伴うrepoctl arch-checkで検査する必要があります。そのバリデーターが通るまでは、境界が機械的に強制されていると主張しません。依存グラフを変更する際は、この構成図、チェッカー、ADRまたは計画の決定記録を一緒に更新します。
+これらの境界は、repoctl arch-checkで検査し、禁止されたimportを意図的に含むテスト用コードで、その違反を検出できることを確認する必要があります。そのバリデーターが通るまでは、境界が機械的に強制されていると主張しません。依存グラフを変更する際は、この構成図、チェッカー、ADRまたは計画の決定記録を一緒に更新します。
 
 ## 横断的な不変条件
 

@@ -3,7 +3,7 @@ status: completed
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/exec-plans/completed/standalone-distribution.md
-source_sha256: c2247dd2774aadd30ec70fc141ac172df4beb87332f42ab14cc8c6ee5962deb7
+source_sha256: e208043f46ce4b1c2bba8fa654eaf0fd4f92d91c0b00e5eeecb6745a3f79b102
 ---
 
 # agent-env をクロスプラットフォームのスタンドアロン配布物にする
@@ -94,7 +94,7 @@ compatibility burdenが小さい今の段階では、長期standalone contract�
 
 ## 進捗
 
-- [x] 2026-09-08: PR #7のmerge `16afc83` から親Planを再開。baselineの `go run ./tools/repoctl check` が成功。同梱一覧をCLIに明示し、JSON/表形式と状態未作成の回帰テストを追加。残りのauditと最終検証は継続中。
+- [x] 2026-09-08: PR #7のmerge `16afc83` から親Planを再開。baselineの `go run ./tools/repoctl check` が成功。同梱一覧をCLIに明示し、JSON/表形式と状態未作成を確認するテストを追加。残りのauditと最終検証は継続中。
 
 - [x] 2026-09-08: master `938e584`（PR #5を含む）から作業ブランチを作成。
 - [x] 2026-09-08: baseline Go 1.27.1 raceが成功。初回checkは日本語Planの
@@ -114,12 +114,12 @@ compatibility burdenが小さい今の段階では、長期standalone contract�
 - [x] 2026-09-08: 前提エラー、CLI一覧、asset stress、永続パスaudit、将来helper契約を実装・検証。local harness/race成功。最終revisionのnative CIも下記に記録済み。
 - [x] 2026-09-08: TestEmbeddedFixtureで17バイトと固定SHA-256を対象appなしで検証。asset race stressは10回成功。
 - [x] 2026-09-08: 既存判断通りAGENT_ENV_HOMEのみをoverrideとし、--homeは追加しない。
-- [x] 2026-09-08: design文書に全永続パス監査を記録。override、lifecycle、command evidence、helper stagingの回帰テストが成功。
+- [x] 2026-09-08: design文書に全永続パス監査を記録。override、lifecycle、command evidence、helper stagingで状態保存先が守られることを確認するテストが成功。
 - [x] 2026-09-08: 子でrelease-build/check、正規化archive/manifest/checksums、
   厳密なtag/version/clean guard、再現性比較を実装・検証した。
 - [x] 2026-09-08: 子で3OSの展開済みnative smokeとrepoctlに委ねるtag workflowを検証。
 - [x] 2026-09-08: 子でarchitecture/portability/quality/security/roadmapを英日更新。
-- [x] 2026-09-08: Verify 34190701428で既存manifest/lease/workflowの回帰検査も成功。
+- [x] 2026-09-08: Verify 34190701428で既存manifest/lease/workflowの動作を維持する検査も成功。
 - [x] 2026-09-08: 統合後の `go run ./tools/repoctl check` と `go test -race ./...` がLinux Go 1.27.1で成功。production変更の独立レビューに確認済み不具合なし。`a1013b5` の最終native CI/release証拠（34197046022と34197049188）も成功。
 - [x] 2026-09-08: native/crossの範囲とリリース証拠を子から引き継いだ。
 - [x] 2026-09-08: 親の受け入れ証拠と振り返りを完成。
@@ -129,11 +129,11 @@ compatibility burdenが小さい今の段階では、長期standalone contract�
 
 ## 想定外の発見
 
-- 2026-09-08: Windows初回修正（`611da29`、native run 34196522199）はfixture/置換エラーを解消したが、公開操作の競合による一時的な読み取り共有違反が残った。置換禁止だけでは不十分なため、Windowsの共有/lock違反だけを期限付きで扱い、handleを保持する回帰テストを追加する。永続的な権限エラー、ファイル不在、内容不一致は引き続き失敗させる。
+- 2026-09-08: Windows初回修正（`611da29`、native run 34196522199）はfixture/置換エラーを解消したが、公開操作の競合による一時的な読み取り共有違反が残った。置換禁止だけでは不十分なため、Windowsの共有/lock違反だけを期限付きで扱い、handleを保持して共有違反時の扱いを確認するテストを追加する。永続的な権限エラー、ファイル不在、内容不一致は引き続き失敗させる。
 
 - 2026-09-08: Windows native CI 34196175504でLinux/macOSでは見えない2件を検出。Git autocrlfが埋め込みfixtureを17から18バイトへ変換し、公開済み不変ファイルの置換がstress時に共有/access deniedエラーを起こした。fixture限定の-text属性でバイト列を維持し、Windowsでは置換しない公開を使う。同じstress検証を維持し、nativeで再検証する。
 
-- 2026-09-08: merge `16afc83` からの再開時に回帰テストで3件を発見。同時asset mkdirが正常な先行作成を拒否し5子プロセスが失敗、絶対パスoverrideでもHOMEが必要、UI helperの一時コピーがinstall成功時・失敗時ともOS一時領域に作成されていた。検証条件を弱めず修正。asset race stressは10反復、120子プロセス、10,800展開、300新規rootで成功。統合途中のテストはAssetInfo重複宣言と意図したstaging回帰で失敗したため、統合後に最終検証する。
+- 2026-09-08: merge `16afc83` からの再開時に期待した動作を確認するテストで3件を発見。同時asset mkdirが正常な先行作成を拒否し5子プロセスが失敗、絶対パスoverrideでもHOMEが必要、UI helperの一時コピーがinstall成功時・失敗時ともOS一時領域に作成されていた。検証条件を弱めず修正。asset race stressは10反復、120子プロセス、10,800展開、300新規rootで成功。統合途中のテストはAssetInfo重複宣言とstaging先の不具合を再現するテストで失敗したため、統合後に最終検証する。
 
 - 2026-09-08: 提供された日本語の active plan に翻訳 metadata がなく、実装前の
   baseline docs-check が失敗した。正確な翻訳 metadata を追加して hash を同期した。
@@ -213,45 +213,45 @@ compatibility burdenが小さい今の段階では、長期standalone contract�
 
 ## 成果と振り返り
 
-実装とlocal検証は2026-09-08の `a1013b5` で完了しました。
-最終native CIのVerify [34197046022](https://github.com/mahcialet/agent-env/actions/runs/34197046022) とRelease preview [34197049188](https://github.com/mahcialet/agent-env/actions/runs/34197049188) が成功しました。親Planは完了しarchival済みです。
+実装とlocal検証は2026-09-08の `a1013b5` で完了した。
+最終native CIのVerify [34197046022](https://github.com/mahcialet/agent-env/actions/runs/34197046022) とRelease preview [34197049188](https://github.com/mahcialet/agent-env/actions/runs/34197049188) が成功した。親Planは完了しarchival済みである。
 
 完了した子Planは、厳密なGit tag検証、隔離した不変のbuild source、静的な
-成果物検証、GitHub Release公開のgateを提供します。親Planでは前提ツールの
+成果物検証、GitHub Release公開のgateを提供する。親Planでは前提ツールの
 遅延チェック、CLIの明示的な一覧、deterministicな埋め込みfixtureと並行展開の
-証拠、永続パス監査を追加しました。
+証拠、永続パス監査を追加した。
 
 Windows/macOS/Linuxのamd64/arm64全archiveは、version付き最上位ディレクトリ
-に実行ファイル、LICENSE、README.txtを含みます。Gitの
-`v<major>.<minor>.<patch>` だけがrelease versionの根拠です。HEADは唯一の
+に実行ファイル、LICENSE、README.txtを含む。Gitの
+`v<major>.<minor>.<patch>` だけがrelease versionの根拠である。HEADは唯一の
 正式形式tagと一致し、tracked/index/untracked sourceはcleanで、指定versionは
-tagからvを除いた値と一致する必要があります。Go 1.27.1とtagged commitの時刻を
-使い、独立した2回のbuildでcandidateの8ファイルがバイト一致しました。
+tagからvを除いた値と一致する必要がある。Go 1.27.1とtagged commitの時刻を
+使い、独立した2回のbuildでcandidateの8ファイルがバイト一致した。
 linker識別情報とReleaseRecordにより、source treeなしでversion、commit、dirty、
-platform、buildの由来を確認できます。
+platform、buildの由来を確認できる。
 
-製品の同梱アセットは明示的に空です。テスト専用go:embed fixtureで、対象appや
-ダウンローダーなしの汎用Describe/Materializeを検証しました。Windowsは置換なしで
-公開して先行保存の内容を検証し、Unixは同一内容をatomic renameします。
-一覧取得は状態を作成しません。絶対パスのAGENT_ENV_HOMEはhome探索なしで使え、
-所有する一時APKはruntime内に保存します。designの監査は、外部ツールが所有する
-Git登録情報やキャッシュを明確に区別しています。
+製品の同梱アセットは明示的に空である。テスト専用go:embed fixtureで、対象appや
+ダウンローダーなしの汎用Describe/Materializeを検証した。Windowsは置換なしで
+公開して先行保存の内容を検証し、Unixは同一内容をatomic renameする。
+一覧取得は状態を作成しない。絶対パスのAGENT_ENV_HOMEはhome探索なしで使え、
+所有する一時APKはruntime内に保存する。designの監査は、外部ツールが所有する
+Git登録情報やキャッシュを明確に区別している。
 
 native release smokeはLinux/amd64、Windows/amd64、macOS/arm64を対象とし、
-残る3tupleはcross-buildと静的検証だけです。source外、空PATH、Unicodeと空白を
-含むパスでversion/help/listを確認します。release workflowはnative gateを通った
-candidateを再buildせず公開します。今回の作業では公開tagもReleaseも作成して
-いません。previewのv0.1.0はprivateなテスト入力です。
+残る3tupleはcross-buildと静的検証だけである。source外、空PATH、Unicodeと空白を
+含むパスでversion/help/listを確認する。release workflowはnative gateを通った
+candidateを再buildせず公開する。今回の作業では公開tagもReleaseも作成して
+いない。previewのv0.1.0はprivateなテスト入力である。
 
 主な教訓は、Linuxのrace検証だけではWindowsの置換時の共有制約とGit改行変換を
-検出できなかったことです。native CIで両方を検出し、fixture限定の属性とWindowsの
-置換なし公開で、stress条件を弱めず修正しました。別担当による最終revisionの
-production変更レビューで、確認済み不具合はありません。
+検出できなかったことである。native CIで両方を検出し、fixture限定の属性とWindowsの
+置換なし公開で、stress条件を弱めず修正した。別担当による最終revisionの
+production変更レビューで、確認済み不具合はない。
 
 署名、notarization、package manager、SBOM/attestation、追加native architectureは
-明示的な後続作業です。Android UI観測はこの契約で埋め込みを利用できますが、
-実際のhelper同梱にはライセンス・version・一覧を揃えた別変更が必要です。
-lifecycleの責務をFlutterへ移していません。
+明示的な後続作業である。Android UI観測はこの契約で埋め込みを利用できるが、
+実際のhelper同梱にはライセンス・version・一覧を揃えた別変更が必要である。
+lifecycleの責務をFlutterへ移していない。
 
 ## 背景と構成
 
@@ -453,14 +453,14 @@ README install、architecture、portability、quality、security必要箇所、r
 | --- | --- | --- |
 | S1 | release展開後Go/source tree無しで`version`/help実行可能。 | 子R15・preview 34190701402で3OSの展開済みversion/help/listを空PATH・ソース外で確認。 |
 | S2 | core startupにDocker/Android/Flutter/Java/Python/Node/shell不要。 | 同じnative smokeで任意の外部ツールなしにcore commandを実行。 |
-| S3 | capability commandがmissing prerequisiteをlazy/正直に報告。 | 2026-09-08, `8eb92d5`: 空PATHの `TestStandaloneCommandsRequestGitOnlyWhenSourcesAreNeeded` と既存Compose/Android/Flutterのdoctor/plan回帰が成功。具体的な不足ツール・exit 3・不要な状態作成や探索がないことを確認。 |
+| S3 | capability commandがmissing prerequisiteをlazy/正直に報告。 | 2026-09-08, `8eb92d5`: 空PATHの `TestStandaloneCommandsRequestGitOnlyWhenSourcesAreNeeded` と既存Compose/Android/Flutterのdoctor/planの既存動作を確認するテストが成功。具体的な不足ツール・exit 3・不要な状態作成や探索がないことを確認。 |
 | S4 | `version --output json`がversion/commit/toolchain/platform/asset metadataを返す。 | 2026-09-08, `8eb92d5`: `TestVersionReportsBundledInventoryWithoutState` がJSONの `assets: []` と表形式を検証。buildinfoテストが開発/release識別情報を検証。 |
 | S5 | development buildがrelease metadata無しでも正直なidentity。 | 開発defaultはdevel/unknownと表示し、単体テストが成功。 |
-| S6 | tag/version/commit mismatchまたはdirty release inputを拒否。 | 子R1–R4の厳密なGit検証と専用commit checkoutの負例が成功。 |
+| S6 | tag/version/commit mismatchまたはdirty release inputを拒否。 | 子R1–R4で、厳密なGit検証による不一致・未commit変更の拒否と、専用commit checkoutへのローカル変更混入防止を確認するテストが成功。 |
 | S7 | release buildが`CGO_ENABLED=0`かつshell packaging tool不要。 | 子R5で6バイナリのCGO=0とGoのみのarchive生成を確認。 |
 | S8 | fixed matrixからdocumented archive setだけ生成。 | 子R6–R7で6つの名前とprefix配下の3通常memberを確認。 |
 | S9 | checksum/manifestがarchive/executable bytesと一致。 | 子R9–R11で実bytesのchecksum/manifest/identityと不一致拒否を確認。 |
-| S10 | archiveはsafe relative regular filesのみでsymlink/traversal無し。 | 子R12のtraversal/symlink/memberとZIP local/central名の回帰が成功。 |
+| S10 | archiveはsafe relative regular filesのみでsymlink/traversal無し。 | 子R12のtraversal/symlink/memberとZIP local/central名の不一致を検出するテストが成功。 |
 | S11 | bundled assetがcontent-addressed/digest verified/atomic/concurrency-safe/idempotent。 | 2026-09-08, `8eb92d5`: `TestEmbeddedFixture`、tamper/pathテスト、`go test -race ./internal/assets -count=10` が成功。120子プロセス・10,800呼出・300新規rootで最終内容一致と一時ファイル残留なしを確認。 |
 | S12 | corrupt materialized assetを検出しsilent trustしない。 | TestMaterializeIsContentAddressedAndIdempotentで改ざんbytesを拒否。 |
 | S13 | capability initialize無しでasset metadata取得可能。 | 2026-09-08, `8eb92d5`: `assets.Inventory` はI/Oなしでbuildinfoへ一覧を渡す。CLIテストは空PATHと状態未作成を検証。テスト専用fixtureは配布しない。 |
@@ -471,7 +471,7 @@ README install、architecture、portability、quality、security必要箇所、r
 | S18 | cross-build-onlyとnative evidenceを区別。 | Windows/arm64・macOS/amd64・Linux/arm64はcross-build/静的検査のみ。 |
 | S19 | GitHub release workflowがmechanicsをrepoctlへ委譲しvalidation failure後publishしない。 | 子R22–R24でrepoctl処理とvalidation/repeat/native公開gateを検証。公開releaseは作成していない。 |
 | S20 | maintainer-created tagを使いCIがGit historyを変更しない。 | 子R21でmaintainer tag起動。tag作成はprivate cloneのみで、caller refs保護をテスト。 |
-| S21 | 既存manifest/lease/development command非回帰。 | Verify 34190701428の12 job（既存nativeとLinux Docker実integrationを含む）が成功。 |
+| S21 | 既存manifest/lease/development commandの動作を維持。 | Verify 34190701428の12 job（既存nativeとLinux Docker実integrationを含む）が成功。 |
 | S22 | full harness/docs/translation/race pass。 | 子R26で641cb49のローカルraceとhosted harness成功。親の残作業には別途最終検査が必要。 |
 | S23 | standalone docs/ExecPlan英日双方が存在しindex済み。 | 英日文書・indexがあり、子archival後のdocs-check成功。 |
 | S24 | 完了後roadmapのarchive release undecided表現解消。 | 英日roadmapでarchiveによるGitHub Releaseを決定済みとした。 |
@@ -497,7 +497,7 @@ repoctlはtag作成/移動/削除/force updateしない。missing embedded asset
 
 ## 成果物と注記
 
-- 2026-09-08: 最終revision `a1013b5` でlocal harness、全体race、6ターゲットrelease-verify（2回build・8ファイル一致・Linux native smoke）、candidate全18ケースが成功。Verify 34197046022はGo 1.26/1.27全native、cross-build、integration/race成功。Release preview 34197049188はcandidate buildとLinux/amd64、Windows/amd64、macOS/arm64 smoke成功。Windowsのhandle保持、280文字超パス、先行保存保持、process stress回帰も条件を弱めず成功。他のnative tupleの成功は主張しない。
+- 2026-09-08: 最終revision `a1013b5` でlocal harness、全体race、6ターゲットrelease-verify（2回build・8ファイル一致・Linux native smoke）、candidate全18ケースが成功。Verify 34197046022はGo 1.26/1.27全native、cross-build、integration/race成功。Release preview 34197049188はcandidate buildとLinux/amd64、Windows/amd64、macOS/arm64 smoke成功。Windowsのhandle保持、280文字超パス、先行保存保持、process stressの動作確認テストも条件を弱めず成功。他のnative tupleの成功は主張しない。
 
 2026-09-08の親検証は `a1013b58a3e4e1e98b4d741237e193f8013eec65`、
 Go 1.27.1、private preview `v0.1.0` を使用（公開tagなし）。

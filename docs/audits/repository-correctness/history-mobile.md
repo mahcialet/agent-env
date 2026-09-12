@@ -15,9 +15,9 @@ Frozen target: `031869c8b9073b8e23bc17fbc55243666a52f557`. This Phase-A report c
 The descriptions below preserve the frozen Phase A evidence and original coverage gaps.
 Phase B accepted all eight mobile findings. Their current disposition is **ACCEPT**;
 the earlier “untriaged” and “no repair” statements describe Phase A only.
-The candidate implements the following controls and permanent regressions:
+The candidate implements the following controls and permanent tests checking the repaired behavior:
 
-| Finding | Delivered control | Regression evidence |
+| Finding | Delivered control | Tests and assertions checking the repair |
 | --- | --- | --- |
 | AUDIT-BOUNDARY-001 | Request 2001 device records, filter the time window, keep the newest 2000 with explicit actual omission | `TestUILogExactTailUsesOverflowProof`: 1999/2000/2001 and an out-of-window probe |
 | AUDIT-REDACTION-001 | Recheck fields and actual escaped snapshot/result bytes after redaction; preserve node order and mark real omissions | `TestUIAuditUIRedactionBounds`, `TestUIFieldBoundaryAndSerializedObservationBoundary`: registered artifacts, retained identities, 4096 and 1 MiB minus/exact/plus boundaries |
@@ -74,7 +74,7 @@ Each row inherits its profile's opportunities, explanation for earlier escape, m
 
 | Profile | Opportunities and escape reasons | Missing guardrail / preventive control / expected future stage | Same-pattern candidates inspected or queued |
 | --- | --- | --- | --- |
-| I | Independent invalid-input/identity mutation existed at S2/S3; positive fixtures matched valid values. `NEGATIVE_FIXTURE_GAP`, sometimes `ORACLE_COUPLING`. | Requirement-specific invalid identity/path/environment fixtures; assert zero effects, S2/S3. | Android marker/ADB paths; application reverse; process receipts; browser targets. |
+| I | Independent invalid-input/identity mutation existed at S2/S3; positive fixtures matched valid values. `NEGATIVE_FIXTURE_GAP`, sometimes `ORACLE_COUPLING`. | Tests supplying identity/path/environment values that violate specific requirements and asserting zero effects, S2/S3. | Android marker/ADB paths; application reverse; process receipts; browser targets. |
 | C | Public entry points already existed at S3/S4, but helper/one-provider/JSON-only tests omitted the next dependency or optional branch. `HELPER_ONLY`, `COMPOSITION_GAP`. | Matrix of CLI/factory/app/adapter and absent/present optional features with observable no-effect assertions, S3/S4. | Inventory vs Doctor frontend requirements; runtime-specific preview; CLI store factories; Raw/Binary evidence. |
 | P | Failure/cancel/restart windows were expressible with injected stores/providers before review. Success-only or initial-failure tests omitted later recovery. `FAILURE_INJECTION_GAP`, `COMPOSITION_GAP`, sometimes `INVARIANT_GAP`. | Durable-intent/effect/finalization matrix and repeat Destroy/Reconcile after store recovery; verify callback actually ran, S2/S4. | Application build guards, UI recovery, process start receipts, browser mutation barriers. |
 | N | Real SDK/OS lifecycle semantics were not represented by fake identity or tool output; cross-build cannot settle them. `NATIVE_EVIDENCE_GAP`, `CONCURRENCY_GAP`. | Native lifecycle, parent-exits-child-lives, two simultaneously live leases and sibling cleanup, S5 (M05 S3 real process fixture). | Windows Job completion, Linux procfs races, private Android helper discovery, shared ADB containment. |
@@ -159,7 +159,7 @@ M48/M49 are coverage gaps, not confirmed current producer defects. The Java help
 - Observed: the temporary Go-overlay regression failed at 2000, returning all 66,000 bytes and `Truncated=true`; 1999 returned complete. Test package failed in 0.014s. No byte or locally retained-line omission occurred. This was an actual concrete adapter invocation with an injected runner, not a native-device claim.
 - Expected/impact: a complete exact-size capture should remain complete. Current output falsely signals omission. The device tail cap may actually omit earlier lines when more than 2000 exist, but the command returns no overflow bit. The helper's unconditional `raw line count >=2000` conflates that possible upstream omission with observed omission. Merely removing the comparison would create false completeness for real overflow; upstream extra-item/proof design belongs to disposition/remediation.
 - Existing coverage: `TestUILogPIDAttributionAndBounds` exercises two lines and a 2001-line, over-byte-budget response. It does not cover a short complete 1999/2000/2001 response; the current consumer tests likewise rely on supplied flags.
-- Regression/resolution: temporary overlay only; no product/test change, no repair yet. Historical relation: M49's producer completeness gap and Browser exact-limit class. Same-pattern search candidates: Java `node/tree` limit checks, UI text/log artifact caps and browser evidence producers; no additional defect is implied by their presence.
+- Repair verification tests/resolution: temporary overlay only; no product/test change, no repair yet. Historical relation: M49's producer completeness gap and Browser exact-limit class. Same-pattern search candidates: Java `node/tree` limit checks, UI text/log artifact caps and browser evidence producers; no additional defect is implied by their presence.
 - Escape analysis: detected S9; earliest realistic S2. `BOUNDARY_GAP` and `ORACLE_COUPLING`: the existing test combines count overflow with byte overflow and does not independently test exact count. S3/S4 fixtures use short logs; prior S5 UI native fixture does not generate an exact 2000-line tail. S6 runs those tests but has no semantic cap validator. S7/S8 opportunities were an independent exact-limit oracle; the historical plan does not record one. Proposed preventive control: shared boundary-case convention plus provider overflow proof, expected S2/S3; status deferred until disposition.
 
 ## Historical limitations retained

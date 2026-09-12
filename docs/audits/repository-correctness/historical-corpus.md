@@ -8,11 +8,11 @@ last_verified: 2026-09-09
 
 [日本語](historical-corpus.ja.md) · [Audit index](index.md)
 
-The inventory covers all 20 English completed plans present at the frozen target. Japanese siblings were treated as translations, not separate findings. Feature plans were searched for internal reviews and discoveries as well as explicit follow-up plans. The linked annexes identify individual material findings, source passages, current production entries, actual regression assertions and coverage limits; absent thread IDs are not invented. PR #5's24 external comments have been incorporated because its feature plan omits later review rounds. The corpus contains182 material rows (77 mobile,56 MVP/process/browser,42 Compose/release,7 documentation); grouped rows are not a count of individual PR comments.
+The inventory covers all 20 English completed plans present at the frozen target. Japanese siblings were treated as translations, not separate findings. Feature plans were searched for internal reviews and discoveries as well as explicit follow-up plans. The linked annexes identify individual material findings, source passages, current production entries, the actual conditions asserted by tests checking the repairs, and their coverage limits; absent thread IDs are not invented. PR #5's24 external comments have been incorporated because its feature plan omits later review rounds. The corpus contains182 material rows (77 mobile,56 MVP/process/browser,42 Compose/release,7 documentation); grouped rows are not a count of individual PR comments.
 
 ## Complete plan inventory
 
-| Completed plan | Material findings and current regression mapping | Applicability |
+| Completed plan | Material findings and tests checking the repairs | Applicability |
 | --- | --- | --- |
 | [android-emulator-lease](../../exec-plans/completed/android-emulator-lease.md) | [history-mobile](history-mobile.md) | Applicable; shipped behavior or active regression harness. |
 | [android-emulator-review](../../exec-plans/completed/android-emulator-review.md) | [history-mobile](history-mobile.md) | Applicable; shipped behavior or active regression harness. |
@@ -49,7 +49,7 @@ A finding can have multiple categories; profile counts are not independent defec
 | S7/S8 | Review fixes one caller but omits sibling consumers; REVIEW_CHECKLIST_GAP. | Search every caller of the repaired contract, then test composition at the effect/evidence boundary. Historical repeated PR rounds motivated this audit; individual reviewer intent is not inferred. |
 | S9 | Current audit detects surviving/recurrent variants. | Record repro before remediation and independent re-review after repair. No claim that audit eliminates all future defects. |
 
-All listed categories are represented in the annex classifications except where a source lacks evidence for a specific pre-discovery assertion. Existing direct-regression gaps are distinguished from product defects: Windows second PID read, Java helper producer completeness/fingerprint, selected process readiness and browser selection tests, late release persistence failures. They do not silently become accepted correctness findings. Phase B must record risks and follow-up for any broader controls left outside this repair; no automatic change to global instructions is proposed.
+All listed categories are represented in the annex classifications except where a source lacks evidence for a specific pre-discovery assertion. Gaps in tests that directly exercise the problematic conditions are distinguished from product defects: Windows second PID read, Java helper producer completeness/fingerprint, selected process readiness and browser selection tests, late release persistence failures. They do not silently become accepted correctness findings. Phase B must record risks and follow-up for any broader controls left outside this repair; no automatic change to global instructions is proposed.
 
 ## Late external-comment supplement
 

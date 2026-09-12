@@ -47,17 +47,19 @@ podman-compose launches Podman child processes. A native bridge implemented by t
 current agent-env executable supplies the pinned Podman global arguments to those
 children, so the provider and direct engine observations use the same route.
 Execution uses native argument arrays and the existing execx process boundary;
-the bridge is not a generated shell script. Exact endpoint parsing and argv/env
-behavior require native regression evidence, including paths with spaces and
-non-ASCII characters.
+the bridge is not a generated shell script. Tests must run on the target OS and
+verify that endpoint parsing and argument/environment forwarding remain exact,
+including paths with spaces and non-ASCII characters. This detects routing or
+argument changes that could make provider calls differ from direct engine calls.
 
 ## Common configuration and observed truth
 
 ### Canonical snapshots and provider re-parsing
 
 Docker's normalized JSON and podman-compose's normalized YAML enter the same
-host-policy model. Policy runs before effects, then the selected reachable
-service/resource closure is recorded with a digest as canonical JSON. Before
+host-policy model. Policy runs before effects. Canonical JSON records the selected
+services, all their direct and indirect service dependencies, and only the networks,
+volumes, configs and secrets referenced by those services, together with a digest. Before
 podman-compose reparses a mutation snapshot, literal dollar signs are escaped in a
 private copy so frozen values are not interpolated again. The same private copy
 omits `published` when the recorded port is zero while preserving `host_ip`;

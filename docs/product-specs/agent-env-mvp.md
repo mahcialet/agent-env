@@ -26,7 +26,7 @@ A repository or workspace describes how it should be started in `.agent-env.yaml
 
 - resolve refs to immutable commit IDs;
 - create isolated Git worktrees;
-- resolve a requested startup group into the minimum required component dependency closure;
+- select only the requested startup group’s roots and all components they depend on, directly or indirectly;
 - start an isolated Docker Compose project with a unique project name;
 - persist lease, source, component, runtime, command, and event records in SQLite;
 - expose accurate `list` and `show` views by reconciling registry state with actual Git and Docker state;
@@ -144,7 +144,7 @@ However, the first implementation must produce a reliable Compose-backed vertica
 ### Core behavior
 
 1. A fixture repository with `api` and `dashboard` components can validate successfully.
-2. `plan --stack api` resolves only the API dependency closure.
+2. `plan --stack api` selects only the API stack’s roots and all their direct and indirect component dependencies.
 3. `plan --stack dashboard` resolves API plus Dashboard in deterministic topological order.
 4. Invalid cycles and unknown references fail with actionable diagnostics.
 5. `create` records the exact requested ref and resolved commit before runtime startup.

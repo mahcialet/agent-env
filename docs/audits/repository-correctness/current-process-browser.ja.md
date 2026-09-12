@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/audits/repository-correctness/current-process-browser.md
-source_sha256: bea25488ae7519f21cae7d79987872fb176fe1cc20b7a3bc9b56705925e340fd
+source_sha256: 07bd9b9df0a65ed7cbfb4b0e54924c181d3aea01a8c0ac1043eedfcaa98c95c4
 ---
 
 # 現在のprocess・browser・executorの正しさレビュー
@@ -12,21 +12,21 @@ source_sha256: bea25488ae7519f21cae7d79987872fb176fe1cc20b7a3bc9b56705925e340fd
 
 固定対象: `031869c8b9073b8e23bc17fbc55243666a52f557`。
 Phase A再現にはrepository外のGo overlayを用いた。統合担当はPhase B checkpoint
-（`56b9c2c`）で両指摘を採用し、Phase Cの修正・回帰を以下に記録する。本書はprocess runtime・Browser/CDP・execxの
+（`56b9c2c`）で両指摘を採用し、Phase Cの修正と確認テストを以下に記録する。本書はprocess runtime・Browser/CDP・execxの
 限定したsource・再現確認を完了するが、全体監査表・native baseline・最終独立reviewを代替しない。
 
 ## 確認した不変条件の表
 
 | 領域・不変条件 | 確認入口と証拠 | 結果・限界 |
 | --- | --- | --- |
-| Browser権限と分離 | CDP接続・discovery、loopback WebSocket、PID/version/flag、native callback、target session、page上限 | 既存identity負例は有効。誤browser採用の新経路は見つからず。同一userによる悪意のprotocol偽造は契約範囲外。 |
+| Browser権限と分離 | CDP接続・discovery、loopback WebSocket、PID/version/flag、native callback、target session、page上限 | identity不一致でbrowserの採用を拒否する既存テストは有効。誤browser採用の新経路は見つからず。同一userによる悪意のprotocol偽造は契約範囲外。 |
 | Frameとstale node証明 | snapshot/approvedFrames/recheckFrames、owner census、action直前AX/node/hit、isolated focus、native closed-shadow | 前後origin/構造・stale入力guardを維持。load waitに下記混在document問題があるが後続入力は再検証する。 |
-| Browser境界と完全性 | AX/DOM2048、frame32、page128、target/event512、semantic JSON1 MiB、field4 KiB、capture64 KiB/256件 | AX境界回帰は2047/2048/2049と複数・末尾空frameを検査。DOMは等値ではなく次node省略で判定。redaction後DOM不整合は下記。全組合せ実行済とはしない。 |
-| Capture時間と省略 | 購読/enable前context、eventごとの期限、原子的unsubscribe残件/overflow、console省略flag | 既存期限・overflow・引数回帰は成功。helperだけの終了coverage限界HB18は残る。 |
+| Browser境界と完全性 | AX/DOM2048、frame32、page128、target/event512、semantic JSON1 MiB、field4 KiB、capture64 KiB/256件 | AXの省略判定を確認するテストは2047/2048/2049と複数・末尾空frameを検査。DOMは等値ではなく次node省略で判定。redaction後DOM不整合は下記。全組合せ実行済とはしない。 |
+| Capture時間と省略 | 購読/enable前context、eventごとの期限、原子的unsubscribe残件/overflow、console省略flag | 期限、queue超過、console引数の省略を確認する既存テストは成功。helperだけの終了coverage限界HB18は残る。 |
 | Browser effect/evidence barrier | 確認分類、入力/focus前action_performed、appのdurable run/provenance、型を区別するredaction | effect後不明・保存testを維持。app全体fence/finalize監査は統合担当。 |
 | Process起動identityと復旧 | Prepare -> Start -> identity/receipt、型付き未生成、receipt不一致/復旧 | 不完全native identityは不明を維持。未生成解放は型付き証拠とPIDゼロ必須。完全identityが返ればreceipt欠落でも補償可能、不一致証拠は拒否。 |
 | Process path/cleanup | 所有/path検査、予約canonical path、Destroy -> Terminate -> Observe -> state削除 | 全tree消滅を再検査しpath/symlink・予期しないfileは拒否。Windows retryは共有違反だけで毎回path再検証。一般TOCTOU監査は統合担当でtrusted-code限界を維持。 |
-| Process port/readiness/log | OS動的予約の保持、起動前bind検査、最後のreadiness観測、独立startup fingerprint | 既存衝突/readiness/終了root/receipt-secret回帰は有効。listener解放後の外部bind競合は説明済で解決済としない。command-readiness再発はAUDIT-CLEANUP-001。 |
+| Process port/readiness/log | OS動的予約の保持、起動前bind検査、最後のreadiness観測、独立startup fingerprint | port衝突、readiness、起点process終了後の子孫、起動記録失敗時の秘密値保護を確認する既存テストは有効。listener解放後の外部bind競合は説明済で解決済としない。command-readiness再発はAUDIT-CLEANUP-001。 |
 | Unix identity/cancel | birth/group証拠、signal前再検証、census制限付きretry、managed消滅待機 | managedの新たな偽不在は未確認。原子的PID/group signal不可の限界は説明済。通常Runnerのsignal成功だけではcensusせず下記仮説は未確定。 |
 | Windows identity/cancel | suspended Job割当、session/nonce/birth、消滅前marker、過去PID優先順、正確なJob handleと空Job待機 | 過去修正を維持。Windows source/testの確認であり今回native実行はbaseline CIが担当。 |
 | Platform横断error伝播 | OSRunner ExitError unwrap、tree不明/output不完全、named command/readiness呼出 | readiness呼出側が型付き不明を失うことを独立確認しAUDIT-CLEANUP-001を裏付ける。重複指摘にしない。 |
@@ -56,7 +56,7 @@ Phase A再現にはrepository外のGo overlayを用いた。統合担当はPhase
   snapshot、set-text `qz`後、上記2048 nodeの確認済DOMを注入しdom-snapshotを呼ぶ。
   登録artifactの存在とencodingが1 MiB以下であることをassertする。
   実際は上記sizeでFAIL、0.079s。製品fileは無変更。
-- 回帰: `TestBrowserDOMBoundsAfterRedaction`と`TestBrowserDOMEncodedBoundary`で
+- 修正を確認するテスト: `TestBrowserDOMBoundsAfterRedaction`と`TestBrowserDOMEncodedBoundary`で
   保存出力と正確な境界を検査するようにした。
 - 修正: Phase Cではredaction後DOMを全node単位のprefixへ絞り1 MiB以下にする。
   残るidentity fieldとmetadataを維持し、実省略がある場合のみartifactと観測の
@@ -68,7 +68,7 @@ Phase A再現にはrepository外のGo overlayを用いた。統合担当はPhase
   COMPOSITION_GAP + BOUNDARY_GAP。過去修正はsemantic/capture最終出力を測ったが
   全browser artifact種別を列挙しなかった。不足oracleは最終DOM byte長。
   予防策はartifactごとの最終encoding上限表でS4検出を期待。
-  最終DOM guardと公開保存artifact回帰は成功済。広い表の統合は統合担当が管理する。
+  最終DOMの上限検査と、公開時に保存したartifactのサイズを確認するテストは成功済。広い表の統合は統合担当が管理する。
 
 留保: product文書が1 MiB以下と明示するのは**semantic JSON**で、
 DOMはboundedと説明するが最終DOMの独立数値はない。adapterはDOM JSONが1 MiBを
@@ -90,13 +90,13 @@ semantic限定の文章を明示DOM仕様として引用しない。
 - 影響: load wait成功にstale semantic証拠を返す。後続入力は別途documentを検証するため、
   この再現は他nodeへのstale入力を示さない。
 - 既存coverage: snapshot中frame変化とURL wait identityはtestするが、
-  追加のload評価段階をまたぐ回帰がない。
+  追加のload評価の前後でdocumentが変わる条件を確認するテストがない。
 - 再現: overlayで`internal/browser/cdp/snapshot_test.go`へ
   `TestAuditLoadWaitDoesNotMixDocuments`を追加。protocol fixtureがsnapshot中はloader
   `old`を返し、Runtime.evaluateで`new`へ変え`complete`を返す。
   mutation到達をassertし戻りsnapshot tokenと再取得frameDocumentを比較する。
   FAIL、0.004s。戻り値`main:old:<同じURL digest>`に対し現状態は`main:new:<同じURL digest>`。
-- 回帰: `TestLoadWaitRechecksDocumentAfterPredicate`でpredicate境界の
+- 修正を確認するテスト: `TestLoadWaitRechecksDocumentAfterPredicate`でpredicate境界の
   単発・連続navigationを検査するようにした。
 - 修正: Phase Cではload完了predicate後にroot document identityを再検査し、
   URL wait同様に不一致時は既存期限内でretryする。連続navigationのtimeoutではsnapshotを返さない。
@@ -107,7 +107,7 @@ semantic限定の文章を明示DOM仕様として引用しない。
   snapshot自身の証明が後続predicate callも保護すると考えた。
   既存mutation testは追加段階前で止まる。全複数call wait predicateを列挙し
   観測・判定間にnavigationを注入すればS3検出が期待できる。
-  新しいnavigation境界回帰は製品修正後に成功した。
+  新しく追加した、navigation後に古い証拠を返さないことを確認するテストは、製品修正後に成功した。
 
 ## AUDIT-CLEANUP-001を裏付けるexecutor証拠
 
@@ -130,12 +130,12 @@ named commandにある型付きrunning barrierと異なる。
 - **Managed停止成功だけで未確認削除:** source追跡で否定。
   `Client.Destroy`はTerminate後Observeを呼び、alive/errorならpath検証済state削除前に拒否する。
 - **Closed-shadow証明がpage overrideを信用:** 既存native fixtureとisolated world解決で否定。
-  外向き探索は全root/hostを検査し4入力全てにoverlay負例がある。
+  外向き探索は全root/hostを検査し4入力全てに、重なった要素に遮られた対象への入力を拒否するテストがある。
 - **通常Unix Runnerのsignal成功が全tree消滅証明:** sourceはWait後SIGKILL成功/ESRCHを
   group censusなしで受け入れる。Windows空Job検査やmanaged待機とは異なる。
   既存late-write testは1秒後を検査する。害のある残存process時間窓は再現しておらず、
   新たな確定findingや重要度を割り当てない。証明済安全とせず明示的調査限界とする。
-- **過去回帰が全て公開組合せを検査:** 否定。HP05/HB19はhelperのみ、
+- **過去の修正を確認するテストが全て公開入口を通した組合せを検査:** 否定。HP05/HB19はhelperのみ、
   HB18はhelper終了coverage、HM06は元test特定が必要。
   Reconcileは現在昇格前にdurableな`lease_ready` eventを確認しており、
   対応付け未完は元の製品不具合が残る証拠ではない。
@@ -144,14 +144,16 @@ named commandにある型付きrunning barrierと異なる。
 
 ## Local検証
 
-選択した過去回帰のrace実行は成功し詳細を過去資料に記録した。
+選択した、過去の修正を確認するテストのrace実行は成功し詳細を過去資料に記録した。
 続くprocess・execx・CDP全体race呼出はGo cacheからPASSを返したため、新規実行とは数えない。
 2つのoverlay再現は期待通り失敗しrepository製品・test fileを変更していない。
 Phase Aでは修正せず、Phase Cの変更は以下に記す。本担当はcommit・push・thread操作を行っていない。
 
 ## Phase Cの回帰証拠
 
-恒久回帰を製品無修正の状態で実行し、2048-node DOMは1,099,648 byteを保存、
+ここでは、修正した動作を繰り返し確認するために残したテストと、その実行結果を示す。
+
+保存したDOMのサイズとload待機のdocument一致を確認する恒久テストを、製品無修正の状態で実行し、2048-node DOMは1,099,648 byteを保存、
 load waitは単発・連続document変更の両方でstale成功を返して失敗した。
 
 - `TestBrowserDOMBoundsAfterRedaction`は公開app入口、実保存artifact、durable run照会を使う。
@@ -163,5 +165,5 @@ load waitは単発・連続document変更の両方でstale成功を返して失�
 - `TestLoadWaitRechecksDocumentAfterPredicate`はnavigation注入到達をassert。
   単発変更は2回目のpredicate評価後に新document証拠だけを返し、
   連続変更はerrorとnil snapshotを返す。
-- CDP対象回帰のrace検査3回はPASS、1.962s。appのDOM対象回帰もrace検査3回PASS、7.938s。
+- CDPのload待機に関する対象テストのrace検査3回はPASS、1.962s。appが保存したDOMを確認する対象テストもrace検査3回PASS、7.938s。
   先行試行は他担当の同時変更中fileのcompile errorで失敗しており、成功として数えない。

@@ -155,7 +155,7 @@ remain outstanding. Historical replay and synthetic fixtures do not replace thes
 observations. Final parent acceptance and archival must reconcile their results.
 
 Independent review found ancestry, identity-preservation and bounded-input defects
-that passing initial fixtures had missed. Regression tests now isolate those
+that passing initial fixtures had missed. Tests now detect recurrence by isolating those
 failure modes. Keep direct acceptance evidence separate from implementation
 status and from assumptions about live review or human observations.
 
@@ -295,11 +295,11 @@ required. Keep future-plan and human-kick evidence pending until actually observ
 | E5 | draft is never selected or auto-promoted. | PASS: draft criteria required; planReadiness never selects or changes draft state. |
 | E6 | multiple active plans are valid. | PASS: graph/readiness fixtures accept multiple active nodes and select at most one. |
 | E7 | Plan IDs are unique and EN/JA synchronized. | PASS: TestLoadPlanGraphPairsAndReferences rejects duplicate IDs and EN/JA metadata drift. |
-| E8 | Plan ID survives path/title/branch deletion. | PASS: identity history survives renaming and merge-source proof does not depend on retained branch refs; deletion regressions. |
+| E8 | Plan ID survives path/title/branch deletion. | PASS: identity history survives renaming and merge-source proof does not depend on retained branch refs; tests verify that evidence remains available after deletion. |
 | E9 | parent and depends_on are distinct and validated. | PASS: separate parent and dependency graphs; hierarchy alone adds no execution dependency. |
 | E10 | missing/self/cyclic dependencies fail. | PASS: missing/self/cyclic-reference negative fixtures. |
 | E11 | default dependency requires completed work merged into base. | PASS: completed status plus base ancestry, identity and unique merge-source trailer required; arbitrary draft-containing commits rejected. |
-| E12 | stacked dependency is explicit. | PASS: explicit stacked enum; actual consumer-branch ancestry regression, declared base only before branch creation. |
+| E12 | stacked dependency is explicit. | PASS: explicit stacked enum; test of the actual consumer-branch ancestry, declared base only before branch creation. |
 | E13 | repoctl plans list/check/graph/ready are deterministic. | PASS: sorted graph/JSON output and deterministic read-only list/check/graph/ready commands. |
 | E14 | runnable selection is deterministic; initial execution concurrency is one. | PASS: priority then ID ordering, one selection and Git-worktree execution-slot checks. |
 | E15 | paused is never used solely as a concurrency queue. | PASS: readiness reports concurrency without mutating states; paused policy requires real blocker. |
@@ -456,7 +456,7 @@ Actual human environment preparation, kick, scenario execution and tracked Plan
 feedback remain pending. M8 also requires the next genuinely new normal ExecPlan;
 no synthetic replay or this bootstrap is relabeled as that forward live evidence.
 
-Independent review of root integration caught (and regression tests now cover):
+Independent review of root integration caught (and tests now check for recurrence of):
 stacked ancestry tested against a changed base rather than the consumer branch;
 quoted YAML IDs bypassing completed-section checks; deletion of all lifecycle
 pairs bypassing identity preservation. The root additionally tightened merge proof
@@ -478,8 +478,8 @@ passed. Live `plans gate --plan EP-OPS-001 --pr 14 --repo mahcialet/agent-env`
 returned BLOCKED with observed HEAD/base and the concrete missing trusted-base
 policy reason; no merge was attempted. The final model check also rejects a
 stacked dependency that is abandoned even if a caller supplies stale proof.
-A real-Git regression deletes the merged fixture branch and still verifies its
-Plan-specific merge evidence. Both focused tests passed.
+A test for loss of merge evidence uses real Git: it deletes the merged fixture
+branch and still verifies its Plan-specific merge evidence. Both focused tests passed.
 
 Delivery commits also include `9cca40b`. Its local full `repoctl check` and
 `go test -race ./tools/repoctl -count=1` passed (race: 9.616s). The English and
@@ -520,7 +520,7 @@ verified immutable merge evidence instead of the deleted branch. A two-parent
 merge supplies the source head; a squash supplies only the delivered squash commit,
 which the consumer must actually contain. No arbitrary historical tip is inferred.
 
-Validation: isolated Git regression tests cover valid stacked provenance through
+Validation: tests in isolated Git repositories cover valid stacked provenance through
 the command entry point, bad prerequisite/consumer trailers, absent consumer
 commits, missing ancestry, completed branch deletion and incorrect merge evidence.
 `go test -race ./tools/repoctl -count=1` passed (12.162s); full `repoctl check`
@@ -533,14 +533,14 @@ Addressed all four new threads: active candidates now resolve their base even
 without dependencies; replay requires the source parent to introduce/change the
 archive and match the merge blob; bounded Human Validation JSON rejects duplicate
 keys recursively before typed decoding; full commit IDs accept SHA-1 and SHA-256.
-Regression tests cover missing bases, unrelated replay merges and merge-only
+Tests for recurrence cover missing bases, unrelated replay merges and merge-only
 archive edits, nested/escaped duplicate JSON keys without probes or evidence
 writes, and actual SHA-256 Git ancestry plus accepted/rejected metadata lengths.
 
 Independent review caught an over-broad first base check: deleted bases of
 noncandidate historical Plans must not block all selection. Mandatory resolution
 is therefore limited to active candidates; draft/paused/completed/abandoned
-records with absent bases are covered by regression tests. The actual PR #12
+records with absent bases are tested to ensure they do not block selection as a whole. The actual PR #12
 historical replay still passes. Integrated full harness and repoctl race passed
 before this final scope correction; final validation is recorded in PR replies.
 
@@ -559,7 +559,7 @@ are rejected. Fresh evidence directories are reserved before executable lookup
 or TCP probes, so unusable destinations do not cause unrecorded external probes.
 Independent review identified that raw LF/CRLF comparison would incorrectly reject
 clean Windows checkouts; compare strict decoded contract values while retaining
-the committed blob as digest authority. Regression coverage includes committed
+the committed blob as digest authority. Tests that preserve the repaired validation rules cover committed
 metadata, explicit branch resolution, contract modification/reconstruction, clean
 CRLF checkout and invalid evidence destinations without network probes.
 Final harness/race results and delivery commit are recorded in the review replies.
@@ -577,7 +577,7 @@ consumer alone or its surviving branch.
 Human Validation also requires the selected English/Japanese Plan metadata to
 match the contract's committed revision before effects. Both named executable and
 endpoint prerequisite lists must be nonempty; malformed contracts cannot produce
-READY without checks. Regression tests cover consumer-rewritten dependency bases,
+READY without checks. Tests for recurrence of these validation gaps cover consumer-rewritten dependency bases,
 tag collisions, unsatisfied completed dependencies, dirty/untracked Human Plans
 and empty prerequisite lists. Final harness/race evidence accompanies PR replies.
 
@@ -588,7 +588,7 @@ now resolve explicit local heads, so same-named tags cannot substitute their
 commits. FINDING follow-up review Plan metadata must match the contract revision
 in both languages before evidence creation. Translation bookkeeping fields are
 accepted only as strings in Japanese Plan paths; English Plans reject them.
-Regression tests cover branch/tag collisions and tag-only refs, untracked/dirty
+Tests for recurrence of incorrect acceptance cover branch/tag collisions and tag-only refs, untracked/dirty
 follow-up Plans, and invalid translation-field paths/types.
 
 The multi-host contract no longer requires client-local ADB. Android scenario
@@ -607,15 +607,15 @@ previous lifecycle fixture's short readiness budget. Fixed the shared counter
 with atomic access and changed mock cleanup to join its hijacked WebSocket handler;
 HTTP server shutdown alone does not join upgraded connections. Cleanup is idempotent.
 
-A new regression holds the handler behind an explicit channel, cancels the client,
+A new test for recurrence holds the handler behind an explicit channel, cancels the client,
 checks that cleanup does not complete during a bounded observation interval, then
 releases and joins the handler. This exercises the cancellation overlap rather
 than relying on CI load. A temporary Go overlay restoring the old cleanup caused
 this test to fail with `cleanup returned while handler was blocked`; the corrected
-implementation passed. The regression uses a bounded negative wait, so it is not
+implementation passed. The test uses a bounded negative wait, so it is not
 claimed to eliminate every scheduling dependency.
 
-The new regression and load-wait test passed race checks with `-count=50 -cpu=1,4`
+The new test and load-wait test passed race checks with `-count=50 -cpu=1,4`
 (37.431s). Full repoctl check passed. Independent review found no blocking issue;
 related cancellation fixtures were inspected for handler lifetime and shared state.
 Production timeouts, cancellation behavior and test assertions were not weakened.

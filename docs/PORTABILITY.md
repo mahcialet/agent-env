@@ -110,7 +110,18 @@ CI defines native unit/harness jobs for Windows, macOS, and Linux on both suppor
 
 ### Historical MVP evidence and gaps
 
-CI 34124194139 on c641286 passed all six native OS/Go jobs and all five CGO-disabled builds. Linux race and actual Compose integration passed in the same run; local real fixtures also passed, including concurrent projects, Unicode worktrees, multi-repository pins, named evidence, rollback and dirty cleanup. The [completed implementation plan](exec-plans/completed/agent-env-mvp.md) records the full evidence and native regression fixes. Actual Docker integration on Windows/macOS was not run and remains dependent on suitable runners.
+CI 34124194139 on c641286 passed all six native OS/Go jobs and all five
+CGO-disabled builds. Linux data-race checks and actual Compose integration passed
+in the same run.
+
+Local tests using real environments also passed, including concurrently live
+projects, Unicode worktrees, pinned commits across multiple repositories, named
+evidence, rollback after failure and cleanup of changed sources. The
+[completed implementation plan](exec-plans/completed/agent-env-mvp.md) records the
+full evidence and fixes for defects found during native OS testing.
+
+Actual Docker integration on Windows/macOS was not run and remains dependent on
+suitable runners.
 
 ## Android persistent processes
 

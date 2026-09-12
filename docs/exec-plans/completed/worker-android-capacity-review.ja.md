@@ -1,6 +1,6 @@
 ---
 translation_of: docs/exec-plans/completed/worker-android-capacity-review.md
-source_sha256: f3fe9fb88fa12826f7255c27653a6a93de39456861491a949bf4a5ba87dc2ffb
+source_sha256: cdc50ec08782739d5171a869be7a6536c7aff531e1e5276eae1e7b959e11fb0a
 status: completed
 owner: maintainers
 last_verified: 2026-09-09
@@ -51,7 +51,7 @@ internal/cli/remote_services.goが枠数を広告し、internal/store/sqlite/and
 
 ## Plan of Work
 
-境界値の回帰テスト、allocator容量の共有、日英のflag説明を追加する。
+容量境界で不正なworker設定を拒否するテスト、allocator容量の共有、日英のflag説明を追加する。
 
 ## Concrete Steps
 
@@ -75,8 +75,8 @@ CLIは既にSQLiteを参照している。allocatorのポート範囲は維持�
 
 検証証拠: 修正前のCLI境界値テストは66と1000で失敗した（0.005秒）。
 `go run ./tools/repoctl check`が成功し、unit・vet・文書・生成物・architecture検査を通過した。
-CLI/SQLiteのraceも成功した（46.073秒/15.922秒）。既存の実65予約による枯渇・rollbackの
-回帰テストも含む。最初のharnessは新規日本語Planの英語版リンク不足を検出した。
+CLI/SQLiteのraceも成功した（46.073秒/15.922秒）。既存の実65予約による容量の使い切りとrollbackを確認する
+テストも含む。最初のharnessは新規日本語Planの英語版リンク不足を検出した。
 リンクを追加し、検査規則を変更せずharnessが成功した。
 
 独立した読み取り専用レビューで問題はなかった。`07c83b4`をpushし、

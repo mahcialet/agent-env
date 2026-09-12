@@ -22,7 +22,7 @@ valid links. Reply to and resolve both review threads after verified fixes are p
 ## Progress
 
 - [x] (2026-09-09) Confirm clean PR branch at6b13cd4 and read both unresolved threads.
-- [x] (2026-09-09) Reproduced and repaired both defects; added malformed/missing-type and all-target absence regressions.
+- [x] (2026-09-09) Reproduced and repaired both defects; added malformed/missing-type and tests preventing incorrect all-target absence proofs.
 - [x] (2026-09-09) Independently review changes and run harness, race and relevant native CI.
 - [x] (2026-09-09) Pushed f10ecd4/de6da4f/ab71b64; replied to both threads and confirmed resolved state.
 - [x] (2026-09-09) Record outcomes and archive this bilingual plan.
@@ -33,9 +33,9 @@ valid links. Reply to and resolve both review threads after verified fixes are p
 
 - 2026-09-09: all PR Verify34298063439 jobs, both Browser native runs and Release preview34298063300 pass atab71b64. Duplicate push Verify34298060578 Windows1.27 failed unchanged TestRunnerReapsOrdinaryDescendants/timeout: the 300ms timeout expired before the helper emitted its readiness marker. This is a fixture startup precondition failure, not evidence that a descendant survived cleanup. The same-head PR Windows1.27 job passed. Rerun the failed job without changing product/tests and retain both results; the precise scheduling cause is not established.
 
-- 2026-09-09 independent review: initial popup-race repair passed full harness/race and Linux Browser integration, but a malformed census item with the created ID and missing type was filtered out and falsely proved absence. A private negative failed0.024s. Require complete target identity/type and compare exact absence against all targets, not only page-filtered results. Revalidate this repair before push. Markdown independent race×5 passes2.663s; existing visible-source-link filtering remains unchanged. Command lock-probe race×10 passes4.390s with all original assertions.
+- 2026-09-09 independent review: initial popup-race repair passed full harness/race and Linux Browser integration, but a malformed census item with the created ID and missing type was filtered out and falsely proved absence. A private test requiring missing-type census entries not to prove absence failed0.024s, detecting this defect. Require complete target identity/type and compare exact absence against all targets, not only page-filtered results. Revalidate this repair before push. Markdown independent race×5 passes2.663s; existing visible-source-link filtering remains unchanged. Command lock-probe race×10 passes4.390s with all original assertions.
 
-- 2026-09-09: inline-code anchor regression failed four fixtures before repair; full repoctl package race passes8.915s after splitting block/inline filtering. An early full harness attempt overlapped unfinished CDP test formatting and stopped at format-check; rerun after files stabilize. PR Verify34296197727 Windows Go1.26 failed only the final fresh-lock release probe in TestNamedCommandFailuresRetainEvidence/sleep, after timed-out command/run/artifact assertions passed. The probe used1s TTL while the real command uses2min. Same-head push CI passed. Adjust only probe TTL to1min to avoid making lock availability verification depend on subsecond DB/scheduler latency; keep every assertion and production fence unchanged. Recheck native CI.
+- 2026-09-09: inline-code anchor recognition test failed four fixtures before repair; full repoctl package race passes8.915s after splitting block/inline filtering. An early full harness attempt overlapped unfinished CDP test formatting and stopped at format-check; rerun after files stabilize. PR Verify34296197727 Windows Go1.26 failed only the final fresh-lock release probe in TestNamedCommandFailuresRetainEvidence/sleep, after timed-out command/run/artifact assertions passed. The probe used1s TTL while the real command uses2min. Same-head push CI passed. Adjust only probe TTL to1min to avoid making lock availability verification depend on subsecond DB/scheduler latency; keep every assertion and production fence unchanged. Recheck native CI.
 
 The current inline-span sanitizer replaces code contents with `code`, rather than
 simply deleting them; the review correctly identifies a rendered-anchor mismatch.
@@ -54,8 +54,9 @@ simply deleting them; the review correctly identifies a rendered-anchor mismatch
 Completed2026-09-09. Both PR #11 review threads are fixed, replied to and resolved.
 
 - `f10ecd4`: preserve inline code text for heading anchors while retaining the
-  existing hidden-block and provenance/link filtering. Four positive/negative
-  docsCheck regressions failed before repair; independent focused race×5 passed2.663s.
+  existing hidden-block and provenance/link filtering. Four docsCheck tests
+  checking acceptance of valid heading-anchor links and rejection of nonexistent
+  substituted-anchor links failed before repair; independent focused race×5 passed2.663s.
 - `de6da4f`: change only the post-command lock-release probe TTL from1s to1min.
   All status, evidence, reacquisition and release assertions remain. Focused race×10
   passed4.390s; the original failed Windows job also passed unchanged on rerun.
@@ -64,7 +65,7 @@ Completed2026-09-09. Both PR #11 review threads are fixed, replied to and resolv
   and exact absence across all target types. Missing/ambiguous proof remains
   unconfirmed; existing targets and concurrent popups are preserved.
 
-The original popup regression failed before repair. Independent review found
+The original test detecting popup-driven page overflow failed before repair. Independent review found
 missing-type filtering could falsely prove absence; the corrected17-case test
 and127/128/129 boundaries passed independent race×5 2.224s.
 Full `repoctl check` and full `go test -race ./...` pass; final CDP race8.233s,

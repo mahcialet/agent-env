@@ -112,7 +112,7 @@ Relative source repositories resolve from the control repository. Runtime files 
 
 ### Selected component and service closure
 
-Selected components follow deterministic dependency order. Compose's service dependency closure is also included. The executed normalized configuration contains only selected services and their reachable networks, volumes, configs, and secrets, preventing unselected global resources from entering cleanup.
+Selected components follow deterministic dependency order. Compose service selection also includes every direct and indirect dependency of the selected services. The executed normalized configuration contains only those services and the networks, volumes, configs, and secrets they reference, preventing unselected global resources from entering cleanup.
 
 ### Compose provider selection
 

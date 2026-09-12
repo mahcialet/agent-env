@@ -142,12 +142,12 @@ Out of scope:
 - [x] 2026-09-09: Final third-review implementation dda35cd435ffeea5679ab345b47d199e85cea546 passed PR Verify 34288757443 (12 jobs), PR Browser native 34288757444 (all three OSes), Release preview 34288757521 (build and all smoke jobs), push Verify 34288753918 and push Browser native 34288753905. All five findings received implementation and final-validation replies and are resolved with archival.
 
 
-- [x] 2026-09-09: Final integrated repoctl check passed; full repository race passed; sandbox-enabled Linux native race passed (10.082s). Independent cross-review passed after restoring six mutation test callbacks (race x10, 1.582s). Post-redaction snapshot regressions passed (6.369s) including >2 MiB expansion, persisted 1 MiB artifact limit, retained target identity and completed durable run. Multi-OS CI was pending at this checkpoint and is closed by the final evidence above.
+- [x] 2026-09-09: Final integrated repoctl check passed; full repository race passed; sandbox-enabled Linux native race passed (10.082s). Independent cross-review passed after restoring six mutation test callbacks (race x10, 1.582s). Tests of post-redaction snapshot limits, identity and evidence retention passed (6.369s) including >2 MiB expansion, persisted 1 MiB artifact limit, retained target identity and completed durable run. Multi-OS CI was pending at this checkpoint and is closed by the final evidence above.
 
-- [x] 2026-09-09: Implemented third-review five fixes with fail-before regressions. Closed-shadow native race passed (11.031s), actions/focus race x3 passed (1.245s), AX snapshot/gone boundary race x10 passed (15.425s), capture/network/transport race x10 passed (44.414s), final console/capture race x10 passed (3.091s). Integrated harness/full race and fresh native CI were pending at this checkpoint and are closed by the final evidence above.
+- [x] 2026-09-09: Implemented third-review five fixes with tests detecting the same defects before the repair. Closed-shadow native race passed (11.031s), actions/focus race x3 passed (1.245s), AX snapshot/gone boundary race x10 passed (15.425s), capture/network/transport race x10 passed (44.414s), final console/capture race x10 passed (3.091s). Integrated harness/full race and fresh native CI were pending at this checkpoint and are closed by the final evidence above.
 
 
-- [x] 2026-09-09: Complete the third PR #10 review: post-redaction semantic limits, closed-shadow input, capture subscription deadline, exact AX node boundary and omitted console arguments; require regression/harness/native CI evidence before archival.
+- [x] 2026-09-09: Complete the third PR #10 review: post-redaction semantic limits, closed-shadow input, capture subscription deadline, exact AX node boundary and omitted console arguments; require evidence from tests detecting these defects, the harness and native CI before archival.
 
 - [x] 2026-09-09: Final implementation cdcec91807a27b6215d2aeb0f6533ed8c96437cd passed all fresh gates: PR Verify 34252382308 (12 jobs), PR Browser native 34252379866 (Linux 11.50s, macOS 14.04s, Windows 30.98s), Release preview 34252379587 (build and three smoke jobs), push Verify 34252373749 and push Browser native 34252373761. All eight second-review threads received substantive replies; final CI confirmation and Resolve accompany archival.
 
@@ -160,7 +160,7 @@ Out of scope:
 - [x] 2026-09-09: Implemented eight review repairs. App targeted race passed (2.656s); capture/transport isolated race x10 passed (4.600s); CDP race passed (2.439s); sandbox-enabled Linux native with strengthened frame fixtures passed (8.633s, Chrome 152.0.7977.64/CDP 1.3).
 
 
-- [x] 2026-09-09: Address the second PR #10 review (eight findings), demonstrate regressions, and obtain fresh harness and three-OS CI evidence before re-archiving.
+- [x] 2026-09-09: Address the second PR #10 review (eight findings), demonstrate tests detecting the same defects, and obtain fresh harness and three-OS CI evidence before re-archiving.
 
 ### PR #10 review follow-up (2026-09-09)
 
@@ -173,14 +173,14 @@ review fixes and a further Windows cleanup failure. All final gates passed at
 `391288c`, and all nine review threads were replied to and resolved before this
 bilingual re-archive on 2026-09-09.
 
-- [x] Classify iframe access by browser-reported security origins; cover inherited, blob and opaque origins and the native timing regression.
+- [x] Classify iframe access by browser-reported security origins; cover inherited, blob and opaque origins and the test detecting the native timing defect.
 - [x] Require a nonempty URL wait substring and reject role on URL waits.
 - [x] Bound every persisted network string and mark DOM-name truncation.
 - [x] Reject disappearance conclusions from truncated snapshots.
 - [x] Subscribe only to required capture events; ignore unrelated events without disconnecting ordinary operations.
 - [x] Persist semantic page/snapshot/node provenance before input, including uncertain runs, without text disclosure.
 - [x] Correct bilingual architecture status and update contract/decision evidence.
-- [x] Complete regression/race/harness and real three-OS native CI; reconcile final evidence before archival.
+- [x] Complete tests of existing behavior and repaired defects, race checks and the harness and real three-OS native CI; reconcile final evidence before archival.
 - [x] Reply to and resolve every addressed PR #10 review thread.
 
 - [x] Merge PR #9 and record exact `master` revision.
@@ -246,7 +246,7 @@ browser version, protocol version, command/test/workflow and result.
   backend effect, later-console Unicode redaction, and the complete fixture below.
 - Six `CGO_ENABLED=0` CLI cross-builds passed: Windows/Darwin/Linux × amd64/arm64.
   These are compilation evidence only. Native Windows/macOS browser CI has not run.
-- `TestArchitectureBoundaries` includes browser adapter dependency negatives;
+- `TestArchitectureBoundaries` includes tests detecting forbidden dependencies involving the browser adapter;
   arch-check passed. Final docs-check is rerun after this evidence update.
 - Full Docker `repoctl test-integration` subsequently passed. Explicit opt-in
   prerequisite tests retain their designed skips; this run does not claim optional
@@ -257,29 +257,29 @@ browser version, protocol version, command/test/workflow and result.
 
 The final same-document URL digest, allowlisted AX states, Windows mixed-separator
 profile validation and redacted-label matching refinements are implemented.
-`go run ./tools/repoctl check` PASS after these refinements, including architecture
-negative fixtures and translation checks. The final real Linux native race fixture
+`go run ./tools/repoctl check` PASS after these refinements, including architecture tests
+detecting forbidden dependencies and translation checks. The final real Linux native race fixture
 PASS (8.819s package / 7.81s test), Chrome 152.0.7977.64 / CDP 1.3, sandbox enabled.
 Earlier pending local refinement checks are closed by this result. Windows/macOS
 browser execution and published final CI remain pending; this plan stays active.
 
 ## Surprises & Discoveries
 
-- 2026-09-09: Independent review found an existing stale-target regression fixture lacked the newly required isolated execution context. It could pass before invoking its mutation callback. Added the context fixture and mandatory callback assertion so stale-target tests exercise their intended refusal path. Integrated harness and full race passed; stronger persisted snapshot checks also verify artifact bytes, retained node identities and passed durable run state.
+- 2026-09-09: Independent review found an existing test fixture checking stale-target rejection lacked the newly required isolated execution context. It could pass before invoking its mutation callback. Added the context fixture and mandatory callback assertion so stale-target tests exercise their intended refusal path. Integrated harness and full race passed; stronger persisted snapshot checks also verify artifact bytes, retained node identities and passed durable run state.
 
-- 2026-09-09: Short-secret redaction expands safe provider strings beyond per-field and semantic JSON budgets; a larger regression also exceeds the former 2 MiB app guard. Exact 2048-node snapshots (single/multiple frames and empty trailing frame) were falsely truncated. Native closed-root click failed before repair because hit testing descended via inaccessible host.shadowRoot. Slow domain enable exceeded a 20 ms capture duration by over 500 ms, and omitted console values incorrectly reported complete evidence. Existing bulk-event tests assumed enable time was excluded; their duration budgets now include enable processing with event counts and assertions preserved.
+- 2026-09-09: Short-secret redaction expands safe provider strings beyond per-field and semantic JSON budgets; a larger input reproducing the same overflow also exceeds the former 2 MiB app guard. Exact 2048-node snapshots (single/multiple frames and empty trailing frame) were falsely truncated. Native closed-root click failed before repair because hit testing descended via inaccessible host.shadowRoot. Slow domain enable exceeded a 20 ms capture duration by over 500 ms, and omitted console values incorrectly reported complete evidence. Existing bulk-event tests assumed enable time was excluded; their duration budgets now include enable processing with event counts and assertions preserved.
 
 
-- 2026-09-09: Fresh native CI at 859ca74 failed the new focus-redirection regression on macOS and Windows in both push run 34251804805 and PR run 34251809149; Linux passed. The key operation returned success instead of uncertain refusal. Investigating browser tab focus/event dispatch before claiming acceptance; no test or sandbox conditions are weakened.
+- 2026-09-09: Fresh native CI at 859ca74 failed the new test rejecting input after focus redirection on macOS and Windows in both push run 34251804805 and PR run 34251809149; Linux passed. The key operation returned success instead of uncertain refusal. Investigating browser tab focus/event dispatch before claiming acceptance; no test or sandbox conditions are weakened.
 
 - 2026-09-09: Real Chrome exposed an inadequate URL mock: Page.Frame.url omits the fragment and returns it separately as urlFragment. The new native query wait passed but fragment wait timed out. Added urlFragment to frame decoding, transient predicate matching and document identity; native validation must pass before commit.
 
 - 2026-09-09: The first integrated docs-check rejected the reopened Japanese translation_of path still pointing to completed/. Corrected the metadata and reviewed the paired content; full race passed while docs validation was still pending.
 
-- 2026-09-09: Independent review found that JavaScript readback exceptions/missing boolean values must also remain uncertain after input. Added explicit boolean/no-exception validation. The app artifact regression now asserts that registered run.json was found, avoiding vacuous persistence checks.
+- 2026-09-09: Independent review found that JavaScript readback exceptions/missing boolean values must also remain uncertain after input. Added explicit boolean/no-exception validation. The app artifact-persistence test now asserts that registered run.json was found, avoiding vacuous persistence checks.
 
 
-- 2026-09-09: The second PR review found post-effect confirmation, focus proof, DOM origin scope, unrelated-tab topology, post-redaction size limits, raw URL predicates, queued capture truncation, and stored manifest digest gaps. Reopened the plan: earlier passing CI is historical evidence, not acceptance of these repairs. The first local harness attempt stopped at formatting of a new regression test; formatting will be corrected before validation.
+- 2026-09-09: The second PR review found post-effect confirmation, focus proof, DOM origin scope, unrelated-tab topology, post-redaction size limits, raw URL predicates, queued capture truncation, and stored manifest digest gaps. Reopened the plan: earlier passing CI is historical evidence, not acceptance of these repairs. The first local harness attempt stopped at formatting of a new test detecting the defect; formatting will be corrected before validation.
 
 - 2026-09-09 — At `3d3fce5`, push Browser native 34246852839 passed all three
   OSes, but PR Browser native 34246856039 failed Windows during final profile
@@ -300,9 +300,9 @@ browser execution and published final CI remain pending; this plan stays active.
   Independent review also found a collection-time race: origins checked only before
   AX retrieval could label a navigated document with old frame identity. Final
   frame/tree/origin and target consistency checks must discard all evidence if
-  collection crosses that change; the deterministic regression simulates it.
+  collection crosses that change; the deterministic test reproduces this defect.
 
-- 2026-09-09 — PR #10 regression tests failed before repair: URL waits accepted
+- 2026-09-09 — Tests detecting the PR #10 defects failed before repair: URL waits accepted
   a role-only predicate; semantic input persisted no page/snapshot/node provenance;
   `gone` succeeded when AX bounds omitted the target; DOM names were shortened
   without reporting truncation; network metadata allowed 1,230,500 retained string
@@ -419,7 +419,7 @@ Do not weaken identity or stale-reference checks to make dynamic pages easier.
 
 - 2026-09-09 — Persist semantic page ID, source snapshot run ID and node reference
   in CommandRun before input. Preserve them for uncertain results and run.json,
-  but never persist set-text content. Regression providers inspect the store
+  but never persist set-text content. Providers in the tests of this behavior inspect the store
   during input, and successful/uncertain click, set-text, key and scroll results
   must retain the same provenance. URL waits separately require a nonempty
   substring and reject role-only or role-plus-substring requests before attachment.
@@ -457,11 +457,11 @@ Do not weaken identity or stale-reference checks to make dynamic pages easier.
 - 2026-09-08 — Send CDP's explicit `selectAll` editing command on the private
   selection keydown, retaining native Input events and transient equality readback.
   A platform accelerator alone did not reliably select nonempty text on macOS.
-  Protocol regression covers Linux/macOS/Windows keydown and keyup semantics.
+  Tests preserving protocol behavior cover Linux/macOS/Windows keydown and keyup semantics.
 - Windows native process birth proof intentionally includes a Unicode guardian
   path. A broad `日本語` substring assertion confused that trusted path with entered
   text. Use a distinct input prefix and scan decoded JSON string values for the
-  actual entered Unicode string (including quotes/backslashes), with regression
+  actual entered Unicode string (including quotes/backslashes), with a test
   coverage proving escaped secrets are detected and legitimate proof paths accepted.
   Production redaction and its acceptance requirement remain unchanged.
 - Add failed-native-test process diagnostics before lease cleanup to obtain Linux
@@ -609,7 +609,7 @@ Third-review completion (2026-09-09): all five findings are fixed and fresh mult
 Earlier review completion and native results below are historical; current third-review acceptance is recorded above.
 
 
-Second-review completion (2026-09-09): all eight findings are repaired in 859ca74 and cdcec91. Post-effect errors preserve uncertainty; active-document/target focus is proved after activation and selection; DOM origin/topology and unrelated-tab boundaries are enforced; capture remains bounded after redaction and marks queued omissions; URL matching includes transient query/fragment while saved evidence is scrubbed; stored manifest digest is checked. Fresh CI at cdcec91 passed every gate listed above. The macOS/Windows native focus failure at 859ca74 is retained as historical evidence, not counted as success. Activating and revalidating the page fixed the strengthened native scenario on all three OSes; the precise OS/browser event-delivery mechanism was not instrumented, so its original explanation remains a hypothesis. Regression tests, independent review and real multi-OS browser tests all contributed; mock URL shape and Linux-only native evidence were insufficient by themselves.
+Second-review completion (2026-09-09): all eight findings are repaired in 859ca74 and cdcec91. Post-effect errors preserve uncertainty; active-document/target focus is proved after activation and selection; DOM origin/topology and unrelated-tab boundaries are enforced; capture remains bounded after redaction and marks queued omissions; URL matching includes transient query/fragment while saved evidence is scrubbed; stored manifest digest is checked. Fresh CI at cdcec91 passed every gate listed above. The macOS/Windows native focus failure at 859ca74 is retained as historical evidence, not counted as success. Activating and revalidating the page fixed the strengthened native scenario on all three OSes; the precise OS/browser event-delivery mechanism was not instrumented, so its original explanation remains a hypothesis. Tests detecting the same defects, independent review and real multi-OS browser tests all contributed; mock URL shape and Linux-only native evidence were insufficient by themselves.
 
 
 Historical first-review outcomes follow; current second-review completion is recorded above.
@@ -618,7 +618,7 @@ PR #10 review completed on 2026-09-09. Commit `3d3fce5` repairs origin proof,
 wait predicates, truncation/byte budgets, event subscriptions and durable input
 target provenance; `391288c` adds bounded Windows sharing-violation cleanup after
 native absence proof. Both preserve ownership, sandboxing, privacy and the
-process/CDP responsibility boundary. Regression tests first reproduced the defects;
+process/CDP responsibility boundary. Tests first reproduced the defects;
 real browser tests exposed inherited-origin placeholders and omitted OOPIFs that
 mocks had missed. Independent review added post-collection identity checks so a
 navigation cannot publish partial evidence under an old origin/loader.
@@ -653,7 +653,7 @@ acceptance table and dated checkpoints give direct evidence and its limits.
 
 Independent review caught an early unredacted fence-loss return and authority
 corruption from generic JSON redaction; both received targeted fixes and
-regressions. Native CI then exposed macOS selection behavior, a Windows Unicode
+tests detecting the same defects. Native CI then exposed macOS selection behavior, a Windows Unicode
 proof-path false positive and Ubuntu's sandbox prerequisite. Explicit CDP editing,
 decoded secret assertions and narrowly scoped runner provisioning resolved them.
 A browser-fixture setup deadline was isolated from tested operation deadlines.
@@ -942,9 +942,9 @@ Complete acceptance evidence and retrospective before archiving both plans.
 | --- | --- | --- |
 | B1 | Existing Compose/Podman/Android/Flutter/UI/process behavior remains valid. | Full local race/harness and Docker integration passed. Optional prerequisite-specific opt-in tests retain designed skips; no additional native Android/Podman pass is claimed. |
 | B2 | Browser explicitly binds one owned process runtime and named TCP CDP port; no external-browser discovery. | `TestBrowserManifestContract`, `TestBrowserManifestNegativeFixtures`, `TestBrowserRequiresProcessRuntime`; `TestEndpointBoundary` rejects foreign endpoint authorities. |
-| B3 | Managed browser always uses a private runtime-owned user-data-dir, never the user's default profile. | `TestPrivateProfileFlags` and config negative fixtures; Linux `TestBrowserNativeCLI` checks two distinct state directories, PIDs and CDP ports. |
+| B3 | Managed browser always uses a private runtime-owned user-data-dir, never the user's default profile. | `TestPrivateProfileFlags` and tests rejecting configurations that violate private-profile requirements; Linux `TestBrowserNativeCLI` checks two distinct state directories, PIDs and CDP ports. |
 | B4 | Every browser operation revalidates persistent process identity before CDP connection. | `TestBrowserLifecycleGuards` refuses dead/uncertain ownership before provider calls; `TestNodeChangesDuringOwnershipVerificationNeverInputs` verifies the action recheck. |
-| B5 | Unrelated process port reuse cannot be mistaken for the owned browser. | `TestBrowserPIDAndDiscoveryProof` rejects wrong PID, version and endpoint; `TestEndpointBoundary` rejects foreign ports. These controlled transport negatives do not claim a real kernel port-reuse race. |
+| B5 | Unrelated process port reuse cannot be mistaken for the owned browser. | `TestBrowserPIDAndDiscoveryProof` rejects wrong PID, version and endpoint; `TestEndpointBoundary` rejects foreign ports. These tests use controlled transport responses to verify mismatch rejection; they do not claim a real kernel port-reuse race. |
 | B6 | Capabilities reports product/version/protocol with no navigation/input effects. | Linux `TestBrowserNativeCLI` records Chrome 152.0.7977.64 / CDP 1.3 and verifies the original page stays about:blank after capabilities. |
 | B7 | Page enumeration is deterministic; multiple pages require unambiguous selection. | Linux `TestBrowserNativeCLI` creates/closes a second page and rejects implicit multi-page snapshot; adapter sorts page IDs. |
 | B8 | Accessibility snapshot returns deterministic versioned JSON and compact semantic text. | `TestBrowserSnapshotRegistrationAndSemanticInput` verifies registered snapshot artifacts; native fixture checks semantic heading/button/textbox roles and iframe/shadow nodes. |
@@ -962,7 +962,7 @@ Complete acceptance evidence and retrospective before archiving both plans.
 | B20 | Destroy cannot race past an in-flight mutating browser operation. | `TestBrowserMutationFenceBlocksDestroy`, `TestBrowserUncertainMutationRetainsCleanupBarrier`, `TestBrowserEvidenceFailureRetainsBarrier`. |
 | B21 | Manual browser process death causes later CDP action refusal. | Native fixture kills the second browser root and verifies subsequent browser pages refuses; show reports non-ready with unchanged historical PID. |
 | B22 | Profile deletion occurs only after process-tree absence is proven; uncertainty retains/quarantines. | Native fixture destroys both leases and checks state/profile directories absent; generic `TestMissingLaunchingReceiptIsUncertain` and browser uncertain/evidence barriers preserve conservative cleanup. |
-| B23 | Browser process lifecycle remains owned by persistent-process runtime; no duplicate PID cleanup. | `TestArchitectureBoundaries` browser dependency negatives and arch-check passed; native fixture cleanup calls ordinary destroy, not CDP Browser.close. |
+| B23 | Browser process lifecycle remains owned by persistent-process runtime; no duplicate PID cleanup. | `TestArchitectureBoundaries` tests detecting forbidden browser dependencies and arch-check passed; native fixture cleanup calls ordinary destroy, not CDP Browser.close. |
 | B24 | No automatic browser restart. | `TestBrowserLifecycleGuards` checks start count unchanged; native manual-death fixture keeps historical PID and never returns ready. |
 | B25 | Native Windows | PASS: `391288c`, PR Browser native 34247636411, windows/amd64, Chrome 152.0.7977.82 / CDP 1.3, real CLI fixture 26.76s including sandbox-access guard and normal cleanup. |
 | B26 | Native macOS | PASS: `391288c`, PR Browser native 34247636411, darwin/arm64, Chrome 152.0.7977.82 / CDP 1.3, real CLI fixture 9.60s. |
@@ -1083,7 +1083,7 @@ Final native evidence at `b48ab643a3e01029d880122b3c7c6830d82ed325`:
 [Browser native 34235476126](https://github.com/mahcialet/agent-env/actions/runs/34235476126)
 passed all three jobs with Chrome 152.0.7977.82 / CDP 1.3 and Go 1.27.
 Linux/amd64 native fixture: 8.16s; Windows/amd64: 29.97s; macOS/arm64: 19.62s.
-The JSON privacy-detector regression also passed on all three platforms. These
+The test detecting JSON privacy-classification errors also passed on all three platforms. These
 results supersede earlier native-pending checkpoints without erasing the failures.
 
 Final closure (2026-09-08): Verify 34235476057 completed successfully at `b48ab64`
@@ -1093,7 +1093,7 @@ from that verified revision only reconciles bilingual documentation and archives
 this plan; no runtime or test behavior changes are part of the archive milestone.
 
 2026-09-09 review checkpoint: targeted app URL/provenance race passed (2.056s);
-full app and CDP race passed (36.887s / 1.735s). Capture/transport regressions
+full app and CDP race passed (36.887s / 1.735s). Tests preserving capture/transport behavior
 passed ten race repetitions (4.392s). Independent review found no additional
 defect in app/provenance, transport/capture or scoped Windows ACL provisioning.
 Documentation checks passed. Origin proof/native acceptance is still being
@@ -1114,7 +1114,7 @@ fixture now also rejects the previously observed executable sandbox access-denia
 log. Fresh multi-OS CI and thread replies remain required before completion.
 
 2026-09-09 cleanup checkpoint: process race passed (1.964s), targeted cleanup/
-Destroy regressions passed ten race repetitions (2.916s), and Windows amd64/arm64
+Tests detecting the destroy defects passed ten race repetitions (2.916s), and Windows amd64/arm64
 test binaries cross-compiled. A native Windows test holds an actual file without
 delete sharing, verifies RemoveAll's sharing failure, then releases it to exercise
 successful cleanup. Independent review found no new defect. The two-second

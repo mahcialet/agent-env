@@ -18,13 +18,14 @@ approved implementation design.
 
 The module is `github.com/mahcialet/agent-env`; the existing MIT license is
 retained. The delivered foundations are pinned local Git sources, detached review
-worktrees, selected component closures, named argv tests, retained evidence, and
+worktrees, selection of components together with all their direct and indirect dependencies, named argv tests, retained evidence, and
 a portable repository harness.
 
 AGENTS is capped at 150 lines. Structural checks enforce package boundaries, and
 numbered migrations generate database documentation. SQLite transactions and
 renewable fenced operation locks coordinate local processes. Execution snapshots
-contain only selected services and their resource closure. Built-in policy
+contain only the selected services, including their direct and indirect service dependencies,
+and the resources referenced by those services. Built-in policy
 rejects fixed published ports and selected external/shared Compose resources.
 
 Bounded command process-tree cancellation and persistent managed lifetimes use

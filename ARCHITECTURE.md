@@ -26,7 +26,7 @@ initial implementation, not the full current feature set.
 | CLI | Parse arguments, format output, and delegate use cases to app. |
 | Domain | Model leases, immutable source sets, components, resources, and events without concrete adapters. |
 | Config | Strictly decode the manifest. |
-| Stack | Resolve a deterministic dependency closure. |
+| Stack | Select the root components and all their direct and indirect dependencies in a deterministic order. |
 | App | Coordinate source/runtime interfaces, policy, readiness, evidence, and compensating cleanup. |
 
 
@@ -46,7 +46,7 @@ Reconciliation compares registry intent against Git and each recorded runtime pr
 - Store implements persistence and must not own app orchestration policy.
 - CLI delegates lifecycle behavior to app; concrete wiring belongs at the application boundary.
 
-These boundaries must be checked by repoctl arch-check with negative fixtures; no boundary is claimed mechanically enforced before that validator passes. Update this map, its checker, and an ADR or plan decision together when changing the graph.
+These boundaries must be checked by repoctl arch-check with fixtures that deliberately contain forbidden imports; no boundary is claimed mechanically enforced before that validator passes. Update this map, its checker, and an ADR or plan decision together when changing the graph.
 
 ## Cross-cutting invariants
 

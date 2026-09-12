@@ -124,8 +124,8 @@ Bundleにはendpointアドレス、認証情報、生の観測、詳細なエラ
 親は`EP-OPS-001`ですが、親への実行依存はありません。グラフ選出は人による検証を自動実行しません。
 完了には、この計画自身の受け入れ、振り返り、マージ証拠、両言語の移動が必要です。
 
-Androidシナリオ`EP-MHOST-001-04`では、SDK・emulator・ADBを指定workerに用意する。
-clientに必要なのは`agent-env`と`git`であり、ローカルAndroidツールは不要である。
+Androidシナリオ`EP-MHOST-001-04`では、SDK・emulator・ADBを指定workerに用意します。
+clientに必要なのは`agent-env`と`git`であり、ローカルAndroidツールは不要です。
 client経由でEmulator leaseを作成し、worker/lease識別情報とworker側ADBの起動・準備完了を
-記録した後、leaseを破棄してそのworker上での消失を確認する。worker側Androidツールが
-不足する場合はBLOCKEDとする。clientローカルのADBやTCP preflightだけでは合格しない。
+記録した後、leaseを破棄してそのworker上での消失を確認します。worker側Androidツールが
+不足する場合はBLOCKEDとします。clientローカルのADBやTCP preflightだけでは合格しません。

@@ -50,7 +50,7 @@ internal/cli/remote_services.go advertises slots. internal/store/sqlite/android.
 
 ## Plan of Work
 
-Add boundary regressions, shared allocator capacity and bilingual flag documentation.
+Add tests rejecting invalid worker capacity at the boundaries, shared allocator capacity and bilingual flag documentation.
 
 ## Concrete Steps
 
@@ -75,7 +75,7 @@ CLI already imports SQLite; allocator port bounds remain unchanged. No new depen
 Validation evidence: the pre-fix CLI boundary test failed for 66 and 1000
 (0.005s). `go run ./tools/repoctl check` passed, including unit, vet, docs,
 generated and architecture checks. CLI/SQLite race passed (46.073s/15.922s),
-including the existing real 65-reservation exhaustion/rollback regression.
+including the existing real 65-reservation exhaustion/rollback test.
 The first harness run caught a missing English-source link in the new Japanese
 plan; the link was added and the harness passed without changing check rules.
 

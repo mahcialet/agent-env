@@ -193,8 +193,11 @@ Only successful renew resets the deadline and cleanup marker. Sweep database
 errors stop the server visibly instead of silently disabling expiry enforcement.
 
 The CLI controller calls the same Server.Run lifecycle as server tests, including
-periodic expiry and shutdown joining. An actual CLI entry-point regression expires
-an offline lease through an independent database connection without polling.
+periodic expiry and waiting for shutdown to finish. To detect a failure to start
+expiry processing from the CLI, a test starts the actual CLI entry point and
+expires an offline lease through an independent database connection. It checks
+that a cleanup request is queued without a worker poll or HTTP request triggering
+expiry processing. This does not establish that an offline worker completed cleanup.
 
 ## Evidence and limits
 

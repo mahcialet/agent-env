@@ -28,7 +28,7 @@ A smudge filter can change compiler input while a matching clean filter hides th
 
 ## Outcomes & Retrospective
 
-Completed on 2026-09-08. Release checkout no longer inherits global/system filter configuration, external attributes or templates. Both active-filter regressions pass, as do source guards, real candidates, harness and repoctl race. The review thread was answered and resolved; user Git configuration and public refs remain unchanged by the isolation/tests. Hosted CI is distinct from the successful local evidence below.
+Completed on 2026-09-08. Release checkout no longer inherits global/system filter configuration, external attributes or templates. Both tests that prevent active filters from changing release checkouts pass, as do source guards, real candidates, harness and repoctl race. The review thread was answered and resolved; user Git configuration and public refs remain unchanged by the isolation/tests. Hosted CI is distinct from the successful local evidence below.
 
 ## Context and Orientation
 
@@ -40,7 +40,7 @@ Reproduce filtered-but-clean checkout in disposable repositories, isolate config
 
 ## Concrete Steps
 
-Run targeted regression before/after fix, repoctl check and repoctl race. Commit/push, then reply and resolve the thread.
+Run the checkout-filter test before/after the fix, repoctl check and repoctl race. Commit/push, then reply and resolve the thread.
 
 ## Validation and Acceptance
 
@@ -52,7 +52,7 @@ Change only child-process environment and arguments; never modify user Git confi
 
 ## Artifacts and Notes
 
-Review: https://github.com/mahcialet/agent-env/pull/7#discussion_r3954872828 . Go 1.27.1: targeted source/filter regressions, `go run ./tools/repoctl check`, `go test -race ./tools/repoctl` and `AGENT_ENV_RELEASE_CANDIDATE=build go test ./tools/repoctl -run TestReleaseCandidate -count=1` passed. The latter covers all six real target artifacts and 18 candidate cases. Independent read-only review found no confirmed material defects.
+Review: https://github.com/mahcialet/agent-env/pull/7#discussion_r3954872828 . Go 1.27.1: targeted source/filter checks for the same isolation failure, `go run ./tools/repoctl check`, `go test -race ./tools/repoctl` and `AGENT_ENV_RELEASE_CANDIDATE=build go test ./tools/repoctl -run TestReleaseCandidate -count=1` passed. The latter covers all six real target artifacts and 18 candidate cases. Independent read-only review found no confirmed material defects.
 
 ## Interfaces and Dependencies
 

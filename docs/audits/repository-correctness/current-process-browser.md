@@ -11,7 +11,7 @@ last_verified: 2026-09-09
 Frozen target: `031869c8b9073b8e23bc17fbc55243666a52f557`.
 Phase A reproductions used Go overlays outside the repository. The coordinator
 accepted both findings at the Phase B checkpoint (`56b9c2c`); Phase C repairs and
-regressions are recorded below. This report completes the bounded source/reproducer pass
+tests checking the repairs are recorded below. This report completes the bounded source/reproducer pass
 for process runtime, Browser/CDP and execx; it does not replace the global audit
 matrix, native baseline or independent final review.
 
@@ -19,10 +19,10 @@ matrix, native baseline or independent final review.
 
 | Area / invariant | Inspected entry points and evidence | Result / limitation |
 | --- | --- | --- |
-| Browser authority and isolation | CDP connect/discovery, exact loopback WebSocket, browser PID/version/flags, native callback, selected target sessions and page limits | Existing identity negatives remain live; source review found no new wrong-browser adoption path. Same-user malicious protocol forgery remains outside the contract. |
+| Browser authority and isolation | CDP connect/discovery, exact loopback WebSocket, browser PID/version/flags, native callback, selected target sessions and page limits | Existing tests that reject browser adoption on identity mismatch remain live; source review found no new wrong-browser adoption path. Same-user malicious protocol forgery remains outside the contract. |
 | Browser frame and stale-node proof | snapshot/approvedFrames/recheckFrames, frame-owner census, act final AX/node/hit checks, isolated-world focus, native closed-shadow fixture | Before/after origin/topology and stale-input guards retained. Load wait has the mixed-document gap below; later input still revalidates. |
-| Browser exact limits/completeness | 2048 AX/DOM nodes, 32 frames, 128 pages, 512 targets/events, 1 MiB semantic JSON, 4 KiB fields, 64 KiB capture strings, 256 records | AX exact-limit regression covers 2047/2048/2049 and multiple/empty trailing frames. DOM loop tests omission on the next node, not equality alone. Post-redaction DOM inconsistency below. No claim that every numeric combination was executed here. |
-| Capture duration and omitted evidence | capture context before subscribe/enable, per-event deadline checks, atomic unsubscribe pending/overflow, omitted console argument flags | Existing deadline, overflow and argument regressions pass. Helper-only deadline-return coverage limitation remains in historical HB18. |
+| Browser exact limits/completeness | 2048 AX/DOM nodes, 32 frames, 128 pages, 512 targets/events, 1 MiB semantic JSON, 4 KiB fields, 64 KiB capture strings, 256 records | Tests of AX omission reporting cover 2047/2048/2049 and multiple/empty trailing frames. DOM loop tests omission on the next node, not equality alone. Post-redaction DOM inconsistency below. No claim that every numeric combination was executed here. |
+| Capture duration and omitted evidence | capture context before subscribe/enable, per-event deadline checks, atomic unsubscribe pending/overflow, omitted console argument flags | Existing tests of deadlines, queue overflow and omitted console arguments pass. Helper-only deadline-return coverage limitation remains in historical HB18. |
 | Browser mutation/evidence barriers | Observe confirmation classification, action_performed before input/focus, app durable run/provenance and typed redaction | Existing post-effect uncertainty and persistence tests retained. General app fence/finalization audit remains coordinator-owned. |
 | Process launch identity and recovery | Prepare -> Start -> identity/receipt, typed no-spawn, receipt identity mismatch and recovered identity | Incomplete native identity remains uncertain; known no-spawn requires typed proof plus zero PID. Missing receipt with returned full identity still permits compensation; mismatched proof refuses it. |
 | Process paths and cleanup | validateOwner/validatePaths, canonical reserved paths, Destroy -> native Terminate -> Observe -> state removal | Whole-tree absence is rechecked; path/symlink mismatches and unexpected files refuse. Windows retry only covers sharing violations with path proof each attempt. Generic filesystem TOCTOU review belongs to the coordinator; trusted-code limitation is preserved. |
@@ -60,7 +60,7 @@ matrix, native baseline or independent final review.
   described above, call dom-snapshot, require a registered DOM artifact and assert
   its encoded length is at most 1 MiB. Actual result: FAIL, 0.079s, with the exact
   input/output lengths above. Product files remain untouched.
-- Regression: `TestBrowserDOMBoundsAfterRedaction` and
+- Tests checking the repair: `TestBrowserDOMBoundsAfterRedaction` and
   `TestBrowserDOMEncodedBoundary` now exercise persisted output and exact limits.
 - Resolution: Phase C now bounds redacted DOM encoding to 1 MiB by retaining a
   whole-node prefix. It preserves retained identity fields and metadata, marks
@@ -104,14 +104,14 @@ Do not misquote the semantic-only sentence as an explicit DOM specification.
   still has independent document validation, so this reproduction does not show
   stale input hitting a different node.
 - Existing coverage: frame changes during snapshot and URL-wait identity checks
-  are covered. No regression crosses the additional load-evaluation step.
+  are covered. No test checks document changes across the additional load-evaluation step.
 - Reproducer: isolated Go overlay adds `TestAuditLoadWaitDoesNotMixDocuments`
   to `internal/browser/cdp/snapshot_test.go`. A protocol fixture reports root
   loader `old` during snapshot, changes to `new` when Runtime.evaluate runs
   and returns `complete`. It asserts the mutation was reached, then compares
   the returned snapshot token with a fresh frameDocument token. FAIL, 0.004s:
   returned `main:old:<same-URL-digest>`, current `main:new:<same-URL-digest>`.
-- Regression: `TestLoadWaitRechecksDocumentAfterPredicate` now exercises single
+- Tests checking the repair: `TestLoadWaitRechecksDocumentAfterPredicate` now exercises single
   and repeated navigation at the predicate boundary.
 - Resolution: Phase C rechecks the root document identity after a complete load
   predicate and retries mismatches within the existing deadline, matching the URL
@@ -124,7 +124,7 @@ Do not misquote the semantic-only sentence as an explicit DOM specification.
   snapshot's own proof was assumed to cover the later predicate call.
   Existing snapshot mutation tests stop before that extra step. Preventive control:
   enumerate every multi-call wait predicate and inject navigation between observation
-  and predicate; expect S3. The new navigation-boundary regression passes with the product repair.
+  and predicate; expect S3. The new test preventing stale evidence after navigation passes with the product repair.
 
 ## Related executor evidence for AUDIT-CLEANUP-001
 
@@ -153,7 +153,7 @@ historical MVP HM10/HM11; keep the root finding canonical.
   alive/error before path-validated state removal.
 - **Closed-shadow proof trusts page overrides:** rejected by existing native
   fixture and isolated-world resolution. Target-outward traversal checks every
-  enclosing root/host, and overlay negatives cover all four input operations.
+  enclosing root/host, and tests reject input to targets obscured by overlays for all four input operations.
 - **Ordinary Unix Runner signal success equals whole-tree absence:** source shows
   post-Wait SIGKILL success/ESRCH accepted without a process-group census, unlike
   Windows empty-Job checks and managed-process waits. Existing late-write tests
@@ -180,7 +180,9 @@ No commit, push or thread operation was performed by this reviewer.
 
 ## Phase C regression evidence
 
-Permanent regressions were first run against the unchanged product code and
+This section records permanent tests that recheck the repaired behavior and their execution results.
+
+Permanent tests of saved DOM size and load-wait document consistency were first run against the unchanged product code and
 failed: the 2048-node DOM case persisted 1,099,648 bytes, while load wait returned
 stale success for both single and continuously changing documents.
 
@@ -194,7 +196,7 @@ stale success for both single and continuously changing documents.
 - `TestLoadWaitRechecksDocumentAfterPredicate` asserts navigation injection was
   reached. One change requires a second predicate evaluation and returns only the
   new document's evidence; continuous change must return an error and nil snapshot.
-- Focused CDP regression with race detection, three repetitions: PASS 1.962s.
-  Focused app DOM regressions with race detection, three repetitions: PASS 7.938s.
+- Focused CDP load-wait tests with race detection, three repetitions: PASS 1.962s.
+  Focused tests of DOM saved by the app with race detection, three repetitions: PASS 7.938s.
   Earlier attempts encountered concurrent compile errors in other assigned files;
   those attempts are not counted as passes.

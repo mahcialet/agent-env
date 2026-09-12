@@ -3,7 +3,7 @@ status: accepted
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/adr/0005-separate-flutter-applications.md
-source_sha256: 1fa718e9947b21f723adc0aa426cad8629768082a3a0ba9b6c5c62979179bf5e
+source_sha256: 1416ddeec6aa64affbd52769199efb1a75a39186127e492e14ab3c3773694fa4
 ---
 
 # FlutterアプリケーションとAndroidリソースを分離する
@@ -41,5 +41,5 @@ FlutterをAndroidランタイムへ統合するとEmulator単独利用を妨げ�
 APKハッシュはビルドを識別し、過去成果物の再実行を保証しません。
 
 `repoctl arch-check` は既存の汎用規則でruntime間のimportを拒否します。
-負例fixtureにはFlutterの新しいノードと入れ子パッケージを明示的に追加し、
+禁止されたimportを含むテスト用コードには、Flutterの新しいノードと入れ子パッケージを明示的に追加し、
 app/domain/execxおよび同じアダプター内のimportには正常例を用意します。

@@ -3,7 +3,7 @@ status: completed
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/exec-plans/completed/repository-correctness-review.md
-source_sha256: 3025d4f0a09fce95c760834ef394fe5f6d645c601180a9ddaf58e2b2230b1a1a
+source_sha256: c94623a4978d8926a1af4c72e059e420ded197cbf91cdc2da80fc60581f2d86a
 ---
 
 # PR #11 correctnessレビューへの対応
@@ -23,7 +23,7 @@ heading anchor抽出がinline codeの内容を置換して有効linkを拒否す
 ## 進捗
 
 - [x] (2026-09-09) 6b13cd4のcleanなPR branchと未解決2Threadを確認した。
-- [x] (2026-09-09) 両不具合を再現して修正。不完全/type欠落列挙と全target不在確認の回帰も追加した。
+- [x] (2026-09-09) 両不具合を再現して修正。不完全/type欠落列挙と全target不在確認の誤りを検出するテストも追加した。
 - [x] (2026-09-09) 独立レビュー、harness、race、関連native CIを実施する。
 - [x] (2026-09-09) f10ecd4/de6da4f/ab71b64をpush。両Threadへ返信しResolve状態を確認した。
 - [x] (2026-09-09) 成果を記録し、日英Planを完了へ移す。
@@ -34,9 +34,9 @@ heading anchor抽出がinline codeの内容を置換して有効linkを拒否す
 
 - 2026-09-09: ab71b64のPR Verify34298063439全job、Browser native両run、Release preview34298063300は成功。同HEADのpush Verify34298060578 Windows1.27は未変更のTestRunnerReapsOrdinaryDescendants/timeoutで失敗し、helperの起動確認出力より先に300ms timeoutとなった。fixture起動前提の失敗で、子孫がcleanup後に残った証拠ではない。同HEADのPR Windows1.27 jobは成功。製品・テストを変更せず失敗jobを再実行し、両結果を残す。具体的なscheduler遅延原因は確定していない。
 
-- 2026-09-09 独立レビュー: 初期popup修正は全harness/raceとLinux Browser integrationに成功したが、作成IDを持ちtypeが欠落した列挙項目をfilterで落として不在と誤認した。隔離負例は0.024秒で失敗。target identity/typeの完全性を検査し、pageだけでなく全targetに対して正確な不在を確認する。push前に再検証する。Markdown独立race付き5回は2.663秒成功し、既存の表示された出典link処理は維持された。command確認lockのrace付き10回は元のassertionを全保持して4.390秒成功。
+- 2026-09-09 独立レビュー: 初期popup修正は全harness/raceとLinux Browser integrationに成功したが、作成IDを持ちtypeが欠落した列挙項目をfilterで落として不在と誤認した。typeが欠落した列挙を不在の証拠として扱わないことを確認する隔離テストは、0.024秒で失敗してこの不具合を検出した。target identity/typeの完全性を検査し、pageだけでなく全targetに対して正確な不在を確認する。push前に再検証する。Markdown独立race付き5回は2.663秒成功し、既存の表示された出典link処理は維持された。command確認lockのrace付き10回は元のassertionを全保持して4.390秒成功。
 
-- 2026-09-09: inline codeのanchor回帰は修正前に4fixtureで失敗し、block/inline分離後のrepoctl package全raceは8.915秒成功。途中の全harnessはCDPテスト編集中のformat-checkで停止したため、安定後に再実行する。PR Verify34296197727のWindows Go1.26はTestNamedCommandFailuresRetainEvidence/sleepの最後の新規lock解放確認だけで失敗。commandのtimed_out/run/artifact検証は成功済み。確認lockのTTLは1秒で実commandは2分。同HEADのpush CIは成功。確認用TTLだけ1分にし、lock利用可能性の検査が秒未満のDB・scheduler遅延に依存しないようにする。全assertionと製品fenceは維持しnative CIで再検証する。
+- 2026-09-09: inline codeのanchorを正しく認識するテストは修正前に4fixtureで失敗し、block/inline分離後のrepoctl package全raceは8.915秒成功。途中の全harnessはCDPテスト編集中のformat-checkで停止したため、安定後に再実行する。PR Verify34296197727のWindows Go1.26はTestNamedCommandFailuresRetainEvidence/sleepの最後の新規lock解放確認だけで失敗。commandのtimed_out/run/artifact検証は成功済み。確認lockのTTLは1秒で実commandは2分。同HEADのpush CIは成功。確認用TTLだけ1分にし、lock利用可能性の検査が秒未満のDB・scheduler遅延に依存しないようにする。全assertionと製品fenceは維持しnative CIで再検証する。
 
 現行inline span処理はcodeの内容を単純に削除せず `code` に置換する。
 表示されるanchorとの不一致という指摘は妥当。
@@ -54,7 +54,8 @@ heading anchor抽出がinline codeの内容を置換して有効linkを拒否す
 2026-09-09に完了。PR #11の両指摘を修正し、返信・Resolveまで完了した。
 
 - `f10ecd4`: heading anchorでinline code文字を保持し、既存の非表示blockと
-  出典/link処理は維持した。docsCheckの正常例/負例4件は修正前に失敗し、
+  出典/link処理は維持した。docsCheckで有効なheading anchorへのlinkを受理し、
+  存在しない置換anchorへのlinkを拒否する4件のテストは修正前に失敗し、
   独立した関連race付き5回は2.663秒成功。
 - `de6da4f`: command後のlock解放確認用TTLだけ1秒から1分へ変更した。
   状態・証拠・再取得・解放の全assertionを保持。対象race付き10回4.390秒成功。
@@ -63,7 +64,7 @@ heading anchor抽出がinline codeの内容を置換して有効linkを拒否す
   native所有、close応答、全target種別での正確な不在を必須とする。
   欠落・曖昧な証拠は未確認のまま保持し、既存targetと並行popupを残す。
 
-元のpopup回帰は修正前に失敗した。独立レビューではtype欠落をfilterで落として
+元のpopupによる上限超過を検出するテストは修正前に失敗した。独立レビューではtype欠落をfilterで落として
 不在と誤認する問題を発見し、修正後の17ケースと127/128/129境界は
 独立race付き5回2.224秒成功。全 `repoctl check` と全 `go test -race ./...` は成功。
 最終CDP race8.233秒、CLI race5.624秒、実Linux Browser native race10.362秒。

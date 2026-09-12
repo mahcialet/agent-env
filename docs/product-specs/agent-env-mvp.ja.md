@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/product-specs/agent-env-mvp.md
-source_sha256: 916262d4dde5f7050b98d66be3836541cc7fda3154a1accb77fd1c02d0eb72d7
+source_sha256: 6acfd154d037d669e6c25500b38e214df9990179bbb4ff1da732d0918f57a128
 ---
 
 [English（翻訳元）](agent-env-mvp.md)
@@ -27,7 +27,7 @@ source_sha256: 916262d4dde5f7050b98d66be3836541cc7fda3154a1accb77fd1c02d0eb72d7
 
 - ref を不変の commit ID に解決する
 - 分離した Git ワークツリーを作成する
-- 要求された起動グループから、必要最小限のコンポーネント依存関係の閉包を解決する
+- 要求された起動グループのルートと、その直接・間接の全依存先コンポーネントだけを選ぶ
 - 一意の project 名を持つ分離した Docker Compose project を起動する
 - リース、ソース、コンポーネント、ランタイム、コマンド、event の記録を SQLite に永続化する
 - レジストリ状態を実際の Git/Docker 状態と照合し、正確な `list` と `show` を提供する
@@ -139,7 +139,7 @@ repository/workspace definition
 ### 基本動作
 
 1. `api` と `dashboard` コンポーネントを持つ検証用フィクスチャリポジトリの検証が成功する。
-2. `plan --stack api` は API の依存関係閉包だけを解決する。
+2. `plan --stack api` は API stack のルートと、その直接・間接の全依存先コンポーネントだけを選ぶ。
 3. `plan --stack dashboard` は API と Dashboard を決定的なトポロジカル順序で解決する。
 4. 不正な cycle と未知の参照は、対処可能な診断とともに失敗する。
 5. `create` はランタイム起動前に、要求された正確な ref と解決済み commit を記録する。

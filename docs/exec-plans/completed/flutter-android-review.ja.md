@@ -3,7 +3,7 @@ status: completed
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/exec-plans/completed/flutter-android-review.md
-source_sha256: b43127478f83d55aae09c879d37f4b6844445c35034d424470d23f4ff22bdb38
+source_sha256: 9a4e5447edd8e9ff66bceb3bda50556e21bc315694b493d6f24a10167fbf03f2
 ---
 
 # PR 4 Flutter Androidレビュー対応
@@ -15,7 +15,7 @@ source_sha256: b43127478f83d55aae09c879d37f4b6844445c35034d424470d23f4ff22bdb38
 
 ## 目的 / 全体像
 
-PR 4の現在の8件のThreadを、回帰検証・公開文書の同期・各Threadへの返信と修正確認後のResolveまで対応します。
+PR 4の現在の8件のThreadを、同じ不具合を検出するテスト・公開文書の同期・各Threadへの返信と修正確認後のResolveまで対応します。
 
 ## 進捗
 
@@ -23,7 +23,7 @@ PR 4の現在の8件のThreadを、回帰検証・公開文書の同期・各Thr
 - [x] 2026-09-08: 選択APK出力衝突、省略可能なreverse観測、destroyプレビューを修正。
 - [x] 2026-09-08: ホストFlutter doctor、既定plan表示、プロジェクトのsymlink、非ゼロADB診断を修正。
 - [x] 2026-09-08: 既存公開文書の英日を同期。
-- [x] 2026-09-08: 回帰テスト、全harness、race、ネイティブCIを実行。
+- [x] 2026-09-08: 不具合の再発を検出するテスト、全harness、race、ネイティブCIを実行。
 - [x] 2026-09-08: 全8件のThreadへ返信・Resolveし、本計画を完了済みへ移動。
 
 ## 想定外の発見
@@ -37,9 +37,9 @@ PR 4の現在の8件のThreadを、回帰検証・公開文書の同期・各Thr
 
 ## 成果と振り返り
 
-8件すべてを `4677b89` で対応しました。各Threadに具体的な修正と回帰テストを返信し、ネイティブCI成功後にResolveしました。最終GitHub照会はThread 8件、未解決0件でした。
+8件すべてを `4677b89` で対応しました。各Threadに具体的な修正と同じ不具合を検出するテストを返信し、ネイティブCI成功後にResolveしました。最終GitHub照会はThread 8件、未解決0件でした。
 
-既定の人間向けplan表示、ホストだけの前提診断、reverse省略、安全なプレビューなど、従来の機能テストが扱わなかった入口・任意経路を修正しました。回帰テストは元の正常系とは独立してこれらを検証します。選択APK出力の衝突は上書きが起こる前に明示的に拒否し、新しいAPK保存ライフサイクルやadapter責務を導入しません。従来の実SDK証拠は過去の検証として保持し、今回のレビュー変更はネイティブテスト・race・CIのCompose結合検証で確認しました。
+既定の人間向けplan表示、ホストだけの前提診断、reverse省略、安全なプレビューなど、従来の機能テストが扱わなかった入口・任意経路を修正しました。同じ問題を検出するテストは元の正常系とは独立してこれらを検証します。選択APK出力の衝突は上書きが起こる前に明示的に拒否し、新しいAPK保存ライフサイクルやadapter責務を導入しません。従来の実SDK証拠は過去の検証として保持し、今回のレビュー変更はネイティブテスト・race・CIのCompose結合検証で確認しました。
 
 ## 背景と構成
 
@@ -47,7 +47,7 @@ appは処理順序とcleanup、Flutterは移植可能なビルド、Androidは�
 
 ## 作業計画
 
-挙動ごとに失敗する回帰テストを追加し、所有権・証拠保持を弱めず修正した後、公開文書の英日を更新します。rootはapp・plan・previewと本計画、委譲先はCLI・adapter・公開文書を担当し、rootが統合とGitHub操作を行います。
+挙動ごとに不具合を検出して失敗するテストを追加し、所有権・証拠保持を弱めず修正した後、公開文書の英日を更新します。rootはapp・plan・previewと本計画、委譲先はCLI・adapter・公開文書を担当し、rootが統合とGitHub操作を行います。
 
 ## 具体的な手順
 
@@ -80,15 +80,15 @@ commit、コマンド、CI、Thread対応結果をここへ記録します。ロ
 
 レビューチェックポイント（2026-09-08）:
 
-- 初期実装で挙動の回帰テストが失敗することを確認しました。選択出力衝突4ケース、不要なreverse観測、preview guard 2種類、ホストAndroid診断と既定table情報の欠落、内部symlink 6ケース、非ゼロADB出力破棄6ケースです。
-- appの重点回帰と既存build guardはGo 1.27.1 `-race -count=10` で成功（12.410秒）。CLIも `-race -count=1` で成功（1.940秒）。Flutter/AndroidはGo 1.26.8のテストとGo 1.27.1のrace 5反復が成功しました。appの独立した読み取りレビューで具体的な問題は見つかりませんでした。
+- 初期実装で期待した挙動を確認するテストが失敗することを確認しました。選択出力衝突4ケース、不要なreverse観測、preview guard 2種類、ホストAndroid診断と既定table情報の欠落、内部symlink 6ケース、非ゼロADB出力破棄6ケースです。
+- appの不具合を再検出する重点テストと既存build guardはGo 1.27.1 `-race -count=10` で成功（12.410秒）。CLIも `-race -count=1` で成功（1.940秒）。Flutter/AndroidはGo 1.26.8のテストとGo 1.27.1のrace 5反復が成功しました。appの独立した読み取りレビューで具体的な問題は見つかりませんでした。
 - 最初の全harnessは単体テストとvetが成功し、公開文書編集中の古い翻訳ハッシュを正しく拒否しました。文書担当が意味確認とハッシュ同期を終え、docs-checkは成功しました。その後、commit前の整合した全harness再実行が成功しました。
 
 最終ローカル検証（2026-09-08）:
 
 - Go 1.27.1とGo 1.26.8の `go run ./tools/repoctl check` が全段階で成功しました。
 - Go 1.27.1の `go test -race ./...` が成功しました（app 24.654秒、CLI 1.811秒、Android 2.110秒、Flutter 3.039秒）。
-- 直接の回帰テスト `TestSelectedApplicationAPKOutputsCannotCollide`、`TestApplicationWithoutReverseSkipsNetworkObservation`、`TestDestroyPreviewHonorsApplicationBuildBarriers`、`TestFlutterHostDoctorRequiresBothToolchains`、`TestFlutterHostDoctorMissingPrerequisitesIsPure`、`TestFlutterPlanTableIncludesSelectedApplicationRequirements`、`TestBuildRejectsInternalProjectSymlinks`、`TestApplicationExecutionFailureRetainsDiagnosticsAndErrorIdentity` はすべて成功しました。
+- 指摘の不具合を直接検出するテスト `TestSelectedApplicationAPKOutputsCannotCollide`、`TestApplicationWithoutReverseSkipsNetworkObservation`、`TestDestroyPreviewHonorsApplicationBuildBarriers`、`TestFlutterHostDoctorRequiresBothToolchains`、`TestFlutterHostDoctorMissingPrerequisitesIsPure`、`TestFlutterPlanTableIncludesSelectedApplicationRequirements`、`TestBuildRejectsInternalProjectSymlinks`、`TestApplicationExecutionFailureRetainsDiagnosticsAndErrorIdentity` はすべて成功しました。
 - 公開文書6組の英日を同期し、ローカルFlutterパスが追加されていないことを確認しました。ネイティブCIとThreadへの回答も、その後以下のとおり完了しました。
 
 最終完了証拠（2026-09-08）:

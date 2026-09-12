@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-08
 translation_of: docs/exec-plans/completed/bilingual-documentation.md
-source_sha256: 2c8a3f1832b282ad3c55c945851c146dcafd2c2ba505f20092b340d40d77f05e
+source_sha256: bf146b3287429de493dbb49589db762184533f7c275ed259ea517f79b37257b8
 ---
 
 # リポジトリ文書を英語・日本語で維持する
@@ -159,6 +159,8 @@ MVPとAndroid Emulatorの製品／設計契約を含む、現在の永続文書�
 
 ### 節目5 — 受け入れと回帰検証
 
+ここでは、新しい翻訳検査が要件どおり動作することと、既存のrepository検査が引き続き成功することを確認する。
+
 ```text
 go run ./tools/repoctl docs-check
 go run ./tools/repoctl check
@@ -223,9 +225,9 @@ repoctl docs-check
 
 ハーネスの区切り：repoctl unitテストとGo 1.26のrace反復が成功した（初回10回、JSON重複キー検査の追加後に3回）。Go 1.27 unitテストも成功した。CGOを無効にしたWindows/amd64とDarwin/arm64のクロスビルドが通ったが、ネイティブCIの動作を証明するものではない。テストは欠落／古い対訳、同期更新、CRLF、孤立／翻訳元指定の誤り、メタデータ整合性、日本語リンク／索引の破損、翻訳した計画、限定された例外、JSON重複キーを対象とする。
 
-ハーネスの独立レビュー（2026-09-08）で強制力に関する3点が見つかった。JSON struct fieldの大文字小文字を区別しない対応づけが重複キー検査を迂回できること、閉じていないメタデータの引用符を受理すること、共通のソース列挙が文書ポリシーの対象であるdocs内の隠し／vendorディレクトリを省略することである。3件とも採用し、最終検証前に修正と回帰テストを追加する。問題を隠す例外は追加しない。
+ハーネスの独立レビュー（2026-09-08）で強制力に関する3点が見つかった。JSON struct fieldの大文字小文字を区別しない対応づけが重複キー検査を迂回できること、閉じていないメタデータの引用符を受理すること、共通のソース列挙が文書ポリシーの対象であるdocs内の隠し／vendorディレクトリを省略することである。3件とも採用し、最終検証前に修正と同じ見逃しを検出するテストを追加する。問題を隠す例外は追加しない。
 
-最終ローカル検証（2026-09-08）：ハーネスレビューの3件を修正し、実際のdocsCheck経由の回帰テストを追加した。Go 1.26.8で`repoctl doctor`、`docs-check`、全体の`check`が通った。最終repoctl raceテスト3回とGo 1.27.1 unitテスト、Windows/amd64とDarwin/arm64のCGO無効クロスビルドも通った。初回移行には必須29組の英語／日本語文書と、説明付きの厳密なパス例外6件を含む。生成物、歴史的handoff、移行前の完了済み計画は変更していない。push後のネイティブCI確認が残っている。
+最終ローカル検証（2026-09-08）：ハーネスレビューの3件を修正し、実際のdocsCheck経由で同じ見逃しを検出するテストを追加した。Go 1.26.8で`repoctl doctor`、`docs-check`、全体の`check`が通った。最終repoctl raceテスト3回とGo 1.27.1 unitテスト、Windows/amd64とDarwin/arm64のCGO無効クロスビルドも通った。初回移行には必須29組の英語／日本語文書と、説明付きの厳密なパス例外6件を含む。生成物、歴史的handoff、移行前の完了済み計画は変更していない。push後のネイティブCI確認が残っている。
 
 ネイティブCIの受け入れ確認（2026-09-08）：`6dbfc60`で24件すべてが成功した（push run `34162436866`、PR run `34162472137`）。Go 1.26.x／1.27.xでのWindows、macOS、Linuxのネイティブ実行、Linuxの結合／raceテスト、CGOを無効にした5対象のクロスビルドを含む。これはハーネスの検証結果であり、全OSで実際のAndroid SDK／Emulatorを検証した証拠ではない。
 

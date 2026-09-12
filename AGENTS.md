@@ -70,7 +70,7 @@ Integration tests explicitly require Docker; missing prerequisites are not passe
 
 - Classify evidence by what it proves; repetitions do not prove forced ordering.
 - Fixtures own cancellation, resource closure and completion joins, including failure paths.
-- Negative tests must reach the intended effect and distinguish its failure cause.
+- Tests for expected rejection or errors must reach the condition being tested and distinguish the intended rejection or error from unrelated failures.
 - Record finding dispositions and fail-before controls in the active Plan.
 - Follow [quality evidence rules](docs/QUALITY.md#evidence-classes-and-test-architecture) for schedules, oracles and review.
 

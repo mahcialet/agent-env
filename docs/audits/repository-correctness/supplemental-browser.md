@@ -24,7 +24,7 @@ Every tracked CDP Go source/test file was loaded from the frozen Git revision
 into a temporary Go overlay. Additional tests used the actual public
 `Client.Observe` or protocol-component `wait`/`act` entry points and
 existing protocol fixtures; audit production files were not modified during
-Phase A. All three regressions failed. Permanent tests also failed on the audit
+Phase A. All three tests checking page limits, ignored nodes and pressed state detected the defects and failed. Permanent tests also failed on the audit
 candidate before these fixes, so earlier audit repairs did not resolve them.
 Protocol input dispatch is proven by recorded mock calls, not a claim that a
 real browser received a harmful click during this safe replay.
@@ -79,8 +79,8 @@ real browser received a harmful click during this safe replay.
   separate wait consumer did not apply that semantic eligibility rule.
 - Phase C: skip Ignored nodes before role/name matching. The complete-snapshot
   condition for gone is unchanged.
-- Guardrail: protocol regression covers both text false-positive and gone
-  false-negative; existing visible-text and truncated-gone regressions remain.
+- Guardrail: tests check that ignored nodes cannot satisfy text wait or prevent gone wait from succeeding;
+  existing tests of visible-text matches and refusal to infer absence from truncated snapshots remain.
   Future expected detection: S3. No DOM selector or arbitrary script fallback added.
 
 ## AUDIT-STALE-002 — Pressed-state changes do not invalidate action fingerprints
@@ -98,7 +98,7 @@ real browser received a harmful click during this safe replay.
 - Expected: false/true/mixed pressed transitions invalidate the stored fingerprint
   before any input. This does not establish a wrong-browser or different-node attack.
 - Reproducer: `TestSupplementPressedStateRefusesStaleInput`, copied from the
-  live ownership-mutation regression with pressed as the changed property.
+  existing test that mutates the target during ownership verification, with pressed as the changed property.
   It asserts mutation callback reached and counts input dispatch; frozen code fails.
 - Escape: earliest S3, NEGATIVE_FIXTURE_GAP + ORACLE_COUPLING + COMPOSITION_GAP.
   Existing checked-state coverage did not establish that the separate pressed
@@ -114,7 +114,7 @@ real browser received a harmful click during this safe replay.
 
 ## Phase C validation and remaining gates
 
-Focused supplemental protocol regressions with race detection and three
+Focused tests of page limits, ignored nodes and pressed state with race detection and three
 repetitions: PASS 1.668s. Independent read-only review found no blockers, and
 its five race repetitions passed in 2.039s. This includes page 127/128/129, ignored text/gone
 predicates and ten state-transition cases. The coordinator additionally reported

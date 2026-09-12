@@ -18,10 +18,10 @@ Frozen Phase A target: `031869c8b9073b8e23bc17fbc55243666a52f557`, post-PR-#10 m
 The audit used branch `audit/repository-correctness`.
 
 Phase A/B are complete. The initial 15 accepted findings passed implementation,
-regression, and native acceptance. Four postmerge findings were then reproduced
+tests checking the repairs, and native acceptance. Four postmerge findings were then reproduced
 and accepted, for 19 total. All 19 are resolved and independently reviewed.
-Historical regression names do not imply that every past defective revision was
-mutation-replayed.
+Listing tests that check historical repairs does not mean every past defect was
+reintroduced to verify that the tests fail.
 
 ## Reports
 
@@ -84,7 +84,7 @@ Verify34294068659: all six native Go1.26/1.27 OS jobs, five cross-builds and int
 
 Final production revision: `f2ec634baa00af5221217dbfcd5c0aef93c624c9`.
 Full `repoctl check` and `go test -race ./...` pass; the final supplemental
-protocol race suite also passes ×3 (1.564s), independently ×5 (2.039s).
+protocol tests of page limits, ignored nodes and pressed state with race detection also pass ×3 (1.564s), independently ×5 (2.039s).
 Real Browser native race passes10.157s with the new default-table result assertions.
 [Verify34295144985](https://github.com/mahcialet/agent-env/actions/runs/34295144985)
 and [Browser native34295144958](https://github.com/mahcialet/agent-env/actions/runs/34295144958)

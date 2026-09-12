@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/design-docs/compose-runtime.md
-source_sha256: 00a2191e6c895f9a69afac1c09964de607f81404cced38ce51fd8bc710489edd
+source_sha256: b869d68516060269209b9514ed3b0ed317c4c9f9918ef08beba7050c9cc10b77
 ---
 
 [English（翻訳元）](compose-runtime.md)
@@ -33,7 +33,7 @@ docker compose
 
 ## サービス選択
 
-解決したコンポーネント依存関係の閉包から `compose_services` を統合し、決定的な順序を保ちながら重複を除きます。
+選択したスタックの起点コンポーネントと、その依存先を再帰的にたどって得られる全コンポーネントから `compose_services` を統合します。決定的な順序を保ちながら重複を除きます。
 
 コンポーネント名と Compose サービス名が同じだと仮定してはいけません。
 

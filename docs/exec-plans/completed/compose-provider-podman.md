@@ -82,7 +82,7 @@ In scope:
 - Docker default for existing manifests;
 - provider in plan/snapshot/show/doctor;
 - provider-neutral Compose adapter boundary;
-- move current Docker behavior behind that boundary without regression;
+- move current Docker behavior behind that boundary without changing existing behavior;
 - `podman-compose` Doctor/config/up/logs/down integration;
 - direct Podman engine inspection for live resource truth;
 - local rootless and remote/Podman Machine identity handling;
@@ -128,9 +128,9 @@ Out of scope:
 - [x] 2026-09-08: Implement Doctor/version checks; `TestPodmanDoctorVersionFloorAndSnapshot` rejects 1.3.0 and 2.0.0 and accepts the 1.6.0 fixture.
 - [x] 2026-09-08: Persist local/remote identity and pin native children; `TestPodmanIdentityPinsLocalAndRemote`, `TestPodmanBridgeNativeRoundTrip`, and `TestPodmanChangedEngineRefusesMutation` pass locally.
 - [x] 2026-09-08: Normalize YAML into canonical JSON and common policy; `TestPodmanNormalizeComposeModel` and `TestPodmanRenderRejectsProviderSpecificHostAccess` pass. Real 1.6.0 lifecycle acceptance of recorded JSON subsequently passed (110.13 s).
-- [x] 2026-09-08: Reject unmodeled extensions recursively and unresolved environment pass-through; focused Render and normalization regressions pass.
+- [x] 2026-09-08: Reject unmodeled extensions recursively and unresolved environment pass-through; focused Render and normalization tests for rejection of invalid configuration pass.
 - [x] 2026-09-08: Implement detached Up, structured Inspect/endpoints, timestamped Logs, and Down/reinspection. Local harness/race and real Linux lifecycle acceptance pass.
-- [x] 2026-09-08: Persist anonymous-volume proof before Down, retain it across interrupted cleanup, and halt before effects on write failure; app/backend regression tests pass.
+- [x] 2026-09-08: Persist anonymous-volume proof before Down, retain it across interrupted cleanup, and halt before effects on write failure; app/backend tests for evidence retention and safe cleanup pass.
 - [x] 2026-09-08: Fix and independently recheck all seven review findings recorded below.
 - [x] 2026-09-08: Add portable provider/path/argv/identity tests; local Linux execution passes. All six final native Windows/macOS/Linux Go 1.26/1.27 jobs passed on `4a5de3d` in Verify `34216579481`.
 - [x] 2026-09-08: Update bilingual architecture, portability, security, reliability, quality, roadmap, and prerequisite documentation with implemented scope and remaining gaps.
@@ -518,10 +518,10 @@ then complete evidence/retrospective and archive both plans.
 | P7 | Podman Doctor records provider version, client/server versions, mode and non-secret engine identity. | Doctor fixture and real 1.6.0/Podman 5.4.2 rootless lifecycle passed. |
 | P8 | Later Podman operations remain pinned to the recorded engine after default connection changes. | Local/remote identity and native bridge tests passed in all six OS/Go jobs on `4a5de3d`, Verify `34216579481`. |
 | P9 | Engine identity mismatch blocks destructive cleanup and quarantines. | Changed-engine mutation rejection and cleanup quarantine/retry fixtures passed locally. |
-| P10 | podman-compose config enters the same common host-policy model before effects. | Normalize/Render policy regressions and real canonical JSON lifecycle passed. |
+| P10 | podman-compose config enters the same common host-policy model before effects. | Normalize/Render tests for policy enforcement and real canonical JSON lifecycle passed. |
 | P11 | Unmodeled Podman extensions cannot bypass common policy. | Recursive extension and provider-specific host-access Render negative fixtures passed. |
 | P12 | Podman starts only selected service closure in detached mode. | Real selected-closure and detached lifecycle fixture passed (110.13 s). |
-| P13 | Structured Podman inspection reports owned resources/readiness. | Native label/health and retained-only regressions plus real READY/resource observations passed. |
+| P13 | Structured Podman inspection reports owned resources/readiness. | Tests of native label/health and observation with only retained resources plus real READY/resource observations passed. |
 | P14 | Real Linux rootless dynamic endpoints work and fixed host ports remain rejected. | Real dynamic loopback HTTP endpoints passed; fixed-port policy negatives passed. |
 | P15 | Logs retain timestamps and service/container attribution without unsupported Docker-only flags. | Real logs and named-test artifact/redaction assertions passed. |
 | P16 | Ownership identity is verified before Podman destructive effects. | Native project/service and conflicting-label fixtures plus real owned destruction passed. |

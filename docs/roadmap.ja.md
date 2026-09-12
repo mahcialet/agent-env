@@ -3,7 +3,7 @@ status: active
 owner: maintainers
 last_verified: 2026-09-09
 translation_of: docs/roadmap.md
-source_sha256: fc4fdba3d7a6e94d9c2f9103fc5de67c651f2f59b165acdabc76005dcb582fb8
+source_sha256: c7688e6bd6e80e3a516b9ead059746ddf8e5ae4ef9f76a9bfd67f8f186fb017e
 ---
 
 # Roadmapと未決定事項
@@ -18,12 +18,12 @@ source_sha256: fc4fdba3d7a6e94d9c2f9103fc5de67c651f2f59b165acdabc76005dcb582fb8
 ## MVPで確定した選択
 
 module名は`github.com/mahcialet/agent-env`で、既存のMIT licenseを維持します。
-固定したローカルGit commit、detached review worktree、選択componentの依存閉包、名前付きargvテスト、
+固定したローカルGit commit、detached review worktree、componentとその直接・間接の依存先すべての選択、名前付きargvテスト、
 証拠の保持、移植可能なrepository harnessが実装済みの基盤です。
 
 AGENTSの上限は150行です。package境界は構造検査で強制し、番号付きmigrationからDB文書を生成します。
 SQLite transactionと更新可能なfence付きoperation lockがlocal process間を調整します。
-実行snapshotには選択したサービスと必要なresourceの依存閉包だけを保存します。組み込みpolicyは
+実行snapshotには、選択したサービスとその直接・間接の依存サービス、およびそれらが参照するresourceだけを保存します。組み込みpolicyは
 固定公開portと、指定された外部・共有Compose resourceを拒否します。
 
 時間を制限したコマンドのprocess treeキャンセルと、常駐processの管理には、別のnative interfaceを使います。

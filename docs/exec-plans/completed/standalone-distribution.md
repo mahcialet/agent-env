@@ -101,7 +101,7 @@ its Outcomes & Retrospective.
 
 ## Progress
 
-- [x] 2026-09-08: Resumed parent at PR #7 merge `16afc83`; baseline `go run ./tools/repoctl check` passed. Added explicit CLI bundled inventory and state-free JSON/table regression; remaining audits and final validation continue.
+- [x] 2026-09-08: Resumed parent at PR #7 merge `16afc83`; baseline `go run ./tools/repoctl check` passed. Added explicit CLI bundled inventory and test of JSON/table output without state creation; remaining audits and final validation continue.
 
 - [x] 2026-09-08: `master` at `938e584` includes PR #5; created
       `feat/standalone-distribution`.
@@ -125,7 +125,7 @@ its Outcomes & Retrospective.
 - [x] 2026-09-08: Completed capability prerequisite tests, CLI inventory, asset stress, persistent-path audit and future helper contract; local harness/race passed. Native final-revision CI is recorded below.
 - [x] 2026-09-08: TestEmbeddedFixture verifies 17 embedded bytes and fixed SHA-256 without a target app; asset race stress passed ten times.
 - [x] 2026-09-08: Retain AGENT_ENV_HOME as the sole explicit override; an additional --home flag is not justified (existing Decision Log).
-- [x] 2026-09-08: Audited persistent paths in the design document; state override, lifecycle, command evidence and helper staging regression tests pass.
+- [x] 2026-09-08: Audited persistent paths in the design document; state override, lifecycle, command evidence and helper staging tests for state-path confinement pass.
 - [x] 2026-09-08: Implement `repoctl release-build`. Child evidence: `641cb49`, preview 34190701402, Verify 34190701428.
 - [x] 2026-09-08: Implement `repoctl release-check`. Child evidence: `641cb49`, preview 34190701402, Verify 34190701428.
 - [x] 2026-09-08: Generate normalized archives, release manifest and checksums. Child evidence: `641cb49`, preview 34190701402, Verify 34190701428.
@@ -145,11 +145,11 @@ revision and outcome at each meaningful checkpoint.
 
 ## Surprises & Discoveries
 
-- 2026-09-08: The first Windows fix (`611da29`, native run 34196522199) eliminated fixture/replace errors but still reproduced transient read sharing violations from competing publication calls. No-replace alone is insufficient; add bounded handling of Windows sharing/lock violations with deterministic held-handle regressions. Permanent permissions, missing files and content mismatches must still fail.
+- 2026-09-08: The first Windows fix (`611da29`, native run 34196522199) eliminated fixture/replace errors but still reproduced transient read sharing violations from competing publication calls. No-replace alone is insufficient; add bounded handling of Windows sharing/lock violations with deterministic tests that retain handles to check sharing violations. Permanent permissions, missing files and content mismatches must still fail.
 
 - 2026-09-08: Native Windows CI 34196175504 exposed two gaps hidden by Linux/macOS: Git autocrlf changed the embedded fixture from 17 to 18 bytes, and replacing an already published immutable file caused sharing/access-denied failures under stress. Preserve fixture bytes with a scoped -text attribute and publish without replacement on Windows; keep the same stress assertions. Native revalidation is required.
 
-- 2026-09-08: Resumption at merge `16afc83` found three gaps using new regressions: concurrent asset mkdir rejected legitimate EEXIST winners (five child failures), an absolute state override still needed HOME, and UI helper staging used OS temporary storage on both install success/error. Fixed each without weakening checks. Asset race stress passed ten repetitions: 120 children, 10,800 materializations, 300 fresh roots. Intermediate combined tests saw duplicate AssetInfo while files were being integrated and the intentionally failing staging test; final validation must use the integrated tree.
+- 2026-09-08: Resumption at merge `16afc83` found three gaps using new tests of expected behavior: concurrent asset mkdir rejected legitimate EEXIST winners (five child failures), an absolute state override still needed HOME, and UI helper staging used OS temporary storage on both install success/error. Fixed each without weakening checks. Asset race stress passed ten repetitions: 120 children, 10,800 materializations, 300 fresh roots. Intermediate combined tests saw duplicate AssetInfo while files were being integrated and the intentionally failing staging test; final validation must use the integrated tree.
 
 - 2026-09-08: The supplied Japanese active plan lacked translation metadata,
   so the baseline docs-check failed before implementation. Added exact
@@ -573,14 +573,14 @@ including Docker, Android or Flutter.
 | --- | --- | --- |
 | S1 | Extracted release runs `version`/help without Go or repository files. | Child R15 and preview 34190701402: extracted version/help/list run with empty PATH outside source on all three native OS runners. |
 | S2 | Core CLI startup does not require Docker, Android, Flutter, Java, Python, Node or shell. | The same native smoke runs core commands with no optional tools on PATH. |
-| S3 | Capability-specific commands report missing prerequisites lazily and honestly. | 2026-09-08, `8eb92d5`: `TestStandaloneCommandsRequestGitOnlyWhenSourcesAreNeeded` (empty PATH) and existing Compose/Android/Flutter doctor/plan regressions pass: actionable missing tools, exit 3, no premature state or unrelated discovery. |
+| S3 | Capability-specific commands report missing prerequisites lazily and honestly. | 2026-09-08, `8eb92d5`: `TestStandaloneCommandsRequestGitOnlyWhenSourcesAreNeeded` (empty PATH) and existing Compose/Android/Flutter doctor/plan tests for existing prerequisite behavior pass: actionable missing tools, exit 3, no premature state or unrelated discovery. |
 | S4 | `version --output json` reports documented version/commit/toolchain/platform/asset metadata. | 2026-09-08, `8eb92d5`: `TestVersionReportsBundledInventoryWithoutState` passes JSON `assets: []` and table inventory; buildinfo tests retain honest development/release identity. |
 | S5 | Development builds have an honest identity without release metadata. | 2026-09-08: development defaults report `devel`/`unknown` identity through `agent-env version`; unit test passes. |
-| S6 | Release builds reject mismatched tag/version/commit or dirty release input. | Child R1–R4: strict Git identity and negative fixtures, including private committed-source isolation. |
+| S6 | Release builds reject mismatched tag/version/commit or dirty release input. | Child R1–R4: tests verify that strict Git identity checks reject mismatches and uncommitted changes, and that private committed-source checkouts exclude local changes. |
 | S7 | Release builds use `CGO_ENABLED=0` and no shell packaging tools. | Child R5: all six binaries statically verify CGO_ENABLED=0; Go-only archive mechanics pass. |
 | S8 | The fixed matrix produces exactly the documented archive set. | Child R6–R7: exact six archive names and three prefixed regular members. |
 | S9 | Checksums and release manifest match exact archive/executable bytes. | Child R9–R11: real checksums/manifest/binary identity verified and mismatch fixtures rejected. |
-| S10 | Archives contain only safe relative regular files; no symlink/traversal. | Child R12: traversal/symlink/member tests plus ZIP local/central-name regression pass. |
+| S10 | Archives contain only safe relative regular files; no symlink/traversal. | Child R12: traversal/symlink/member tests plus test rejecting mismatched ZIP local/central names pass. |
 | S11 | Bundled asset materialization is content-addressed, digest-verified, atomic, concurrency-safe and idempotent. | 2026-09-08, `8eb92d5`: `TestEmbeddedFixture`, tamper/path tests and `go test -race ./internal/assets -count=10` pass: 120 children, 10,800 calls, 300 fresh roots, identical final bytes and no temporary residue. |
 | S12 | Corrupted materialized asset content is detected and never silently trusted. | 2026-09-08: `TestMaterializeIsContentAddressedAndIdempotent` rejects tampered bytes. |
 | S13 | Bundled asset metadata is available without capability initialization. | 2026-09-08, `8eb92d5`: `assets.Inventory` feeds buildinfo without I/O; CLI test uses empty PATH and verifies state stays absent. Test-only fixture is not shipped. |
@@ -626,7 +626,7 @@ assets come from the installed executable.
 
 ## Artifacts and Notes
 
-- 2026-09-08: Final revision `a1013b5` passed local harness, full race, six-target release-verify (two builds/eight identical files/Linux native smoke), and all 18 candidate cases. Verify 34197046022 passed all native Go 1.26/1.27 jobs, cross-build and integration/race. Release preview 34197049188 passed candidate build and Linux/amd64, Windows/amd64, macOS/arm64 smoke. Windows held-handle, >280-character path, winner-preservation and process stress regressions now pass without relaxing assertions. No other native tuples are claimed.
+- 2026-09-08: Final revision `a1013b5` passed local harness, full race, six-target release-verify (two builds/eight identical files/Linux native smoke), and all 18 candidate cases. Verify 34197046022 passed all native Go 1.26/1.27 jobs, cross-build and integration/race. Release preview 34197049188 passed candidate build and Linux/amd64, Windows/amd64, macOS/arm64 smoke. Windows held-handle, >280-character path, winner-preservation and process stress tests of existing behavior now pass without relaxing assertions. No other native tuples are claimed.
 
 2026-09-08 parent validation at `a1013b58a3e4e1e98b4d741237e193f8013eec65`,
 Go 1.27.1, private preview `v0.1.0` (no public tag):
